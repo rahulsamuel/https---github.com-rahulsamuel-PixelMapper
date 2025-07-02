@@ -29,7 +29,7 @@ import { RasterMapPreview } from "./raster-map-preview";
 
 
 export function PixelMapperLayout() {
-  const { dimensions, handleDownloadPng, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, rasterMapConfig } = usePixelMapper();
+  const { dimensions, handleDownloadPng, zoom, setZoom, onOffMode, setOnOffMode, activeBounds } = usePixelMapper();
 
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : 0;
   const totalHeight = activeBounds ? (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight : 0;
@@ -64,7 +64,7 @@ export function PixelMapperLayout() {
             <TabsList>
               <TabsTrigger value="grid">LED Grid</TabsTrigger>
               <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
-              <TabsTrigger value="raster" disabled={!rasterMapConfig}>Raster Map Preview</TabsTrigger>
+              <TabsTrigger value="raster">Raster Map Preview</TabsTrigger>
             </TabsList>
             <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground">
