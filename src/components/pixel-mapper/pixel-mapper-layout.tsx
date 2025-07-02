@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { EditTools } from "./edit-tools";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
+import { LabelControls } from "./label-controls";
 
 export function PixelMapperLayout() {
   const { dimensions, handleDownloadPng } = usePixelMapper();
@@ -38,6 +39,7 @@ export function PixelMapperLayout() {
             <div className="flex flex-col gap-4 p-4">
               <DimensionControls />
               <AppearanceControls />
+              <LabelControls />
               <EditTools />
               <PixelMapperActions />
             </div>

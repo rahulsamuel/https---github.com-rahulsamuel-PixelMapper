@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Palette, Tag, Trash2, Wand2 } from "lucide-react";
+import { Palette, Trash2, Wand2 } from "lucide-react";
 
 export function EditTools() {
   const { activeTool, setActiveTool } = usePixelMapper();
@@ -26,7 +26,7 @@ export function EditTools() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Button
             variant={activeTool === 'delete' ? 'secondary' : 'outline'}
             onClick={() => setActiveTool('delete')}
@@ -35,15 +35,9 @@ export function EditTools() {
             Delete
           </Button>
           <Button
-            variant={activeTool === 'label' ? 'secondary' : 'outline'}
-            onClick={() => setActiveTool('label')}
-          >
-            <Tag className="mr-2" />
-            Label
-          </Button>
-          <Button
             variant={activeTool === 'color' ? 'secondary' : 'outline'}
             onClick={() => setActiveTool('color')}
+            disabled
           >
             <Palette className="mr-2" />
             Color

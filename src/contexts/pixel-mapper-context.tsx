@@ -16,6 +16,7 @@ interface Tile {
 }
 
 type ActiveTool = 'delete' | 'label' | 'color';
+type LabelFormat = 'none' | 'sequential' | 'row-col' | 'dmx-style';
 
 interface PixelMapperState {
   appState: string;
@@ -23,6 +24,7 @@ interface PixelMapperState {
   dimensions: Dimensions;
   setDimensions: Dispatch<SetStateAction<Dimensions>>;
   tiles: Tile[];
+  labels: string[];
   handleTileClick: (index: number) => void;
   restoreAll: () => void;
   deletedCount: number;
@@ -37,6 +39,14 @@ interface PixelMapperState {
   handleDownloadPng: (filename: string) => void;
   activeTool: ActiveTool;
   setActiveTool: Dispatch<SetStateAction<ActiveTool>>;
+  showLabels: boolean;
+  setShowLabels: Dispatch<SetStateAction<boolean>>;
+  labelFormat: LabelFormat;
+  setLabelFormat: Dispatch<SetStateAction<LabelFormat>>;
+  labelFontSize: number;
+  setLabelFontSize: Dispatch<SetStateAction<number>>;
+  labelColor: string;
+  setLabelColor: Dispatch<SetStateAction<string>>;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -67,6 +77,13 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [borderWidth, setBorderWidth] = useState(1);
   const [borderColor, setBorderColor] = useState("#ffffff");
   const [activeTool, setActiveTool] = useState<ActiveTool>("delete");
+  
+  // Labeling state
+  const [showLabels, setShowLabels] = useState(true);
+  const [labelFormat, setLabelFormat] = useState<LabelFormat>('sequential');
+  const [labelFontSize, setLabelFontSize] = useState(48);
+  const [labelColor, setLabelColor] = useState("#ffffff");
+  const [labels, setLabels] = useState<string[]>([]);
 
 
   useEffect(() => {
@@ -84,6 +101,52 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setDeletedCount(tiles.filter((tile) => tile.deleted).length);
   }, [tiles]);
 
+  useEffect(() => {
+    const { screenWidth, screenHeight } = dimensions;
+    const newLabels: string[] = [];
+    let sequentialCounter = 1;
+    let dmxCounter = 1;
+    let dmxUniverse = 'A';
+
+    for (let i = 0; i < tiles.length; i++) {
+        const tile = tiles[i];
+        if (labelFormat === 'none' || tile.deleted) {
+            newLabels.push('');
+            continue;
+        }
+
+        switch (labelFormat) {
+            case 'sequential':
+                newLabels.push(String(sequentialCounter++));
+                break;
+            case 'row-col':
+                const y = Math.floor(i / screenWidth) + 1;
+                const x = (i % screenWidth) + 1;
+                newLabels.push(`${y}-${x}`);
+                break;
+            case 'dmx-style':
+                newLabels.push(`${dmxUniverse}${dmxCounter++}`);
+                if (dmxCounter > 170) { // 512 channels / 3 colors
+                    dmxCounter = 1;
+                    dmxUniverse = String.fromCharCode(dmxUniverse.charCodeAt(0) + 1);
+                }
+                break;
+            default:
+                newLabels.push('');
+        }
+    }
+    // For row-col we need to iterate over all tiles, not just non-deleted ones
+    if (labelFormat === 'row-col') {
+      for(let i = 0; i < tiles.length; i++) {
+        const y = Math.floor(i / screenWidth) + 1;
+        const x = (i % screenWidth) + 1;
+        newLabels[i] = `${y}-${x}`;
+      }
+    }
+
+    setLabels(newLabels);
+  }, [dimensions, tiles, labelFormat]);
+
   const toggleTile = useCallback((index: number) => {
     setTiles((prev) =>
       prev.map((tile, i) => (i === index ? { ...tile, deleted: !tile.deleted } : tile))
@@ -94,10 +157,6 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     switch (activeTool) {
       case 'delete':
         toggleTile(index);
-        break;
-      case 'label':
-        // Placeholder for label functionality
-        console.log(`Label tool clicked on tile ${index}`);
         break;
       case 'color':
         // Placeholder for color functionality
@@ -118,23 +177,14 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         return;
     }
 
-    const node = gridRef.current;
-    
-    const totalWidth = dimensions.screenWidth * dimensions.tileWidth;
-    const totalHeight = dimensions.screenHeight * dimensions.tileHeight;
-
-    toPng(node, { 
+    toPng(gridRef.current, { 
         cacheBust: true,
-        width: totalWidth,
-        height: totalHeight,
         pixelRatio: 1,
         style: {
-            // Override styles that interfere with the capture
             position: 'static',
             transform: 'none',
-            margin: '0',
-            top: '0',
-            left: '0'
+            top: 'auto',
+            left: 'auto',
         }
      })
       .then((dataUrl) => {
@@ -146,7 +196,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       .catch((err) => {
         console.error("Could not generate PNG.", err);
       });
-  }, [gridRef, dimensions]);
+  }, [gridRef]);
 
   const value = {
     appState,
@@ -154,6 +204,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     dimensions,
     setDimensions,
     tiles,
+    labels,
     handleTileClick,
     restoreAll,
     deletedCount,
@@ -168,6 +219,14 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     handleDownloadPng,
     activeTool,
     setActiveTool,
+    showLabels,
+    setShowLabels,
+    labelFormat,
+    setLabelFormat,
+    labelFontSize,
+    setLabelFontSize,
+    labelColor,
+    setLabelColor,
   };
 
   return (

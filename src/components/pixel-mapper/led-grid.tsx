@@ -11,11 +11,15 @@ export function LedGrid() {
     gridRef,
     dimensions,
     tiles,
+    labels,
     handleTileClick,
     tileColor,
     tileColorTwo,
     borderWidth,
     borderColor,
+    showLabels,
+    labelFontSize,
+    labelColor,
   } = usePixelMapper();
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -113,12 +117,25 @@ export function LedGrid() {
                             key={tile.id}
                             onClick={() => handleTileClick(index)}
                             className={cn(
-                            "rounded-none transition-opacity duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:z-10",
+                            "relative rounded-none transition-opacity duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:z-10 flex items-center justify-center",
                             tile.deleted ? "opacity-10" : "opacity-100"
                             )}
                             style={{ ...baseTileStyle, backgroundColor: bgColor }}
                             aria-label={`Tile ${index + 1}`}
-                        />
+                        >
+                            <div className="absolute inset-2 border border-white/20 rounded-full" />
+                            {showLabels && !tile.deleted && (
+                                <span 
+                                    className="font-bold text-center pointer-events-none drop-shadow-sm"
+                                    style={{
+                                        fontSize: `${labelFontSize}px`,
+                                        color: labelColor,
+                                    }}
+                                >
+                                    {labels[index]}
+                                </span>
+                            )}
+                        </button>
                     );
                 })}
             </div>
