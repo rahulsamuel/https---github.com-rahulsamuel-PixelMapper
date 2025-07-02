@@ -122,18 +122,20 @@ export function WiringDiagram() {
                 ...(arrowTo === 'right' && { right: -ARROW_SIZE / 2, top: '50%', transform: 'translateY(-50%)' }),
             };
 
+            const tileStyle = {
+              top: y * TILE_SIZE,
+              width: TILE_SIZE,
+              height: TILE_SIZE,
+              backgroundColor: bgColor,
+              borderWidth: isDeleted ? '0px' : '1px',
+              ...(isMirrored ? { right: x * TILE_SIZE } : { left: x * TILE_SIZE }),
+            };
+
             return (
               <div
                 key={`wiring-tile-${x}-${y}`}
-                className="absolute border border-border flex items-center justify-center overflow-visible"
-                style={{
-                  left: x * TILE_SIZE,
-                  top: y * TILE_SIZE,
-                  width: TILE_SIZE,
-                  height: TILE_SIZE,
-                  backgroundColor: bgColor,
-                  borderWidth: isDeleted ? '0px' : '1px',
-                }}
+                className="absolute border-border flex items-center justify-center overflow-visible"
+                style={tileStyle}
               >
                 {!isDeleted && (
                   <>
