@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { toPng } from "html-to-image";
 
 export function WiringDiagram() {
-  const { dimensions, tiles } = usePixelMapper();
+  const { dimensions, tiles, tileColor, tileColorTwo, onOffMode } = usePixelMapper();
   const [isMirrored, setIsMirrored] = useState(false);
   const wiringDiagramRef = useRef<HTMLDivElement>(null);
 
@@ -68,27 +68,43 @@ export function WiringDiagram() {
             transform: isMirrored ? 'scaleX(-1)' : 'scaleX(1)',
           }}
         >
-          {wiringData.map(({ x, y, dataLabel, powerLabel, isDeleted }) => (
-            <div
-              key={`wiring-tile-${x}-${y}`}
-              className="absolute border border-border bg-background"
-              style={{
-                left: x * TILE_SIZE,
-                top: y * TILE_SIZE,
-                width: TILE_SIZE,
-                height: TILE_SIZE,
-                opacity: isDeleted ? 0.2 : 1,
-              }}
-            >
+          {wiringData.map(({ x, y, dataLabel, powerLabel, isDeleted }) => {
+            let bgColor;
+            if (onOffMode) {
+              bgColor = isDeleted ? '#000000' : '#FFFFFF';
+            } else {
+              if (isDeleted) {
+                bgColor = '#000000';
+              } else {
+                bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
+              }
+            }
+
+            return (
               <div
-                className="flex flex-col items-center justify-center h-full w-full text-foreground"
-                style={{ fontSize: FONT_SIZE, transform: isMirrored ? 'scaleX(-1)' : 'scaleX(1)' }}
+                key={`wiring-tile-${x}-${y}`}
+                className="absolute border border-border"
+                style={{
+                  left: x * TILE_SIZE,
+                  top: y * TILE_SIZE,
+                  width: TILE_SIZE,
+                  height: TILE_SIZE,
+                  backgroundColor: bgColor,
+                  borderWidth: isDeleted ? '0px' : '1px',
+                }}
               >
-                <span className="font-bold text-accent">{dataLabel}</span>
-                <span className="text-xs text-primary">{powerLabel}</span>
+                {!isDeleted && (
+                  <div
+                    className="flex flex-col items-center justify-center h-full w-full text-foreground"
+                    style={{ fontSize: FONT_SIZE, transform: isMirrored ? 'scaleX(-1)' : 'scaleX(1)' }}
+                  >
+                    <span className="font-bold text-accent">{dataLabel}</span>
+                    <span className="text-xs text-primary">{powerLabel}</span>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
