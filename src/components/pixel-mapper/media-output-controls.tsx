@@ -12,7 +12,9 @@ import { Button } from "@/components/ui/button";
 import { FileOutput } from "lucide-react";
 
 export function MediaOutputControls() {
-  const { handleDownloadRasterMap } = usePixelMapper();
+  const { handleDownloadRasterMap, dimensions } = usePixelMapper();
+  const totalWidth = dimensions.screenWidth * dimensions.tileWidth;
+  const totalHeight = dimensions.screenHeight * dimensions.tileHeight;
 
   return (
     <Card>
@@ -25,10 +27,19 @@ export function MediaOutputControls() {
           Generate raster maps for media servers.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <Button onClick={() => handleDownloadRasterMap('raster-map.png')} className="w-full">
+      <CardContent className="space-y-2">
+        <Button onClick={() => handleDownloadRasterMap(`raster-map-content.png`)} className="w-full">
             <FileOutput className="mr-2 size-4" />
-            Download Raster Map
+            Fit to Content ({totalWidth}x{totalHeight})
+        </Button>
+        <Button onClick={() => handleDownloadRasterMap('raster-map-hd.png', 1920, 1080)} variant="outline" className="w-full">
+            HD (1920x1080)
+        </Button>
+        <Button onClick={() => handleDownloadRasterMap('raster-map-4k-uhd.png', 3840, 2160)} variant="outline" className="w-full">
+            4K UHD (3840x2160)
+        </Button>
+        <Button onClick={() => handleDownloadRasterMap('raster-map-4k-dci.png', 4096, 2160)} variant="outline" className="w-full">
+            4K DCI (4096x2160)
         </Button>
       </CardContent>
     </Card>

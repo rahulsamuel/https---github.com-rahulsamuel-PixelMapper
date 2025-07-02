@@ -38,7 +38,7 @@ interface PixelMapperState {
   borderColor: string;
   setBorderColor: Dispatch<SetStateAction<string>>;
   handleDownloadPng: (filename: string) => void;
-  handleDownloadRasterMap: (filename: string) => void;
+  handleDownloadRasterMap: (filename: string, outputWidth?: number, outputHeight?: number) => void;
   activeTool: ActiveTool;
   setActiveTool: Dispatch<SetStateAction<ActiveTool>>;
   showLabels: boolean;
@@ -196,19 +196,22 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       });
   }, [gridRef]);
 
-  const handleDownloadRasterMap = useCallback((filename: string) => {
+  const handleDownloadRasterMap = useCallback((filename: string, outputWidth?: number, outputHeight?: number) => {
     const { screenWidth, screenHeight, tileWidth, tileHeight } = dimensions;
-    const totalWidth = screenWidth * tileWidth;
-    const totalHeight = screenHeight * tileHeight;
+    const contentWidth = screenWidth * tileWidth;
+    const contentHeight = screenHeight * tileHeight;
 
-    if (totalWidth <= 0 || totalHeight <= 0) {
+    if (contentWidth <= 0 || contentHeight <= 0) {
       console.error("Invalid dimensions for raster map.");
       return;
     }
+
+    const finalWidth = outputWidth || contentWidth;
+    const finalHeight = outputHeight || contentHeight;
     
     const canvas = document.createElement('canvas');
-    canvas.width = totalWidth;
-    canvas.height = totalHeight;
+    canvas.width = finalWidth;
+    canvas.height = finalHeight;
     const ctx = canvas.getContext('2d');
 
     if (!ctx) {
@@ -216,9 +219,11 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Fill background with black
     ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, totalWidth, totalHeight);
+    ctx.fillRect(0, 0, finalWidth, finalHeight);
 
+    // Draw the white tiles
     ctx.fillStyle = 'white';
     tiles.forEach((tile, index) => {
       if (!tile.deleted) {
