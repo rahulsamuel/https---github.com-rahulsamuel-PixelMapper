@@ -76,6 +76,12 @@ export function LedGrid() {
                 const currentLabelColor = onOffMode ? '#000000' : labelColor;
                 const circleBorderColor = onOffMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)';
 
+                const tileDynamicStyle = {
+                  ...baseTileStyle,
+                  backgroundColor: bgColor,
+                  borderWidth: tile.deleted ? '0px' : `${borderWidth}px`,
+                };
+
                 return (
                     <button
                         key={tile.id}
@@ -83,7 +89,7 @@ export function LedGrid() {
                         className={cn(
                         "relative rounded-none transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:z-10 flex items-center justify-center"
                         )}
-                        style={{ ...baseTileStyle, backgroundColor: bgColor }}
+                        style={tileDynamicStyle}
                         aria-label={`Tile ${index + 1}`}
                     >
                         <div 
