@@ -22,6 +22,21 @@ interface WiringInfo {
 
 const TILES_PER_POWER_CIRCUIT = 20;
 
+// Correct universe sequence, skipping 'B'.
+const UNIVERSE_LETTERS = [
+    'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 
+    'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
+];
+
+const getUniverseLabel = (n: number): string => {
+    if (n >= 0 && n < UNIVERSE_LETTERS.length) {
+        return UNIVERSE_LETTERS[n];
+    }
+    // Fallback for a large number of universes
+    return `Universe ${n + 1}`;
+};
+
+
 export function getWiringData(
   dimensions: Dimensions,
   tiles: Tile[],
@@ -74,14 +89,6 @@ export function getWiringData(
   let powerCounter = 1;
   let powerGroupCounter = 0;
 
-  const getUniverseLabel = (n: number): string => {
-    if (n === 0) return 'A';
-    // n=1 should be 'C', n=2 should be 'D'
-    const charCode = n + 66; // 1 -> 67 ('C'), 2 -> 68 ('D')
-    if (charCode > 90) return `U${n}`; // Fallback for after Z
-    return String.fromCharCode(charCode);
-  };
-
   activeTilesPath.forEach(({ tile }, pathIndex) => {
     // Assign Power Label
     powerGroupCounter++;
@@ -92,8 +99,12 @@ export function getWiringData(
     tile.powerLabel = `P${powerCounter}`;
 
     // Assign Data Label
-    const universe = getUniverseLabel(dataUniverseCounter);
-    tile.dataLabel = `${universe}${dataAddressCounter}`;
+    if (dataAddressCounter === 1) {
+      const universe = getUniverseLabel(dataUniverseCounter);
+      tile.dataLabel = `${universe}${dataAddressCounter}`;
+    } else {
+      tile.dataLabel = ''; // Only label the first tile of the port run
+    }
 
     dataAddressCounter++;
     if (dataAddressCounter > tilesPerPort) {
