@@ -92,6 +92,8 @@ interface PixelMapperState {
   setRasterMapConfig: Dispatch<SetStateAction<RasterMapConfig | null>>;
   rasterOffset: { x: number; y: number; };
   setRasterOffset: Dispatch<SetStateAction<{ x: number; y: number; }>>;
+  wiringTilesPerPort: number;
+  setWiringTilesPerPort: Dispatch<SetStateAction<number>>;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -137,6 +139,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [rasterMapConfig, setRasterMapConfig] = useState<RasterMapConfig | null>(null);
   const [rasterOffset, setRasterOffset] = useState({ x: 0, y: 0 });
   const [lastRasterArgs, setLastRasterArgs] = useState<RasterArgs | null>(null);
+
+  // Wiring state
+  const [wiringTilesPerPort, setWiringTilesPerPort] = useState(10);
 
 
   useEffect(() => {
@@ -302,33 +307,26 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const slices: RasterSlice[] = [];
     const baseFilename = filename.replace('.png', '');
 
-    // If we have a fixed output size (e.g. 1920x1080) and the content fits inside it,
-    // we only need one slice that covers the entire output area.
-    if (outputWidth && outputHeight && contentWidth <= outputWidth && contentHeight <= outputHeight) {
-        slices.push({
-            key: '0-0',
-            filename: `${baseFilename}.png`,
-            x: 0,
-            y: 0,
-            width: outputWidth,
-            height: outputHeight,
-        });
+    if (finalOutputWidth >= contentWidth && finalOutputHeight >= contentHeight) {
+      slices.push({
+        key: '0-0',
+        filename: `${baseFilename}.png`,
+        x: 0,
+        y: 0,
+        width: finalOutputWidth,
+        height: finalOutputHeight,
+      });
     } else {
-        // Otherwise, if the content is larger than a single output, we slice it.
-        const sliceTargetWidth = outputWidth || contentWidth;
-        const sliceTargetHeight = outputHeight || contentHeight;
-        
-        const numCols = Math.ceil(contentWidth / sliceTargetWidth);
-        const numRows = Math.ceil(contentHeight / sliceTargetHeight);
+        const numCols = Math.ceil(contentWidth / finalOutputWidth);
+        const numRows = Math.ceil(contentHeight / finalOutputHeight);
 
         for (let row = 0; row < numRows; row++) {
             for (let col = 0; col < numCols; col++) {
-                const sliceX = col * sliceTargetWidth;
-                const sliceY = row * sliceTargetHeight;
+                const sliceX = col * finalOutputWidth;
+                const sliceY = row * finalOutputHeight;
                 
-                // The size of this specific slice of content
-                const sliceW = Math.min(sliceTargetWidth, contentWidth - sliceX);
-                const sliceH = Math.min(sliceTargetHeight, contentHeight - sliceY);
+                const sliceW = Math.min(finalOutputWidth, contentWidth - sliceX);
+                const sliceH = Math.min(finalOutputHeight, contentHeight - sliceY);
 
                 if (sliceW <= 0 || sliceH <= 0) continue;
 
@@ -341,8 +339,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
                     filename: sliceFilename,
                     x: sliceX,
                     y: sliceY,
-                    width: sliceW,
-                    height: sliceH
+                    width: finalOutputWidth, // The output file is always the full size
+                    height: finalOutputHeight
                 });
             }
         }
@@ -426,16 +424,19 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     if (!rasterMapConfig || !activeBounds) return null;
 
     const { screenWidth, tileWidth, tileHeight } = dimensions;
-    const { totalWidth, totalHeight, rasterOffset } = rasterMapConfig;
+    const { rasterOffset } = rasterMapConfig;
+
+    const contentWidth = (activeBounds.maxX - activeBounds.minX + 1) * tileWidth;
+    const contentHeight = (activeBounds.maxY - activeBounds.minY + 1) * tileHeight;
 
     const masterCanvas = document.createElement('canvas');
-    masterCanvas.width = totalWidth;
-    masterCanvas.height = totalHeight;
+    masterCanvas.width = contentWidth;
+    masterCanvas.height = contentHeight;
     const masterCtx = masterCanvas.getContext('2d');
     if (!masterCtx) return null;
 
     masterCtx.fillStyle = 'black';
-    masterCtx.fillRect(0, 0, totalWidth, totalHeight);
+    masterCtx.fillRect(0, 0, masterCanvas.width, masterCanvas.height);
 
     tiles.forEach((tile, index) => {
       if (!tile.deleted) {
@@ -454,7 +455,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
           }
 
           masterCtx.fillStyle = bgColor;
-          masterCtx.fillRect(tileXPos + rasterOffset.x, tileYPos + rasterOffset.y, tileWidth, tileHeight);
+          masterCtx.fillRect(tileXPos, tileYPos, tileWidth, tileHeight);
 
           if (showLabels && labels[index]) {
             const currentLabelColor = onOffMode ? '#000000' : labelColor;
@@ -462,7 +463,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
             masterCtx.font = `bold ${labelFontSize}px sans-serif`;
             masterCtx.textAlign = 'center';
             masterCtx.textBaseline = 'middle';
-            masterCtx.fillText(labels[index], tileXPos + rasterOffset.x + tileWidth / 2, tileYPos + rasterOffset.y + tileHeight / 2);
+            masterCtx.fillText(labels[index], tileXPos + tileWidth / 2, tileYPos + tileHeight / 2);
           }
         }
       }
@@ -478,8 +479,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         return;
     }
     
-    const masterCanvas = createFullRasterCanvas();
-    if (!masterCanvas) {
+    const masterContentCanvas = createFullRasterCanvas();
+    if (!masterContentCanvas) {
       console.error("Failed to create master canvas for download.");
       return;
     }
@@ -497,34 +498,24 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     };
     
     for (const slice of rasterMapConfig.slices) {
-        const sliceCanvas = document.createElement('canvas');
-        sliceCanvas.width = slice.width;
-        sliceCanvas.height = slice.height;
-        const sliceCtx = sliceCanvas.getContext('2d');
-        if (!sliceCtx) continue;
+        const outputCanvas = document.createElement('canvas');
+        outputCanvas.width = slice.width;
+        outputCanvas.height = slice.height;
+        const outputCtx = outputCanvas.getContext('2d');
+        if (!outputCtx) continue;
         
-        sliceCtx.drawImage(
-            masterCanvas,
+        outputCtx.fillStyle = 'black';
+        outputCtx.fillRect(0,0, outputCanvas.width, outputCanvas.height);
+        
+        outputCtx.drawImage(
+            masterContentCanvas,
             slice.x, slice.y, slice.width, slice.height,
-            0, 0, slice.width, slice.height
+            rasterOffset.x, rasterOffset.y, slice.width, slice.height
         );
         
-        // If the slice is smaller than the intended output, create a full-size canvas and place the slice
-        if (slice.width < rasterMapConfig.outputWidth || slice.height < rasterMapConfig.outputHeight) {
-            const outputCanvas = document.createElement('canvas');
-            outputCanvas.width = rasterMapConfig.outputWidth;
-            outputCanvas.height = rasterMapConfig.outputHeight;
-            const outputCtx = outputCanvas.getContext('2d');
-            if (!outputCtx) continue;
-            outputCtx.fillStyle = 'black';
-            outputCtx.fillRect(0,0, outputCanvas.width, outputCanvas.height);
-            outputCtx.drawImage(sliceCanvas, 0, 0);
-            downloadCanvas(outputCanvas, slice.filename);
-        } else {
-            downloadCanvas(sliceCanvas, slice.filename);
-        }
+        downloadCanvas(outputCanvas, slice.filename);
     }
-  }, [rasterMapConfig, createFullRasterCanvas]);
+  }, [rasterMapConfig, createFullRasterCanvas, rasterOffset]);
 
 
   const value = {
@@ -567,6 +558,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setRasterMapConfig,
     rasterOffset,
     setRasterOffset,
+    wiringTilesPerPort,
+    setWiringTilesPerPort,
   };
 
   return (
