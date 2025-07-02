@@ -398,6 +398,11 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setRasterOffset({ x: 0, y: 0 }); // Reset offset when generating a new map type
   }, []);
 
+  useEffect(() => {
+    // Set default raster map on initial load
+    generateRasterMap('raster-map-hd.png', 1920, 1080);
+  }, [generateRasterMap]);
+
   const createFullRasterCanvas = useCallback(() => {
     if (!rasterMapConfig || !activeBounds) return null;
 
