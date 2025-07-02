@@ -129,6 +129,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         height: totalHeight,
         pixelRatio: 1,
         style: {
+            // Override styles that interfere with the capture
+            position: 'static',
             transform: 'none',
             margin: '0',
             top: '0',
