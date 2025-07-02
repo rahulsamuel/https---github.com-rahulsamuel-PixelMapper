@@ -41,6 +41,7 @@ interface RasterMapConfig {
   totalHeight: number;
   outputWidth: number;
   outputHeight: number;
+  previewImage?: string;
 }
 
 
@@ -274,7 +275,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         return;
     }
 
-    const { tileWidth, tileHeight } = dimensions;
+    const { screenWidth, tileWidth, tileHeight } = dimensions;
     const totalPixelWidth = (activeBounds.maxX - activeBounds.minX + 1) * tileWidth;
     const totalPixelHeight = (activeBounds.maxY - activeBounds.minY + 1) * tileHeight;
 
@@ -324,15 +325,63 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         col++;
     }
 
+    const masterCanvas = document.createElement('canvas');
+    masterCanvas.width = totalPixelWidth;
+    masterCanvas.height = totalPixelHeight;
+    const masterCtx = masterCanvas.getContext('2d');
+
+    if (!masterCtx) {
+      console.error("Could not get master canvas context.");
+      setRasterMapConfig(null);
+      return;
+    }
+
+    masterCtx.fillStyle = 'black';
+    masterCtx.fillRect(0, 0, totalPixelWidth, totalPixelHeight);
+
+    tiles.forEach((tile, index) => {
+      if (!tile.deleted) {
+        const x = index % screenWidth;
+        const y = Math.floor(index / screenWidth);
+
+        if (x >= activeBounds.minX && x <= activeBounds.maxX && y >= activeBounds.minY && y <= activeBounds.maxY) {
+          const tileXPos = (x - activeBounds.minX) * tileWidth;
+          const tileYPos = (y - activeBounds.minY) * tileHeight;
+          
+          let bgColor;
+          if (onOffMode) {
+            bgColor = '#FFFFFF';
+          } else {
+            bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
+          }
+
+          masterCtx.fillStyle = bgColor;
+          masterCtx.fillRect(tileXPos, tileYPos, tileWidth, tileHeight);
+
+          if (showLabels && labels[index]) {
+            const currentLabelColor = onOffMode ? '#000000' : labelColor;
+            masterCtx.fillStyle = currentLabelColor;
+            masterCtx.font = `bold ${labelFontSize}px sans-serif`;
+            masterCtx.textAlign = 'center';
+            masterCtx.textBaseline = 'middle';
+            masterCtx.fillText(labels[index], tileXPos + tileWidth / 2, tileYPos + tileHeight / 2);
+          }
+        }
+      }
+    });
+    
+    const previewImage = masterCanvas.toDataURL('image/png');
+
     setRasterMapConfig({
         slices,
         totalWidth: totalPixelWidth,
         totalHeight: totalPixelHeight,
         outputWidth: sliceWidth,
         outputHeight: sliceHeight,
+        previewImage,
     });
 
-  }, [dimensions, tiles, activeBounds]);
+  }, [dimensions, tiles, activeBounds, onOffMode, tileColor, tileColorTwo, showLabels, labels, labelColor, labelFontSize]);
 
   const downloadRasterSlices = useCallback(() => {
     if (!rasterMapConfig || !activeBounds) {
