@@ -99,7 +99,7 @@ export function WiringDiagram() {
           style={{ 
             width: dimensions.screenWidth * TILE_SIZE, 
             height: dimensions.screenHeight * TILE_SIZE,
-            transform: `scale(${zoom}) ${isMirrored ? 'scaleX(-1)' : ''}`,
+            transform: `scale(${zoom})`,
             transformOrigin: 'top left',
           }}
         >
@@ -115,11 +115,17 @@ export function WiringDiagram() {
               }
             }
 
+            let displayArrowTo = arrowTo;
+            if (isMirrored) {
+              if (arrowTo === 'left') displayArrowTo = 'right';
+              else if (arrowTo === 'right') displayArrowTo = 'left';
+            }
+
             const arrowPositionStyle = {
-                ...(arrowTo === 'up' && { top: -ARROW_SIZE / 2, left: '50%', transform: 'translateX(-50%)' }),
-                ...(arrowTo === 'down' && { bottom: -ARROW_SIZE / 2, left: '50%', transform: 'translateX(-50%)' }),
-                ...(arrowTo === 'left' && { left: -ARROW_SIZE / 2, top: '50%', transform: 'translateY(-50%)' }),
-                ...(arrowTo === 'right' && { right: -ARROW_SIZE / 2, top: '50%', transform: 'translateY(-50%)' }),
+                ...(displayArrowTo === 'up' && { top: -ARROW_SIZE / 2, left: '50%', transform: 'translateX(-50%)' }),
+                ...(displayArrowTo === 'down' && { bottom: -ARROW_SIZE / 2, left: '50%', transform: 'translateX(-50%)' }),
+                ...(displayArrowTo === 'left' && { left: -ARROW_SIZE / 2, top: '50%', transform: 'translateY(-50%)' }),
+                ...(displayArrowTo === 'right' && { right: -ARROW_SIZE / 2, top: '50%', transform: 'translateY(-50%)' }),
             };
 
             const tileStyle = {
@@ -141,7 +147,6 @@ export function WiringDiagram() {
                   <>
                     <div
                       className="flex flex-col items-center justify-center h-full w-full text-foreground relative"
-                      style={{ transform: isMirrored ? 'scaleX(-1)' : '' }}
                     >
                       {showDataLabels && dataLabel && (
                         <div className="bg-accent text-accent-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold mb-1 z-10">
@@ -152,15 +157,15 @@ export function WiringDiagram() {
                          <span className="text-xs text-primary z-10">{powerLabel}</span>
                       )}
                     </div>
-                     {showDataLabels && arrowTo && (
+                     {showDataLabels && displayArrowTo && (
                         <div 
                             className="absolute text-accent/80 z-20 flex items-center justify-center"
                             style={arrowPositionStyle}
                         >
-                            {arrowTo === 'up' && <MoveUp size={ARROW_SIZE} />}
-                            {arrowTo === 'down' && <MoveDown size={ARROW_SIZE} />}
-                            {arrowTo === 'left' && <MoveLeft size={ARROW_SIZE} />}
-                            {arrowTo === 'right' && <MoveRight size={ARROW_SIZE} />}
+                            {displayArrowTo === 'up' && <MoveUp size={ARROW_SIZE} />}
+                            {displayArrowTo === 'down' && <MoveDown size={ARROW_SIZE} />}
+                            {displayArrowTo === 'left' && <MoveLeft size={ARROW_SIZE} />}
+                            {displayArrowTo === 'right' && <MoveRight size={ARROW_SIZE} />}
                         </div>
                     )}
                   </>
