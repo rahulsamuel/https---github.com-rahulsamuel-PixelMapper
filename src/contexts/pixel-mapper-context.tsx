@@ -2,7 +2,7 @@
 
 import { useToast } from "@/hooks/use-toast";
 import { toPng } from "html-to-image";
-import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction } from "react";
 
 interface Dimensions {
   tileWidth: number;
@@ -20,15 +20,17 @@ interface PixelMapperState {
   appState: string;
   gridRef: React.RefObject<HTMLDivElement>;
   dimensions: Dimensions;
-  setDimensions: (dims: Dimensions) => void;
+  setDimensions: Dispatch<SetStateAction<Dimensions>>;
   tiles: Tile[];
   toggleTile: (index: number) => void;
   restoreAll: () => void;
   deletedCount: number;
   tileColor: string;
-  setTileColor: (color: string) => void;
+  setTileColor: Dispatch<SetStateAction<string>>;
+  tileColorTwo: string;
+  setTileColorTwo: Dispatch<SetStateAction<string>>;
   borderWidth: number;
-  setBorderWidth: (width: number) => void;
+  setBorderWidth: Dispatch<SetStateAction<number>>;
   handleDownloadPng: (filename: string) => void;
 }
 
@@ -57,6 +59,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [deletedCount, setDeletedCount] = useState(0);
 
   const [tileColor, setTileColor] = useState("#8f00ff");
+  const [tileColorTwo, setTileColorTwo] = useState("#4a4a4a");
   const [borderWidth, setBorderWidth] = useState(1);
 
   useEffect(() => {
@@ -116,6 +119,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     deletedCount,
     tileColor,
     setTileColor,
+    tileColorTwo,
+    setTileColorTwo,
     borderWidth,
     setBorderWidth,
     handleDownloadPng,

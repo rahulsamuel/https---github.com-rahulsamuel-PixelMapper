@@ -13,6 +13,7 @@ export function LedGrid() {
     tiles,
     toggleTile,
     tileColor,
+    tileColorTwo,
     borderWidth,
   } = usePixelMapper();
   const [zoom, setZoom] = useState(1);
@@ -76,10 +77,9 @@ export function LedGrid() {
     borderColor: 'hsl(var(--border))',
   };
 
-  const tileStyle: React.CSSProperties = {
+  const baseTileStyle: React.CSSProperties = {
     width: `${dimensions.tileWidth}px`,
     height: `${dimensions.tileHeight}px`,
-    backgroundColor: tileColor,
     borderWidth: `${borderWidth}px`,
     borderColor: 'rgba(0,0,0,0.2)',
   };
@@ -102,18 +102,24 @@ export function LedGrid() {
                 style={gridStyle}
                 className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-muted"
             >
-                {tiles.map((tile, index) => (
-                <button
-                    key={tile.id}
-                    onClick={() => toggleTile(index)}
-                    className={cn(
-                    "rounded-none transition-opacity duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:z-10",
-                    tile.deleted ? "opacity-10" : "opacity-100"
-                    )}
-                    style={tileStyle}
-                    aria-label={`Tile ${index + 1}`}
-                />
-                ))}
+                {tiles.map((tile, index) => {
+                    const x = index % dimensions.screenWidth;
+                    const y = Math.floor(index / dimensions.screenWidth);
+                    const bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
+
+                    return (
+                        <button
+                            key={tile.id}
+                            onClick={() => toggleTile(index)}
+                            className={cn(
+                            "rounded-none transition-opacity duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:z-10",
+                            tile.deleted ? "opacity-10" : "opacity-100"
+                            )}
+                            style={{ ...baseTileStyle, backgroundColor: bgColor }}
+                            aria-label={`Tile ${index + 1}`}
+                        />
+                    );
+                })}
             </div>
         </div>
         <div className="absolute bottom-4 right-4 flex gap-2">
