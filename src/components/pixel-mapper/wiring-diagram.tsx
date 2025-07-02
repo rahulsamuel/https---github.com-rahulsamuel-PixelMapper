@@ -12,7 +12,7 @@ import { toPng } from "html-to-image";
 import { Input } from "@/components/ui/input";
 
 export function WiringDiagram() {
-  const { dimensions, tiles, tileColor, tileColorTwo, onOffMode, wiringTilesPerPort, setWiringTilesPerPort } = usePixelMapper();
+  const { dimensions, tiles, tileColor, tileColorTwo, onOffMode, wiringTilesPerPort, setWiringTilesPerPort, zoom } = usePixelMapper();
   const [isMirrored, setIsMirrored] = useState(false);
   const wiringDiagramRef = useRef<HTMLDivElement>(null);
 
@@ -37,8 +37,9 @@ export function WiringDiagram() {
     }
   };
   
-  const TILE_SIZE = 60; // Increased size to better see arrows
-  const FONT_SIZE = 10;
+  const TILE_SIZE = 120;
+  const FONT_SIZE = 14;
+  const ARROW_SIZE = 36;
   
   if (tiles.length === 0) {
     return (
@@ -74,11 +75,12 @@ export function WiringDiagram() {
       <div className="p-4 bg-muted/20 overflow-auto">
         <div 
           ref={wiringDiagramRef}
-          className="relative transition-transform duration-300"
+          className="relative"
           style={{ 
             width: dimensions.screenWidth * TILE_SIZE, 
             height: dimensions.screenHeight * TILE_SIZE,
-            transform: isMirrored ? 'scaleX(-1)' : 'scaleX(1)',
+            transform: `scale(${zoom}) ${isMirrored ? 'scaleX(-1)' : ''}`,
+            transformOrigin: 'top left',
           }}
         >
           {wiringData.map(({ x, y, dataLabel, powerLabel, isDeleted, arrowTo }) => {
@@ -110,17 +112,17 @@ export function WiringDiagram() {
                   <>
                     <div
                       className="flex flex-col items-center justify-center h-full w-full text-foreground relative z-10"
-                      style={{ fontSize: FONT_SIZE, transform: isMirrored ? 'scaleX(-1)' : 'scaleX(1)' }}
+                      style={{ fontSize: FONT_SIZE, transform: isMirrored ? 'scaleX(-1)' : '' }}
                     >
                       <span className="font-bold text-accent">{dataLabel}</span>
                       <span className="text-xs text-primary">{powerLabel}</span>
                     </div>
                      {arrowTo && (
                         <div className="absolute inset-0 flex items-center justify-center text-accent-foreground/50 opacity-60">
-                            {arrowTo === 'up' && <MoveUp size={24} />}
-                            {arrowTo === 'down' && <MoveDown size={24} />}
-                            {arrowTo === 'left' && <MoveLeft size={24} />}
-                            {arrowTo === 'right' && <MoveRight size={24} />}
+                            {arrowTo === 'up' && <MoveUp size={ARROW_SIZE} />}
+                            {arrowTo === 'down' && <MoveDown size={ARROW_SIZE} />}
+                            {arrowTo === 'left' && <MoveLeft size={ARROW_SIZE} />}
+                            {arrowTo === 'right' && <MoveRight size={ARROW_SIZE} />}
                         </div>
                     )}
                   </>
