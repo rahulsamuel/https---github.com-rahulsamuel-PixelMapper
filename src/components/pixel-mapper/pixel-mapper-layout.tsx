@@ -20,9 +20,16 @@ import { EditTools } from "./edit-tools";
 import { Button } from "@/components/ui/button";
 import { Download, ZoomIn, ZoomOut } from "lucide-react";
 import { LabelControls } from "./label-controls";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 
 export function PixelMapperLayout() {
-  const { dimensions, handleDownloadPng, zoom, setZoom } = usePixelMapper();
+  const { dimensions, handleDownloadPng, handleDownloadOnOffPattern, zoom, setZoom } = usePixelMapper();
 
   const totalWidth = dimensions.screenWidth * dimensions.tileWidth;
   const totalHeight = dimensions.screenHeight * dimensions.tileHeight;
@@ -69,10 +76,22 @@ export function PixelMapperLayout() {
                   <ZoomIn />
                 </Button>
               </div>
-              <Button onClick={() => handleDownloadPng('pixel-map.png')} size="sm">
-                  <Download className="mr-2" />
-                  Download PNG
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm">
+                    <Download className="mr-2" />
+                    Download
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleDownloadPng('pixel-map.png')}>
+                    Pixel Map (Color)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleDownloadOnOffPattern('on-off-pattern.png')}>
+                    ON/OFF Pattern (B&W)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           <TabsContent value="grid" className="flex-grow">

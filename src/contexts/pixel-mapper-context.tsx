@@ -37,6 +37,7 @@ interface PixelMapperState {
   borderColor: string;
   setBorderColor: Dispatch<SetStateAction<string>>;
   handleDownloadPng: (filename: string) => void;
+  handleDownloadOnOffPattern: (filename: string) => void;
   activeTool: ActiveTool;
   setActiveTool: Dispatch<SetStateAction<ActiveTool>>;
   showLabels: boolean;
@@ -105,48 +106,43 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   }, [tiles]);
 
   useEffect(() => {
-    const { screenWidth, screenHeight } = dimensions;
-    const newLabels: string[] = [];
+    const { screenWidth } = dimensions;
+    const newLabels = Array(tiles.length).fill('');
     let sequentialCounter = 1;
     let dmxCounter = 1;
     let dmxUniverse = 'A';
 
-    for (let i = 0; i < tiles.length; i++) {
-        const tile = tiles[i];
-        if (labelFormat === 'none' || tile.deleted) {
-            newLabels.push('');
-            continue;
-        }
-
-        switch (labelFormat) {
-            case 'sequential':
-                newLabels.push(String(sequentialCounter++));
-                break;
-            case 'row-col':
-                const y = Math.floor(i / screenWidth) + 1;
-                const x = (i % screenWidth) + 1;
-                newLabels.push(`${y}-${x}`);
-                break;
-            case 'dmx-style':
-                newLabels.push(`${dmxUniverse}${dmxCounter++}`);
-                if (dmxCounter > 170) { // 512 channels / 3 colors
-                    dmxCounter = 1;
-                    dmxUniverse = String.fromCharCode(dmxUniverse.charCodeAt(0) + 1);
-                }
-                break;
-            default:
-                newLabels.push('');
-        }
+    if (labelFormat === 'none') {
+        setLabels(newLabels);
+        return;
     }
-    // For row-col we need to iterate over all tiles, not just non-deleted ones
-    if (labelFormat === 'row-col') {
-      for(let i = 0; i < tiles.length; i++) {
-        const y = Math.floor(i / screenWidth) + 1;
-        const x = (i % screenWidth) + 1;
-        newLabels[i] = `${y}-${x}`;
+    
+    for (let i = 0; i < tiles.length; i++) {
+      const tile = tiles[i];
+      switch (labelFormat) {
+        case 'sequential':
+          if (!tile.deleted) {
+            newLabels[i] = String(sequentialCounter++);
+          }
+          break;
+        case 'row-col':
+          const y = Math.floor(i / screenWidth) + 1;
+          const x = (i % screenWidth) + 1;
+          newLabels[i] = `${y}-${x}`;
+          break;
+        case 'dmx-style':
+          if (!tile.deleted) {
+            newLabels[i] = `${dmxUniverse}${dmxCounter++}`;
+            if (dmxCounter > 170) { // 512 channels / 3 colors
+              dmxCounter = 1;
+              dmxUniverse = String.fromCharCode(dmxUniverse.charCodeAt(0) + 1);
+            }
+          }
+          break;
+        default:
+          break;
       }
     }
-
     setLabels(newLabels);
   }, [dimensions, tiles, labelFormat]);
 
@@ -176,21 +172,18 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
   const handleDownloadPng = useCallback((filename: string) => {
     if (gridRef.current === null) {
-      console.error("Grid element not found.");
       return;
     }
   
-    const nodeToCapture = gridRef.current;
-  
-    toPng(nodeToCapture, {
+    toPng(gridRef.current, {
       cacheBust: true,
-      pixelRatio: 2, // Increase for higher quality
-      // Calculate dimensions manually to avoid issues with CSS transforms
+      pixelRatio: 2,
       width: dimensions.screenWidth * dimensions.tileWidth,
       height: dimensions.screenHeight * dimensions.tileHeight,
       style: {
-        transform: "none", // Ensure capture is not scaled
-      },
+        transform: 'none',
+        position: 'static',
+      }
     })
       .then((dataUrl) => {
         const link = document.createElement("a");
@@ -202,6 +195,61 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         console.error("Could not generate PNG.", err);
       });
   }, [gridRef, dimensions]);
+
+  const handleDownloadOnOffPattern = useCallback((filename: string) => {
+    const offscreenContainer = document.createElement('div');
+    offscreenContainer.style.position = 'absolute';
+    offscreenContainer.style.left = '-9999px';
+    offscreenContainer.style.top = '-9999px';
+
+    const grid = document.createElement('div');
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = `repeat(${dimensions.screenWidth}, 1fr)`;
+    grid.style.gridTemplateRows = `repeat(${dimensions.screenHeight}, 1fr)`;
+    grid.style.width = `${dimensions.screenWidth * dimensions.tileWidth}px`;
+    grid.style.height = `${dimensions.screenHeight * dimensions.tileHeight}px`;
+    grid.style.backgroundColor = 'black';
+    grid.style.border = '1px solid black';
+    grid.style.boxSizing = 'border-box';
+
+    tiles.forEach(() => {
+        const tileEl = document.createElement('div');
+        tileEl.style.width = `${dimensions.tileWidth}px`;
+        tileEl.style.height = `${dimensions.tileHeight}px`;
+        tileEl.style.border = `1px solid black`;
+        tileEl.style.boxSizing = 'border-box';
+        grid.appendChild(tileEl);
+    });
+
+    tiles.forEach((tile, index) => {
+        const tileEl = grid.children[index] as HTMLDivElement;
+        tileEl.style.backgroundColor = tile.deleted ? 'black' : 'white';
+    });
+    
+    offscreenContainer.appendChild(grid);
+    document.body.appendChild(offscreenContainer);
+
+    toPng(grid, {
+      cacheBust: true,
+      pixelRatio: 1,
+      width: dimensions.screenWidth * dimensions.tileWidth,
+      height: dimensions.screenHeight * dimensions.tileHeight,
+    })
+      .then((dataUrl) => {
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = dataUrl;
+        link.click();
+      })
+      .catch((err) => {
+        console.error('Could not generate ON/OFF pattern PNG.', err);
+      })
+      .finally(() => {
+        document.body.removeChild(offscreenContainer);
+      });
+
+  }, [dimensions, tiles]);
+
 
   const value = {
     appState,
@@ -222,6 +270,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     borderColor,
     setBorderColor,
     handleDownloadPng,
+    handleDownloadOnOffPattern,
     activeTool,
     setActiveTool,
     showLabels,
