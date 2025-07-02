@@ -129,23 +129,22 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         return '';
       }
 
+      if (tile.deleted) return '';
+
       switch (labelFormat) {
         case 'sequential':
-          return !tile.deleted ? String(sequentialCounter++) : '';
+          return String(sequentialCounter++);
         case 'row-col':
           const y = Math.floor(i / screenWidth) + 1;
           const x = (i % screenWidth) + 1;
           return `${y}-${x}`;
         case 'dmx-style':
-          if (!tile.deleted) {
             const label = `${dmxUniverse}${dmxCounter++}`;
             if (dmxCounter > 170) { // 512 channels / 3 colors
               dmxCounter = 1;
               dmxUniverse = String.fromCharCode(dmxUniverse.charCodeAt(0) + 1);
             }
             return label;
-          }
-          return '';
         default:
           return '';
       }
@@ -182,20 +181,21 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     if (gridRef.current === null) {
       return;
     }
-    
-    const width = gridRef.current.offsetWidth;
-    const height = gridRef.current.offsetHeight;
 
-    toPng(gridRef.current, {
+    const node = gridRef.current;
+    
+    // The library can sometimes clip the right and bottom borders.
+    // To fix this, we'll use the element's rendered size and add a small
+    // 2px buffer to the capture area to ensure nothing is cut off.
+    toPng(node, {
         cacheBust: true,
-        pixelRatio: 2,
-        width: width,
-        height: height,
+        pixelRatio: 2, // For high-quality export
+        width: node.offsetWidth + 2,
+        height: node.offsetHeight + 2,
         style: {
-            transform: 'none',
-            position: 'static',
-            width: `${width}px`,
-            height: `${height}px`,
+            transform: 'none', // Reset any scaling/panning for the capture
+            zoom: 1,
+            margin: '0' // Ensure the element is flush against the top-left of the canvas
         }
     })
       .then((dataUrl) => {
