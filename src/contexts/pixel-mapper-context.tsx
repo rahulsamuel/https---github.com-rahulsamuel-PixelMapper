@@ -53,7 +53,6 @@ export const usePixelMapper = () => {
 export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [appState] = useState("ready");
   const gridRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
 
   const [dimensions, setDimensions] = useState<Dimensions>({
     tileWidth: 32,
@@ -112,12 +111,11 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
   const restoreAll = useCallback(() => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, deleted: false })));
-     toast({ title: "Grid Restored", description: "All tiles have been restored to their original state." });
-  }, [toast]);
+  }, []);
 
   const handleDownloadPng = useCallback((filename: string) => {
     if (gridRef.current === null) {
-        toast({ variant: 'destructive', title: "Error", description: "Grid element not found." });
+        console.error("Grid element not found.");
         return;
     }
 
@@ -126,8 +124,13 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const options = {
       cacheBust: true,
       pixelRatio: 1,
-      width: dimensions.screenWidth * dimensions.tileWidth,
-      height: dimensions.screenHeight * dimensions.tileHeight,
+      width: node.scrollWidth,
+      height: node.scrollHeight,
+      style: {
+        transform: 'none',
+        top: '0',
+        left: '0',
+      }
     };
 
     toPng(node, options)
@@ -136,13 +139,11 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         link.download = filename;
         link.href = dataUrl;
         link.click();
-        toast({ title: "Download Started", description: `Downloading ${filename}...` });
       })
       .catch((err) => {
-        console.error(err);
-        toast({ variant: 'destructive', title: "Download Failed", description: "Could not generate PNG." });
+        console.error("Could not generate PNG.", err);
       });
-  }, [gridRef, toast, dimensions]);
+  }, [gridRef]);
 
   const value = {
     appState,
