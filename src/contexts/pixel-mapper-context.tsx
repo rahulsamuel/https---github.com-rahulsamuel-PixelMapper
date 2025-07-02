@@ -276,23 +276,28 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     }
 
     const { screenWidth, tileWidth, tileHeight } = dimensions;
-    const totalPixelWidth = (activeBounds.maxX - activeBounds.minX + 1) * tileWidth;
-    const totalPixelHeight = (activeBounds.maxY - activeBounds.minY + 1) * tileHeight;
+    const contentWidth = (activeBounds.maxX - activeBounds.minX + 1) * tileWidth;
+    const contentHeight = (activeBounds.maxY - activeBounds.minY + 1) * tileHeight;
 
-    if (totalPixelWidth <= 0 || totalPixelHeight <= 0) {
+    if (contentWidth <= 0 || contentHeight <= 0) {
       console.error("Invalid dimensions for raster map.");
       setRasterMapConfig(null);
       return;
     }
     
-    const sliceWidth = outputWidth || totalPixelWidth;
-    const sliceHeight = outputHeight || totalPixelHeight;
+    const sliceWidth = outputWidth || contentWidth;
+    const sliceHeight = outputHeight || contentHeight;
+    
+    // The total preview area is the larger of the content or a single output slice.
+    // This ensures that if the content is smaller than the output, we see the full output frame.
+    const previewTotalWidth = Math.max(contentWidth, sliceWidth);
+    const previewTotalHeight = Math.max(contentHeight, sliceHeight);
     
     const slices: RasterSlice[] = [];
     const baseFilename = filename.replace('.png', '');
 
-    const effectiveSliceWidth = outputWidth ? Math.floor(outputWidth / tileWidth) * tileWidth : totalPixelWidth;
-    const effectiveSliceHeight = outputHeight ? Math.floor(outputHeight / tileHeight) * tileHeight : totalPixelHeight;
+    const effectiveSliceWidth = outputWidth ? Math.floor(outputWidth / tileWidth) * tileWidth : contentWidth;
+    const effectiveSliceHeight = outputHeight ? Math.floor(outputHeight / tileHeight) * tileHeight : contentHeight;
 
     if (effectiveSliceWidth <= 0 || effectiveSliceHeight <= 0) {
         setRasterMapConfig(null);
@@ -300,15 +305,15 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     }
     
     let col = 0;
-    for (let sx = 0; sx < totalPixelWidth; sx += effectiveSliceWidth) {
+    for (let sx = 0; sx < contentWidth; sx += effectiveSliceWidth) {
         let row = 0;
-        for (let sy = 0; sy < totalPixelHeight; sy += effectiveSliceHeight) {
-            const sWidth = Math.min(effectiveSliceWidth, totalPixelWidth - sx);
-            const sHeight = Math.min(effectiveSliceHeight, totalPixelHeight - sy);
+        for (let sy = 0; sy < contentHeight; sy += effectiveSliceHeight) {
+            const sWidth = Math.min(effectiveSliceWidth, contentWidth - sx);
+            const sHeight = Math.min(effectiveSliceHeight, contentHeight - sy);
 
             if (sWidth <= 0 || sHeight <= 0) continue;
 
-            const sliceFilename = totalPixelWidth > sliceWidth || totalPixelHeight > sliceHeight
+            const sliceFilename = contentWidth > sliceWidth || contentHeight > sliceHeight
                 ? `${baseFilename}-R${row + 1}-C${col + 1}.png`
                 : `${baseFilename}.png`;
 
@@ -326,8 +331,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     }
 
     const masterCanvas = document.createElement('canvas');
-    masterCanvas.width = totalPixelWidth;
-    masterCanvas.height = totalPixelHeight;
+    masterCanvas.width = previewTotalWidth;
+    masterCanvas.height = previewTotalHeight;
     const masterCtx = masterCanvas.getContext('2d');
 
     if (!masterCtx) {
@@ -337,7 +342,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     }
 
     masterCtx.fillStyle = 'black';
-    masterCtx.fillRect(0, 0, totalPixelWidth, totalPixelHeight);
+    masterCtx.fillRect(0, 0, previewTotalWidth, previewTotalHeight);
 
     tiles.forEach((tile, index) => {
       if (!tile.deleted) {
@@ -374,8 +379,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
     setRasterMapConfig({
         slices,
-        totalWidth: totalPixelWidth,
-        totalHeight: totalPixelHeight,
+        totalWidth: previewTotalWidth,
+        totalHeight: previewTotalHeight,
         outputWidth: sliceWidth,
         outputHeight: sliceHeight,
         previewImage,
@@ -390,19 +395,22 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     }
     
     const { screenWidth, tileWidth, tileHeight } = dimensions;
-    
-    const masterCanvas = document.createElement('canvas');
-    masterCanvas.width = rasterMapConfig.totalWidth;
-    masterCanvas.height = rasterMapConfig.totalHeight;
-    const masterCtx = masterCanvas.getContext('2d');
 
-    if (!masterCtx) {
-      console.error("Could not get master canvas context.");
+    const contentWidth = (activeBounds.maxX - activeBounds.minX + 1) * tileWidth;
+    const contentHeight = (activeBounds.maxY - activeBounds.minY + 1) * tileHeight;
+    
+    const contentCanvas = document.createElement('canvas');
+    contentCanvas.width = contentWidth;
+    contentCanvas.height = contentHeight;
+    const contentCtx = contentCanvas.getContext('2d');
+
+    if (!contentCtx) {
+      console.error("Could not get content canvas context.");
       return;
     }
 
-    masterCtx.fillStyle = 'black';
-    masterCtx.fillRect(0, 0, rasterMapConfig.totalWidth, rasterMapConfig.totalHeight);
+    contentCtx.fillStyle = 'black';
+    contentCtx.fillRect(0, 0, contentWidth, contentHeight);
 
     tiles.forEach((tile, index) => {
       if (!tile.deleted) {
@@ -420,16 +428,16 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
             bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
           }
 
-          masterCtx.fillStyle = bgColor;
-          masterCtx.fillRect(tileXPos, tileYPos, tileWidth, tileHeight);
+          contentCtx.fillStyle = bgColor;
+          contentCtx.fillRect(tileXPos, tileYPos, tileWidth, tileHeight);
 
           if (showLabels && labels[index]) {
             const currentLabelColor = onOffMode ? '#000000' : labelColor;
-            masterCtx.fillStyle = currentLabelColor;
-            masterCtx.font = `bold ${labelFontSize}px sans-serif`;
-            masterCtx.textAlign = 'center';
-            masterCtx.textBaseline = 'middle';
-            masterCtx.fillText(labels[index], tileXPos + tileWidth / 2, tileYPos + tileHeight / 2);
+            contentCtx.fillStyle = currentLabelColor;
+            contentCtx.font = `bold ${labelFontSize}px sans-serif`;
+            contentCtx.textAlign = 'center';
+            contentCtx.textBaseline = 'middle';
+            contentCtx.fillText(labels[index], tileXPos + tileWidth / 2, tileYPos + tileHeight / 2);
           }
         }
       }
@@ -457,7 +465,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         sliceCtx.fillRect(0, 0, rasterMapConfig.outputWidth, rasterMapConfig.outputHeight);
 
         sliceCtx.drawImage(
-            masterCanvas,
+            contentCanvas,
             slice.x, slice.y, slice.width, slice.height,
             0, 0, slice.width, slice.height
         );
@@ -512,3 +520,5 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     </PixelMapperContext.Provider>
   );
 }
+
+    
