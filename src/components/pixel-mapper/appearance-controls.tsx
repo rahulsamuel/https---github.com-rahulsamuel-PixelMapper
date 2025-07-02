@@ -14,7 +14,7 @@ import { Slider } from "@/components/ui/slider";
 import { Paintbrush } from "lucide-react";
 
 export function AppearanceControls() {
-  const { tileColor, setTileColor, tileColorTwo, setTileColorTwo, borderWidth, setBorderWidth } = usePixelMapper();
+  const { tileColor, setTileColor, tileColorTwo, setTileColorTwo, borderWidth, setBorderWidth, borderColor, setBorderColor } = usePixelMapper();
 
   return (
     <Card>
@@ -40,7 +40,7 @@ export function AppearanceControls() {
                 type="text"
                 value={tileColor}
                 onChange={(e) => setTileColor(e.target.value)}
-                placeholder="#ffffff"
+                placeholder="#3961b1"
                 className="font-mono"
             />
           </div>
@@ -59,7 +59,26 @@ export function AppearanceControls() {
                 type="text"
                 value={tileColorTwo}
                 onChange={(e) => setTileColorTwo(e.target.value)}
-                placeholder="#4a4a4a"
+                placeholder="#a7b8ec"
+                className="font-mono"
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="border-color">Border Color</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="border-color"
+              type="color"
+              value={borderColor}
+              onChange={(e) => setBorderColor(e.target.value)}
+              className="w-14 p-1"
+            />
+            <Input
+                type="text"
+                value={borderColor}
+                onChange={(e) => setBorderColor(e.target.value)}
+                placeholder="#ffffff"
                 className="font-mono"
             />
           </div>

@@ -16,13 +16,15 @@ interface Tile {
   deleted: boolean;
 }
 
+type ActiveTool = 'delete' | 'label' | 'color';
+
 interface PixelMapperState {
   appState: string;
   gridRef: React.RefObject<HTMLDivElement>;
   dimensions: Dimensions;
   setDimensions: Dispatch<SetStateAction<Dimensions>>;
   tiles: Tile[];
-  toggleTile: (index: number) => void;
+  handleTileClick: (index: number) => void;
   restoreAll: () => void;
   deletedCount: number;
   tileColor: string;
@@ -31,7 +33,11 @@ interface PixelMapperState {
   setTileColorTwo: Dispatch<SetStateAction<string>>;
   borderWidth: number;
   setBorderWidth: Dispatch<SetStateAction<number>>;
+  borderColor: string;
+  setBorderColor: Dispatch<SetStateAction<string>>;
   handleDownloadPng: (filename: string) => void;
+  activeTool: ActiveTool;
+  setActiveTool: Dispatch<SetStateAction<ActiveTool>>;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -58,9 +64,12 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [tiles, setTiles] = useState<Tile[]>([]);
   const [deletedCount, setDeletedCount] = useState(0);
 
-  const [tileColor, setTileColor] = useState("#8f00ff");
-  const [tileColorTwo, setTileColorTwo] = useState("#4a4a4a");
+  const [tileColor, setTileColor] = useState("#3961b1");
+  const [tileColorTwo, setTileColorTwo] = useState("#a7b8ec");
   const [borderWidth, setBorderWidth] = useState(1);
+  const [borderColor, setBorderColor] = useState("#ffffff");
+  const [activeTool, setActiveTool] = useState<ActiveTool>("delete");
+
 
   useEffect(() => {
     const totalTiles = dimensions.screenWidth * dimensions.screenHeight;
@@ -82,6 +91,24 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       prev.map((tile, i) => (i === index ? { ...tile, deleted: !tile.deleted } : tile))
     );
   }, []);
+
+  const handleTileClick = useCallback((index: number) => {
+    switch (activeTool) {
+      case 'delete':
+        toggleTile(index);
+        break;
+      case 'label':
+        // Placeholder for label functionality
+        console.log(`Label tool clicked on tile ${index}`);
+        break;
+      case 'color':
+        // Placeholder for color functionality
+        console.log(`Color tool clicked on tile ${index}`);
+        break;
+      default:
+        break;
+    }
+  }, [activeTool, toggleTile]);
 
   const restoreAll = useCallback(() => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, deleted: false })));
@@ -114,7 +141,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     dimensions,
     setDimensions,
     tiles,
-    toggleTile,
+    handleTileClick,
     restoreAll,
     deletedCount,
     tileColor,
@@ -123,7 +150,11 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setTileColorTwo,
     borderWidth,
     setBorderWidth,
+    borderColor,
+    setBorderColor,
     handleDownloadPng,
+    activeTool,
+    setActiveTool,
   };
 
   return (

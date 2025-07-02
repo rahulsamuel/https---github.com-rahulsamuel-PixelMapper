@@ -11,10 +11,11 @@ export function LedGrid() {
     gridRef,
     dimensions,
     tiles,
-    toggleTile,
+    handleTileClick,
     tileColor,
     tileColorTwo,
     borderWidth,
+    borderColor,
   } = usePixelMapper();
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -81,7 +82,7 @@ export function LedGrid() {
     width: `${dimensions.tileWidth}px`,
     height: `${dimensions.tileHeight}px`,
     borderWidth: `${borderWidth}px`,
-    borderColor: 'rgba(0,0,0,0.2)',
+    borderColor: borderColor,
   };
 
   return (
@@ -110,7 +111,7 @@ export function LedGrid() {
                     return (
                         <button
                             key={tile.id}
-                            onClick={() => toggleTile(index)}
+                            onClick={() => handleTileClick(index)}
                             className={cn(
                             "rounded-none transition-opacity duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:z-10",
                             tile.deleted ? "opacity-10" : "opacity-100"

@@ -16,6 +16,7 @@ import { WiringDiagram } from "./wiring-diagram";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { EditTools } from "./edit-tools";
 
 export function PixelMapperLayout() {
   const { appState } = usePixelMapper();
@@ -32,6 +33,7 @@ export function PixelMapperLayout() {
             <div className="flex flex-col gap-4 p-4">
               <DimensionControls />
               <AppearanceControls />
+              <EditTools />
               <PixelMapperActions />
             </div>
           </ScrollArea>
