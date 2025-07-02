@@ -16,6 +16,13 @@ interface Tile {
   deleted: boolean;
 }
 
+interface ActiveBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
 type ActiveTool = 'delete' | 'label' | 'color';
 type LabelFormat = 'none' | 'sequential' | 'row-col' | 'dmx-style';
 
@@ -53,6 +60,7 @@ interface PixelMapperState {
   setOnOffMode: Dispatch<SetStateAction<boolean>>;
   zoom: number;
   setZoom: Dispatch<SetStateAction<number>>;
+  activeBounds: ActiveBounds | null;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -92,6 +100,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [labels, setLabels] = useState<string[]>([]);
   const [zoom, setZoom] = useState(1);
   const [onOffMode, setOnOffMode] = useState(false);
+  const [activeBounds, setActiveBounds] = useState<ActiveBounds | null>(null);
 
 
   useEffect(() => {
@@ -105,6 +114,32 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setTiles([]);
     }
   }, [dimensions]);
+
+  useEffect(() => {
+    const { screenWidth } = dimensions;
+    const activeTiles = tiles.map((t, i) => ({...t, index: i})).filter(t => !t.deleted);
+
+    if (activeTiles.length === 0) {
+        setActiveBounds(null);
+        return;
+    }
+
+    let minX = screenWidth;
+    let minY = Infinity;
+    let maxX = -1;
+    let maxY = -1;
+
+    activeTiles.forEach(tile => {
+        const x = tile.index % screenWidth;
+        const y = Math.floor(tile.index / screenWidth);
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+    });
+    
+    setActiveBounds({ minX, minY, maxX, maxY });
+  }, [tiles, dimensions]);
 
   useEffect(() => {
     setDeletedCount(tiles.filter((tile) => tile.deleted).length);
@@ -165,36 +200,50 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const handleDownloadPng = useCallback((filename: string) => {
-    if (gridRef.current === null) {
+    if (gridRef.current === null || !activeBounds) {
       return;
     }
 
     const node = gridRef.current;
     
-    // The library can sometimes clip the right and bottom borders.
-    // To fix this, we'll use the element's rendered size and add a small
-    // 2px buffer to the capture area to ensure nothing is cut off.
+    const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
+    const cropHeight = (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight;
+
     toPng(node, {
         cacheBust: true,
         pixelRatio: 2, // For high-quality export
-        width: node.offsetWidth + 2,
-        height: node.offsetHeight + 2,
-        style: {
-            transform: 'none', // Reset any scaling/panning for the capture
-            zoom: 1,
-            margin: '0' // Ensure the element is flush against the top-left of the canvas
-        }
+        width: node.scrollWidth + 2,
+        height: node.scrollHeight + 2,
     })
       .then((dataUrl) => {
-        const link = document.createElement("a");
-        link.download = filename;
-        link.href = dataUrl;
-        link.click();
+        // Create a temporary canvas to crop the image
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        img.onload = () => {
+            canvas.width = cropWidth * 2;
+            canvas.height = cropHeight * 2;
+
+            // Calculate source coordinates, considering pixelRatio
+            const sx = activeBounds.minX * dimensions.tileWidth * 2;
+            const sy = activeBounds.minY * dimensions.tileHeight * 2;
+            const sWidth = cropWidth * 2;
+            const sHeight = cropHeight * 2;
+            
+            ctx?.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+            
+            const link = document.createElement("a");
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        };
+        img.src = dataUrl;
       })
       .catch((err) => {
         console.error("Could not generate PNG.", err);
       });
-  }, [gridRef]);
+  }, [gridRef, activeBounds, dimensions]);
 
   const handleDownloadRasterMap = useCallback((filename: string, outputWidth?: number, outputHeight?: number) => {
     const { screenWidth, screenHeight, tileWidth, tileHeight } = dimensions;
@@ -278,6 +327,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setOnOffMode,
     zoom,
     setZoom,
+    activeBounds,
   };
 
   return (

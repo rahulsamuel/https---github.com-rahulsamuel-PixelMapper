@@ -24,13 +24,14 @@ import { LabelControls } from "./label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { MediaOutputControls } from "./media-output-controls";
+import { OutputCalculator } from "./output-calculator";
 
 
 export function PixelMapperLayout() {
-  const { dimensions, handleDownloadPng, zoom, setZoom, onOffMode, setOnOffMode } = usePixelMapper();
+  const { dimensions, handleDownloadPng, zoom, setZoom, onOffMode, setOnOffMode, activeBounds } = usePixelMapper();
 
-  const totalWidth = dimensions.screenWidth * dimensions.tileWidth;
-  const totalHeight = dimensions.screenHeight * dimensions.tileHeight;
+  const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : 0;
+  const totalHeight = activeBounds ? (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight : 0;
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.1, 2));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.1));
@@ -51,6 +52,7 @@ export function PixelMapperLayout() {
               <EditTools />
               <PixelMapperActions />
               <MediaOutputControls />
+              <OutputCalculator />
             </div>
           </ScrollArea>
         </SidebarContent>
