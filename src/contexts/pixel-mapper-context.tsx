@@ -272,15 +272,36 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, finalWidth, finalHeight);
 
-    // Draw the white tiles
-    ctx.fillStyle = 'white';
+    // Draw tiles
     tiles.forEach((tile, index) => {
+      const x = index % screenWidth;
+      const y = Math.floor(index / screenWidth);
+      const tileXPos = x * tileWidth;
+      const tileYPos = y * tileHeight;
+
       if (!tile.deleted) {
-        const x = (index % screenWidth) * tileWidth;
-        const y = Math.floor(index / screenWidth) * tileHeight;
-        ctx.fillRect(x, y, tileWidth, tileHeight);
+        let bgColor;
+        if (onOffMode) {
+          bgColor = '#FFFFFF';
+        } else {
+          bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
+        }
+
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(tileXPos, tileYPos, tileWidth, tileHeight);
+
+        // Draw labels
+        if (showLabels && labels[index]) {
+          const currentLabelColor = onOffMode ? '#000000' : labelColor;
+          ctx.fillStyle = currentLabelColor;
+          ctx.font = `bold ${labelFontSize}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(labels[index], tileXPos + tileWidth / 2, tileYPos + tileHeight / 2);
+        }
       }
     });
+
 
     try {
       const dataUrl = canvas.toDataURL('image/png');
@@ -291,7 +312,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("Could not generate raster map.", err);
     }
-  }, [dimensions, tiles]);
+  }, [dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize]);
 
   const value = {
     appState,

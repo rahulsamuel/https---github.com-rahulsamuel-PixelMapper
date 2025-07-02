@@ -1,3 +1,4 @@
+
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
@@ -21,9 +22,8 @@ export function OutputCalculator() {
   
   const totalPixelWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : 0;
   const totalPixelHeight = activeBounds ? (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight : 0;
-  const totalPixels = totalPixelWidth * totalPixelHeight;
-
-  if (totalPixels === 0) {
+  
+  if (totalPixelWidth * totalPixelHeight === 0) {
     return (
        <Card>
         <CardHeader>
@@ -43,14 +43,12 @@ export function OutputCalculator() {
   }
 
   const calculateOutputs = (format: { width: number; height: number; }) => {
-    const outputPixels = format.width * format.height;
-    if (outputPixels === 0) return 'N/A';
-    // If the total resolution is larger than the output, it takes at least one.
-    // If it's smaller, it still takes one output.
-    if (totalPixels > outputPixels) {
-        return Math.ceil(totalPixels / outputPixels);
-    }
-    return 1;
+    if (format.width === 0 || format.height === 0) return 0;
+    
+    const outputsWide = Math.ceil(totalPixelWidth / format.width);
+    const outputsHigh = Math.ceil(totalPixelHeight / format.height);
+    
+    return outputsWide * outputsHigh;
   };
 
   return (
