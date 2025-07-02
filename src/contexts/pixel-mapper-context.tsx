@@ -42,6 +42,13 @@ interface RasterMapConfig {
   outputWidth: number;
   outputHeight: number;
   previewImage?: string;
+  rasterOffset: { x: number; y: number; };
+}
+
+interface RasterArgs {
+  filename: string;
+  outputWidth?: number;
+  outputHeight?: number;
 }
 
 
@@ -83,6 +90,8 @@ interface PixelMapperState {
   activeBounds: ActiveBounds | null;
   rasterMapConfig: RasterMapConfig | null;
   setRasterMapConfig: Dispatch<SetStateAction<RasterMapConfig | null>>;
+  rasterOffset: { x: number; y: number; };
+  setRasterOffset: Dispatch<SetStateAction<{ x: number; y: number; }>>;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -123,7 +132,11 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [zoom, setZoom] = useState(1);
   const [onOffMode, setOnOffMode] = useState(false);
   const [activeBounds, setActiveBounds] = useState<ActiveBounds | null>(null);
+  
+  // Raster Map State
   const [rasterMapConfig, setRasterMapConfig] = useState<RasterMapConfig | null>(null);
+  const [rasterOffset, setRasterOffset] = useState({ x: 0, y: 0 });
+  const [lastRasterArgs, setLastRasterArgs] = useState<RasterArgs | null>(null);
 
 
   useEffect(() => {
@@ -268,36 +281,29 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       });
   }, [gridRef, activeBounds, dimensions]);
 
-  const generateRasterMap = useCallback((filename: string, outputWidth?: number, outputHeight?: number) => {
-    if (!activeBounds) {
-        console.error("No active tiles to generate a map from.");
+  const regenerateRasterPreview = useCallback(() => {
+    if (!activeBounds || !lastRasterArgs) {
         setRasterMapConfig(null);
         return;
     }
-
+    const { filename, outputWidth, outputHeight } = lastRasterArgs;
     const { screenWidth, tileWidth, tileHeight } = dimensions;
     const contentWidth = (activeBounds.maxX - activeBounds.minX + 1) * tileWidth;
     const contentHeight = (activeBounds.maxY - activeBounds.minY + 1) * tileHeight;
 
     if (contentWidth <= 0 || contentHeight <= 0) {
-      console.error("Invalid dimensions for raster map.");
       setRasterMapConfig(null);
       return;
     }
-    
-    const sliceWidth = outputWidth || contentWidth;
-    const sliceHeight = outputHeight || contentHeight;
-    
-    // The total preview area is the larger of the content or a single output slice.
-    // This ensures that if the content is smaller than the output, we see the full output frame.
-    const previewTotalWidth = Math.max(contentWidth, sliceWidth);
-    const previewTotalHeight = Math.max(contentHeight, sliceHeight);
+
+    const finalOutputWidth = outputWidth || contentWidth;
+    const finalOutputHeight = outputHeight || contentHeight;
     
     const slices: RasterSlice[] = [];
     const baseFilename = filename.replace('.png', '');
 
-    const effectiveSliceWidth = outputWidth ? Math.floor(outputWidth / tileWidth) * tileWidth : contentWidth;
-    const effectiveSliceHeight = outputHeight ? Math.floor(outputHeight / tileHeight) * tileHeight : contentHeight;
+    const effectiveSliceWidth = outputWidth ? Math.floor(finalOutputWidth / tileWidth) * tileWidth : contentWidth;
+    const effectiveSliceHeight = outputHeight ? Math.floor(finalOutputHeight / tileHeight) * tileHeight : contentHeight;
 
     if (effectiveSliceWidth <= 0 || effectiveSliceHeight <= 0) {
         setRasterMapConfig(null);
@@ -305,44 +311,36 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     }
     
     let col = 0;
-    for (let sx = 0; sx < contentWidth; sx += effectiveSliceWidth) {
+    for (let sx = 0; sx < finalOutputWidth; sx += effectiveSliceWidth) {
         let row = 0;
-        for (let sy = 0; sy < contentHeight; sy += effectiveSliceHeight) {
-            const sWidth = Math.min(effectiveSliceWidth, contentWidth - sx);
-            const sHeight = Math.min(effectiveSliceHeight, contentHeight - sy);
+        for (let sy = 0; sy < finalOutputHeight; sy += effectiveSliceHeight) {
+            const sWidth = Math.min(effectiveSliceWidth, finalOutputWidth - sx);
+            const sHeight = Math.min(effectiveSliceHeight, finalOutputHeight - sy);
 
             if (sWidth <= 0 || sHeight <= 0) continue;
 
-            const sliceFilename = contentWidth > sliceWidth || contentHeight > sliceHeight
+            const sliceFilename = finalOutputWidth > effectiveSliceWidth || finalOutputHeight > effectiveSliceHeight
                 ? `${baseFilename}-R${row + 1}-C${col + 1}.png`
                 : `${baseFilename}.png`;
 
-            slices.push({
-                key: `${row}-${col}`,
-                filename: sliceFilename,
-                x: sx,
-                y: sy,
-                width: sWidth,
-                height: sHeight,
-            });
+            slices.push({ key: `${row}-${col}`, filename: sliceFilename, x: sx, y: sy, width: sWidth, height: sHeight });
             row++;
         }
         col++;
     }
 
     const masterCanvas = document.createElement('canvas');
-    masterCanvas.width = previewTotalWidth;
-    masterCanvas.height = previewTotalHeight;
+    masterCanvas.width = finalOutputWidth;
+    masterCanvas.height = finalOutputHeight;
     const masterCtx = masterCanvas.getContext('2d');
 
     if (!masterCtx) {
-      console.error("Could not get master canvas context.");
       setRasterMapConfig(null);
       return;
     }
 
     masterCtx.fillStyle = 'black';
-    masterCtx.fillRect(0, 0, previewTotalWidth, previewTotalHeight);
+    masterCtx.fillRect(0, 0, finalOutputWidth, finalOutputHeight);
 
     tiles.forEach((tile, index) => {
       if (!tile.deleted) {
@@ -361,7 +359,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
           }
 
           masterCtx.fillStyle = bgColor;
-          masterCtx.fillRect(tileXPos, tileYPos, tileWidth, tileHeight);
+          masterCtx.fillRect(tileXPos + rasterOffset.x, tileYPos + rasterOffset.y, tileWidth, tileHeight);
 
           if (showLabels && labels[index]) {
             const currentLabelColor = onOffMode ? '#000000' : labelColor;
@@ -369,7 +367,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
             masterCtx.font = `bold ${labelFontSize}px sans-serif`;
             masterCtx.textAlign = 'center';
             masterCtx.textBaseline = 'middle';
-            masterCtx.fillText(labels[index], tileXPos + tileWidth / 2, tileYPos + tileHeight / 2);
+            masterCtx.fillText(labels[index], tileXPos + rasterOffset.x + tileWidth / 2, tileYPos + rasterOffset.y + tileHeight / 2);
           }
         }
       }
@@ -379,38 +377,41 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
     setRasterMapConfig({
         slices,
-        totalWidth: previewTotalWidth,
-        totalHeight: previewTotalHeight,
-        outputWidth: sliceWidth,
-        outputHeight: sliceHeight,
+        totalWidth: finalOutputWidth,
+        totalHeight: finalOutputHeight,
+        outputWidth: finalOutputWidth,
+        outputHeight: finalOutputHeight,
         previewImage,
+        rasterOffset,
     });
+  }, [activeBounds, lastRasterArgs, dimensions, tiles, onOffMode, tileColor, tileColorTwo, showLabels, labels, labelColor, labelFontSize, rasterOffset]);
 
-  }, [dimensions, tiles, activeBounds, onOffMode, tileColor, tileColorTwo, showLabels, labels, labelColor, labelFontSize]);
 
-  const downloadRasterSlices = useCallback(() => {
-    if (!rasterMapConfig || !activeBounds) {
-        console.error("No raster map configuration available to download.");
-        return;
+  useEffect(() => {
+    if (lastRasterArgs) {
+      regenerateRasterPreview();
     }
-    
+  }, [regenerateRasterPreview]);
+  
+  const generateRasterMap = useCallback((filename: string, outputWidth?: number, outputHeight?: number) => {
+    setLastRasterArgs({ filename, outputWidth, outputHeight });
+    setRasterOffset({ x: 0, y: 0 }); // Reset offset when generating a new map type
+  }, []);
+
+  const createFullRasterCanvas = useCallback(() => {
+    if (!rasterMapConfig || !activeBounds) return null;
+
     const { screenWidth, tileWidth, tileHeight } = dimensions;
+    const { totalWidth, totalHeight, rasterOffset } = rasterMapConfig;
 
-    const contentWidth = (activeBounds.maxX - activeBounds.minX + 1) * tileWidth;
-    const contentHeight = (activeBounds.maxY - activeBounds.minY + 1) * tileHeight;
-    
-    const contentCanvas = document.createElement('canvas');
-    contentCanvas.width = contentWidth;
-    contentCanvas.height = contentHeight;
-    const contentCtx = contentCanvas.getContext('2d');
+    const masterCanvas = document.createElement('canvas');
+    masterCanvas.width = totalWidth;
+    masterCanvas.height = totalHeight;
+    const masterCtx = masterCanvas.getContext('2d');
+    if (!masterCtx) return null;
 
-    if (!contentCtx) {
-      console.error("Could not get content canvas context.");
-      return;
-    }
-
-    contentCtx.fillStyle = 'black';
-    contentCtx.fillRect(0, 0, contentWidth, contentHeight);
+    masterCtx.fillStyle = 'black';
+    masterCtx.fillRect(0, 0, totalWidth, totalHeight);
 
     tiles.forEach((tile, index) => {
       if (!tile.deleted) {
@@ -428,20 +429,36 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
             bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
           }
 
-          contentCtx.fillStyle = bgColor;
-          contentCtx.fillRect(tileXPos, tileYPos, tileWidth, tileHeight);
+          masterCtx.fillStyle = bgColor;
+          masterCtx.fillRect(tileXPos + rasterOffset.x, tileYPos + rasterOffset.y, tileWidth, tileHeight);
 
           if (showLabels && labels[index]) {
             const currentLabelColor = onOffMode ? '#000000' : labelColor;
-            contentCtx.fillStyle = currentLabelColor;
-            contentCtx.font = `bold ${labelFontSize}px sans-serif`;
-            contentCtx.textAlign = 'center';
-            contentCtx.textBaseline = 'middle';
-            contentCtx.fillText(labels[index], tileXPos + tileWidth / 2, tileYPos + tileHeight / 2);
+            masterCtx.fillStyle = currentLabelColor;
+            masterCtx.font = `bold ${labelFontSize}px sans-serif`;
+            masterCtx.textAlign = 'center';
+            masterCtx.textBaseline = 'middle';
+            masterCtx.fillText(labels[index], tileXPos + rasterOffset.x + tileWidth / 2, tileYPos + rasterOffset.y + tileHeight / 2);
           }
         }
       }
     });
+
+    return masterCanvas;
+  }, [rasterMapConfig, activeBounds, dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize]);
+
+
+  const downloadRasterSlices = useCallback(() => {
+    if (!rasterMapConfig) {
+        console.error("No raster map configuration available to download.");
+        return;
+    }
+    
+    const masterCanvas = createFullRasterCanvas();
+    if (!masterCanvas) {
+      console.error("Failed to create master canvas for download.");
+      return;
+    }
 
     const downloadCanvas = (canvas: HTMLCanvasElement, downloadFilename: string) => {
         try {
@@ -457,21 +474,33 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     
     for (const slice of rasterMapConfig.slices) {
         const sliceCanvas = document.createElement('canvas');
-        sliceCanvas.width = rasterMapConfig.outputWidth;
-        sliceCanvas.height = rasterMapConfig.outputHeight;
+        sliceCanvas.width = slice.width;
+        sliceCanvas.height = slice.height;
         const sliceCtx = sliceCanvas.getContext('2d');
         if (!sliceCtx) continue;
-        sliceCtx.fillStyle = 'black';
-        sliceCtx.fillRect(0, 0, rasterMapConfig.outputWidth, rasterMapConfig.outputHeight);
-
+        
         sliceCtx.drawImage(
-            contentCanvas,
+            masterCanvas,
             slice.x, slice.y, slice.width, slice.height,
             0, 0, slice.width, slice.height
         );
-        downloadCanvas(sliceCanvas, slice.filename);
+        
+        // If the slice is smaller than the intended output, create a full-size canvas and place the slice
+        if (slice.width < rasterMapConfig.outputWidth || slice.height < rasterMapConfig.outputHeight) {
+            const outputCanvas = document.createElement('canvas');
+            outputCanvas.width = rasterMapConfig.outputWidth;
+            outputCanvas.height = rasterMapConfig.outputHeight;
+            const outputCtx = outputCanvas.getContext('2d');
+            if (!outputCtx) continue;
+            outputCtx.fillStyle = 'black';
+            outputCtx.fillRect(0,0, outputCanvas.width, outputCanvas.height);
+            outputCtx.drawImage(sliceCanvas, 0, 0);
+            downloadCanvas(outputCanvas, slice.filename);
+        } else {
+            downloadCanvas(sliceCanvas, slice.filename);
+        }
     }
-  }, [rasterMapConfig, dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize, activeBounds]);
+  }, [rasterMapConfig, createFullRasterCanvas]);
 
 
   const value = {
@@ -512,6 +541,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     activeBounds,
     rasterMapConfig,
     setRasterMapConfig,
+    rasterOffset,
+    setRasterOffset,
   };
 
   return (
@@ -520,5 +551,3 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     </PixelMapperContext.Provider>
   );
 }
-
-    
