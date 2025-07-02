@@ -94,6 +94,10 @@ interface PixelMapperState {
   setRasterOffset: Dispatch<SetStateAction<{ x: number; y: number; }>>;
   wiringTilesPerPort: number;
   setWiringTilesPerPort: Dispatch<SetStateAction<number>>;
+  showDataLabels: boolean;
+  setShowDataLabels: Dispatch<SetStateAction<boolean>>;
+  showPowerLabels: boolean;
+  setShowPowerLabels: Dispatch<SetStateAction<boolean>>;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -142,6 +146,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
   // Wiring state
   const [wiringTilesPerPort, setWiringTilesPerPort] = useState(10);
+  const [showDataLabels, setShowDataLabels] = useState(true);
+  const [showPowerLabels, setShowPowerLabels] = useState(true);
 
 
   useEffect(() => {
@@ -560,6 +566,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setRasterOffset,
     wiringTilesPerPort,
     setWiringTilesPerPort,
+    showDataLabels,
+    setShowDataLabels,
+    showPowerLabels,
+    setShowPowerLabels,
   };
 
   return (

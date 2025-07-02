@@ -12,7 +12,20 @@ import { toPng } from "html-to-image";
 import { Input } from "@/components/ui/input";
 
 export function WiringDiagram() {
-  const { dimensions, tiles, tileColor, tileColorTwo, onOffMode, wiringTilesPerPort, setWiringTilesPerPort, zoom } = usePixelMapper();
+  const { 
+    dimensions, 
+    tiles, 
+    tileColor, 
+    tileColorTwo, 
+    onOffMode, 
+    wiringTilesPerPort, 
+    setWiringTilesPerPort, 
+    zoom,
+    showDataLabels,
+    setShowDataLabels,
+    showPowerLabels,
+    setShowPowerLabels,
+  } = usePixelMapper();
   const [isMirrored, setIsMirrored] = useState(false);
   const wiringDiagramRef = useRef<HTMLDivElement>(null);
 
@@ -38,7 +51,6 @@ export function WiringDiagram() {
   };
   
   const TILE_SIZE = 120;
-  const FONT_SIZE = 14;
   const ARROW_SIZE = 36;
   
   if (tiles.length === 0) {
@@ -51,7 +63,7 @@ export function WiringDiagram() {
 
   return (
     <div>
-      <div className="p-4 border-b flex justify-between items-center">
+      <div className="p-4 border-b flex justify-between items-center flex-wrap gap-y-2">
         <h2 className="text-lg font-semibold">Wiring Diagram</h2>
         <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -64,6 +76,14 @@ export function WiringDiagram() {
                     className="w-20 h-8"
                     min="1"
                 />
+            </div>
+             <div className="flex items-center space-x-2">
+                <Switch id="show-data-labels" checked={showDataLabels} onCheckedChange={setShowDataLabels} />
+                <Label htmlFor="show-data-labels">Data</Label>
+            </div>
+             <div className="flex items-center space-x-2">
+                <Switch id="show-power-labels" checked={showPowerLabels} onCheckedChange={setShowPowerLabels} />
+                <Label htmlFor="show-power-labels">Power</Label>
             </div>
             <div className="flex items-center space-x-2">
                 <Switch id="mirror-switch" checked={isMirrored} onCheckedChange={setIsMirrored} />
@@ -95,10 +115,17 @@ export function WiringDiagram() {
               }
             }
 
+            const arrowPositionStyle = {
+                ...(arrowTo === 'up' && { top: -ARROW_SIZE / 2, left: '50%', transform: 'translateX(-50%)' }),
+                ...(arrowTo === 'down' && { bottom: -ARROW_SIZE / 2, left: '50%', transform: 'translateX(-50%)' }),
+                ...(arrowTo === 'left' && { left: -ARROW_SIZE / 2, top: '50%', transform: 'translateY(-50%)' }),
+                ...(arrowTo === 'right' && { right: -ARROW_SIZE / 2, top: '50%', transform: 'translateY(-50%)' }),
+            };
+
             return (
               <div
                 key={`wiring-tile-${x}-${y}`}
-                className="absolute border border-border flex items-center justify-center"
+                className="absolute border border-border flex items-center justify-center overflow-visible"
                 style={{
                   left: x * TILE_SIZE,
                   top: y * TILE_SIZE,
@@ -111,14 +138,23 @@ export function WiringDiagram() {
                 {!isDeleted && (
                   <>
                     <div
-                      className="flex flex-col items-center justify-center h-full w-full text-foreground relative z-10"
-                      style={{ fontSize: FONT_SIZE, transform: isMirrored ? 'scaleX(-1)' : '' }}
+                      className="flex flex-col items-center justify-center h-full w-full text-foreground relative"
+                      style={{ transform: isMirrored ? 'scaleX(-1)' : '' }}
                     >
-                      <span className="font-bold text-accent">{dataLabel}</span>
-                      <span className="text-xs text-primary">{powerLabel}</span>
+                      {showDataLabels && dataLabel && (
+                        <div className="bg-accent text-accent-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold mb-1 z-10">
+                            <span>{dataLabel}</span>
+                        </div>
+                      )}
+                      {showPowerLabels && (
+                         <span className="text-xs text-primary z-10">{powerLabel}</span>
+                      )}
                     </div>
-                     {arrowTo && (
-                        <div className="absolute inset-0 flex items-center justify-center text-accent-foreground/50 opacity-60">
+                     {showDataLabels && arrowTo && (
+                        <div 
+                            className="absolute text-accent/80 z-20 flex items-center justify-center"
+                            style={arrowPositionStyle}
+                        >
                             {arrowTo === 'up' && <MoveUp size={ARROW_SIZE} />}
                             {arrowTo === 'down' && <MoveDown size={ARROW_SIZE} />}
                             {arrowTo === 'left' && <MoveLeft size={ARROW_SIZE} />}
