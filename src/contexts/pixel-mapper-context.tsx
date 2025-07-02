@@ -120,14 +120,21 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
     const node = gridRef.current;
     
-    const options = {
-      cacheBust: true,
-      pixelRatio: 1,
-      width: node.scrollWidth,
-      height: node.scrollHeight,
-    };
+    const totalWidth = dimensions.screenWidth * dimensions.tileWidth;
+    const totalHeight = dimensions.screenHeight * dimensions.tileHeight;
 
-    toPng(node, options)
+    toPng(node, { 
+        cacheBust: true,
+        width: totalWidth,
+        height: totalHeight,
+        pixelRatio: 1,
+        style: {
+            transform: 'none',
+            margin: '0',
+            top: '0',
+            left: '0'
+        }
+     })
       .then((dataUrl) => {
         const link = document.createElement('a');
         link.download = filename;
@@ -137,7 +144,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       .catch((err) => {
         console.error("Could not generate PNG.", err);
       });
-  }, [gridRef]);
+  }, [gridRef, dimensions]);
 
   const value = {
     appState,
