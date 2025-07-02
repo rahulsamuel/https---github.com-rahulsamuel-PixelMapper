@@ -1,3 +1,4 @@
+
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
@@ -18,6 +19,7 @@ export function LedGrid() {
     labelFontSize,
     labelColor,
     zoom,
+    onOffMode,
   } = usePixelMapper();
 
   if (tiles.length === 0) {
@@ -59,7 +61,13 @@ export function LedGrid() {
             {tiles.map((tile, index) => {
                 const x = index % dimensions.screenWidth;
                 const y = Math.floor(index / dimensions.screenWidth);
-                const bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
+                
+                const bgColor = onOffMode
+                    ? tile.deleted ? '#000000' : '#FFFFFF'
+                    : (x + y) % 2 === 0 ? tileColor : tileColorTwo;
+                
+                const currentLabelColor = onOffMode ? '#000000' : labelColor;
+                const circleBorderColor = onOffMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)';
 
                 return (
                     <button
@@ -72,13 +80,13 @@ export function LedGrid() {
                         style={{ ...baseTileStyle, backgroundColor: bgColor }}
                         aria-label={`Tile ${index + 1}`}
                     >
-                        <div className="absolute inset-0 border border-white/20 rounded-full" />
+                        <div className="absolute inset-0 border rounded-full" style={{ borderColor: circleBorderColor }} />
                         {showLabels && !tile.deleted && (
                             <span
                                 className="font-bold text-center pointer-events-none drop-shadow-sm"
                                 style={{
                                     fontSize: `${labelFontSize}px`,
-                                    color: labelColor,
+                                    color: currentLabelColor,
                                 }}
                             >
                                 {labels[index]}

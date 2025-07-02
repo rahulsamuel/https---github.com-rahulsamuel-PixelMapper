@@ -38,7 +38,6 @@ interface PixelMapperState {
   borderColor: string;
   setBorderColor: Dispatch<SetStateAction<string>>;
   handleDownloadPng: (filename: string) => void;
-  handleDownloadOnOffPattern: (filename: string) => void;
   activeTool: ActiveTool;
   setActiveTool: Dispatch<SetStateAction<ActiveTool>>;
   showLabels: boolean;
@@ -49,6 +48,8 @@ interface PixelMapperState {
   setLabelFontSize: Dispatch<SetStateAction<number>>;
   labelColor: string;
   setLabelColor: Dispatch<SetStateAction<string>>;
+  onOffMode: boolean;
+  setOnOffMode: Dispatch<SetStateAction<boolean>>;
   zoom: number;
   setZoom: Dispatch<SetStateAction<number>>;
 }
@@ -89,6 +90,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [labelColor, setLabelColor] = useState("#ffffff");
   const [labels, setLabels] = useState<string[]>([]);
   const [zoom, setZoom] = useState(1);
+  const [onOffMode, setOnOffMode] = useState(false);
 
 
   useEffect(() => {
@@ -176,23 +178,20 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       return;
     }
     
-    // Calculate exact dimensions from state to avoid rounding errors or zoom influence
-    const width = dimensions.screenWidth * dimensions.tileWidth;
-    const height = dimensions.screenHeight * dimensions.tileHeight;
-  
+    const width = gridRef.current.offsetWidth;
+    const height = gridRef.current.offsetHeight;
+
     toPng(gridRef.current, {
-      cacheBust: true,
-      pixelRatio: 2, // Render at 2x resolution for higher quality
-      width: width,
-      height: height,
-      style: {
-        // Override styles to ensure clean capture
-        transform: 'none',
-        position: 'static',
-        // Ensure the container itself isn't influencing the size
-        width: `${width}px`,
-        height: `${height}px`,
-      }
+        cacheBust: true,
+        pixelRatio: 2,
+        width: width,
+        height: height,
+        style: {
+            transform: 'none',
+            position: 'static',
+            width: `${width}px`,
+            height: `${height}px`,
+        }
     })
       .then((dataUrl) => {
         const link = document.createElement("a");
@@ -203,58 +202,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       .catch((err) => {
         console.error("Could not generate PNG.", err);
       });
-  }, [gridRef, dimensions]);
-
-  const handleDownloadOnOffPattern = useCallback((filename: string) => {
-    const offscreenContainer = document.createElement('div');
-    offscreenContainer.style.position = 'absolute';
-    offscreenContainer.style.left = '-9999px';
-    offscreenContainer.style.top = '-9999px';
-
-    const grid = document.createElement('div');
-    grid.style.display = 'grid';
-    grid.style.gridTemplateColumns = `repeat(${dimensions.screenWidth}, 1fr)`;
-    grid.style.gridTemplateRows = `repeat(${dimensions.screenHeight}, 1fr)`;
-    grid.style.width = `${dimensions.screenWidth * dimensions.tileWidth}px`;
-    grid.style.height = `${dimensions.screenHeight * dimensions.tileHeight}px`;
-    grid.style.backgroundColor = 'black';
-    grid.style.border = '1px solid black';
-    grid.style.boxSizing = 'border-box';
-
-    tiles.forEach((tile) => {
-        const tileEl = document.createElement('div');
-        tileEl.style.width = `${dimensions.tileWidth}px`;
-        tileEl.style.height = `${dimensions.tileHeight}px`;
-        tileEl.style.border = `1px solid black`;
-        tileEl.style.boxSizing = 'border-box';
-        tileEl.style.backgroundColor = tile.deleted ? 'black' : 'white';
-        grid.appendChild(tileEl);
-    });
-    
-    offscreenContainer.appendChild(grid);
-    document.body.appendChild(offscreenContainer);
-
-    toPng(grid, {
-      cacheBust: true,
-      pixelRatio: 1,
-      width: dimensions.screenWidth * dimensions.tileWidth,
-      height: dimensions.screenHeight * dimensions.tileHeight,
-    })
-      .then((dataUrl) => {
-        const link = document.createElement('a');
-        link.download = filename;
-        link.href = dataUrl;
-        link.click();
-      })
-      .catch((err) => {
-        console.error('Could not generate ON/OFF pattern PNG.', err);
-      })
-      .finally(() => {
-        document.body.removeChild(offscreenContainer);
-      });
-
-  }, [dimensions, tiles]);
-
+  }, [gridRef]);
 
   const value = {
     appState,
@@ -275,7 +223,6 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     borderColor,
     setBorderColor,
     handleDownloadPng,
-    handleDownloadOnOffPattern,
     activeTool,
     setActiveTool,
     showLabels,
@@ -286,6 +233,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setLabelFontSize,
     labelColor,
     setLabelColor,
+    onOffMode,
+    setOnOffMode,
     zoom,
     setZoom,
   };

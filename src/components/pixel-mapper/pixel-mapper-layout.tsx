@@ -1,3 +1,4 @@
+
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
@@ -20,16 +21,12 @@ import { EditTools } from "./edit-tools";
 import { Button } from "@/components/ui/button";
 import { Download, ZoomIn, ZoomOut } from "lucide-react";
 import { LabelControls } from "./label-controls";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 
 export function PixelMapperLayout() {
-  const { dimensions, handleDownloadPng, handleDownloadOnOffPattern, zoom, setZoom } = usePixelMapper();
+  const { dimensions, handleDownloadPng, zoom, setZoom, onOffMode, setOnOffMode } = usePixelMapper();
 
   const totalWidth = dimensions.screenWidth * dimensions.tileWidth;
   const totalHeight = dimensions.screenHeight * dimensions.tileHeight;
@@ -76,22 +73,14 @@ export function PixelMapperLayout() {
                   <ZoomIn />
                 </Button>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="sm">
-                    <Download className="mr-2" />
-                    Download
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleDownloadPng('pixel-map.png')}>
-                    Pixel Map (Color)
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleDownloadOnOffPattern('on-off-pattern.png')}>
-                    ON/OFF Pattern (B&W)
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+               <div className="flex items-center space-x-2">
+                <Switch id="on-off-switch" checked={onOffMode} onCheckedChange={setOnOffMode} />
+                <Label htmlFor="on-off-switch">ON/OFF</Label>
+              </div>
+              <Button size="sm" onClick={() => handleDownloadPng('pixel-map.png')}>
+                <Download className="mr-2" />
+                Download
+              </Button>
             </div>
           </div>
           <TabsContent value="grid" className="flex-grow">
