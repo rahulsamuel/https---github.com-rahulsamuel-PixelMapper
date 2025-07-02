@@ -302,31 +302,50 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const slices: RasterSlice[] = [];
     const baseFilename = filename.replace('.png', '');
 
-    const effectiveSliceWidth = outputWidth ? Math.floor(finalOutputWidth / tileWidth) * tileWidth : contentWidth;
-    const effectiveSliceHeight = outputHeight ? Math.floor(finalOutputHeight / tileHeight) * tileHeight : contentHeight;
+    // If we have a fixed output size (e.g. 1920x1080) and the content fits inside it,
+    // we only need one slice that covers the entire output area.
+    if (outputWidth && outputHeight && contentWidth <= outputWidth && contentHeight <= outputHeight) {
+        slices.push({
+            key: '0-0',
+            filename: `${baseFilename}.png`,
+            x: 0,
+            y: 0,
+            width: outputWidth,
+            height: outputHeight,
+        });
+    } else {
+        // Otherwise, if the content is larger than a single output, we slice it.
+        const sliceTargetWidth = outputWidth || contentWidth;
+        const sliceTargetHeight = outputHeight || contentHeight;
+        
+        const numCols = Math.ceil(contentWidth / sliceTargetWidth);
+        const numRows = Math.ceil(contentHeight / sliceTargetHeight);
 
-    if (effectiveSliceWidth <= 0 || effectiveSliceHeight <= 0) {
-        setRasterMapConfig(null);
-        return;
-    }
-    
-    let col = 0;
-    for (let sx = 0; sx < finalOutputWidth; sx += effectiveSliceWidth) {
-        let row = 0;
-        for (let sy = 0; sy < finalOutputHeight; sy += effectiveSliceHeight) {
-            const sWidth = Math.min(effectiveSliceWidth, finalOutputWidth - sx);
-            const sHeight = Math.min(effectiveSliceHeight, finalOutputHeight - sy);
+        for (let row = 0; row < numRows; row++) {
+            for (let col = 0; col < numCols; col++) {
+                const sliceX = col * sliceTargetWidth;
+                const sliceY = row * sliceTargetHeight;
+                
+                // The size of this specific slice of content
+                const sliceW = Math.min(sliceTargetWidth, contentWidth - sliceX);
+                const sliceH = Math.min(sliceTargetHeight, contentHeight - sliceY);
 
-            if (sWidth <= 0 || sHeight <= 0) continue;
+                if (sliceW <= 0 || sliceH <= 0) continue;
 
-            const sliceFilename = finalOutputWidth > effectiveSliceWidth || finalOutputHeight > effectiveSliceHeight
-                ? `${baseFilename}-R${row + 1}-C${col + 1}.png`
-                : `${baseFilename}.png`;
+                const sliceFilename = (numCols > 1 || numRows > 1)
+                  ? `${baseFilename}-R${row + 1}-C${col + 1}.png`
+                  : `${baseFilename}.png`;
 
-            slices.push({ key: `${row}-${col}`, filename: sliceFilename, x: sx, y: sy, width: sWidth, height: sHeight });
-            row++;
+                slices.push({
+                    key: `${row}-${col}`,
+                    filename: sliceFilename,
+                    x: sliceX,
+                    y: sliceY,
+                    width: sliceW,
+                    height: sliceH
+                });
+            }
         }
-        col++;
     }
 
     const masterCanvas = document.createElement('canvas');
