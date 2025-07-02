@@ -47,6 +47,8 @@ interface PixelMapperState {
   setLabelFontSize: Dispatch<SetStateAction<number>>;
   labelColor: string;
   setLabelColor: Dispatch<SetStateAction<string>>;
+  zoom: number;
+  setZoom: Dispatch<SetStateAction<number>>;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -84,6 +86,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [labelFontSize, setLabelFontSize] = useState(48);
   const [labelColor, setLabelColor] = useState("#ffffff");
   const [labels, setLabels] = useState<string[]>([]);
+  const [zoom, setZoom] = useState(1);
 
 
   useEffect(() => {
@@ -235,6 +238,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setLabelFontSize,
     labelColor,
     setLabelColor,
+    zoom,
+    setZoom,
   };
 
   return (

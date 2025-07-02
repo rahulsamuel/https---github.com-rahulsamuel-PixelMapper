@@ -18,14 +18,17 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "./edit-tools";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, ZoomIn, ZoomOut } from "lucide-react";
 import { LabelControls } from "./label-controls";
 
 export function PixelMapperLayout() {
-  const { dimensions, handleDownloadPng } = usePixelMapper();
+  const { dimensions, handleDownloadPng, zoom, setZoom } = usePixelMapper();
 
   const totalWidth = dimensions.screenWidth * dimensions.tileWidth;
   const totalHeight = dimensions.screenHeight * dimensions.tileHeight;
+
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.1, 2));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.1));
 
   return (
     <SidebarProvider>
@@ -56,6 +59,15 @@ export function PixelMapperLayout() {
             <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground">
                 Resolution: <span className="font-mono">{totalWidth}px</span> x <span className="font-mono">{totalHeight}px</span>
+              </div>
+              <div className="flex items-center gap-1 rounded-lg border p-1">
+                <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-7 w-7">
+                  <ZoomOut />
+                </Button>
+                <span className="w-12 text-center font-mono text-sm">{Math.round(zoom * 100)}%</span>
+                <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-7 w-7">
+                  <ZoomIn />
+                </Button>
               </div>
               <Button onClick={() => handleDownloadPng('pixel-map.png')} size="sm">
                   <Download className="mr-2" />

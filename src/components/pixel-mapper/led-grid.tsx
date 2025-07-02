@@ -17,6 +17,7 @@ export function LedGrid() {
     showLabels,
     labelFontSize,
     labelColor,
+    zoom,
   } = usePixelMapper();
 
   if (tiles.length === 0) {
@@ -35,6 +36,8 @@ export function LedGrid() {
     height: `${dimensions.screenHeight * dimensions.tileHeight}px`,
     borderWidth: '1px',
     borderColor: 'hsl(var(--border))',
+    transform: `scale(${zoom})`,
+    transformOrigin: 'top left',
   };
 
   const baseTileStyle: React.CSSProperties = {
