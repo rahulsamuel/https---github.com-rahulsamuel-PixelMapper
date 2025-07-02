@@ -1,4 +1,3 @@
-
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
@@ -71,7 +70,7 @@ export function WiringDiagram() {
         >
           {wiringData.map(({ x, y, dataLabel, powerLabel, isDeleted }) => (
             <div
-              key={dataLabel}
+              key={`wiring-tile-${x}-${y}`}
               className="absolute border border-border bg-background"
               style={{
                 left: x * TILE_SIZE,
