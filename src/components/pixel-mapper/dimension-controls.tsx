@@ -1,11 +1,6 @@
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -13,37 +8,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Grid3x3 } from "lucide-react";
-
-const dimensionsSchema = z.object({
-  tileWidth: z.coerce.number().min(1, "Must be > 0"),
-  tileHeight: z.coerce.number().min(1, "Must be > 0"),
-  screenWidth: z.coerce.number().min(1, "Must be > 0"),
-  screenHeight: z.coerce.number().min(1, "Must be > 0"),
-});
-
-type DimensionsForm = z.infer<typeof dimensionsSchema>;
 
 export function DimensionControls() {
   const { dimensions, setDimensions } = usePixelMapper();
 
-  const form = useForm<DimensionsForm>({
-    resolver: zodResolver(dimensionsSchema),
-    defaultValues: dimensions,
-  });
-
-  function onSubmit(values: DimensionsForm) {
-    setDimensions(values);
-  }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDimensions(prevDimensions => ({
+      ...prevDimensions,
+      // Coerce value to number, ensure it's at least 1
+      [e.target.name]: Math.max(1, Number(e.target.value) || 1),
+    }));
+  };
 
   return (
     <Card>
@@ -57,69 +35,56 @@ export function DimensionControls() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="tileWidth"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tile Width (px)</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="tileHeight"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tile Height (px)</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <div className="space-y-2">
+                    <Label htmlFor="tileWidth">Tile Width (px)</Label>
+                    <Input 
+                        id="tileWidth"
+                        name="tileWidth"
+                        type="number" 
+                        value={dimensions.tileWidth}
+                        onChange={handleChange}
+                        min="1"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="tileHeight">Tile Height (px)</Label>
+                    <Input
+                        id="tileHeight"
+                        name="tileHeight"
+                        type="number"
+                        value={dimensions.tileHeight}
+                        onChange={handleChange}
+                        min="1"
+                    />
+                </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="screenWidth"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Screen Width (tiles)</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="screenHeight"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Screen Height (tiles)</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <div className="space-y-2">
+                    <Label htmlFor="screenWidth">Screen Width (tiles)</Label>
+                    <Input
+                        id="screenWidth"
+                        name="screenWidth"
+                        type="number"
+                        value={dimensions.screenWidth}
+                        onChange={handleChange}
+                        min="1"
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="screenHeight">Screen Height (tiles)</Label>
+                    <Input
+                        id="screenHeight"
+                        name="screenHeight"
+                        type="number"
+                        value={dimensions.screenHeight}
+                        onChange={handleChange}
+                        min="1"
+                    />
+                </div>
             </div>
-            <Button type="submit" className="w-full">
-              Apply Dimensions
-            </Button>
-          </form>
-        </Form>
+        </div>
       </CardContent>
     </Card>
   );
