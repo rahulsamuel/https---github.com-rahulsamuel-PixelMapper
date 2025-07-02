@@ -123,7 +123,7 @@ export function LedGrid() {
                             style={{ ...baseTileStyle, backgroundColor: bgColor }}
                             aria-label={`Tile ${index + 1}`}
                         >
-                            <div className="absolute inset-2 border border-white/20 rounded-full" />
+                            <div className="absolute inset-0 border border-white/20 rounded-full" />
                             {showLabels && !tile.deleted && (
                                 <span 
                                     className="font-bold text-center pointer-events-none drop-shadow-sm"
