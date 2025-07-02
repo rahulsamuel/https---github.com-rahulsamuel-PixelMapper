@@ -25,10 +25,11 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { MediaOutputControls } from "./media-output-controls";
 import { OutputCalculator } from "./output-calculator";
+import { RasterMapPreview } from "./raster-map-preview";
 
 
 export function PixelMapperLayout() {
-  const { dimensions, handleDownloadPng, zoom, setZoom, onOffMode, setOnOffMode, activeBounds } = usePixelMapper();
+  const { dimensions, handleDownloadPng, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, rasterMapConfig } = usePixelMapper();
 
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : 0;
   const totalHeight = activeBounds ? (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight : 0;
@@ -63,6 +64,7 @@ export function PixelMapperLayout() {
             <TabsList>
               <TabsTrigger value="grid">LED Grid</TabsTrigger>
               <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
+              <TabsTrigger value="raster" disabled={!rasterMapConfig}>Raster Map Preview</TabsTrigger>
             </TabsList>
             <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground">
@@ -92,6 +94,9 @@ export function PixelMapperLayout() {
           </TabsContent>
           <TabsContent value="wiring" className="flex-grow overflow-auto">
             <WiringDiagram />
+          </TabsContent>
+          <TabsContent value="raster" className="flex-grow overflow-auto">
+            <RasterMapPreview />
           </TabsContent>
         </Tabs>
       </SidebarInset>

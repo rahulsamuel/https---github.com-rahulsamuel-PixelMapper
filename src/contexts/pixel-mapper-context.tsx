@@ -26,6 +26,24 @@ interface ActiveBounds {
 type ActiveTool = 'delete' | 'label' | 'color';
 type LabelFormat = 'none' | 'sequential' | 'row-col' | 'dmx-style';
 
+interface RasterSlice {
+  key: string;
+  filename: string;
+  x: number; 
+  y: number; 
+  width: number; 
+  height: number;
+}
+
+interface RasterMapConfig {
+  slices: RasterSlice[];
+  totalWidth: number; 
+  totalHeight: number;
+  outputWidth: number;
+  outputHeight: number;
+}
+
+
 interface PixelMapperState {
   appState: string;
   gridRef: React.RefObject<HTMLDivElement>;
@@ -61,6 +79,8 @@ interface PixelMapperState {
   zoom: number;
   setZoom: Dispatch<SetStateAction<number>>;
   activeBounds: ActiveBounds | null;
+  rasterMapConfig: RasterMapConfig | null;
+  setRasterMapConfig: Dispatch<SetStateAction<RasterMapConfig | null>>;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -101,6 +121,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [zoom, setZoom] = useState(1);
   const [onOffMode, setOnOffMode] = useState(false);
   const [activeBounds, setActiveBounds] = useState<ActiveBounds | null>(null);
+  const [rasterMapConfig, setRasterMapConfig] = useState<RasterMapConfig | null>(null);
 
 
   useEffect(() => {
@@ -307,9 +328,6 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const sliceWidth = outputWidth || totalPixelWidth;
     const sliceHeight = outputHeight || totalPixelHeight;
 
-    const outputsWide = Math.ceil(totalPixelWidth / sliceWidth);
-    const outputsHigh = Math.ceil(totalPixelHeight / sliceHeight);
-
     const downloadCanvas = (canvas: HTMLCanvasElement, downloadFilename: string) => {
       try {
         const dataUrl = canvas.toDataURL('image/png');
@@ -321,45 +339,91 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         console.error("Could not generate raster map file.", err);
       }
     };
+    
+    const slices: RasterSlice[] = [];
+    const baseFilename = filename.replace('.png', '');
 
-    if (outputsWide === 1 && outputsHigh === 1) {
-      const finalCanvas = document.createElement('canvas');
-      finalCanvas.width = sliceWidth;
-      finalCanvas.height = sliceHeight;
-      const finalCtx = finalCanvas.getContext('2d');
-      if (!finalCtx) return;
+    let contentSourceX = 0;
+    let col = 0;
+    while (contentSourceX < totalPixelWidth) {
+        const tilesInSliceX = tileWidth > 0 ? Math.floor(sliceWidth / tileWidth) : 0;
+        const currentSliceContentWidth = tilesInSliceX > 0 ? tilesInSliceX * tileWidth : sliceWidth;
 
-      finalCtx.fillStyle = 'black';
-      finalCtx.fillRect(0, 0, sliceWidth, sliceHeight);
-      finalCtx.drawImage(masterCanvas, 0, 0);
-      downloadCanvas(finalCanvas, filename);
-    } else {
-      for (let row = 0; row < outputsHigh; row++) {
-        for (let col = 0; col < outputsWide; col++) {
-          const sliceCanvas = document.createElement('canvas');
-          sliceCanvas.width = sliceWidth;
-          sliceCanvas.height = sliceHeight;
-          const sliceCtx = sliceCanvas.getContext('2d');
-          if (!sliceCtx) continue;
+        let contentSourceY = 0;
+        let row = 0;
+        while (contentSourceY < totalPixelHeight) {
+            const tilesInSliceY = tileHeight > 0 ? Math.floor(sliceHeight / tileHeight) : 0;
+            const currentSliceContentHeight = tilesInSliceY > 0 ? tilesInSliceY * tileHeight : sliceHeight;
 
-          sliceCtx.fillStyle = 'black';
-          sliceCtx.fillRect(0, 0, sliceWidth, sliceHeight);
+            const sx = contentSourceX;
+            const sy = contentSourceY;
+            const sWidth = Math.min(currentSliceContentWidth, totalPixelWidth - sx);
+            const sHeight = Math.min(currentSliceContentHeight, totalPixelHeight - sy);
+            
+            if (sWidth <= 0 || sHeight <= 0) {
+                 if (tilesInSliceY > 0) {
+                    contentSourceY += currentSliceContentHeight;
+                } else {
+                    contentSourceY += sliceHeight; // Prevent infinite loop
+                }
+                row++;
+                continue;
+            }
 
-          const sourceX = col * sliceWidth;
-          const sourceY = row * sliceHeight;
-          
-          sliceCtx.drawImage(
-              masterCanvas,
-              sourceX, sourceY, sliceWidth, sliceHeight,
-              0, 0, sliceWidth, sliceHeight
-          );
+            const sliceFilename = totalPixelWidth > sliceWidth || totalPixelHeight > sliceHeight
+              ? `${baseFilename}-R${row + 1}-C${col + 1}.png`
+              : `${baseFilename}.png`;
 
-          const baseFilename = filename.replace('.png', '');
-          const downloadFilename = `${baseFilename}-R${row + 1}-C${col + 1}.png`;
-          downloadCanvas(sliceCanvas, downloadFilename);
+            slices.push({
+                key: `${row}-${col}`,
+                filename: sliceFilename,
+                x: sx,
+                y: sy,
+                width: sWidth,
+                height: sHeight,
+            });
+
+            if (tilesInSliceY > 0) {
+                contentSourceY += currentSliceContentHeight;
+            } else {
+                contentSourceY += sliceHeight;
+            }
+            row++;
         }
-      }
+
+        if (tilesInSliceX > 0) {
+            contentSourceX += currentSliceContentWidth;
+        } else {
+            contentSourceX += sliceWidth;
+        }
+        col++;
     }
+
+    setRasterMapConfig({
+        slices,
+        totalWidth: totalPixelWidth,
+        totalHeight: totalPixelHeight,
+        outputWidth: sliceWidth,
+        outputHeight: sliceHeight,
+    });
+
+    for (const slice of slices) {
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = sliceWidth;
+        sliceCanvas.height = sliceHeight;
+        const sliceCtx = sliceCanvas.getContext('2d');
+        if (!sliceCtx) continue;
+        sliceCtx.fillStyle = 'black';
+        sliceCtx.fillRect(0, 0, sliceWidth, sliceHeight);
+
+        sliceCtx.drawImage(
+            masterCanvas,
+            slice.x, slice.y, slice.width, slice.height,
+            0, 0, slice.width, slice.height
+        );
+        downloadCanvas(sliceCanvas, slice.filename);
+    }
+
   }, [dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize, activeBounds]);
 
   const value = {
@@ -397,6 +461,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     zoom,
     setZoom,
     activeBounds,
+    rasterMapConfig,
+    setRasterMapConfig,
   };
 
   return (
@@ -405,5 +471,3 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     </PixelMapperContext.Provider>
   );
 }
-
-    
