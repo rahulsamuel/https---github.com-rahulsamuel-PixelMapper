@@ -11,7 +11,6 @@ import {
 import { DimensionControls } from "./dimension-controls";
 import { AppearanceControls } from "./appearance-controls";
 import { PixelMapperActions } from "./pixel-mapper-actions";
-import { MediaOutputControls } from "./media-output-controls";
 import { LedGrid } from "./led-grid";
 import { WiringDiagram } from "./wiring-diagram";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,7 +33,6 @@ export function PixelMapperLayout() {
               <DimensionControls />
               <AppearanceControls />
               <PixelMapperActions />
-              <MediaOutputControls />
             </div>
           </ScrollArea>
         </SidebarContent>
