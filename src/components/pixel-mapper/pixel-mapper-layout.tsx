@@ -23,6 +23,7 @@ import { Download, ZoomIn, ZoomOut } from "lucide-react";
 import { LabelControls } from "./label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { MediaOutputControls } from "./media-output-controls";
 
 
 export function PixelMapperLayout() {
@@ -49,6 +50,7 @@ export function PixelMapperLayout() {
               <LabelControls />
               <EditTools />
               <PixelMapperActions />
+              <MediaOutputControls />
             </div>
           </ScrollArea>
         </SidebarContent>

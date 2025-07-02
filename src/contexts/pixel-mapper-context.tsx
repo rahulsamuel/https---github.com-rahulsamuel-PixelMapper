@@ -38,6 +38,7 @@ interface PixelMapperState {
   borderColor: string;
   setBorderColor: Dispatch<SetStateAction<string>>;
   handleDownloadPng: (filename: string) => void;
+  handleDownloadRasterMap: (filename: string) => void;
   activeTool: ActiveTool;
   setActiveTool: Dispatch<SetStateAction<ActiveTool>>;
   showLabels: boolean;
@@ -195,6 +196,66 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       });
   }, [gridRef]);
 
+  const handleDownloadRasterMap = useCallback((filename: string) => {
+    const { screenWidth, screenHeight, tileWidth, tileHeight } = dimensions;
+    const totalWidth = screenWidth * tileWidth;
+    const totalHeight = screenHeight * tileHeight;
+
+    if (totalWidth <= 0 || totalHeight <= 0) {
+        console.error("Invalid dimensions for raster map.");
+        return;
+    }
+
+    const rasterNode = document.createElement('div');
+    document.body.appendChild(rasterNode);
+    
+    Object.assign(rasterNode.style, {
+        position: 'absolute',
+        left: '-9999px',
+        top: '0px',
+        width: `${totalWidth}px`,
+        height: `${totalHeight}px`,
+        backgroundColor: 'black',
+    });
+
+    tiles.forEach((tile, index) => {
+        if (!tile.deleted) {
+            const x = index % screenWidth;
+            const y = Math.floor(index / screenWidth);
+
+            const tileNode = document.createElement('div');
+            Object.assign(tileNode.style, {
+                position: 'absolute',
+                left: `${x * tileWidth}px`,
+                top: `${y * tileHeight}px`,
+                width: `${tileWidth}px`,
+                height: `${tileHeight}px`,
+                backgroundColor: 'white',
+            });
+            rasterNode.appendChild(tileNode);
+        }
+    });
+
+    toPng(rasterNode, {
+        cacheBust: true,
+        pixelRatio: 1,
+        width: totalWidth,
+        height: totalHeight,
+    })
+    .then((dataUrl) => {
+        const link = document.createElement("a");
+        link.download = filename;
+        link.href = dataUrl;
+        link.click();
+    })
+    .catch((err) => {
+        console.error("Could not generate raster map.", err);
+    })
+    .finally(() => {
+        document.body.removeChild(rasterNode);
+    });
+  }, [dimensions, tiles]);
+
   const value = {
     appState,
     gridRef,
@@ -214,6 +275,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     borderColor,
     setBorderColor,
     handleDownloadPng,
+    handleDownloadRasterMap,
     activeTool,
     setActiveTool,
     showLabels,
@@ -235,4 +297,4 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       {children}
     </PixelMapperContext.Provider>
   );
-};
+}
