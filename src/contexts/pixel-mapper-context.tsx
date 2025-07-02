@@ -1,3 +1,4 @@
+
 "use client";
 
 import { toPng } from "html-to-image";
@@ -106,45 +107,45 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   }, [tiles]);
 
   useEffect(() => {
-    const { screenWidth } = dimensions;
-    const newLabels = Array(tiles.length).fill('');
+    const { screenWidth, screenHeight } = dimensions;
+    if (screenWidth * screenHeight === 0) {
+      setLabels([]);
+      return;
+    }
+
     let sequentialCounter = 1;
     let dmxCounter = 1;
     let dmxUniverse = 'A';
-
-    if (labelFormat === 'none') {
-        setLabels(newLabels);
-        return;
-    }
     
-    for (let i = 0; i < tiles.length; i++) {
-      const tile = tiles[i];
+    const newLabels = tiles.map((tile, i) => {
+      if (labelFormat === 'none' || !showLabels) {
+        return '';
+      }
+
       switch (labelFormat) {
         case 'sequential':
-          if (!tile.deleted) {
-            newLabels[i] = String(sequentialCounter++);
-          }
-          break;
+          return !tile.deleted ? String(sequentialCounter++) : '';
         case 'row-col':
           const y = Math.floor(i / screenWidth) + 1;
           const x = (i % screenWidth) + 1;
-          newLabels[i] = `${y}-${x}`;
-          break;
+          return `${y}-${x}`;
         case 'dmx-style':
           if (!tile.deleted) {
-            newLabels[i] = `${dmxUniverse}${dmxCounter++}`;
+            const label = `${dmxUniverse}${dmxCounter++}`;
             if (dmxCounter > 170) { // 512 channels / 3 colors
               dmxCounter = 1;
               dmxUniverse = String.fromCharCode(dmxUniverse.charCodeAt(0) + 1);
             }
+            return label;
           }
-          break;
+          return '';
         default:
-          break;
+          return '';
       }
-    }
+    });
+
     setLabels(newLabels);
-  }, [dimensions, tiles, labelFormat]);
+  }, [dimensions, tiles, labelFormat, showLabels]);
 
   const toggleTile = useCallback((index: number) => {
     setTiles((prev) =>
@@ -174,15 +175,23 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     if (gridRef.current === null) {
       return;
     }
+    
+    // Calculate exact dimensions from state to avoid rounding errors or zoom influence
+    const width = dimensions.screenWidth * dimensions.tileWidth;
+    const height = dimensions.screenHeight * dimensions.tileHeight;
   
     toPng(gridRef.current, {
       cacheBust: true,
-      pixelRatio: 2,
-      width: dimensions.screenWidth * dimensions.tileWidth,
-      height: dimensions.screenHeight * dimensions.tileHeight,
+      pixelRatio: 2, // Render at 2x resolution for higher quality
+      width: width,
+      height: height,
       style: {
+        // Override styles to ensure clean capture
         transform: 'none',
         position: 'static',
+        // Ensure the container itself isn't influencing the size
+        width: `${width}px`,
+        height: `${height}px`,
       }
     })
       .then((dataUrl) => {
@@ -212,18 +221,14 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     grid.style.border = '1px solid black';
     grid.style.boxSizing = 'border-box';
 
-    tiles.forEach(() => {
+    tiles.forEach((tile) => {
         const tileEl = document.createElement('div');
         tileEl.style.width = `${dimensions.tileWidth}px`;
         tileEl.style.height = `${dimensions.tileHeight}px`;
         tileEl.style.border = `1px solid black`;
         tileEl.style.boxSizing = 'border-box';
-        grid.appendChild(tileEl);
-    });
-
-    tiles.forEach((tile, index) => {
-        const tileEl = grid.children[index] as HTMLDivElement;
         tileEl.style.backgroundColor = tile.deleted ? 'black' : 'white';
+        grid.appendChild(tileEl);
     });
     
     offscreenContainer.appendChild(grid);
