@@ -173,22 +173,28 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
   const handleDownloadPng = useCallback((filename: string) => {
     if (gridRef.current === null) {
-        console.error("Grid element not found.");
-        return;
+      console.error("Grid element not found.");
+      return;
     }
 
-    toPng(gridRef.current, { 
-        cacheBust: true,
-        pixelRatio: 1,
-        style: {
-            position: 'static',
-            transform: 'none',
-            top: 'auto',
-            left: 'auto',
-        }
-     })
+    const nodeToCapture = gridRef.current;
+
+    toPng(nodeToCapture, {
+      cacheBust: true,
+      pixelRatio: 1,
+      // Using offsetWidth/offsetHeight ensures we capture the full element, including borders,
+      // preventing the right and bottom edges from being cut off.
+      width: nodeToCapture.offsetWidth,
+      height: nodeToCapture.offsetHeight,
+      style: {
+        position: "static",
+        transform: "none",
+        top: "auto",
+        left: "auto",
+      },
+    })
       .then((dataUrl) => {
-        const link = document.createElement('a');
+        const link = document.createElement("a");
         link.download = filename;
         link.href = dataUrl;
         link.click();
