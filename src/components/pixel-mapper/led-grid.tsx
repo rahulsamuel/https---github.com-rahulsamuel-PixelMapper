@@ -62,9 +62,16 @@ export function LedGrid() {
                 const x = index % dimensions.screenWidth;
                 const y = Math.floor(index / dimensions.screenWidth);
                 
-                const bgColor = onOffMode
-                    ? tile.deleted ? '#000000' : '#FFFFFF'
-                    : (x + y) % 2 === 0 ? tileColor : tileColorTwo;
+                let bgColor;
+                if (onOffMode) {
+                    bgColor = tile.deleted ? '#000000' : '#FFFFFF';
+                } else {
+                    if (tile.deleted) {
+                        bgColor = '#000000';
+                    } else {
+                        bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
+                    }
+                }
                 
                 const currentLabelColor = onOffMode ? '#000000' : labelColor;
                 const circleBorderColor = onOffMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)';
@@ -74,13 +81,18 @@ export function LedGrid() {
                         key={tile.id}
                         onClick={() => handleTileClick(index)}
                         className={cn(
-                        "relative rounded-none transition-opacity duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:z-10 flex items-center justify-center",
-                        tile.deleted ? "opacity-10" : "opacity-100"
+                        "relative rounded-none transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:z-10 flex items-center justify-center"
                         )}
                         style={{ ...baseTileStyle, backgroundColor: bgColor }}
                         aria-label={`Tile ${index + 1}`}
                     >
-                        <div className="absolute inset-0 border rounded-full" style={{ borderColor: circleBorderColor }} />
+                        <div 
+                            className="absolute inset-0 border rounded-full" 
+                            style={{ 
+                                borderColor: circleBorderColor,
+                                visibility: tile.deleted ? 'hidden' : 'visible' 
+                            }} 
+                        />
                         {showLabels && !tile.deleted && (
                             <span
                                 className="font-bold text-center pointer-events-none drop-shadow-sm"

@@ -94,10 +94,15 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
 
   useEffect(() => {
-    const totalTiles = dimensions.screenWidth * dimensions.screenHeight;
+    const { screenWidth, screenHeight } = dimensions;
+    const totalTiles = screenWidth * screenHeight;
     if (totalTiles > 0 && totalTiles <= 4096) { // Safety limit
         setTiles(
-            Array.from({ length: totalTiles }, (_, i) => ({ id: i, deleted: false }))
+            Array.from({ length: totalTiles }, (_, i) => {
+                const x = i % screenWidth;
+                const y = Math.floor(i / screenWidth);
+                return { id: i, deleted: (x + y) % 2 !== 0 };
+            })
         );
     } else {
         setTiles([]);
