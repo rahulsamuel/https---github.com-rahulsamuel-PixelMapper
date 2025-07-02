@@ -1,6 +1,5 @@
 "use client";
 
-import { useToast } from "@/hooks/use-toast";
 import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction } from "react";
 
@@ -55,10 +54,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const gridRef = useRef<HTMLDivElement>(null);
 
   const [dimensions, setDimensions] = useState<Dimensions>({
-    tileWidth: 32,
-    tileHeight: 32,
-    screenWidth: 16,
-    screenHeight: 9,
+    tileWidth: 200,
+    tileHeight: 200,
+    screenWidth: 5,
+    screenHeight: 3,
   });
   const [tiles, setTiles] = useState<Tile[]>([]);
   const [deletedCount, setDeletedCount] = useState(0);
@@ -126,11 +125,6 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       pixelRatio: 1,
       width: node.scrollWidth,
       height: node.scrollHeight,
-      style: {
-        transform: 'none',
-        top: '0',
-        left: '0',
-      }
     };
 
     toPng(node, options)
