@@ -182,10 +182,12 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     toPng(nodeToCapture, {
       cacheBust: true,
       pixelRatio: 1,
-      // Using offsetWidth/offsetHeight ensures we capture the full element, including borders,
-      // preventing the right and bottom edges from being cut off.
+      // Use the element's true rendered dimensions, including borders,
+      // to prevent any clipping.
       width: nodeToCapture.offsetWidth,
       height: nodeToCapture.offsetHeight,
+      // Apply styles to counteract transforms and positioning from the parent
+      // elements, ensuring a clean capture of the grid itself.
       style: {
         position: "static",
         transform: "none",
