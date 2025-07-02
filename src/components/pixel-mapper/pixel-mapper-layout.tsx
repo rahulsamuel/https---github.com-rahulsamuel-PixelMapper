@@ -57,7 +57,7 @@ export function PixelMapperLayout() {
       </Sidebar>
       <SidebarInset>
         <Tabs defaultValue="grid" className="flex flex-col h-full w-full">
-          <div className="p-4 border-b flex items-center justify-between">
+          <div className="p-4 border-b flex items-center justify-between flex-shrink-0">
             <TabsList>
               <TabsTrigger value="grid">LED Grid</TabsTrigger>
               <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
@@ -85,10 +85,10 @@ export function PixelMapperLayout() {
               </Button>
             </div>
           </div>
-          <TabsContent value="grid" className="flex-grow">
+          <TabsContent value="grid" className="flex-grow overflow-auto">
             <LedGrid />
           </TabsContent>
-          <TabsContent value="wiring" className="flex-grow">
+          <TabsContent value="wiring" className="flex-grow overflow-auto">
             <WiringDiagram />
           </TabsContent>
         </Tabs>

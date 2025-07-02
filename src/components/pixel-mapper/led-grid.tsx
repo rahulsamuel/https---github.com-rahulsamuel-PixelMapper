@@ -50,70 +50,66 @@ export function LedGrid() {
   };
 
   return (
-    <div
-      className="h-full w-full overflow-auto bg-muted/20 p-4"
-    >
-        <div
-            ref={gridRef}
-            style={gridStyle}
-            className="bg-muted"
-        >
-            {tiles.map((tile, index) => {
-                const x = index % dimensions.screenWidth;
-                const y = Math.floor(index / dimensions.screenWidth);
-                
-                let bgColor;
-                if (onOffMode) {
-                    bgColor = tile.deleted ? '#000000' : '#FFFFFF';
-                } else {
-                    if (tile.deleted) {
-                        bgColor = '#000000';
-                    } else {
-                        bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
-                    }
-                }
-                
-                const currentLabelColor = onOffMode ? '#000000' : labelColor;
-                const circleBorderColor = onOffMode ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)';
+    <div className="bg-muted/20 p-4">
+      <div ref={gridRef} style={gridStyle} className="bg-muted">
+        {tiles.map((tile, index) => {
+          const x = index % dimensions.screenWidth;
+          const y = Math.floor(index / dimensions.screenWidth);
 
-                const tileDynamicStyle = {
-                  ...baseTileStyle,
-                  backgroundColor: bgColor,
-                  borderWidth: tile.deleted ? '0px' : `${borderWidth}px`,
-                };
+          let bgColor;
+          if (onOffMode) {
+            bgColor = tile.deleted ? '#000000' : '#FFFFFF';
+          } else {
+            if (tile.deleted) {
+              bgColor = '#000000';
+            } else {
+              bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
+            }
+          }
 
-                return (
-                    <button
-                        key={tile.id}
-                        onClick={() => handleTileClick(index)}
-                        className={cn(
-                        "relative rounded-none transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:z-10 flex items-center justify-center"
-                        )}
-                        style={tileDynamicStyle}
-                        aria-label={`Tile ${index + 1}`}
-                    >
-                        <div 
-                            className="absolute inset-0 border rounded-full" 
-                            style={{ 
-                                borderColor: circleBorderColor,
-                                visibility: tile.deleted ? 'hidden' : 'visible' 
-                            }} 
-                        />
-                        {showLabels && !tile.deleted && (
-                            <span
-                                className="font-bold text-center pointer-events-none drop-shadow-sm"
-                                style={{
-                                    fontSize: `${labelFontSize}px`,
-                                    color: currentLabelColor,
-                                }}
-                            >
-                                {labels[index]}
-                            </span>
-                        )}
-                    </button>
-                );
-            })}
-        </div>
+          const currentLabelColor = onOffMode ? '#000000' : labelColor;
+          const circleBorderColor = onOffMode
+            ? 'rgba(0,0,0,0.2)'
+            : 'rgba(255,255,255,0.2)';
+
+          const tileDynamicStyle = {
+            ...baseTileStyle,
+            backgroundColor: bgColor,
+            borderWidth: tile.deleted ? '0px' : `${borderWidth}px`,
+          };
+
+          return (
+            <button
+              key={tile.id}
+              onClick={() => handleTileClick(index)}
+              className={cn(
+                'relative rounded-none transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:z-10 flex items-center justify-center'
+              )}
+              style={tileDynamicStyle}
+              aria-label={`Tile ${index + 1}`}
+            >
+              <div
+                className="absolute inset-0 border rounded-full"
+                style={{
+                  borderColor: circleBorderColor,
+                  visibility: tile.deleted ? 'hidden' : 'visible',
+                }}
+              />
+              {showLabels && !tile.deleted && (
+                <span
+                  className="font-bold text-center pointer-events-none drop-shadow-sm"
+                  style={{
+                    fontSize: `${labelFontSize}px`,
+                    color: currentLabelColor,
+                  }}
+                >
+                  {labels[index]}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

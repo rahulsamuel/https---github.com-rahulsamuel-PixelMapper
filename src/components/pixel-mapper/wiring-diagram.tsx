@@ -1,3 +1,4 @@
+
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
@@ -47,7 +48,7 @@ export function WiringDiagram() {
   }
 
   return (
-    <div className="flex flex-col h-full w-full">
+    <div>
       <div className="p-4 border-b flex justify-between items-center">
         <h2 className="text-lg font-semibold">Wiring Diagram</h2>
         <div className="flex items-center gap-4">
@@ -58,7 +59,7 @@ export function WiringDiagram() {
             <Button onClick={handleDownload}><Download className="mr-2 size-4" /> Download</Button>
         </div>
       </div>
-      <div className="flex-grow p-4 overflow-auto bg-muted/20">
+      <div className="p-4 bg-muted/20">
         <div 
           ref={wiringDiagramRef}
           className="relative transition-transform duration-300"
