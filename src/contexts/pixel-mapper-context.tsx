@@ -324,55 +324,45 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         }
       }
     });
-
+    
     const sliceWidth = outputWidth || totalPixelWidth;
     const sliceHeight = outputHeight || totalPixelHeight;
-
-    const downloadCanvas = (canvas: HTMLCanvasElement, downloadFilename: string) => {
-      try {
-        const dataUrl = canvas.toDataURL('image/png');
-        const link = document.createElement("a");
-        link.download = downloadFilename;
-        link.href = dataUrl;
-        link.click();
-      } catch (err) {
-        console.error("Could not generate raster map file.", err);
-      }
-    };
     
+    const downloadCanvas = (canvas: HTMLCanvasElement, downloadFilename: string) => {
+        try {
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement("a");
+            link.download = downloadFilename;
+            link.href = dataUrl;
+            link.click();
+        } catch (err) {
+            console.error("Could not generate raster map file.", err);
+        }
+    };
+
     const slices: RasterSlice[] = [];
     const baseFilename = filename.replace('.png', '');
 
-    let contentSourceX = 0;
+    const effectiveSliceWidth = outputWidth ? Math.floor(outputWidth / tileWidth) * tileWidth : totalPixelWidth;
+    const effectiveSliceHeight = outputHeight ? Math.floor(outputHeight / tileHeight) * tileHeight : totalPixelHeight;
+
+    if (effectiveSliceWidth <= 0 || effectiveSliceHeight <= 0) {
+        setRasterMapConfig(null);
+        return;
+    }
+    
     let col = 0;
-    while (contentSourceX < totalPixelWidth) {
-        const tilesInSliceX = tileWidth > 0 ? Math.floor(sliceWidth / tileWidth) : 0;
-        const currentSliceContentWidth = tilesInSliceX > 0 ? tilesInSliceX * tileWidth : sliceWidth;
-
-        let contentSourceY = 0;
+    for (let sx = 0; sx < totalPixelWidth; sx += effectiveSliceWidth) {
         let row = 0;
-        while (contentSourceY < totalPixelHeight) {
-            const tilesInSliceY = tileHeight > 0 ? Math.floor(sliceHeight / tileHeight) : 0;
-            const currentSliceContentHeight = tilesInSliceY > 0 ? tilesInSliceY * tileHeight : sliceHeight;
+        for (let sy = 0; sy < totalPixelHeight; sy += effectiveSliceHeight) {
+            const sWidth = Math.min(effectiveSliceWidth, totalPixelWidth - sx);
+            const sHeight = Math.min(effectiveSliceHeight, totalPixelHeight - sy);
 
-            const sx = contentSourceX;
-            const sy = contentSourceY;
-            const sWidth = Math.min(currentSliceContentWidth, totalPixelWidth - sx);
-            const sHeight = Math.min(currentSliceContentHeight, totalPixelHeight - sy);
-            
-            if (sWidth <= 0 || sHeight <= 0) {
-                 if (tilesInSliceY > 0) {
-                    contentSourceY += currentSliceContentHeight;
-                } else {
-                    contentSourceY += sliceHeight; // Prevent infinite loop
-                }
-                row++;
-                continue;
-            }
+            if (sWidth <= 0 || sHeight <= 0) continue;
 
             const sliceFilename = totalPixelWidth > sliceWidth || totalPixelHeight > sliceHeight
-              ? `${baseFilename}-R${row + 1}-C${col + 1}.png`
-              : `${baseFilename}.png`;
+                ? `${baseFilename}-R${row + 1}-C${col + 1}.png`
+                : `${baseFilename}.png`;
 
             slices.push({
                 key: `${row}-${col}`,
@@ -382,19 +372,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
                 width: sWidth,
                 height: sHeight,
             });
-
-            if (tilesInSliceY > 0) {
-                contentSourceY += currentSliceContentHeight;
-            } else {
-                contentSourceY += sliceHeight;
-            }
             row++;
-        }
-
-        if (tilesInSliceX > 0) {
-            contentSourceX += currentSliceContentWidth;
-        } else {
-            contentSourceX += sliceWidth;
         }
         col++;
     }

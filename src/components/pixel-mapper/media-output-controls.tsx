@@ -12,9 +12,10 @@ import { Button } from "@/components/ui/button";
 import { FileOutput } from "lucide-react";
 
 export function MediaOutputControls() {
-  const { handleDownloadRasterMap, dimensions } = usePixelMapper();
-  const totalWidth = dimensions.screenWidth * dimensions.tileWidth;
-  const totalHeight = dimensions.screenHeight * dimensions.tileHeight;
+  const { handleDownloadRasterMap, dimensions, activeBounds } = usePixelMapper();
+  const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : dimensions.screenWidth * dimensions.tileWidth;
+  const totalHeight = activeBounds ? (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight : dimensions.screenHeight * dimensions.tileHeight;
+  const { tileWidth, tileHeight } = dimensions;
 
   return (
     <Card>
@@ -32,13 +33,13 @@ export function MediaOutputControls() {
             <FileOutput className="mr-2 size-4" />
             Fit to Content ({totalWidth}x{totalHeight})
         </Button>
-        <Button onClick={() => handleDownloadRasterMap('raster-map-hd.png', 1920, 1080)} variant="outline" className="w-full">
+        <Button onClick={() => handleDownloadRasterMap('raster-map-hd.png', 1920, 1080)} variant="outline" className="w-full" disabled={tileWidth > 1920 || tileHeight > 1080}>
             HD (1920x1080)
         </Button>
-        <Button onClick={() => handleDownloadRasterMap('raster-map-4k-uhd.png', 3840, 2160)} variant="outline" className="w-full">
+        <Button onClick={() => handleDownloadRasterMap('raster-map-4k-uhd.png', 3840, 2160)} variant="outline" className="w-full" disabled={tileWidth > 3840 || tileHeight > 2160}>
             4K UHD (3840x2160)
         </Button>
-        <Button onClick={() => handleDownloadRasterMap('raster-map-4k-dci.png', 4096, 2160)} variant="outline" className="w-full">
+        <Button onClick={() => handleDownloadRasterMap('raster-map-4k-dci.png', 4096, 2160)} variant="outline" className="w-full" disabled={tileWidth > 4096 || tileHeight > 2160}>
             4K DCI (4096x2160)
         </Button>
       </CardContent>
