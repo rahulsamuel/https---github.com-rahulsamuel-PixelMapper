@@ -17,9 +17,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "./edit-tools";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 
 export function PixelMapperLayout() {
-  const { appState } = usePixelMapper();
+  const { dimensions, handleDownloadPng } = usePixelMapper();
+
+  const totalWidth = dimensions.screenWidth * dimensions.tileWidth;
+  const totalHeight = dimensions.screenHeight * dimensions.tileHeight;
 
   return (
     <SidebarProvider>
@@ -41,11 +46,20 @@ export function PixelMapperLayout() {
       </Sidebar>
       <SidebarInset>
         <Tabs defaultValue="grid" className="flex flex-col h-full w-full">
-          <div className="p-4 border-b">
+          <div className="p-4 border-b flex items-center justify-between">
             <TabsList>
               <TabsTrigger value="grid">LED Grid</TabsTrigger>
               <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
             </TabsList>
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-muted-foreground">
+                Resolution: <span className="font-mono">{totalWidth}px</span> x <span className="font-mono">{totalHeight}px</span>
+              </div>
+              <Button onClick={() => handleDownloadPng('pixel-map.png')} size="sm">
+                  <Download className="mr-2" />
+                  Download PNG
+              </Button>
+            </div>
           </div>
           <TabsContent value="grid" className="flex-grow">
             <LedGrid />

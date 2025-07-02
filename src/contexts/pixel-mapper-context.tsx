@@ -121,7 +121,16 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         return;
     }
 
-    toPng(gridRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: 'hsl(var(--background))' })
+    const node = gridRef.current;
+    
+    const options = {
+      cacheBust: true,
+      pixelRatio: 1,
+      width: dimensions.screenWidth * dimensions.tileWidth,
+      height: dimensions.screenHeight * dimensions.tileHeight,
+    };
+
+    toPng(node, options)
       .then((dataUrl) => {
         const link = document.createElement('a');
         link.download = filename;
@@ -133,7 +142,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         console.error(err);
         toast({ variant: 'destructive', title: "Download Failed", description: "Could not generate PNG." });
       });
-  }, [gridRef, toast]);
+  }, [gridRef, toast, dimensions]);
 
   const value = {
     appState,
