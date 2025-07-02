@@ -179,23 +179,17 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       console.error("Grid element not found.");
       return;
     }
-
+  
     const nodeToCapture = gridRef.current;
-
+  
     toPng(nodeToCapture, {
       cacheBust: true,
-      pixelRatio: 1,
-      // Use the element's true rendered dimensions, including borders,
-      // to prevent any clipping.
-      width: nodeToCapture.offsetWidth,
-      height: nodeToCapture.offsetHeight,
-      // Apply styles to counteract transforms and positioning from the parent
-      // elements, ensuring a clean capture of the grid itself.
+      pixelRatio: 2, // Increase for higher quality
+      // Calculate dimensions manually to avoid issues with CSS transforms
+      width: dimensions.screenWidth * dimensions.tileWidth,
+      height: dimensions.screenHeight * dimensions.tileHeight,
       style: {
-        position: "static",
-        transform: "none",
-        top: "auto",
-        left: "auto",
+        transform: "none", // Ensure capture is not scaled
       },
     })
       .then((dataUrl) => {
@@ -207,7 +201,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       .catch((err) => {
         console.error("Could not generate PNG.", err);
       });
-  }, [gridRef]);
+  }, [gridRef, dimensions]);
 
   const value = {
     appState,
