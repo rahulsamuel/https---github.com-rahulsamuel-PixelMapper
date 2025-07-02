@@ -25,6 +25,9 @@ export function WiringDiagram() {
     setShowDataLabels,
     showPowerLabels,
     setShowPowerLabels,
+    labels,
+    showLabels,
+    labelColor,
   } = usePixelMapper();
   const [isMirrored, setIsMirrored] = useState(false);
   const wiringDiagramRef = useRef<HTMLDivElement>(null);
@@ -103,7 +106,7 @@ export function WiringDiagram() {
             transformOrigin: 'top left',
           }}
         >
-          {wiringData.map(({ x, y, dataLabel, powerLabel, isDeleted, arrowTo }) => {
+          {wiringData.map(({ x, y, dataLabel, powerLabel, isDeleted, arrowTo }, index) => {
             let bgColor;
             if (onOffMode) {
               bgColor = isDeleted ? '#000000' : '#FFFFFF';
@@ -136,6 +139,8 @@ export function WiringDiagram() {
               borderWidth: isDeleted ? '0px' : '1px',
               ...(isMirrored ? { right: x * TILE_SIZE } : { left: x * TILE_SIZE }),
             };
+            
+            const currentLabelColor = onOffMode ? '#000000' : labelColor;
 
             return (
               <div
@@ -145,6 +150,14 @@ export function WiringDiagram() {
               >
                 {!isDeleted && (
                   <>
+                    {showLabels && labels[index] && (
+                      <span 
+                        className="absolute top-1 left-2 font-mono text-lg font-bold pointer-events-none"
+                        style={{ color: currentLabelColor, opacity: 0.7 }}
+                      >
+                        {labels[index]}
+                      </span>
+                    )}
                     <div
                       className="flex flex-col items-center justify-center h-full w-full text-foreground relative"
                     >
@@ -178,3 +191,4 @@ export function WiringDiagram() {
     </div>
   );
 }
+
