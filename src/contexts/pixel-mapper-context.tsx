@@ -154,20 +154,20 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     }
 
     const newLabels = Array.from({ length: totalTiles }, (_, i) => {
-      if (labelFormat === 'none') return '';
-
+      const x = i % screenWidth;
+      const y = Math.floor(i / screenWidth);
+      
       switch (labelFormat) {
         case 'sequential':
           return String(i + 1);
         case 'row-col':
-          const y = Math.floor(i / screenWidth) + 1;
-          const x = (i % screenWidth) + 1;
-          return `${y}-${x}`;
+          return `${y + 1}-${x + 1}`;
         case 'dmx-style':
             const universeSize = 170; // 512 channels / 3 colors ~ 170 pixels
             const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(i / universeSize));
             const address = (i % universeSize) + 1;
             return `${universe}${address}`;
+        case 'none':
         default:
           return '';
       }
@@ -246,73 +246,121 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   }, [gridRef, activeBounds, dimensions]);
 
   const handleDownloadRasterMap = useCallback((filename: string, outputWidth?: number, outputHeight?: number) => {
-    const { screenWidth, screenHeight, tileWidth, tileHeight } = dimensions;
-    const contentWidth = screenWidth * tileWidth;
-    const contentHeight = screenHeight * tileHeight;
+    if (!activeBounds) {
+        console.error("No active tiles to generate a map from.");
+        return;
+    }
 
-    if (contentWidth <= 0 || contentHeight <= 0) {
+    const { screenWidth, tileWidth, tileHeight } = dimensions;
+    const totalPixelWidth = (activeBounds.maxX - activeBounds.minX + 1) * tileWidth;
+    const totalPixelHeight = (activeBounds.maxY - activeBounds.minY + 1) * tileHeight;
+
+    if (totalPixelWidth <= 0 || totalPixelHeight <= 0) {
       console.error("Invalid dimensions for raster map.");
       return;
     }
 
-    const finalWidth = outputWidth || contentWidth;
-    const finalHeight = outputHeight || contentHeight;
-    
-    const canvas = document.createElement('canvas');
-    canvas.width = finalWidth;
-    canvas.height = finalHeight;
-    const ctx = canvas.getContext('2d');
+    const masterCanvas = document.createElement('canvas');
+    masterCanvas.width = totalPixelWidth;
+    masterCanvas.height = totalPixelHeight;
+    const masterCtx = masterCanvas.getContext('2d');
 
-    if (!ctx) {
-      console.error("Could not get canvas context.");
+    if (!masterCtx) {
+      console.error("Could not get master canvas context.");
       return;
     }
 
-    // Fill background with black
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, finalWidth, finalHeight);
+    masterCtx.fillStyle = 'black';
+    masterCtx.fillRect(0, 0, totalPixelWidth, totalPixelHeight);
 
-    // Draw tiles
     tiles.forEach((tile, index) => {
-      const x = index % screenWidth;
-      const y = Math.floor(index / screenWidth);
-      const tileXPos = x * tileWidth;
-      const tileYPos = y * tileHeight;
-
       if (!tile.deleted) {
-        let bgColor;
-        if (onOffMode) {
-          bgColor = '#FFFFFF';
-        } else {
-          bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
-        }
+        const x = index % screenWidth;
+        const y = Math.floor(index / screenWidth);
 
-        ctx.fillStyle = bgColor;
-        ctx.fillRect(tileXPos, tileYPos, tileWidth, tileHeight);
+        if (x >= activeBounds.minX && x <= activeBounds.maxX && y >= activeBounds.minY && y <= activeBounds.maxY) {
+          const tileXPos = (x - activeBounds.minX) * tileWidth;
+          const tileYPos = (y - activeBounds.minY) * tileHeight;
+          
+          let bgColor;
+          if (onOffMode) {
+            bgColor = '#FFFFFF';
+          } else {
+            bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
+          }
 
-        // Draw labels
-        if (showLabels && labels[index]) {
-          const currentLabelColor = onOffMode ? '#000000' : labelColor;
-          ctx.fillStyle = currentLabelColor;
-          ctx.font = `bold ${labelFontSize}px sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(labels[index], tileXPos + tileWidth / 2, tileYPos + tileHeight / 2);
+          masterCtx.fillStyle = bgColor;
+          masterCtx.fillRect(tileXPos, tileYPos, tileWidth, tileHeight);
+
+          if (showLabels && labels[index]) {
+            const currentLabelColor = onOffMode ? '#000000' : labelColor;
+            masterCtx.fillStyle = currentLabelColor;
+            masterCtx.font = `bold ${labelFontSize}px sans-serif`;
+            masterCtx.textAlign = 'center';
+            masterCtx.textBaseline = 'middle';
+            masterCtx.fillText(labels[index], tileXPos + tileWidth / 2, tileYPos + tileHeight / 2);
+          }
         }
       }
     });
 
+    const sliceWidth = outputWidth || totalPixelWidth;
+    const sliceHeight = outputHeight || totalPixelHeight;
 
-    try {
-      const dataUrl = canvas.toDataURL('image/png');
-      const link = document.createElement("a");
-      link.download = filename;
-      link.href = dataUrl;
-      link.click();
-    } catch (err) {
-      console.error("Could not generate raster map.", err);
+    const outputsWide = Math.ceil(totalPixelWidth / sliceWidth);
+    const outputsHigh = Math.ceil(totalPixelHeight / sliceHeight);
+
+    const downloadCanvas = (canvas: HTMLCanvasElement, downloadFilename: string) => {
+      try {
+        const dataUrl = canvas.toDataURL('image/png');
+        const link = document.createElement("a");
+        link.download = downloadFilename;
+        link.href = dataUrl;
+        link.click();
+      } catch (err) {
+        console.error("Could not generate raster map file.", err);
+      }
+    };
+
+    if (outputsWide === 1 && outputsHigh === 1) {
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width = sliceWidth;
+      finalCanvas.height = sliceHeight;
+      const finalCtx = finalCanvas.getContext('2d');
+      if (!finalCtx) return;
+
+      finalCtx.fillStyle = 'black';
+      finalCtx.fillRect(0, 0, sliceWidth, sliceHeight);
+      finalCtx.drawImage(masterCanvas, 0, 0);
+      downloadCanvas(finalCanvas, filename);
+    } else {
+      for (let row = 0; row < outputsHigh; row++) {
+        for (let col = 0; col < outputsWide; col++) {
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = sliceWidth;
+          sliceCanvas.height = sliceHeight;
+          const sliceCtx = sliceCanvas.getContext('2d');
+          if (!sliceCtx) continue;
+
+          sliceCtx.fillStyle = 'black';
+          sliceCtx.fillRect(0, 0, sliceWidth, sliceHeight);
+
+          const sourceX = col * sliceWidth;
+          const sourceY = row * sliceHeight;
+          
+          sliceCtx.drawImage(
+              masterCanvas,
+              sourceX, sourceY, sliceWidth, sliceHeight,
+              0, 0, sliceWidth, sliceHeight
+          );
+
+          const baseFilename = filename.replace('.png', '');
+          const downloadFilename = `${baseFilename}-R${row + 1}-C${col + 1}.png`;
+          downloadCanvas(sliceCanvas, downloadFilename);
+        }
+      }
     }
-  }, [dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize]);
+  }, [dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize, activeBounds]);
 
   const value = {
     appState,
@@ -357,3 +405,5 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     </PixelMapperContext.Provider>
   );
 }
+
+    
