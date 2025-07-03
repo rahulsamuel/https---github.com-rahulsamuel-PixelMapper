@@ -2,22 +2,12 @@
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
-import { useMemo } from "react";
 
 export function RasterMapPreview() {
   const { 
-    rasterMapConfig
+    rasterMapConfig,
+    zoom,
   } = usePixelMapper();
-
-  const scale = useMemo(() => {
-    if (!rasterMapConfig) return 1;
-    const { totalWidth, totalHeight } = rasterMapConfig;
-    if (totalWidth === 0 || totalHeight === 0) return 1;
-    
-    // Define a max preview size
-    const MAX_PREVIEW_DIMENSION = 500; // pixels
-    return Math.min(1, MAX_PREVIEW_DIMENSION / Math.max(totalWidth, totalHeight));
-  }, [rasterMapConfig]);
 
 
   if (!rasterMapConfig) {
@@ -36,12 +26,14 @@ export function RasterMapPreview() {
   return (
      <div className="p-8 bg-muted/20">
         <div 
-        className="relative bg-background shadow-lg border bg-contain bg-no-repeat bg-center mx-auto"
+        className="relative bg-background shadow-lg border bg-contain bg-no-repeat bg-center"
         style={{ 
-            width: totalWidth * scale, 
-            height: totalHeight * scale,
+            width: totalWidth, 
+            height: totalHeight,
             backgroundImage: previewImage ? `url(${previewImage})` : 'none',
-            boxSizing: 'content-box'
+            boxSizing: 'content-box',
+            transform: `scale(${zoom})`,
+            transformOrigin: 'top left',
         }}
         >
         {slices.map(slice => {
@@ -54,19 +46,15 @@ export function RasterMapPreview() {
             key={slice.key} 
             className="absolute border border-primary/50 bg-primary/10 flex items-center justify-center"
             style={{
-                left: slice.x * scale,
-                top: slice.y * scale,
-                width: displayWidth * scale,
-                height: displayHeight * scale,
+                left: slice.x,
+                top: slice.y,
+                width: displayWidth,
+                height: displayHeight,
                 boxSizing: 'border-box'
             }}
             >
             <div 
                 className="text-primary text-center p-1 overflow-hidden"
-                style={{
-                transform: `scale(${Math.max(0.25, Math.min(1, scale * 1.5))})`,
-                transformOrigin: 'center center'
-                }}
             >
                 <p className="font-bold whitespace-nowrap">{slice.filename.split('/').pop()?.replace('raster-map-','').replace('.png','')}</p>
                 <p className="font-mono text-xs whitespace-nowrap">Offset: ({slice.x}, {slice.y})</p>
