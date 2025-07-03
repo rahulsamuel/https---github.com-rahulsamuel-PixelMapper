@@ -234,14 +234,10 @@ export function WiringDiagram() {
                   const nx = dx / distance;
                   const ny = dy / distance;
 
-                  // Offset power arrows slightly to avoid overlapping data arrows
-                  const offsetX = ny * TILE_SIZE * 0.1;
-                  const offsetY = -nx * TILE_SIZE * 0.1;
-
-                  const x1 = startX_center + nx * powerArrowGap + offsetX;
-                  const y1 = startY_center + ny * powerArrowGap + offsetY;
-                  const x2 = endX_center - nx * powerArrowGap + offsetX;
-                  const y2 = endY_center - ny * powerArrowGap + offsetY;
+                  const x1 = startX_center + nx * powerArrowGap;
+                  const y1 = startY_center + ny * powerArrowGap;
+                  const x2 = endX_center - nx * powerArrowGap;
+                  const y2 = endY_center - ny * powerArrowGap;
                   
                   const tipX = x2;
                   const tipY = y2;
