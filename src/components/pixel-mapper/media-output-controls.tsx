@@ -1,3 +1,4 @@
+
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
@@ -23,13 +24,16 @@ export function MediaOutputControls() {
 
   const isOutOfBounds = useMemo(() => {
     if (!rasterMapConfig || !activeBounds || !rasterOffset) return false;
+    
     const contentWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
     const contentHeight = (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight;
+    const { outputWidth, outputHeight } = rasterMapConfig;
+
+    // Warn if the entire content area is moved outside the output frame.
+    const isHorizontallyOut = (rasterOffset.x + contentWidth) <= 0 || rasterOffset.x >= outputWidth;
+    const isVerticallyOut = (rasterOffset.y + contentHeight) <= 0 || rasterOffset.y >= outputHeight;
     
-    return rasterOffset.x < 0 || 
-           rasterOffset.y < 0 || 
-           (rasterOffset.x + contentWidth) > rasterMapConfig.totalWidth ||
-           (rasterOffset.y + contentHeight) > rasterMapConfig.totalHeight;
+    return isHorizontallyOut || isVerticallyOut;
 
   }, [rasterMapConfig, activeBounds, dimensions, rasterOffset]);
 
