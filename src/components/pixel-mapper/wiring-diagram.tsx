@@ -148,19 +148,6 @@ export function WiringDiagram() {
                   height: dimensions.screenHeight * TILE_SIZE,
                 }}
               >
-                <defs>
-                  <marker
-                    id="arrowhead"
-                    viewBox={`0 0 ${arrowheadLength} ${arrowheadSize}`}
-                    refX={arrowheadLength}
-                    refY={arrowheadSize / 2}
-                    markerWidth={arrowheadSize}
-                    markerHeight={arrowheadSize}
-                    orient="auto-start-reverse"
-                  >
-                    <path d={`M 0 0 L ${arrowheadLength} ${arrowheadSize / 2} L 0 ${arrowheadSize} z`} fill="hsl(var(--data-wiring))" />
-                  </marker>
-                </defs>
                 {showDataLabels && wiringData.map(({ x, y, nextTile, isDeleted }) => {
                   if (isDeleted || !nextTile) {
                     return null;
@@ -182,26 +169,46 @@ export function WiringDiagram() {
                     return null; // Don't draw if tiles are too close for the gap
                   }
 
-                  const startOffsetX = (dx / distance) * arrowGap;
-                  const startOffsetY = (dy / distance) * arrowGap;
+                  const nx = dx / distance;
+                  const ny = dy / distance;
 
-                  const x1 = startX_center + startOffsetX;
-                  const y1 = startY_center + startOffsetY;
+                  const x1 = startX_center + nx * arrowGap;
+                  const y1 = startY_center + ny * arrowGap;
 
-                  const x2 = endX_center - startOffsetX;
-                  const y2 = endY_center - startOffsetY;
+                  const x2 = endX_center - nx * arrowGap;
+                  const y2 = endY_center - ny * arrowGap;
+                  
+                  // Manually calculate arrowhead points to ensure reliable PNG export
+                  const tipX = x2;
+                  const tipY = y2;
+                  
+                  const baseCenterX = tipX - nx * arrowheadLength;
+                  const baseCenterY = tipY - ny * arrowheadLength;
+                  
+                  // Perpendicular vector is (-ny, nx)
+                  const p2x = baseCenterX - ny * (arrowheadSize / 2);
+                  const p2y = baseCenterY + nx * (arrowheadSize / 2);
+                  
+                  const p3x = baseCenterX + ny * (arrowheadSize / 2);
+                  const p3y = baseCenterY - nx * (arrowheadSize / 2);
+                  
+                  const arrowheadPoints = `${tipX},${tipY} ${p2x},${p2y} ${p3x},${p3y}`;
 
                   return (
-                    <line
-                      key={`line-${x}-${y}`}
-                      x1={x1}
-                      y1={y1}
-                      x2={x2}
-                      y2={y2}
-                      stroke="hsl(var(--data-wiring))"
-                      strokeWidth="3"
-                      markerEnd="url(#arrowhead)"
-                    />
+                    <g key={`arrow-${x}-${y}`}>
+                      <line
+                        x1={x1}
+                        y1={y1}
+                        x2={x2}
+                        y2={y2}
+                        stroke="hsl(var(--data-wiring))"
+                        strokeWidth="3"
+                      />
+                       <polygon
+                          points={arrowheadPoints}
+                          fill="hsl(var(--data-wiring))"
+                      />
+                    </g>
                   );
                 })}
               </svg>
