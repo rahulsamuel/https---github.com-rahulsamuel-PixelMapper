@@ -3,6 +3,7 @@
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
 import { useMemo } from 'react';
+import { cn } from "@/lib/utils";
 
 export function RasterMapPreview() {
   const { 
@@ -34,7 +35,21 @@ export function RasterMapPreview() {
     );
   }
 
-  const { totalWidth, totalHeight, outputWidth, outputHeight, previewImage } = rasterMapConfig;
+  const { totalWidth, totalHeight, outputWidth, outputHeight, previewImage, slices, resolutionType } = rasterMapConfig;
+  
+  const getSliceBorderColor = () => {
+    switch(resolutionType) {
+        case 'hd':
+            return 'border-chart-1'; // Blue
+        case '4k-uhd':
+            return 'border-chart-2'; // Green
+        case '4k-dci':
+            return 'border-chart-4'; // Purple
+        case 'content':
+        default:
+            return 'border-primary';
+    }
+  }
   
   return (
      <div className="p-4 bg-muted/20 w-full h-full">
@@ -62,7 +77,36 @@ export function RasterMapPreview() {
                 backgroundImage: previewImage ? `url(${previewImage})` : 'none',
                 backgroundRepeat: 'no-repeat',
               }}
-            />
+            >
+                {/* Slices visualization */}
+                {slices && slices.length > 1 && slices.map(slice => (
+                    <div 
+                        key={slice.key} 
+                        className={cn(
+                            "absolute border-2 border-dashed flex items-center justify-center pointer-events-none",
+                            getSliceBorderColor()
+                        )}
+                        style={{
+                            left: slice.x,
+                            top: slice.y,
+                            width: slice.width,
+                            height: slice.height,
+                            boxSizing: 'border-box'
+                        }}
+                    >
+                        <div 
+                            className="text-center p-2 rounded-md bg-background/80"
+                            style={{
+                                transform: `scale(${Math.min(2, Math.max(0.5, 1 / zoom))})`, // Adjust label size based on zoom
+                                transformOrigin: 'center center',
+                            }}
+                        >
+                            <p className="font-bold whitespace-nowrap">{slice.filename.split('/').pop()?.replace('.png','').replace('raster-map-','')}</p>
+                            <p className="font-mono text-xs whitespace-nowrap">Size: {slice.width}x{slice.height}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     </div>
   );
