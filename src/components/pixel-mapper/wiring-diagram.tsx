@@ -6,6 +6,7 @@ import { getWiringData } from "@/lib/wiring";
 import { RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useState, useEffect } from "react";
 
 export function WiringDiagram() {
   const { 
@@ -31,6 +32,16 @@ export function WiringDiagram() {
     isWiringMirrored,
     setIsWiringMirrored,
   } = usePixelMapper();
+
+  const [wiringColor, setWiringColor] = useState('hsl(140, 60%, 40%)'); // Fallback color
+
+  useEffect(() => {
+    // We need to wait for the component to be mounted to access computed styles from CSS variables
+    const computedColor = getComputedStyle(document.documentElement).getPropertyValue('--data-wiring').trim();
+    if (computedColor) {
+      setWiringColor(`hsl(${computedColor})`);
+    }
+  }, []);
 
   const wiringData = getWiringData({ dimensions, tiles, wiringPortConfig, wiringPattern, rasterMapConfig, activeBounds });
   const mainPortsCount = wiringData.filter(d => d.dataLabel).length;
@@ -201,12 +212,12 @@ export function WiringDiagram() {
                         y1={y1}
                         x2={x2}
                         y2={y2}
-                        stroke="hsl(var(--data-wiring))"
+                        stroke={wiringColor}
                         strokeWidth="3"
                       />
                        <polygon
                           points={arrowheadPoints}
-                          fill="hsl(var(--data-wiring))"
+                          fill={wiringColor}
                       />
                     </g>
                   );
