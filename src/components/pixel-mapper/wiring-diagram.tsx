@@ -18,8 +18,8 @@ export function WiringDiagram() {
     tileColor, 
     tileColorTwo, 
     onOffMode, 
-    wiringTilesPerPort, 
-    setWiringTilesPerPort, 
+    wiringPortConfig, 
+    setWiringPortConfig, 
     zoom,
     showDataLabels,
     setShowDataLabels,
@@ -32,7 +32,7 @@ export function WiringDiagram() {
   const [isMirrored, setIsMirrored] = useState(false);
   const wiringDiagramRef = useRef<HTMLDivElement>(null);
 
-  const wiringData = getWiringData(dimensions, tiles, wiringTilesPerPort);
+  const wiringData = getWiringData(dimensions, tiles, wiringPortConfig);
 
   const handleDownload = () => {
     if (wiringDiagramRef.current) {
@@ -73,11 +73,11 @@ export function WiringDiagram() {
                 <Label htmlFor="tiles-per-port" className="whitespace-nowrap">Tiles per Port</Label>
                 <Input
                     id="tiles-per-port"
-                    type="number"
-                    value={wiringTilesPerPort}
-                    onChange={(e) => setWiringTilesPerPort(Math.max(1, Number(e.target.value) || 1))}
-                    className="w-20 h-8"
-                    min="1"
+                    type="text"
+                    value={wiringPortConfig}
+                    onChange={(e) => setWiringPortConfig(e.target.value)}
+                    className="w-28 h-8"
+                    placeholder="e.g., 10,20,10"
                 />
             </div>
              <div className="flex items-center space-x-2">

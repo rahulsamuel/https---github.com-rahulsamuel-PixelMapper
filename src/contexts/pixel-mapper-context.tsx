@@ -92,8 +92,8 @@ interface PixelMapperState {
   setRasterMapConfig: Dispatch<SetStateAction<RasterMapConfig | null>>;
   rasterOffset: { x: number; y: number; };
   setRasterOffset: Dispatch<SetStateAction<{ x: number; y: number; }>>;
-  wiringTilesPerPort: number;
-  setWiringTilesPerPort: Dispatch<SetStateAction<number>>;
+  wiringPortConfig: string;
+  setWiringPortConfig: Dispatch<SetStateAction<string>>;
   showDataLabels: boolean;
   setShowDataLabels: Dispatch<SetStateAction<boolean>>;
   showPowerLabels: boolean;
@@ -145,7 +145,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [lastRasterArgs, setLastRasterArgs] = useState<RasterArgs | null>(null);
 
   // Wiring state
-  const [wiringTilesPerPort, setWiringTilesPerPort] = useState(10);
+  const [wiringPortConfig, setWiringPortConfig] = useState("10");
   const [showDataLabels, setShowDataLabels] = useState(true);
   const [showPowerLabels, setShowPowerLabels] = useState(true);
 
@@ -564,8 +564,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setRasterMapConfig,
     rasterOffset,
     setRasterOffset,
-    wiringTilesPerPort,
-    setWiringTilesPerPort,
+    wiringPortConfig,
+    setWiringPortConfig,
     showDataLabels,
     setShowDataLabels,
     showPowerLabels,

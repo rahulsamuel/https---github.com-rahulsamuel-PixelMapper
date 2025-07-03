@@ -40,11 +40,20 @@ const getUniverseLabel = (n: number): string => {
 export function getWiringData(
   dimensions: Dimensions,
   tiles: Tile[],
-  tilesPerPort: number
+  wiringPortConfig: string
 ): WiringInfo[] {
   const { screenWidth, screenHeight } = dimensions;
   if (!tiles || tiles.length === 0) {
     return [];
+  }
+
+  const portLengths = wiringPortConfig
+    .split(',')
+    .map(s => parseInt(s.trim(), 10))
+    .filter(n => !isNaN(n) && n > 0);
+
+  if (portLengths.length === 0) {
+    portLengths.push(10); // Default to 10 if input is invalid
   }
 
   const allTilesData = tiles.map((tile, index) => {
@@ -91,7 +100,8 @@ export function getWiringData(
     const universe = getUniverseLabel(dataUniverseCounter);
     tile.dataLabel = `${universe}${dataAddressCounter}`;
 
-    const isLastTileOfRun = dataAddressCounter >= tilesPerPort;
+    const currentPortLength = portLengths[dataUniverseCounter] || portLengths[portLengths.length - 1];
+    const isLastTileOfRun = dataAddressCounter >= currentPortLength;
     const isLastTileOverall = pathIndex >= activeTilesPath.length - 1;
 
     if (!isLastTileOfRun && !isLastTileOverall) {
@@ -107,7 +117,7 @@ export function getWiringData(
     }
 
     dataAddressCounter++;
-    if (dataAddressCounter > tilesPerPort) {
+    if (dataAddressCounter > currentPortLength) {
       dataAddressCounter = 1;
       dataUniverseCounter++;
     }
