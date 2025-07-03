@@ -49,8 +49,6 @@ interface WiringInfo {
   nextTile: { x: number; y: number } | null;
 }
 
-const TILES_PER_POWER_CIRCUIT = 20;
-
 const UNIVERSE_LETTERS = [
     'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 
     'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
@@ -101,6 +99,7 @@ function getPathOrder(indices: number[], pattern: WiringPattern, screenWidth: nu
 function applyWiringToPath(
     activeTilesPath: { tile: WiringInfo; index: number; }[],
     wiringPortConfig: string,
+    tilesPerPowerString: string,
     counters: { 
         powerCounter: number;
         powerGroupCounter: number;
@@ -110,12 +109,13 @@ function applyWiringToPath(
     if (activeTilesPath.length === 0) return;
     
     const subgroupSize = parseInt(wiringPortConfig.trim(), 10) || 4;
+    const tilesPerPowerCircuit = parseInt(tilesPerPowerString.trim(), 10) || 20;
     const subgroupsPerUniverse = 10;
       
     activeTilesPath.forEach(({ tile: currentTileInfo }, pathIndex) => {
       // Power
       counters.powerGroupCounter++;
-      if (counters.powerGroupCounter > TILES_PER_POWER_CIRCUIT) {
+      if (counters.powerGroupCounter > tilesPerPowerCircuit) {
         counters.powerCounter++;
         counters.powerGroupCounter = 1;
       }
@@ -164,6 +164,7 @@ interface GetWiringDataArgs {
     dimensions: Dimensions;
     tiles: Tile[];
     wiringPortConfig: string;
+    tilesPerPowerString: string;
     wiringPattern: WiringPattern;
     rasterMapConfig?: RasterMapConfig | null;
     activeBounds?: ActiveBounds | null;
@@ -173,6 +174,7 @@ export function getWiringData({
   dimensions,
   tiles,
   wiringPortConfig,
+  tilesPerPowerString,
   wiringPattern,
   rasterMapConfig,
   activeBounds
@@ -224,7 +226,7 @@ export function getWiringData({
       
       // Reset data port numbering for each slice, but continue power.
       const sliceCounters = { ...counters, groupNumOverall: 0 };
-      applyWiringToPath(activeTilesPath, wiringPortConfig, sliceCounters);
+      applyWiringToPath(activeTilesPath, wiringPortConfig, tilesPerPowerString, sliceCounters);
       
       // Persist the power counters for the next slice
       counters.powerCounter = sliceCounters.powerCounter;
@@ -241,7 +243,7 @@ export function getWiringData({
     );
     const activeTilesPath = pathOrder.map(index => ({ tile: allTilesData[index], index }));
     const counters = { powerCounter: 1, powerGroupCounter: 0, groupNumOverall: 0 };
-    applyWiringToPath(activeTilesPath, wiringPortConfig, counters);
+    applyWiringToPath(activeTilesPath, wiringPortConfig, tilesPerPowerString, counters);
   }
 
   return allTilesData;

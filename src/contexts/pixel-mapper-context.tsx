@@ -79,6 +79,7 @@ interface ProjectData {
   arrowheadLength: number;
   arrowGap: number;
   brushColor: string;
+  tilesPerPowerString: string;
 }
 
 interface PixelMapperState {
@@ -144,6 +145,8 @@ interface PixelMapperState {
   setBrushColor: Dispatch<SetStateAction<string>>;
   isWiringMirrored: boolean;
   setIsWiringMirrored: Dispatch<SetStateAction<boolean>>;
+  tilesPerPowerString: string;
+  setTilesPerPowerString: Dispatch<SetStateAction<string>>;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -195,6 +198,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
   // Wiring state
   const [wiringPortConfig, setWiringPortConfig] = useState("4");
+  const [tilesPerPowerString, setTilesPerPowerString] = useState("20");
   const [showDataLabels, setShowDataLabels] = useState(true);
   const [showPowerLabels, setShowPowerLabels] = useState(true);
   const [wiringPattern, setWiringPattern] = useState<WiringPattern>('serpentine-horizontal');
@@ -672,6 +676,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       arrowheadLength,
       arrowGap,
       brushColor,
+      tilesPerPowerString,
     };
 
     const jsonString = JSON.stringify(projectData, null, 2);
@@ -693,7 +698,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     dimensions, tiles, tileColor, tileColorTwo, borderWidth, borderColor, activeTool,
     showLabels, labelFormat, labelFontSize, labelColor, onOffMode, zoom, rasterOffset,
     lastRasterArgs, wiringPortConfig, showDataLabels, showPowerLabels, wiringPattern,
-    arrowheadSize, arrowheadLength, arrowGap, brushColor, toast
+    arrowheadSize, arrowheadLength, arrowGap, brushColor, tilesPerPowerString, toast
   ]);
   
   const importProject = useCallback((file: File) => {
@@ -740,6 +745,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setArrowheadLength(data.arrowheadLength);
         setArrowGap(data.arrowGap);
         setBrushColor(data.brushColor || "#e11d48");
+        setTilesPerPowerString(data.tilesPerPowerString || "20");
         
         toast({
           title: "Import Successful",
@@ -811,6 +817,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setRasterOffset,
     wiringPortConfig,
     setWiringPortConfig,
+    tilesPerPowerString,
+    setTilesPerPowerString,
     showDataLabels,
     setShowDataLabels,
     showPowerLabels,

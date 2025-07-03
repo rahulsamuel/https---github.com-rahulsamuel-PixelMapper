@@ -51,7 +51,7 @@ export function WiringControls() {
         </Select>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="tiles-per-group">Tiles per Group</Label>
+        <Label htmlFor="tiles-per-group">Tiles per Data Port</Label>
         <Input
             id="tiles-per-group"
             type="number"

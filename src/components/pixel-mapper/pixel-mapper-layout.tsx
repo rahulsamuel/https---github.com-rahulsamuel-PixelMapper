@@ -18,13 +18,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "./edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, Grid3x3, Paintbrush, Type, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Download } from "lucide-react";
+import { ZoomIn, ZoomOut, Grid3x3, Paintbrush, Type, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Download, Bolt } from "lucide-react";
 import { LabelControls } from "./label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { MediaOutputControls } from "./media-output-controls";
 import { RasterMapPreview } from "./raster-map-preview";
 import { WiringControls } from "./wiring-controls";
+import { PowerControls } from "./power-controls";
 import { ColorToolControls } from "./color-tool-controls";
 import {
   Accordion,
@@ -95,11 +96,19 @@ export function PixelMapperLayout() {
                 </AccordionContent>
               </AccordionItem>
               
-              <AccordionItem value="wiring" className="border-none">
-                <AccordionSectionTrigger icon={<GitBranch className="size-5" />} title="Wiring" />
+              <AccordionItem value="data-wiring" className="border-none">
+                <AccordionSectionTrigger icon={<GitBranch className="size-5" />} title="Data Wiring" />
                 <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
-                  <p className="text-sm text-muted-foreground pb-4">Define wiring patterns and data port settings.</p>
+                  <p className="text-sm text-muted-foreground pb-4">Define data wiring patterns and port settings.</p>
                   <WiringControls />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="power-wiring" className="border-none">
+                <AccordionSectionTrigger icon={<Bolt className="size-5" />} title="Power Wiring" />
+                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
+                  <p className="text-sm text-muted-foreground pb-4">Define how many tiles are on each power circuit.</p>
+                  <PowerControls />
                 </AccordionContent>
               </AccordionItem>
 
