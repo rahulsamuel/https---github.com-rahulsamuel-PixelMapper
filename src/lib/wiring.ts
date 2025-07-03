@@ -96,31 +96,17 @@ function getPathOrder(indices: number[], pattern: WiringPattern, screenWidth: nu
   });
 }
 
-function applyWiringToPath(
+function applyDataWiring(
     activeTilesPath: { tile: WiringInfo; index: number; }[],
     wiringPortConfig: string,
-    tilesPerPowerString: string,
-    counters: { 
-        powerCounter: number;
-        powerGroupCounter: number;
-        groupNumOverall: number;
-     }
+    counters: { groupNumOverall: number; }
 ) {
     if (activeTilesPath.length === 0) return;
     
     const subgroupSize = parseInt(wiringPortConfig.trim(), 10) || 4;
-    const tilesPerPowerCircuit = parseInt(tilesPerPowerString.trim(), 10) || 20;
     const subgroupsPerUniverse = 10;
       
     activeTilesPath.forEach(({ tile: currentTileInfo }, pathIndex) => {
-      // Power
-      counters.powerGroupCounter++;
-      if (counters.powerGroupCounter > tilesPerPowerCircuit) {
-        counters.powerCounter++;
-        counters.powerGroupCounter = 1;
-      }
-      currentTileInfo.powerLabel = `P${counters.powerCounter}`;
-
       // Data
       const isFirstInGroup = pathIndex % subgroupSize === 0;
       if (isFirstInGroup) {
@@ -159,6 +145,25 @@ function applyWiringToPath(
     });
 }
 
+function applyPowerWiring(
+    activeTilesPath: { tile: WiringInfo; index: number; }[],
+    tilesPerPowerString: string,
+    counters: { powerCounter: number; powerGroupCounter: number; }
+) {
+    if (activeTilesPath.length === 0) return;
+    
+    const tilesPerPowerCircuit = parseInt(tilesPerPowerString.trim(), 10) || 20;
+
+    activeTilesPath.forEach(({ tile: currentTileInfo }) => {
+      counters.powerGroupCounter++;
+      if (counters.powerGroupCounter > tilesPerPowerCircuit) {
+        counters.powerCounter++;
+        counters.powerGroupCounter = 1;
+      }
+      currentTileInfo.powerLabel = `P${counters.powerCounter}`;
+    });
+}
+
 
 interface GetWiringDataArgs {
     dimensions: Dimensions;
@@ -166,6 +171,7 @@ interface GetWiringDataArgs {
     wiringPortConfig: string;
     tilesPerPowerString: string;
     wiringPattern: WiringPattern;
+    powerWiringPattern: WiringPattern;
     rasterMapConfig?: RasterMapConfig | null;
     activeBounds?: ActiveBounds | null;
 }
@@ -176,6 +182,7 @@ export function getWiringData({
   wiringPortConfig,
   tilesPerPowerString,
   wiringPattern,
+  powerWiringPattern,
   rasterMapConfig,
   activeBounds
 }: GetWiringDataArgs): WiringInfo[] {
@@ -194,13 +201,14 @@ export function getWiringData({
     nextTile: null,
   }));
 
+  const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
+
   // Sliced wiring logic
   if (rasterMapConfig && activeBounds && rasterMapConfig.slices.length > 1 && rasterMapConfig.outputWidth > 0 && rasterMapConfig.outputHeight > 0) {
     const { outputWidth: sliceWidth, outputHeight: sliceHeight } = rasterMapConfig;
     
     const tilesBySlice = new Map<string, number[]>();
-    tiles.forEach((tile, index) => {
-      if (tile.deleted) return;
+    activeTileIndices.forEach(index => {
       const x = index % screenWidth;
       const y = Math.floor(index / screenWidth);
       if (x < activeBounds.minX || x > activeBounds.maxX || y < activeBounds.minY || y > activeBounds.maxY) return;
@@ -216,34 +224,36 @@ export function getWiringData({
       tilesBySlice.get(sliceKey)!.push(index);
     });
 
-    const counters = { powerCounter: 1, powerGroupCounter: 0, groupNumOverall: 0 };
+    const powerCounters = { powerCounter: 1, powerGroupCounter: 0 };
     const sortedSliceKeys = Array.from(tilesBySlice.keys()).sort();
 
     for (const sliceKey of sortedSliceKeys) {
-      const sliceIndices = tilesBySlice.get(sliceKey)!;
-      const pathOrder = getPathOrder(sliceIndices, wiringPattern, screenWidth, screenHeight);
-      const activeTilesPath = pathOrder.map(index => ({ tile: allTilesData[index], index }));
-      
-      // Reset data port numbering for each slice, but continue power.
-      const sliceCounters = { ...counters, groupNumOverall: 0 };
-      applyWiringToPath(activeTilesPath, wiringPortConfig, tilesPerPowerString, sliceCounters);
-      
-      // Persist the power counters for the next slice
-      counters.powerCounter = sliceCounters.powerCounter;
-      counters.powerGroupCounter = sliceCounters.powerGroupCounter;
-    }
+        const sliceIndices = tilesBySlice.get(sliceKey)!;
 
+        // Data Path for slice
+        const dataPathOrder = getPathOrder(sliceIndices, wiringPattern, screenWidth, screenHeight);
+        const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
+        const dataCounters = { groupNumOverall: 0 }; // Reset data for each slice
+        applyDataWiring(dataTilesPath, wiringPortConfig, dataCounters);
+        
+        // Power Path for slice - power continues across slices
+        const powerPathOrder = getPathOrder(sliceIndices, powerWiringPattern, screenWidth, screenHeight);
+        const powerTilesPath = powerPathOrder.map(index => ({ tile: allTilesData[index], index }));
+        applyPowerWiring(powerTilesPath, tilesPerPowerString, powerCounters);
+    }
   } else {
-    // Original (un-sliced) logic
-    const pathOrder = getPathOrder(
-      tiles.map((_, i) => i).filter(i => !tiles[i].deleted),
-      wiringPattern,
-      screenWidth,
-      screenHeight
-    );
-    const activeTilesPath = pathOrder.map(index => ({ tile: allTilesData[index], index }));
-    const counters = { powerCounter: 1, powerGroupCounter: 0, groupNumOverall: 0 };
-    applyWiringToPath(activeTilesPath, wiringPortConfig, tilesPerPowerString, counters);
+    // Un-sliced logic
+    // Data Path
+    const dataPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
+    const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
+    const dataCounters = { groupNumOverall: 0 };
+    applyDataWiring(dataTilesPath, wiringPortConfig, dataCounters);
+    
+    // Power Path
+    const powerPathOrder = getPathOrder(activeTileIndices, powerWiringPattern, screenWidth, screenHeight);
+    const powerTilesPath = powerPathOrder.map(index => ({ tile: allTilesData[index], index }));
+    const powerCounters = { powerCounter: 1, powerGroupCounter: 0 };
+    applyPowerWiring(powerTilesPath, tilesPerPowerString, powerCounters);
   }
 
   return allTilesData;

@@ -75,6 +75,7 @@ interface ProjectData {
   showDataLabels: boolean;
   showPowerLabels: boolean;
   wiringPattern: WiringPattern;
+  powerWiringPattern: WiringPattern;
   arrowheadSize: number;
   arrowheadLength: number;
   arrowGap: number;
@@ -133,6 +134,8 @@ interface PixelMapperState {
   setShowPowerLabels: Dispatch<SetStateAction<boolean>>;
   wiringPattern: WiringPattern;
   setWiringPattern: Dispatch<SetStateAction<WiringPattern>>;
+  powerWiringPattern: WiringPattern;
+  setPowerWiringPattern: Dispatch<SetStateAction<WiringPattern>>;
   arrowheadSize: number;
   setArrowheadSize: Dispatch<SetStateAction<number>>;
   arrowheadLength: number;
@@ -202,6 +205,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [showDataLabels, setShowDataLabels] = useState(true);
   const [showPowerLabels, setShowPowerLabels] = useState(true);
   const [wiringPattern, setWiringPattern] = useState<WiringPattern>('serpentine-horizontal');
+  const [powerWiringPattern, setPowerWiringPattern] = useState<WiringPattern>('left-right');
   const [arrowheadSize, setArrowheadSize] = useState(6);
   const [arrowheadLength, setArrowheadLength] = useState(10);
   const [arrowGap, setArrowGap] = useState(30);
@@ -672,6 +676,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       showDataLabels,
       showPowerLabels,
       wiringPattern,
+      powerWiringPattern,
       arrowheadSize,
       arrowheadLength,
       arrowGap,
@@ -698,7 +703,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     dimensions, tiles, tileColor, tileColorTwo, borderWidth, borderColor, activeTool,
     showLabels, labelFormat, labelFontSize, labelColor, onOffMode, zoom, rasterOffset,
     lastRasterArgs, wiringPortConfig, showDataLabels, showPowerLabels, wiringPattern,
-    arrowheadSize, arrowheadLength, arrowGap, brushColor, tilesPerPowerString, toast
+    powerWiringPattern, arrowheadSize, arrowheadLength, arrowGap, brushColor, 
+    tilesPerPowerString, toast
   ]);
   
   const importProject = useCallback((file: File) => {
@@ -741,6 +747,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setShowDataLabels(data.showDataLabels);
         setShowPowerLabels(data.showPowerLabels);
         setWiringPattern(data.wiringPattern);
+        setPowerWiringPattern(data.powerWiringPattern || 'left-right');
         setArrowheadSize(data.arrowheadSize);
         setArrowheadLength(data.arrowheadLength);
         setArrowGap(data.arrowGap);
@@ -825,6 +832,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setShowPowerLabels,
     wiringPattern,
     setWiringPattern,
+    powerWiringPattern,
+    setPowerWiringPattern,
     arrowheadSize,
     setArrowheadSize,
     arrowheadLength,

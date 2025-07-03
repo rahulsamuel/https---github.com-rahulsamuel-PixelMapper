@@ -24,6 +24,7 @@ export function WiringDiagram() {
     showLabels,
     labelColor,
     wiringPattern,
+    powerWiringPattern,
     arrowheadSize,
     arrowheadLength,
     arrowGap,
@@ -46,7 +47,7 @@ export function WiringDiagram() {
     }
   }, []);
 
-  const wiringData = getWiringData({ dimensions, tiles, wiringPortConfig, wiringPattern, rasterMapConfig, activeBounds, tilesPerPowerString });
+  const wiringData = getWiringData({ dimensions, tiles, wiringPortConfig, wiringPattern, powerWiringPattern, rasterMapConfig, activeBounds, tilesPerPowerString });
   const mainPortsCount = wiringData.filter(d => d.dataLabel).length;
   
   const TILE_SIZE = 120;
