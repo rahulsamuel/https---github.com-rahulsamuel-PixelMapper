@@ -706,9 +706,32 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
     const cropHeight = (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight;
 
+    // Manually set colors before capturing
     const computedStyle = getComputedStyle(document.documentElement);
-    const dataWiringColor = computedStyle.getPropertyValue('--data-wiring').trim();
-    const powerWiringColor = computedStyle.getPropertyValue('--power-wiring').trim();
+    const dataWiringColor = `hsl(${computedStyle.getPropertyValue('--data-wiring').trim()})`;
+    const powerWiringColor = `hsl(${computedStyle.getPropertyValue('--power-wiring').trim()})`;
+
+    const svgs = node.querySelectorAll('svg');
+    const modifications: Array<{el: Element, attr: string, originalValue: string}> = [];
+
+    svgs.forEach(svg => {
+        const elementsToModify = svg.querySelectorAll('[stroke*="--data-wiring"], [fill*="--data-wiring"], [stroke*="--power-wiring"], [fill*="--power-wiring"]');
+
+        elementsToModify.forEach(el => {
+            const stroke = el.getAttribute('stroke');
+            if (stroke) {
+                modifications.push({ el, attr: 'stroke', originalValue: stroke });
+                if (stroke.includes('--data-wiring')) el.setAttribute('stroke', dataWiringColor);
+                if (stroke.includes('--power-wiring')) el.setAttribute('stroke', powerWiringColor);
+            }
+            const fill = el.getAttribute('fill');
+            if (fill) {
+                modifications.push({ el, attr: 'fill', originalValue: fill });
+                if (fill.includes('--data-wiring')) el.setAttribute('fill', dataWiringColor);
+                if (fill.includes('--power-wiring')) el.setAttribute('fill', powerWiringColor);
+            }
+        });
+    });
 
     toPng(node, {
       cacheBust: true,
@@ -717,8 +740,6 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       width: node.scrollWidth,
       height: node.scrollHeight,
       style: {
-        '--data-wiring': dataWiringColor,
-        '--power-wiring': powerWiringColor,
         transform: 'none',
       }
     })
@@ -759,6 +780,12 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
           title: "Download Failed",
           description: "Could not generate the wiring diagram image.",
           variant: "destructive",
+        });
+      })
+      .finally(() => {
+        // Revert DOM changes
+        modifications.forEach(({ el, attr, originalValue }) => {
+            el.setAttribute(attr, originalValue);
         });
       });
   }, [wiringDiagramRef, isWiringMirrored, toast, activeBounds, dimensions]);
