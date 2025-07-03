@@ -18,7 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "./edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, Grid3x3, Paintbrush, Type, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Download, Bolt } from "lucide-react";
+import { ZoomIn, ZoomOut, Grid3x3, Paintbrush, Type, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Download, Bolt, Expand } from "lucide-react";
 import { LabelControls } from "./label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -34,16 +34,61 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { DownloadsControls } from "./downloads-controls";
+import { useState, useRef } from "react";
 
 
 export function PixelMapperLayout() {
-  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, restoreDeletedTiles, resetAllColors, activeTool } = usePixelMapper();
+  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig } = usePixelMapper();
+  const [activeTab, setActiveTab] = useState("grid");
+  const gridViewportRef = useRef<HTMLDivElement>(null);
+  const wiringViewportRef = useRef<HTMLDivElement>(null);
+  const rasterViewportRef = useRef<HTMLDivElement>(null);
 
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : 0;
   const totalHeight = activeBounds ? (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight : 0;
 
-  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.1, 2));
-  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.1));
+  const handleZoomIn = () => setZoom(prev => Math.min(prev * 1.2, 5));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev / 1.2, 0.1));
+  
+  const handleFitToScreen = () => {
+    let gridWidth = 0;
+    let gridHeight = 0;
+    let viewportEl: HTMLDivElement | null = null;
+
+    switch (activeTab) {
+      case 'grid':
+        gridWidth = dimensions.screenWidth * dimensions.tileWidth;
+        gridHeight = dimensions.screenHeight * dimensions.tileHeight;
+        viewportEl = gridViewportRef.current;
+        break;
+      case 'wiring':
+        gridWidth = dimensions.screenWidth * 120;
+        gridHeight = dimensions.screenHeight * 120;
+        viewportEl = wiringViewportRef.current;
+        break;
+      case 'raster':
+        if (rasterMapConfig) {
+          gridWidth = rasterMapConfig.totalWidth;
+          gridHeight = rasterMapConfig.totalHeight;
+        }
+        viewportEl = rasterViewportRef.current;
+        break;
+    }
+
+    if (!viewportEl || gridWidth <= 0 || gridHeight <= 0) {
+      setZoom(1); // Fallback
+      return;
+    }
+
+    const { clientWidth: viewportWidth, clientHeight: viewportHeight } = viewportEl;
+    const padding = 64; // Add some padding around the content
+
+    const scaleX = (viewportWidth - padding) / gridWidth;
+    const scaleY = (viewportHeight - padding) / gridHeight;
+
+    const newZoom = Math.min(scaleX, scaleY);
+    setZoom(newZoom > 0 ? newZoom : 1);
+  };
   
   const AccordionSectionTrigger = ({ icon, title }: { icon: React.ReactNode, title: string }) => (
     <AccordionTrigger className="bg-card hover:bg-muted/50 px-4 py-3 rounded-lg text-base font-semibold border data-[state=closed]:shadow-sm">
@@ -160,7 +205,7 @@ export function PixelMapperLayout() {
         </SidebarContent>
       </Sidebar>
       <SidebarInset>
-        <Tabs defaultValue="grid" className="flex flex-col h-full w-full">
+        <Tabs defaultValue="grid" className="flex flex-col h-full w-full" onValueChange={setActiveTab}>
           <div className="p-4 border-b flex items-center justify-between flex-shrink-0">
             <TabsList>
               <TabsTrigger value="grid">LED Grid</TabsTrigger>
@@ -171,31 +216,37 @@ export function PixelMapperLayout() {
               <div className="text-sm text-muted-foreground">
                 Resolution: <span className="font-mono">{totalWidth}px</span> x <span className="font-mono">{totalHeight}px</span>
               </div>
-              <div className="flex items-center gap-1 rounded-lg border p-1">
-                <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-7 w-7">
-                  <ZoomOut />
-                </Button>
-                <span className="w-12 text-center font-mono text-sm">{Math.round(zoom * 100)}%</span>
-                <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-7 w-7">
-                  <ZoomIn />
-                </Button>
-              </div>
                <div className="flex items-center space-x-2">
                 <Switch id="on-off-switch" checked={onOffMode} onCheckedChange={setOnOffMode} />
                 <Label htmlFor="on-off-switch">ON/OFF</Label>
               </div>
             </div>
           </div>
-          <TabsContent value="grid" className="flex-grow overflow-auto">
+          <TabsContent value="grid" className="flex-grow overflow-auto" ref={gridViewportRef}>
             <LedGrid />
           </TabsContent>
-          <TabsContent value="wiring" className="flex-grow flex flex-col">
+          <TabsContent value="wiring" className="flex-grow flex flex-col" ref={wiringViewportRef}>
             <WiringDiagram />
           </TabsContent>
-          <TabsContent value="raster" className="flex-grow overflow-auto">
+          <TabsContent value="raster" className="flex-grow overflow-auto" ref={rasterViewportRef}>
             <RasterMapPreview />
           </TabsContent>
         </Tabs>
+        <div className="absolute bottom-4 right-4 z-10 flex items-center gap-1 rounded-lg border bg-background/80 p-1 shadow-md backdrop-blur-sm">
+          <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom Out">
+            <ZoomOut />
+          </Button>
+          <div className="w-14 text-center font-mono text-sm" title="Current Zoom">
+            {Math.round(zoom * 100)}%
+          </div>
+          <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom In">
+            <ZoomIn />
+          </Button>
+          <Separator orientation="vertical" className="h-6 mx-1" />
+          <Button onClick={handleFitToScreen} variant="ghost" size="icon" className="h-8 w-8" aria-label="Fit to Screen">
+            <Expand />
+          </Button>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );
