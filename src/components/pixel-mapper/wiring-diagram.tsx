@@ -38,6 +38,8 @@ export function WiringDiagram() {
     setIsWiringMirrored,
     borderWidth,
     borderColor,
+    dataLabelSize,
+    powerLabelSize,
   } = usePixelMapper();
 
   const [isMounted, setIsMounted] = useState(false);
@@ -165,12 +167,26 @@ export function WiringDiagram() {
                         className="flex flex-col items-center justify-center h-full w-full text-foreground relative"
                       >
                         {showDataLabels && (backupLabel || dataLabel) && (
-                          <div className={`rounded-full size-10 flex items-center justify-center text-sm font-bold z-10 ${backupLabel ? 'bg-destructive text-destructive-foreground' : 'bg-data-wiring text-data-wiring-foreground'}`}>
+                          <div 
+                            className={`rounded-full flex items-center justify-center font-bold z-10 ${backupLabel ? 'bg-destructive text-destructive-foreground' : 'bg-data-wiring text-data-wiring-foreground'}`}
+                            style={{
+                              width: `${dataLabelSize}px`,
+                              height: `${dataLabelSize}px`,
+                              fontSize: `${Math.max(8, dataLabelSize * 0.4)}px`,
+                            }}
+                          >
                             <span>{backupLabel || dataLabel}</span>
                           </div>
                         )}
                         {showPowerLabels && powerPortLabel && (
-                           <div className="bg-power-wiring text-power-wiring-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold z-10">
+                           <div 
+                              className="bg-power-wiring text-power-wiring-foreground rounded-full flex items-center justify-center font-bold z-10"
+                              style={{
+                                width: `${powerLabelSize}px`,
+                                height: `${powerLabelSize}px`,
+                                fontSize: `${Math.max(8, powerLabelSize * 0.4)}px`,
+                              }}
+                           >
                               <span>{powerPortLabel}</span>
                           </div>
                         )}

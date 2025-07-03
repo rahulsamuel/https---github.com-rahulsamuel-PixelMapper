@@ -89,6 +89,8 @@ interface ProjectData {
   brushColor: string;
   tilesPerPowerString: string;
   isWiringMirrored: boolean;
+  dataLabelSize?: number;
+  powerLabelSize?: number;
 }
 
 interface PixelMapperState {
@@ -167,6 +169,10 @@ interface PixelMapperState {
   setIsWiringMirrored: Dispatch<SetStateAction<boolean>>;
   tilesPerPowerString: string;
   setTilesPerPowerString: Dispatch<SetStateAction<string>>;
+  dataLabelSize: number;
+  setDataLabelSize: Dispatch<SetStateAction<number>>;
+  powerLabelSize: number;
+  setPowerLabelSize: Dispatch<SetStateAction<number>>;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -234,6 +240,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [powerArrowheadLength, setPowerArrowheadLength] = useState(30);
   const [powerArrowGap, setPowerArrowGap] = useState(50);
   const [isWiringMirrored, setIsWiringMirrored] = useState(false);
+  const [dataLabelSize, setDataLabelSize] = useState(40);
+  const [powerLabelSize, setPowerLabelSize] = useState(40);
 
   const zoom = zoomLevels[activeTab as keyof typeof zoomLevels] || 1;
   
@@ -747,6 +755,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       brushColor,
       tilesPerPowerString,
       isWiringMirrored,
+      dataLabelSize,
+      powerLabelSize,
     };
 
     const jsonString = JSON.stringify(projectData, null, 2);
@@ -770,7 +780,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     lastRasterArgs, wiringPortConfig, showDataLabels, showPowerLabels, wiringPattern,
     powerWiringPattern, arrowheadSize, arrowheadLength, arrowGap,
     powerArrowheadSize, powerArrowheadLength, powerArrowGap, brushColor, 
-    tilesPerPowerString, isWiringMirrored, toast
+    tilesPerPowerString, isWiringMirrored, dataLabelSize, powerLabelSize, toast
   ]);
   
   const importProject = useCallback((file: File) => {
@@ -834,6 +844,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setBrushColor(data.brushColor || "#e11d48");
         setTilesPerPowerString(data.tilesPerPowerString || "20");
         setIsWiringMirrored(data.isWiringMirrored || false);
+        setDataLabelSize(data.dataLabelSize || 40);
+        setPowerLabelSize(data.powerLabelSize || 40);
         
         toast({
           title: "Import Successful",
@@ -936,6 +948,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setBrushColor,
     isWiringMirrored,
     setIsWiringMirrored,
+    dataLabelSize,
+    setDataLabelSize,
+    powerLabelSize,
+    setPowerLabelSize,
   };
 
   return (
