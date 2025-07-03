@@ -50,14 +50,10 @@ interface WiringInfo {
   nextPowerTile: { x: number; y: number } | null;
 }
 
-const UNIVERSE_PAIRS: [string, string][] = [];
-for (let i = 0; i < 26; i += 2) {
-    const main = String.fromCharCode('A'.charCodeAt(0) + i);
-    const backup = String.fromCharCode('A'.charCodeAt(0) + i + 1);
-    if (backup <= 'Z') {
-        UNIVERSE_PAIRS.push([main, backup]);
-    }
-}
+const UNIVERSE_PAIRS: [string, string][] = [
+    ['A', 'B'],
+    ['C', 'D'],
+];
 
 
 export function getPathOrder(indices: number[], pattern: WiringPattern, screenWidth: number, screenHeight: number): number[] {
