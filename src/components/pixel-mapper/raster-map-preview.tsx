@@ -41,15 +41,20 @@ export function RasterMapPreview() {
               boxSizing: 'content-box'
           }}
           >
-          {slices.map(slice => (
+          {slices.map(slice => {
+              const displayWidth = Math.min(slice.width, totalWidth - slice.x);
+              const displayHeight = Math.min(slice.height, totalHeight - slice.y);
+              if (displayWidth <= 0 || displayHeight <= 0) return null;
+
+              return (
               <div 
               key={slice.key} 
               className="absolute border border-primary/50 bg-primary/10 flex items-center justify-center"
               style={{
                   left: slice.x * scale,
                   top: slice.y * scale,
-                  width: slice.width * scale,
-                  height: slice.height * scale,
+                  width: displayWidth * scale,
+                  height: displayHeight * scale,
                   boxSizing: 'border-box'
               }}
               >
@@ -65,7 +70,8 @@ export function RasterMapPreview() {
                   <p className="font-mono text-xs whitespace-nowrap">Content: {slice.width}x{slice.height}</p>
               </div>
               </div>
-          ))}
+              );
+          })}
           </div>
       </div>
   );
