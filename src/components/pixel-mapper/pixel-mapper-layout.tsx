@@ -109,12 +109,21 @@ export function PixelMapperLayout() {
         <Separator />
         <SidebarContent asChild>
           <ScrollArea className="flex-grow">
-            <Accordion type="multiple" defaultValue={["grid-setup"]} className="p-4 flex flex-col gap-2">
+            <Accordion type="single" collapsible defaultValue="grid-setup" className="p-4 flex flex-col gap-2">
               <AccordionItem value="project" className="border-none">
                 <AccordionSectionTrigger icon={<Package className="size-5" />} title="Project" />
-                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
-                  <p className="text-sm text-muted-foreground pb-4">Save your work or load a previous project.</p>
-                  <PixelMapperActions />
+                <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
+                  <div>
+                    <h3 className="font-semibold mb-2">Project Files</h3>
+                    <p className="text-sm text-muted-foreground pb-4">Save your work or load a previous project.</p>
+                    <PixelMapperActions />
+                  </div>
+                  <Separator />
+                  <div>
+                    <h3 className="font-semibold mb-2">Downloads</h3>
+                    <p className="text-sm text-muted-foreground pb-4">Download generated grid images, raster maps and wiring diagrams.</p>
+                    <DownloadsControls />
+                  </div>
                 </AccordionContent>
               </AccordionItem>
               
@@ -194,19 +203,10 @@ export function PixelMapperLayout() {
               </AccordionItem>
 
               <AccordionItem value="export" className="border-none">
-                <AccordionSectionTrigger icon={<FileOutput className="size-5" />} title="Export" />
-                <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
-                   <div>
-                    <h3 className="font-semibold mb-2">Media Output</h3>
-                    <p className="text-sm text-muted-foreground pb-4">Create raster maps for media servers.</p>
-                    <MediaOutputControls />
-                  </div>
-                  <Separator />
-                  <div>
-                    <h3 className="font-semibold mb-2">Downloads</h3>
-                    <p className="text-sm text-muted-foreground pb-4">Download generated grid images, raster maps and wiring diagrams.</p>
-                    <DownloadsControls />
-                  </div>
+                <AccordionSectionTrigger icon={<FileOutput className="size-5" />} title="Media Output" />
+                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
+                  <p className="text-sm text-muted-foreground pb-4">Create raster maps for media servers.</p>
+                  <MediaOutputControls />
                 </AccordionContent>
               </AccordionItem>
 
