@@ -44,11 +44,13 @@ export function WiringDiagram() {
     setArrowheadLength,
     arrowGap,
     setArrowGap,
+    rasterMapConfig,
+    activeBounds,
   } = usePixelMapper();
   const [isMirrored, setIsMirrored] = useState(false);
   const wiringDiagramRef = useRef<HTMLDivElement>(null);
 
-  const wiringData = getWiringData(dimensions, tiles, wiringPortConfig, wiringPattern);
+  const wiringData = getWiringData({ dimensions, tiles, wiringPortConfig, wiringPattern, rasterMapConfig, activeBounds });
   const mainPortsCount = wiringData.filter(d => d.dataLabel).length;
 
   const handleDownload = () => {
