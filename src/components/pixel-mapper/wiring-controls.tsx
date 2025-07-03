@@ -67,7 +67,7 @@ export function WiringControls() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="data-label-size">Label Size: {dataLabelSize}px</Label>
-        <Slider id="data-label-size" min={10} max={100} step={1} value={[dataLabelSize]} onValueChange={(v) => setDataLabelSize(v[0])} />
+        <Slider id="data-label-size" min={10} max={200} step={1} value={[dataLabelSize]} onValueChange={(v) => setDataLabelSize(v[0])} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="arrowhead-size">Arrowhead Size: {arrowheadSize}</Label>

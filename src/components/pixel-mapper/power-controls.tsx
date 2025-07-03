@@ -67,7 +67,7 @@ export function PowerControls() {
       </div>
        <div className="space-y-2">
         <Label htmlFor="power-label-size">Label Size: {powerLabelSize}px</Label>
-        <Slider id="power-label-size" min={10} max={100} step={1} value={[powerLabelSize]} onValueChange={(v) => setPowerLabelSize(v[0])} />
+        <Slider id="power-label-size" min={10} max={200} step={1} value={[powerLabelSize]} onValueChange={(v) => setPowerLabelSize(v[0])} />
       </div>
        <div className="space-y-2">
         <Label htmlFor="power-arrowhead-size">Arrowhead Size: {powerArrowheadSize}</Label>

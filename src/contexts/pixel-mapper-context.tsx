@@ -240,8 +240,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [powerArrowheadLength, setPowerArrowheadLength] = useState(30);
   const [powerArrowGap, setPowerArrowGap] = useState(50);
   const [isWiringMirrored, setIsWiringMirrored] = useState(false);
-  const [dataLabelSize, setDataLabelSize] = useState(40);
-  const [powerLabelSize, setPowerLabelSize] = useState(40);
+  const [dataLabelSize, setDataLabelSize] = useState(100);
+  const [powerLabelSize, setPowerLabelSize] = useState(100);
 
   const zoom = zoomLevels[activeTab as keyof typeof zoomLevels] || 1;
   
@@ -844,8 +844,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setBrushColor(data.brushColor || "#e11d48");
         setTilesPerPowerString(data.tilesPerPowerString || "20");
         setIsWiringMirrored(data.isWiringMirrored || false);
-        setDataLabelSize(data.dataLabelSize || 40);
-        setPowerLabelSize(data.powerLabelSize || 40);
+        setDataLabelSize(data.dataLabelSize || 100);
+        setPowerLabelSize(data.powerLabelSize || 100);
         
         toast({
           title: "Import Successful",
