@@ -1,3 +1,4 @@
+
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
@@ -67,6 +68,7 @@ export function LabelControls() {
               <SelectItem value="none">None</SelectItem>
               <SelectItem value="sequential">Sequential (1, 2, ...)</SelectItem>
               <SelectItem value="row-col">Row-Col (1-1, 1-2, ...)</SelectItem>
+              <SelectItem value="row-letter-col-number">Row Letter-Col Number (A1, B1, ..)</SelectItem>
               <SelectItem value="dmx-style">DMX-Style (A1, A2, ...)</SelectItem>
             </SelectContent>
           </Select>

@@ -26,7 +26,7 @@ interface ActiveBounds {
 }
 
 type ActiveTool = 'delete' | 'label' | 'color';
-type LabelFormat = 'none' | 'sequential' | 'row-col' | 'dmx-style';
+type LabelFormat = 'none' | 'sequential' | 'row-col' | 'dmx-style' | 'row-letter-col-number';
 
 interface RasterSlice {
   key: string;
@@ -251,6 +251,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
           return String(i + 1);
         case 'row-col':
           return `${y + 1}-${x + 1}`;
+        case 'row-letter-col-number':
+            const rowLetter = String.fromCharCode('A'.charCodeAt(0) + y);
+            const colNumber = x + 1;
+            return `${rowLetter}${colNumber}`;
         case 'dmx-style':
             const universeSize = 170; // 512 channels / 3 colors ~ 170 pixels
             const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(i / universeSize));
