@@ -241,14 +241,22 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const { screenWidth, screenHeight } = dimensions;
     const totalTiles = screenWidth * screenHeight;
-    if (totalTiles > 0 && totalTiles <= 4096) { // Safety limit
-        setTiles(
-            Array.from({ length: totalTiles }, (_, i) => ({ id: i, deleted: false }))
-        );
-    } else {
-        setTiles([]);
+
+    // Only reset tiles if the total number of tiles has changed.
+    // This prevents wiping the state of imported tiles, which are set
+    // immediately after dimensions are updated during an import.
+    if (tiles.length === totalTiles) {
+      return;
     }
-  }, [dimensions]);
+
+    if (totalTiles > 0 && totalTiles <= 4096) { // Safety limit
+      setTiles(
+        Array.from({ length: totalTiles }, (_, i) => ({ id: i, deleted: false }))
+      );
+    } else {
+      setTiles([]);
+    }
+  }, [dimensions, tiles.length]);
 
   useEffect(() => {
     const { screenWidth } = dimensions;
