@@ -4,6 +4,7 @@
 import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction } from "react";
 import type { WiringPattern } from "@/lib/wiring";
+import { useToast } from "@/hooks/use-toast";
 
 interface Dimensions {
   tileWidth: number;
@@ -52,6 +53,31 @@ interface RasterArgs {
   outputHeight?: number;
 }
 
+interface ProjectData {
+  version: string;
+  dimensions: Dimensions;
+  tiles: Tile[];
+  tileColor: string;
+  tileColorTwo: string;
+  borderWidth: number;
+  borderColor: string;
+  activeTool: ActiveTool;
+  showLabels: boolean;
+  labelFormat: LabelFormat;
+  labelFontSize: number;
+  labelColor: string;
+  onOffMode: boolean;
+  zoom: number;
+  rasterOffset: { x: number; y: number };
+  lastRasterArgs: RasterArgs | null;
+  wiringPortConfig: string;
+  showDataLabels: boolean;
+  showPowerLabels: boolean;
+  wiringPattern: WiringPattern;
+  arrowheadSize: number;
+  arrowheadLength: number;
+  arrowGap: number;
+}
 
 interface PixelMapperState {
   appState: string;
@@ -107,6 +133,8 @@ interface PixelMapperState {
   setArrowheadLength: Dispatch<SetStateAction<number>>;
   arrowGap: number;
   setArrowGap: Dispatch<SetStateAction<number>>;
+  exportProject: () => void;
+  importProject: (file: File) => void;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -122,6 +150,7 @@ export const usePixelMapper = () => {
 export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [appState] = useState("ready");
   const gridRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const [dimensions, setDimensions] = useState<Dimensions>({
     tileWidth: 200,
@@ -427,7 +456,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     if (lastRasterArgs) {
       regenerateRasterPreview();
     }
-  }, [regenerateRasterPreview]);
+  }, [regenerateRasterPreview, lastRasterArgs]);
   
   const generateRasterMap = useCallback((filename: string, outputWidth?: number, outputHeight?: number) => {
     setLastRasterArgs({ filename, outputWidth, outputHeight });
@@ -436,10 +465,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Set default raster map on initial load
-    if (activeBounds) {
-        generateRasterMap('raster-map-hd.png', 1920, 1080);
+    if (activeBounds && !lastRasterArgs) {
+        generateRasterMap('raster-map-content.png');
     }
-  }, [generateRasterMap, activeBounds]);
+  }, [generateRasterMap, activeBounds, lastRasterArgs]);
 
   const createFullRasterCanvas = useCallback(() => {
     if (!rasterMapConfig || !activeBounds) return null;
@@ -537,6 +566,123 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         downloadCanvas(outputCanvas, slice.filename);
     }
   }, [rasterMapConfig, createFullRasterCanvas, rasterOffset]);
+  
+  const exportProject = useCallback(() => {
+    const projectData: ProjectData = {
+      version: "1.0.0",
+      dimensions,
+      tiles,
+      tileColor,
+      tileColorTwo,
+      borderWidth,
+      borderColor,
+      activeTool,
+      showLabels,
+      labelFormat,
+      labelFontSize,
+      labelColor,
+      onOffMode,
+      zoom,
+      rasterOffset,
+      lastRasterArgs,
+      wiringPortConfig,
+      showDataLabels,
+      showPowerLabels,
+      wiringPattern,
+      arrowheadSize,
+      arrowheadLength,
+      arrowGap,
+    };
+
+    const jsonString = JSON.stringify(projectData, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = "pixel-mapper-project.json";
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Export Successful",
+      description: "Project saved to pixel-mapper-project.json",
+    });
+  }, [
+    dimensions, tiles, tileColor, tileColorTwo, borderWidth, borderColor, activeTool,
+    showLabels, labelFormat, labelFontSize, labelColor, onOffMode, zoom, rasterOffset,
+    lastRasterArgs, wiringPortConfig, showDataLabels, showPowerLabels, wiringPattern,
+    arrowheadSize, arrowheadLength, arrowGap, toast
+  ]);
+  
+  const importProject = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const result = event.target?.result;
+        if (typeof result !== 'string') {
+          toast({
+            title: "Import Failed",
+            description: "Could not read the selected file.",
+            variant: "destructive",
+          });
+          return;
+        }
+        const data: ProjectData = JSON.parse(result);
+
+        // Basic validation
+        if (!data.version || !data.dimensions || !data.tiles) {
+          throw new Error("Invalid project file format.");
+        }
+
+        // Apply state
+        setDimensions(data.dimensions);
+        setTiles(data.tiles);
+        setTileColor(data.tileColor);
+        setTileColorTwo(data.tileColorTwo);
+        setBorderWidth(data.borderWidth);
+        setBorderColor(data.borderColor);
+        setActiveTool(data.activeTool);
+        setShowLabels(data.showLabels);
+        setLabelFormat(data.labelFormat);
+        setLabelFontSize(data.labelFontSize);
+        setLabelColor(data.labelColor);
+        setOnOffMode(data.onOffMode);
+        setZoom(data.zoom);
+        setRasterOffset(data.rasterOffset);
+        setLastRasterArgs(data.lastRasterArgs);
+        setWiringPortConfig(data.wiringPortConfig);
+        setShowDataLabels(data.showDataLabels);
+        setShowPowerLabels(data.showPowerLabels);
+        setWiringPattern(data.wiringPattern);
+        setArrowheadSize(data.arrowheadSize);
+        setArrowheadLength(data.arrowheadLength);
+        setArrowGap(data.arrowGap);
+        
+        toast({
+          title: "Import Successful",
+          description: "Your project has been loaded.",
+        });
+
+      } catch (error) {
+        console.error("Failed to parse project file:", error);
+        toast({
+          title: "Import Failed",
+          description: "The selected file is not a valid PixelMapper project file.",
+          variant: "destructive",
+        });
+      }
+    };
+    reader.onerror = () => {
+       toast({
+        title: "Import Failed",
+        description: "An error occurred while reading the file.",
+        variant: "destructive",
+      });
+    }
+    reader.readAsText(file);
+  }, [toast]);
 
 
   const value = {
@@ -593,6 +739,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setArrowheadLength,
     arrowGap,
     setArrowGap,
+    exportProject,
+    importProject,
   };
 
   return (

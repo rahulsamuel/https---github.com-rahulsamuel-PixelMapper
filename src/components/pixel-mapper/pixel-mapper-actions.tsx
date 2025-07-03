@@ -9,10 +9,25 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RotateCcw, Settings, Trash2 } from "lucide-react";
+import { Download, Upload, RotateCcw, Settings, Trash2 } from "lucide-react";
+import { useRef } from "react";
 
 export function PixelMapperActions() {
-  const { deletedCount, restoreAll } = usePixelMapper();
+  const { deletedCount, restoreAll, exportProject, importProject } = usePixelMapper();
+  const importInputRef = useRef<HTMLInputElement>(null);
+  
+  const handleImportClick = () => {
+    importInputRef.current?.click();
+  };
+  
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      importProject(file);
+    }
+    // Reset input value to allow re-importing the same file
+    e.target.value = '';
+  };
 
   return (
     <Card>
@@ -26,6 +41,24 @@ export function PixelMapperActions() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-2">
+           <Button onClick={exportProject} variant="outline">
+            <Download className="mr-2" />
+            Export
+          </Button>
+          <Button onClick={handleImportClick} variant="outline">
+            <Upload className="mr-2" />
+            Import
+             <input
+              ref={importInputRef}
+              id="import-project-input"
+              type="file"
+              accept=".json"
+              className="sr-only"
+              onChange={handleFileChange}
+            />
+          </Button>
+        </div>
         <div className="flex items-center justify-between rounded-lg border p-3">
           <div className="flex items-center gap-2">
             <Trash2 className="size-4 text-muted-foreground" />
@@ -34,7 +67,7 @@ export function PixelMapperActions() {
           <span className="font-mono text-lg font-bold">{deletedCount}</span>
         </div>
         <Button onClick={restoreAll} variant="outline" className="w-full">
-            <RotateCcw className="mr-2 size-4" />
+            <RotateCcw className="mr-2" />
             Restore All
         </Button>
       </CardContent>
