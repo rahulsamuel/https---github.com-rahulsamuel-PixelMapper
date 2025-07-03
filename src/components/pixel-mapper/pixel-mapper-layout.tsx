@@ -19,7 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "./edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, Grid3x3, Paintbrush, Type, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Download, Bolt, Expand, Palette } from "lucide-react";
+import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette } from "lucide-react";
 import { LabelControls } from "./label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -109,7 +109,7 @@ export function PixelMapperLayout() {
         <Separator />
         <SidebarContent asChild>
           <ScrollArea className="flex-grow">
-            <Accordion type="single" collapsible defaultValue="dimensions" className="p-4 flex flex-col gap-2">
+            <Accordion type="multiple" defaultValue={["grid-setup"]} className="p-4 flex flex-col gap-2">
               <AccordionItem value="project" className="border-none">
                 <AccordionSectionTrigger icon={<Package className="size-5" />} title="Project" />
                 <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
@@ -118,48 +118,48 @@ export function PixelMapperLayout() {
                 </AccordionContent>
               </AccordionItem>
               
-              <AccordionItem value="dimensions" className="border-none">
-                <AccordionSectionTrigger icon={<Grid3x3 className="size-5" />} title="Dimensions" />
-                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
-                  <p className="text-sm text-muted-foreground pb-4">Define the size of your LED tiles and the overall screen grid.</p>
-                  <DimensionControls />
+              <AccordionItem value="grid-setup" className="border-none">
+                <AccordionSectionTrigger icon={<LayoutGrid className="size-5" />} title="Grid Setup" />
+                <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
+                  <div>
+                    <h3 className="font-semibold mb-2">Dimensions</h3>
+                    <p className="text-sm text-muted-foreground pb-4">Define the size of your LED tiles and the overall screen grid.</p>
+                    <DimensionControls />
+                  </div>
+                  <Separator />
+                  <div>
+                    <h3 className="font-semibold mb-2">Appearance</h3>
+                    <p className="text-sm text-muted-foreground pb-4">Customize the look of the LED tiles.</p>
+                    <AppearanceControls />
+                  </div>
+                  <Separator />
+                  <div>
+                    <h3 className="font-semibold mb-2">Labeling</h3>
+                    <p className="text-sm text-muted-foreground pb-4">Customize the labels on the LED tiles.</p>
+                    <LabelControls />
+                  </div>
                 </AccordionContent>
               </AccordionItem>
 
-              <AccordionItem value="appearance" className="border-none">
-                <AccordionSectionTrigger icon={<Paintbrush className="size-5" />} title="Appearance" />
-                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
-                  <p className="text-sm text-muted-foreground pb-4">Customize the look of the LED tiles.</p>
-                  <AppearanceControls />
+              <AccordionItem value="wiring" className="border-none">
+                <AccordionSectionTrigger icon={<GitBranch className="size-5" />} title="Wiring" />
+                <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
+                   <div>
+                    <h3 className="font-semibold mb-2">Data Wiring</h3>
+                    <p className="text-sm text-muted-foreground pb-4">Define data wiring patterns and port settings.</p>
+                    <WiringControls />
+                  </div>
+                  <Separator />
+                  <div>
+                    <h3 className="font-semibold mb-2">Power Wiring</h3>
+                    <p className="text-sm text-muted-foreground pb-4">Define how many tiles are on each power circuit.</p>
+                    <PowerControls />
+                  </div>
                 </AccordionContent>
               </AccordionItem>
 
-              <AccordionItem value="labeling" className="border-none">
-                <AccordionSectionTrigger icon={<Type className="size-5" />} title="Labeling" />
-                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
-                  <p className="text-sm text-muted-foreground pb-4">Customize the labels on the LED tiles.</p>
-                  <LabelControls />
-                </AccordionContent>
-              </AccordionItem>
-              
-              <AccordionItem value="data-wiring" className="border-none">
-                <AccordionSectionTrigger icon={<GitBranch className="size-5" />} title="Data Wiring" />
-                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
-                  <p className="text-sm text-muted-foreground pb-4">Define data wiring patterns and port settings.</p>
-                  <WiringControls />
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="power-wiring" className="border-none">
-                <AccordionSectionTrigger icon={<Bolt className="size-5" />} title="Power Wiring" />
-                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
-                  <p className="text-sm text-muted-foreground pb-4">Define how many tiles are on each power circuit.</p>
-                  <PowerControls />
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="tools" className="border-none">
-                <AccordionSectionTrigger icon={<Wand2 className="size-5" />} title="Edit & Restore" />
+              <AccordionItem value="editing" className="border-none">
+                <AccordionSectionTrigger icon={<Wand2 className="size-5" />} title="Editing Tools" />
                 <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
                   <p className="text-sm text-muted-foreground pb-4">Select a tool to apply to the grid or restore deleted tiles.</p>
                   <div className="space-y-4 pt-4">
@@ -193,18 +193,20 @@ export function PixelMapperLayout() {
                 </AccordionContent>
               </AccordionItem>
 
-              <AccordionItem value="output" className="border-none">
-                <AccordionSectionTrigger icon={<FileOutput className="size-5" />} title="Media Output" />
-                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
-                  <MediaOutputControls />
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="downloads" className="border-none">
-                <AccordionSectionTrigger icon={<Download className="size-5" />} title="Downloads" />
-                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
-                  <p className="text-sm text-muted-foreground pb-4">Download generated grid images, raster maps and wiring diagrams.</p>
-                  <DownloadsControls />
+              <AccordionItem value="export" className="border-none">
+                <AccordionSectionTrigger icon={<FileOutput className="size-5" />} title="Export" />
+                <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
+                   <div>
+                    <h3 className="font-semibold mb-2">Media Output</h3>
+                    <p className="text-sm text-muted-foreground pb-4">Create raster maps for media servers.</p>
+                    <MediaOutputControls />
+                  </div>
+                  <Separator />
+                  <div>
+                    <h3 className="font-semibold mb-2">Downloads</h3>
+                    <p className="text-sm text-muted-foreground pb-4">Download generated grid images, raster maps and wiring diagrams.</p>
+                    <DownloadsControls />
+                  </div>
                 </AccordionContent>
               </AccordionItem>
 
