@@ -706,6 +706,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
     const cropHeight = (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight;
 
+    const computedStyle = getComputedStyle(document.documentElement);
+    const dataWiringColor = computedStyle.getPropertyValue('--data-wiring').trim();
+    const powerWiringColor = computedStyle.getPropertyValue('--power-wiring').trim();
+
     toPng(node, {
       cacheBust: true,
       backgroundColor: '#ffffff',
@@ -713,6 +717,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       width: node.scrollWidth,
       height: node.scrollHeight,
       style: {
+        '--data-wiring': dataWiringColor,
+        '--power-wiring': powerWiringColor,
         transform: 'none',
       }
     })
