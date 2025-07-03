@@ -11,7 +11,7 @@ interface Tile {
   deleted: boolean;
 }
 
-export type WiringPattern = 'serpentine-horizontal' | 'serpentine-vertical' | 'left-right' | 'top-bottom';
+export type WiringPattern = 'serpentine-horizontal' | 'serpentine-vertical' | 'serpentine-horizontal-reverse' | 'left-right' | 'top-bottom' | 'bottom-to-top';
 
 interface WiringInfo {
   x: number;
@@ -61,8 +61,8 @@ export function getWiringData(
       nextTile: null,
     };
   });
-
-  const activeTilesPath: { tile: WiringInfo; index: number; }[] = [];
+  
+  const pathOrder: number[] = [];
 
   switch (wiringPattern) {
     case 'serpentine-vertical':
@@ -70,52 +70,61 @@ export function getWiringData(
         const colIsReversed = x % 2 !== 0;
         for (let i = 0; i < screenHeight; i++) {
           const y = colIsReversed ? screenHeight - 1 - i : i;
-          const tileIndex = y * screenWidth + x;
-          const tileData = allTilesData[tileIndex];
-          if (tileData && !tileData.isDeleted) {
-            activeTilesPath.push({ tile: tileData, index: tileIndex });
-          }
+          pathOrder.push(y * screenWidth + x);
         }
       }
       break;
-    
+
     case 'left-right':
-       for (let i = 0; i < allTilesData.length; i++) {
-          const tileData = allTilesData[i];
-          if (tileData && !tileData.isDeleted) {
-            activeTilesPath.push({ tile: tileData, index: i });
-          }
+      for (let y = 0; y < screenHeight; y++) {
+        for (let x = 0; x < screenWidth; x++) {
+          pathOrder.push(y * screenWidth + x);
+        }
       }
       break;
 
     case 'top-bottom':
       for (let x = 0; x < screenWidth; x++) {
         for (let y = 0; y < screenHeight; y++) {
-          const tileIndex = y * screenWidth + x;
-          const tileData = allTilesData[tileIndex];
-          if (tileData && !tileData.isDeleted) {
-            activeTilesPath.push({ tile: tileData, index: tileIndex });
-          }
+          pathOrder.push(y * screenWidth + x);
         }
       }
       break;
-      
+
+    case 'bottom-to-top':
+      for (let x = 0; x < screenWidth; x++) {
+        for (let y = screenHeight - 1; y >= 0; y--) {
+          pathOrder.push(y * screenWidth + x);
+        }
+      }
+      break;
+    
+    case 'serpentine-horizontal-reverse':
+      for (let y = screenHeight - 1; y >= 0; y--) {
+        const rowIsReversed = (screenHeight - 1 - y) % 2 !== 0;
+        for (let i = 0; i < screenWidth; i++) {
+          const x = rowIsReversed ? screenWidth - 1 - i : i;
+          pathOrder.push(y * screenWidth + x);
+        }
+      }
+      break;
+
     case 'serpentine-horizontal':
     default:
       for (let y = 0; y < screenHeight; y++) {
         const rowIsReversed = y % 2 !== 0;
         for (let i = 0; i < screenWidth; i++) {
           const x = rowIsReversed ? screenWidth - 1 - i : i;
-          const tileIndex = y * screenWidth + x;
-          const tileData = allTilesData[tileIndex];
-          if (tileData && !tileData.isDeleted) {
-            activeTilesPath.push({ tile: tileData, index: tileIndex });
-          }
+          pathOrder.push(y * screenWidth + x);
         }
       }
       break;
   }
-
+  
+  const activeTilesPath: { tile: WiringInfo; index: number; }[] = pathOrder
+    .map(index => ({ tile: allTilesData[index], index }))
+    .filter(({ tile }) => tile && !tile.isDeleted);
+    
   if (activeTilesPath.length === 0) {
     return allTilesData;
   }
@@ -132,13 +141,13 @@ export function getWiringData(
     }
     currentTileInfo.powerLabel = `P${powerCounter}`;
 
-    const indexInGroup = pathIndex % subgroupSize;
+    const groupNumOverall = Math.floor(pathIndex / subgroupSize);
+    const universeIndex = Math.floor(groupNumOverall / subgroupsPerUniverse);
+    const subgroupIndexInUniverse = (groupNumOverall % subgroupsPerUniverse) + 1;
+    
+    const isFirstInGroup = pathIndex % subgroupSize === 0;
 
-    if (indexInGroup === 0) {
-      const groupNumOverall = Math.floor(pathIndex / subgroupSize);
-      const universeIndex = Math.floor(groupNumOverall / subgroupsPerUniverse);
-      const subgroupIndexInUniverse = (groupNumOverall % subgroupsPerUniverse) + 1;
-      
+    if (isFirstInGroup) {
       const universe = getUniverseLabel(universeIndex);
       currentTileInfo.dataLabel = `${universe}${subgroupIndexInUniverse}`;
     } else {
