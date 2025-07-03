@@ -40,10 +40,12 @@ export function WiringDiagram() {
     borderColor,
   } = usePixelMapper();
 
+  const [isMounted, setIsMounted] = useState(false);
   const [dataWiringColor, setDataWiringColor] = useState('hsl(140, 60%, 40%)'); // Fallback color
   const [powerWiringColor, setPowerWiringColor] = useState('hsl(0, 84.2%, 60.2%)'); // Fallback color
 
   useEffect(() => {
+    setIsMounted(true);
     // We need to wait for the component to be mounted to access computed styles from CSS variables
     const computedDataColor = getComputedStyle(document.documentElement).getPropertyValue('--data-wiring').trim();
     if (computedDataColor) {
@@ -186,7 +188,7 @@ export function WiringDiagram() {
                 }}
               >
                 {/* Data Arrows */}
-                {showDataLabels && wiringData.map(({ x, y, nextTile, isDeleted }) => {
+                {isMounted && showDataLabels && wiringData.map(({ x, y, nextTile, isDeleted }) => {
                   if (isDeleted || !nextTile) return null;
 
                   const startX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - x) : x) * dimensions.tileWidth + dimensions.tileWidth / 2;
@@ -226,7 +228,7 @@ export function WiringDiagram() {
                 })}
 
                 {/* Power Arrows */}
-                {showPowerLabels && wiringData.map(({ x, y, nextPowerTile, isDeleted }) => {
+                {isMounted && showPowerLabels && wiringData.map(({ x, y, nextPowerTile, isDeleted }) => {
                   if (isDeleted || !nextPowerTile) return null;
 
                   const startX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - x) : x) * dimensions.tileWidth + dimensions.tileWidth / 2;
@@ -272,5 +274,3 @@ export function WiringDiagram() {
     </div>
   );
 }
-
-    
