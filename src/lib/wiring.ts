@@ -101,7 +101,7 @@ function applyDataWiring(
     activeTilesPath: { tile: WiringInfo; index: number; }[],
     wiringPortConfig: string,
     counters: { groupNumOverall: number; },
-    sliceUniverseIndex: number | null = null
+    dataUniverseCounter?: number
 ) {
     if (activeTilesPath.length === 0) return;
     
@@ -112,7 +112,7 @@ function applyDataWiring(
       // Data
       const isFirstInGroup = pathIndex % subgroupSize === 0;
       if (isFirstInGroup) {
-        const universeIndex = sliceUniverseIndex ?? Math.floor(counters.groupNumOverall / subgroupsPerUniverse);
+        const universeIndex = dataUniverseCounter ?? Math.floor(counters.groupNumOverall / subgroupsPerUniverse);
         const subgroupIndexInUniverse = (counters.groupNumOverall % subgroupsPerUniverse) + 1;
         currentTileInfo.dataLabel = `${getUniverseLabel(universeIndex)}${subgroupIndexInUniverse}`;
         counters.groupNumOverall++;
@@ -133,7 +133,7 @@ function applyDataWiring(
       const isEndOfGroup = (pathIndex + 1) % subgroupSize === 0;
       if (isEndOfGroup || isLastTileInPath) {
         const currentGroupNum = counters.groupNumOverall - 1;
-        const mainUniverseIndex = sliceUniverseIndex ?? Math.floor(currentGroupNum / subgroupsPerUniverse);
+        const mainUniverseIndex = dataUniverseCounter ?? Math.floor(currentGroupNum / subgroupsPerUniverse);
         
         let backupUniverse: string;
         if (mainUniverseIndex === 0) { 
@@ -222,7 +222,8 @@ export function getWiringData({
 
   const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
 
-  // Sliced wiring logic
+  // --- DATA WIRING ---
+  // Sliced data wiring logic
   if (rasterMapConfig && activeBounds && rasterMapConfig.slices.length > 1 && rasterMapConfig.outputWidth > 0 && rasterMapConfig.outputHeight > 0) {
     const { outputWidth: sliceWidth, outputHeight: sliceHeight, rasterOffset } = rasterMapConfig;
     
@@ -246,37 +247,32 @@ export function getWiringData({
       tilesBySlice.get(sliceKey)!.push(index);
     });
 
-    const powerCounters = { powerCounter: 1, powerGroupCounter: 0 };
     const sortedSliceKeys = Array.from(tilesBySlice.keys()).sort();
+    let dataUniverseCounter = 0;
     
     for (const sliceKey of sortedSliceKeys) {
         const sliceIndices = tilesBySlice.get(sliceKey)!;
         
-        // Data Path for slice: each slice gets its own universe sequence, restarting from 'A'
+        // Data Path for slice: each slice gets its own universe sequence
         const dataPathOrder = getPathOrder(sliceIndices, wiringPattern, screenWidth, screenHeight);
         const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
-        // Reset counters for each slice so wiring starts over.
-        applyDataWiring(dataTilesPath, wiringPortConfig, { groupNumOverall: 0 }, null);
-        
-        // Power Path for slice - power continues across slices
-        const powerPathOrder = getPathOrder(sliceIndices, powerWiringPattern, screenWidth, screenHeight);
-        const powerTilesPath = powerPathOrder.map(index => ({ tile: allTilesData[index], index }));
-        applyPowerWiring(powerTilesPath, tilesPerPowerString, powerCounters);
+        applyDataWiring(dataTilesPath, wiringPortConfig, { groupNumOverall: 0 }, dataUniverseCounter);
+        dataUniverseCounter++;
     }
   } else {
-    // Un-sliced logic
-    // Data Path
+    // Un-sliced data wiring logic
     const dataPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
     const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
     const dataCounters = { groupNumOverall: 0 };
     applyDataWiring(dataTilesPath, wiringPortConfig, dataCounters);
-    
-    // Power Path
-    const powerPathOrder = getPathOrder(activeTileIndices, powerWiringPattern, screenWidth, screenHeight);
-    const powerTilesPath = powerPathOrder.map(index => ({ tile: allTilesData[index], index }));
-    const powerCounters = { powerCounter: 1, powerGroupCounter: 0 };
-    applyPowerWiring(powerTilesPath, tilesPerPowerString, powerCounters);
   }
+  
+  // --- POWER WIRING ---
+  // Always applied to the whole grid, regardless of slicing.
+  const powerPathOrder = getPathOrder(activeTileIndices, powerWiringPattern, screenWidth, screenHeight);
+  const powerTilesPath = powerPathOrder.map(index => ({ tile: allTilesData[index], index }));
+  const powerCounters = { powerCounter: 1, powerGroupCounter: 0 };
+  applyPowerWiring(powerTilesPath, tilesPerPowerString, powerCounters);
 
   return allTilesData;
 }
