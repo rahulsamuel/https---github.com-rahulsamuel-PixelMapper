@@ -35,12 +35,11 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { DownloadsControls } from "./downloads-controls";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 
 export function PixelMapperLayout() {
-  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig } = usePixelMapper();
-  const [activeTab, setActiveTab] = useState("grid");
+  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab } = usePixelMapper();
   const [activeAccordion, setActiveAccordion] = useState("grid-setup");
   const gridViewportRef = useRef<HTMLDivElement>(null);
   const wiringViewportRef = useRef<HTMLDivElement>(null);
@@ -103,7 +102,10 @@ export function PixelMapperLayout() {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    switch (tab) {
+  };
+
+  useEffect(() => {
+    switch (activeTab) {
       case 'grid':
         setActiveAccordion('grid-setup');
         break;
@@ -114,7 +116,8 @@ export function PixelMapperLayout() {
         setActiveAccordion('export');
         break;
     }
-  };
+  }, [activeTab]);
+
 
   return (
     <SidebarProvider>
@@ -243,7 +246,7 @@ export function PixelMapperLayout() {
         </SidebarContent>
       </Sidebar>
       <SidebarInset>
-        <Tabs defaultValue="grid" className="flex flex-col h-full w-full" onValueChange={handleTabChange}>
+        <Tabs value={activeTab} className="flex flex-col h-full w-full" onValueChange={handleTabChange}>
           <div className="sticky top-0 z-10 bg-background p-4 border-b flex items-center justify-between flex-shrink-0">
             <TabsList>
               <TabsTrigger value="grid">LED Grid</TabsTrigger>
@@ -258,6 +261,22 @@ export function PixelMapperLayout() {
                 <Switch id="on-off-switch" checked={onOffMode} onCheckedChange={setOnOffMode} />
                 <Label htmlFor="on-off-switch">ON/OFF</Label>
               </div>
+              <Separator orientation="vertical" className="h-6" />
+              <div className="flex items-center gap-1">
+                <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom Out">
+                  <ZoomOut />
+                </Button>
+                <div className="w-14 text-center font-mono text-sm" title="Current Zoom">
+                  {Math.round(zoom * 100)}%
+                </div>
+                <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom In">
+                  <ZoomIn />
+                </Button>
+                <Separator orientation="vertical" className="h-6 mx-1" />
+                <Button onClick={handleFitToScreen} variant="ghost" size="icon" className="h-8 w-8" aria-label="Fit to Screen">
+                  <Expand />
+                </Button>
+              </div>
             </div>
           </div>
           <TabsContent value="grid" className="flex-grow overflow-auto" ref={gridViewportRef}>
@@ -270,21 +289,6 @@ export function PixelMapperLayout() {
             <RasterMapPreview />
           </TabsContent>
         </Tabs>
-        <div className="absolute bottom-4 right-4 z-10 flex items-center gap-1 rounded-lg border bg-background/80 p-1 shadow-md backdrop-blur-sm">
-          <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom Out">
-            <ZoomOut />
-          </Button>
-          <div className="w-14 text-center font-mono text-sm" title="Current Zoom">
-            {Math.round(zoom * 100)}%
-          </div>
-          <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom In">
-            <ZoomIn />
-          </Button>
-          <Separator orientation="vertical" className="h-6 mx-1" />
-          <Button onClick={handleFitToScreen} variant="ghost" size="icon" className="h-8 w-8" aria-label="Fit to Screen">
-            <Expand />
-          </Button>
-        </div>
       </SidebarInset>
     </SidebarProvider>
   );

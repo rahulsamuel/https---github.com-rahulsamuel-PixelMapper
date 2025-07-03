@@ -70,7 +70,9 @@ interface ProjectData {
   labelFontSize: number;
   labelColor: string;
   onOffMode: boolean;
-  zoom: number;
+  zoom?: number; // For backwards compatibility
+  zoomLevels: { grid: number; wiring: number; raster: number; };
+  activeTab: string;
   rasterOffset: { x: number; y: number; };
   lastRasterArgs: RasterArgs | null;
   wiringPortConfig: string;
@@ -127,7 +129,9 @@ interface PixelMapperState {
   onOffMode: boolean;
   setOnOffMode: Dispatch<SetStateAction<boolean>>;
   zoom: number;
-  setZoom: Dispatch<SetStateAction<number>>;
+  setZoom: (value: number | ((prev: number) => number)) => void;
+  activeTab: string;
+  setActiveTab: Dispatch<SetStateAction<string>>;
   activeBounds: ActiveBounds | null;
   rasterMapConfig: RasterMapConfig | null;
   setRasterMapConfig: Dispatch<SetStateAction<RasterMapConfig | null>>;
@@ -203,7 +207,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [labelFontSize, setLabelFontSize] = useState(48);
   const [labelColor, setLabelColor] = useState("#ffffff");
   const [labels, setLabels] = useState<string[]>([]);
-  const [zoom, setZoom] = useState(1);
+  
+  const [zoomLevels, setZoomLevels] = useState({ grid: 1, wiring: 1, raster: 1 });
+  const [activeTab, setActiveTab] = useState('grid');
+  
   const [onOffMode, setOnOffMode] = useState(false);
   const [activeBounds, setActiveBounds] = useState<ActiveBounds | null>(null);
   const [brushColor, setBrushColor] = useState<string>("#e11d48");
@@ -227,6 +234,20 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [powerArrowheadLength, setPowerArrowheadLength] = useState(10);
   const [powerArrowGap, setPowerArrowGap] = useState(30);
   const [isWiringMirrored, setIsWiringMirrored] = useState(false);
+
+  const zoom = zoomLevels[activeTab as keyof typeof zoomLevels] || 1;
+  
+  const setZoom = (value: number | ((prevZoom: number) => number)) => {
+    setZoomLevels(prevLevels => {
+      const currentTabKey = activeTab as keyof typeof prevLevels;
+      const currentZoom = prevLevels[currentTabKey];
+      const newZoom = typeof value === 'function' ? value(currentZoom) : value;
+      return {
+        ...prevLevels,
+        [currentTabKey]: newZoom,
+      };
+    });
+  };
 
   const setShowDataLabelsWrapper = (value: boolean) => {
     _setShowDataLabels(value);
@@ -695,7 +716,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
   const exportProject = useCallback(() => {
     const projectData: ProjectData = {
-      version: "1.0.0",
+      version: "1.0.1",
       dimensions,
       tiles,
       tileColor,
@@ -708,7 +729,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       labelFontSize,
       labelColor,
       onOffMode,
-      zoom,
+      zoomLevels,
+      activeTab,
       rasterOffset,
       lastRasterArgs,
       wiringPortConfig,
@@ -744,7 +766,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     });
   }, [
     dimensions, tiles, tileColor, tileColorTwo, borderWidth, borderColor, activeTool,
-    showLabels, labelFormat, labelFontSize, labelColor, onOffMode, zoom, rasterOffset,
+    showLabels, labelFormat, labelFontSize, labelColor, onOffMode, zoomLevels, activeTab, rasterOffset,
     lastRasterArgs, wiringPortConfig, showDataLabels, showPowerLabels, wiringPattern,
     powerWiringPattern, arrowheadSize, arrowheadLength, arrowGap,
     powerArrowheadSize, powerArrowheadLength, powerArrowGap, brushColor, 
@@ -786,7 +808,16 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setLabelFontSize(data.labelFontSize);
         setLabelColor(data.labelColor);
         setOnOffMode(data.onOffMode);
-        setZoom(data.zoom);
+        
+        if (data.zoomLevels) {
+          setZoomLevels(data.zoomLevels);
+        } else if (data.zoom) {
+          // Handle legacy projects with a single zoom value
+          const legacyZoom = data.zoom;
+          setZoomLevels({ grid: legacyZoom, wiring: legacyZoom, raster: legacyZoom });
+        }
+        
+        setActiveTab(data.activeTab || 'grid');
         setRasterOffset(data.rasterOffset);
         setLastRasterArgs(data.lastRasterArgs);
         setWiringPortConfig(data.wiringPortConfig);
@@ -868,6 +899,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setOnOffMode,
     zoom,
     setZoom,
+    activeTab,
+    setActiveTab,
     activeBounds,
     rasterMapConfig,
     setRasterMapConfig,
