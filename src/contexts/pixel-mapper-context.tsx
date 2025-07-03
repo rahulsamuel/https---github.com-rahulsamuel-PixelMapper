@@ -451,6 +451,17 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
           masterCtx.fillStyle = bgColor;
           masterCtx.fillRect(tileXPos + rasterOffset.x, tileYPos + rasterOffset.y, tileWidth, tileHeight);
 
+          if (borderWidth > 0) {
+              masterCtx.strokeStyle = borderColor;
+              masterCtx.lineWidth = borderWidth;
+              masterCtx.strokeRect(
+                  tileXPos + rasterOffset.x + borderWidth / 2, 
+                  tileYPos + rasterOffset.y + borderWidth / 2, 
+                  tileWidth - borderWidth, 
+                  tileHeight - borderWidth
+              );
+          }
+
           if (showLabels && labels[index]) {
             const currentLabelColor = onOffMode ? '#000000' : labelColor;
             masterCtx.fillStyle = currentLabelColor;
@@ -474,7 +485,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         previewImage,
         rasterOffset,
     });
-  }, [activeBounds, lastRasterArgs, dimensions, tiles, onOffMode, tileColor, tileColorTwo, showLabels, labels, labelColor, labelFontSize, rasterOffset]);
+  }, [activeBounds, lastRasterArgs, dimensions, tiles, onOffMode, tileColor, tileColorTwo, showLabels, labels, labelColor, labelFontSize, rasterOffset, borderWidth, borderColor]);
 
 
   useEffect(() => {
@@ -533,6 +544,13 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
           masterCtx.fillStyle = bgColor;
           masterCtx.fillRect(tileXPos, tileYPos, tileWidth, tileHeight);
 
+          if (borderWidth > 0) {
+            masterCtx.strokeStyle = borderColor;
+            masterCtx.lineWidth = borderWidth;
+            masterCtx.strokeRect(tileXPos + borderWidth / 2, tileYPos + borderWidth / 2, tileWidth - borderWidth, tileHeight - borderWidth);
+          }
+
+
           if (showLabels && labels[index]) {
             const currentLabelColor = onOffMode ? '#000000' : labelColor;
             masterCtx.fillStyle = currentLabelColor;
@@ -546,7 +564,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     });
 
     return masterCanvas;
-  }, [rasterMapConfig, activeBounds, dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize]);
+  }, [rasterMapConfig, activeBounds, dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize, borderWidth, borderColor]);
 
 
   const downloadRasterSlices = useCallback(() => {

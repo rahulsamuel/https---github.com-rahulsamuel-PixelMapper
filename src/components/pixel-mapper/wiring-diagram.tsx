@@ -31,6 +31,8 @@ export function WiringDiagram() {
     wiringDiagramRef,
     isWiringMirrored,
     setIsWiringMirrored,
+    borderWidth,
+    borderColor,
   } = usePixelMapper();
 
   const [wiringColor, setWiringColor] = useState('hsl(140, 60%, 40%)'); // Fallback color
@@ -108,7 +110,8 @@ export function WiringDiagram() {
                 width: TILE_SIZE,
                 height: TILE_SIZE,
                 backgroundColor: bgColor,
-                border: isDeleted ? 'none' : '1px solid hsl(var(--border))',
+                border: isDeleted ? 'none' : `${borderWidth}px solid ${borderColor}`,
+                boxSizing: 'border-box',
                 ...(isWiringMirrored ? { right: x * TILE_SIZE } : { left: x * TILE_SIZE }),
               };
               
