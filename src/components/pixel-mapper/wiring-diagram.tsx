@@ -98,12 +98,17 @@ export function WiringDiagram() {
             }}
           >
             {wiringData.map(({ x, y, dataLabel, powerLabel, backupLabel, isDeleted }, index) => {
+              const originalIndex = y * dimensions.screenWidth + x;
+              const tile = tiles[originalIndex];
+
               let bgColor;
               if (onOffMode) {
                 bgColor = isDeleted ? '#000000' : '#FFFFFF';
               } else {
                 if (isDeleted) {
                   bgColor = '#000000';
+                } else if (tile?.color) {
+                  bgColor = tile.color;
                 } else {
                   bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
                 }
@@ -119,8 +124,6 @@ export function WiringDiagram() {
               };
               
               const currentLabelColor = onOffMode ? '#000000' : labelColor;
-              
-              const originalIndex = y * dimensions.screenWidth + x;
 
               return (
                 <div

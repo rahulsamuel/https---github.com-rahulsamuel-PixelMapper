@@ -62,6 +62,8 @@ export function LedGrid() {
           } else {
             if (tile.deleted) {
               bgColor = '#000000';
+            } else if (tile.color) {
+              bgColor = tile.color;
             } else {
               bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
             }

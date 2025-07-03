@@ -1,3 +1,4 @@
+
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
@@ -11,15 +12,14 @@ export function EditTools() {
     <div className="grid grid-cols-2 gap-2">
       <Button
         variant={activeTool === 'delete' ? 'secondary' : 'outline'}
-        onClick={() => setActiveTool('delete')}
+        onClick={() => setActiveTool(activeTool === 'delete' ? 'delete' : 'delete')}
       >
         <Trash2 className="mr-2" />
         Delete
       </Button>
       <Button
         variant={activeTool === 'color' ? 'secondary' : 'outline'}
-        onClick={() => setActiveTool('color')}
-        disabled
+        onClick={() => setActiveTool(activeTool === 'color' ? 'delete' : 'color')}
       >
         <Palette className="mr-2" />
         Color

@@ -16,6 +16,7 @@ interface Dimensions {
 interface Tile {
   id: number;
   deleted: boolean;
+  color?: string;
 }
 
 interface ActiveBounds {
@@ -77,6 +78,7 @@ interface ProjectData {
   arrowheadSize: number;
   arrowheadLength: number;
   arrowGap: number;
+  brushColor: string;
 }
 
 interface PixelMapperState {
@@ -135,6 +137,8 @@ interface PixelMapperState {
   setArrowGap: Dispatch<SetStateAction<number>>;
   exportProject: () => void;
   importProject: (file: File) => void;
+  brushColor: string;
+  setBrushColor: Dispatch<SetStateAction<string>>;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -176,6 +180,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [zoom, setZoom] = useState(1);
   const [onOffMode, setOnOffMode] = useState(false);
   const [activeBounds, setActiveBounds] = useState<ActiveBounds | null>(null);
+  const [brushColor, setBrushColor] = useState<string>("#e11d48");
   
   // Raster Map State
   const [rasterMapConfig, setRasterMapConfig] = useState<RasterMapConfig | null>(null);
@@ -280,13 +285,16 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         toggleTile(index);
         break;
       case 'color':
-        // Placeholder for color functionality
-        console.log(`Color tool clicked on tile ${index}`);
+        setTiles((prev) =>
+            prev.map((tile, i) =>
+                i === index ? { ...tile, color: brushColor, deleted: false } : tile
+            )
+        );
         break;
       default:
         break;
     }
-  }, [activeTool, toggleTile]);
+  }, [activeTool, toggleTile, brushColor]);
 
   const restoreAll = useCallback(() => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, deleted: false })));
@@ -423,6 +431,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
           let bgColor;
           if (onOffMode) {
             bgColor = '#FFFFFF';
+          } else if (tile.color) {
+            bgColor = tile.color;
           } else {
             bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
           }
@@ -478,7 +488,6 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     if (!rasterMapConfig || !activeBounds) return null;
 
     const { screenWidth, tileWidth, tileHeight } = dimensions;
-    const { rasterOffset } = rasterMapConfig;
 
     const contentWidth = (activeBounds.maxX - activeBounds.minX + 1) * tileWidth;
     const contentHeight = (activeBounds.maxY - activeBounds.minY + 1) * tileHeight;
@@ -504,6 +513,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
           let bgColor;
           if (onOffMode) {
             bgColor = '#FFFFFF';
+          } else if (tile.color) {
+            bgColor = tile.color;
           } else {
             bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
           }
@@ -596,6 +607,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       arrowheadSize,
       arrowheadLength,
       arrowGap,
+      brushColor,
     };
 
     const jsonString = JSON.stringify(projectData, null, 2);
@@ -617,7 +629,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     dimensions, tiles, tileColor, tileColorTwo, borderWidth, borderColor, activeTool,
     showLabels, labelFormat, labelFontSize, labelColor, onOffMode, zoom, rasterOffset,
     lastRasterArgs, wiringPortConfig, showDataLabels, showPowerLabels, wiringPattern,
-    arrowheadSize, arrowheadLength, arrowGap, toast
+    arrowheadSize, arrowheadLength, arrowGap, brushColor, toast
   ]);
   
   const importProject = useCallback((file: File) => {
@@ -663,6 +675,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setArrowheadSize(data.arrowheadSize);
         setArrowheadLength(data.arrowheadLength);
         setArrowGap(data.arrowGap);
+        setBrushColor(data.brushColor || "#e11d48");
         
         toast({
           title: "Import Successful",
@@ -745,6 +758,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setArrowGap,
     exportProject,
     importProject,
+    brushColor,
+    setBrushColor,
   };
 
   return (

@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { MediaOutputControls } from "./media-output-controls";
 import { RasterMapPreview } from "./raster-map-preview";
 import { WiringControls } from "./wiring-controls";
+import { ColorToolControls } from "./color-tool-controls";
 import {
   Accordion,
   AccordionContent,
@@ -35,7 +36,7 @@ import {
 
 
 export function PixelMapperLayout() {
-  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, restoreAll } = usePixelMapper();
+  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, restoreAll, activeTool } = usePixelMapper();
 
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : 0;
   const totalHeight = activeBounds ? (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight : 0;
@@ -108,6 +109,7 @@ export function PixelMapperLayout() {
                   <p className="text-sm text-muted-foreground pb-4">Select a tool to apply to the grid or restore deleted tiles.</p>
                   <div className="space-y-4 pt-4">
                     <EditTools />
+                    {activeTool === 'color' && <ColorToolControls />}
                     <div className="flex items-center justify-between rounded-lg border p-3">
                       <div className="flex items-center gap-2">
                         <Trash2 className="size-4 text-muted-foreground" />
