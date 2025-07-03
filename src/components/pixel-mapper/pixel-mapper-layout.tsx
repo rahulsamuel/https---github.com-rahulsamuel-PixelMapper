@@ -41,6 +41,7 @@ import { useState, useRef } from "react";
 export function PixelMapperLayout() {
   const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig } = usePixelMapper();
   const [activeTab, setActiveTab] = useState("grid");
+  const [activeAccordion, setActiveAccordion] = useState("grid-setup");
   const gridViewportRef = useRef<HTMLDivElement>(null);
   const wiringViewportRef = useRef<HTMLDivElement>(null);
   const rasterViewportRef = useRef<HTMLDivElement>(null);
@@ -100,6 +101,21 @@ export function PixelMapperLayout() {
     </AccordionTrigger>
   );
 
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    switch (tab) {
+      case 'grid':
+        setActiveAccordion('grid-setup');
+        break;
+      case 'wiring':
+        setActiveAccordion('wiring');
+        break;
+      case 'raster':
+        setActiveAccordion('export');
+        break;
+    }
+  };
+
   return (
     <SidebarProvider>
       <Sidebar>
@@ -109,7 +125,13 @@ export function PixelMapperLayout() {
         <Separator />
         <SidebarContent asChild>
           <ScrollArea className="flex-grow">
-            <Accordion type="single" collapsible defaultValue="grid-setup" className="p-4 flex flex-col gap-2">
+            <Accordion
+              type="single"
+              collapsible
+              value={activeAccordion}
+              onValueChange={setActiveAccordion}
+              className="p-4 flex flex-col gap-2"
+            >
               <AccordionItem value="project" className="border-none">
                 <AccordionSectionTrigger icon={<Package className="size-5" />} title="Project" />
                 <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
@@ -215,7 +237,7 @@ export function PixelMapperLayout() {
         </SidebarContent>
       </Sidebar>
       <SidebarInset>
-        <Tabs defaultValue="grid" className="flex flex-col h-full w-full" onValueChange={setActiveTab}>
+        <Tabs defaultValue="grid" className="flex flex-col h-full w-full" onValueChange={handleTabChange}>
           <div className="p-4 border-b flex items-center justify-between flex-shrink-0">
             <TabsList>
               <TabsTrigger value="grid">LED Grid</TabsTrigger>
