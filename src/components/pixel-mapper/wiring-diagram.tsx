@@ -42,21 +42,10 @@ export function WiringDiagram() {
     powerLabelSize,
   } = usePixelMapper();
 
-  const [isMounted, setIsMounted] = useState(false);
-  const [dataWiringColor, setDataWiringColor] = useState('hsl(140, 60%, 40%)'); // Fallback color
-  const [powerWiringColor, setPowerWiringColor] = useState('hsl(0, 84.2%, 60.2%)'); // Fallback color
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
-    // We need to wait for the component to be mounted to access computed styles from CSS variables
-    const computedDataColor = getComputedStyle(document.documentElement).getPropertyValue('--data-wiring').trim();
-    if (computedDataColor) {
-      setDataWiringColor(`hsl(${computedDataColor})`);
-    }
-    const computedPowerColor = getComputedStyle(document.documentElement).getPropertyValue('--power-wiring').trim();
-    if (computedPowerColor) {
-      setPowerWiringColor(`hsl(${computedPowerColor})`);
-    }
+    setIsClient(true);
   }, []);
 
   const wiringData = getWiringData({ dimensions, tiles, wiringPortConfig, wiringPattern, powerWiringPattern, rasterMapConfig, activeBounds, tilesPerPowerString });
@@ -204,7 +193,7 @@ export function WiringDiagram() {
                 }}
               >
                 {/* Data Arrows */}
-                {isMounted && showDataLabels && wiringData.map(({ x, y, nextTile, isDeleted }) => {
+                {isClient && showDataLabels && wiringData.map(({ x, y, nextTile, isDeleted }) => {
                   if (isDeleted || !nextTile) return null;
 
                   const startX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - x) : x) * dimensions.tileWidth + dimensions.tileWidth / 2;
@@ -237,14 +226,14 @@ export function WiringDiagram() {
 
                   return (
                     <g key={`data-arrow-${x}-${y}`}>
-                      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={dataWiringColor} strokeWidth="3" />
-                       <polygon points={arrowheadPoints} fill={dataWiringColor} />
+                      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="hsl(var(--data-wiring))" strokeWidth="3" />
+                       <polygon points={arrowheadPoints} fill="hsl(var(--data-wiring))" />
                     </g>
                   );
                 })}
 
                 {/* Power Arrows */}
-                {isMounted && showPowerLabels && wiringData.map(({ x, y, nextPowerTile, isDeleted }) => {
+                {isClient && showPowerLabels && wiringData.map(({ x, y, nextPowerTile, isDeleted }) => {
                   if (isDeleted || !nextPowerTile) return null;
 
                   const startX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - x) : x) * dimensions.tileWidth + dimensions.tileWidth / 2;
@@ -278,8 +267,8 @@ export function WiringDiagram() {
 
                   return (
                     <g key={`power-arrow-${x}-${y}`}>
-                      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={powerWiringColor} strokeWidth="2" />
-                       <polygon points={arrowheadPoints} fill={powerWiringColor} />
+                      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="hsl(var(--power-wiring))" strokeWidth="2" />
+                       <polygon points={arrowheadPoints} fill="hsl(var(--power-wiring))" />
                     </g>
                   );
                 })}
