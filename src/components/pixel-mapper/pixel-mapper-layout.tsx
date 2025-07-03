@@ -1,3 +1,4 @@
+
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
@@ -62,8 +63,8 @@ export function PixelMapperLayout() {
         viewportEl = gridViewportRef.current;
         break;
       case 'wiring':
-        gridWidth = dimensions.screenWidth * 120;
-        gridHeight = dimensions.screenHeight * 120;
+        gridWidth = dimensions.screenWidth * dimensions.tileWidth;
+        gridHeight = dimensions.screenHeight * dimensions.tileHeight;
         viewportEl = wiringViewportRef.current;
         break;
       case 'raster':
@@ -251,3 +252,5 @@ export function PixelMapperLayout() {
     </SidebarProvider>
   );
 }
+
+    

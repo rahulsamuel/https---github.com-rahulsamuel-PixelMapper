@@ -71,8 +71,6 @@ export function WiringDiagram() {
     portLabelText = 'Power Ports';
   }
 
-  const TILE_SIZE = 120;
-  
   if (tiles.length === 0) {
     return (
         <div className="flex h-full w-full items-center justify-center text-muted-foreground">
@@ -105,8 +103,8 @@ export function WiringDiagram() {
             ref={wiringDiagramRef}
             className="relative bg-background"
             style={{ 
-              width: dimensions.screenWidth * TILE_SIZE, 
-              height: dimensions.screenHeight * TILE_SIZE,
+              width: dimensions.screenWidth * dimensions.tileWidth, 
+              height: dimensions.screenHeight * dimensions.tileHeight,
               transform: `scale(${zoom})`,
               transformOrigin: 'top left',
             }}
@@ -129,13 +127,13 @@ export function WiringDiagram() {
               }
 
               const tileStyle = {
-                top: y * TILE_SIZE,
-                width: TILE_SIZE,
-                height: TILE_SIZE,
+                top: y * dimensions.tileHeight,
+                width: dimensions.tileWidth,
+                height: dimensions.tileHeight,
                 backgroundColor: bgColor,
                 border: isDeleted ? 'none' : `${borderWidth}px solid ${borderColor}`,
                 boxSizing: 'border-box',
-                ...(isWiringMirrored ? { right: x * TILE_SIZE } : { left: x * TILE_SIZE }),
+                ...(isWiringMirrored ? { right: x * dimensions.tileWidth } : { left: x * dimensions.tileWidth }),
               };
               
               const currentLabelColor = onOffMode ? '#000000' : labelColor;
@@ -183,19 +181,18 @@ export function WiringDiagram() {
              <svg
                 className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
                 style={{
-                  width: dimensions.screenWidth * TILE_SIZE,
-                  height: dimensions.screenHeight * TILE_SIZE,
+                  width: dimensions.screenWidth * dimensions.tileWidth,
+                  height: dimensions.screenHeight * dimensions.tileHeight,
                 }}
               >
                 {/* Data Arrows */}
                 {showDataLabels && wiringData.map(({ x, y, nextTile, isDeleted }) => {
                   if (isDeleted || !nextTile) return null;
 
-                  const TILE_RADIUS = TILE_SIZE / 2;
-                  const startX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - x) : x) * TILE_SIZE + TILE_RADIUS;
-                  const startY_center = y * TILE_SIZE + TILE_RADIUS;
-                  const endX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - nextTile.x) : nextTile.x) * TILE_SIZE + TILE_RADIUS;
-                  const endY_center = nextTile.y * TILE_SIZE + TILE_RADIUS;
+                  const startX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - x) : x) * dimensions.tileWidth + dimensions.tileWidth / 2;
+                  const startY_center = y * dimensions.tileHeight + dimensions.tileHeight / 2;
+                  const endX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - nextTile.x) : nextTile.x) * dimensions.tileWidth + dimensions.tileWidth / 2;
+                  const endY_center = nextTile.y * dimensions.tileHeight + dimensions.tileHeight / 2;
                   
                   const dx = endX_center - startX_center;
                   const dy = endY_center - startY_center;
@@ -232,11 +229,10 @@ export function WiringDiagram() {
                 {showPowerLabels && wiringData.map(({ x, y, nextPowerTile, isDeleted }) => {
                   if (isDeleted || !nextPowerTile) return null;
 
-                  const TILE_RADIUS = TILE_SIZE / 2;
-                  const startX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - x) : x) * TILE_SIZE + TILE_RADIUS;
-                  const startY_center = y * TILE_SIZE + TILE_RADIUS;
-                  const endX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - nextPowerTile.x) : nextPowerTile.x) * TILE_SIZE + TILE_RADIUS;
-                  const endY_center = nextPowerTile.y * TILE_SIZE + TILE_RADIUS;
+                  const startX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - x) : x) * dimensions.tileWidth + dimensions.tileWidth / 2;
+                  const startY_center = y * dimensions.tileHeight + dimensions.tileHeight / 2;
+                  const endX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - nextPowerTile.x) : nextPowerTile.x) * dimensions.tileWidth + dimensions.tileWidth / 2;
+                  const endY_center = nextPowerTile.y * dimensions.tileHeight + dimensions.tileHeight / 2;
                   
                   const dx = endX_center - startX_center;
                   const dy = endY_center - startY_center;
@@ -276,3 +272,5 @@ export function WiringDiagram() {
     </div>
   );
 }
+
+    
