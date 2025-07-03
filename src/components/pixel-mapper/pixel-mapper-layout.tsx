@@ -19,7 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "./edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, Grid3x3, Paintbrush, Type, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch } from "lucide-react";
+import { ZoomIn, ZoomOut, Grid3x3, Paintbrush, Type, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser } from "lucide-react";
 import { LabelControls } from "./label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -36,7 +36,7 @@ import {
 
 
 export function PixelMapperLayout() {
-  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, restoreAll, activeTool } = usePixelMapper();
+  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, restoreDeletedTiles, resetAllColors, activeTool } = usePixelMapper();
 
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : 0;
   const totalHeight = activeBounds ? (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight : 0;
@@ -110,17 +110,23 @@ export function PixelMapperLayout() {
                   <div className="space-y-4 pt-4">
                     <EditTools />
                     {activeTool === 'color' && <ColorToolControls />}
-                    <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/50">
                       <div className="flex items-center gap-2">
                         <Trash2 className="size-4 text-muted-foreground" />
                         <span className="text-sm font-medium">Deleted Tiles</span>
                       </div>
                       <span className="font-mono text-lg font-bold">{deletedCount}</span>
                     </div>
-                    <Button onClick={restoreAll} variant="outline" className="w-full">
-                        <RotateCcw className="mr-2" />
-                        Restore All
-                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                       <Button onClick={resetAllColors} variant="outline" className="w-full">
+                          <Eraser className="mr-2" />
+                          Reset Colors
+                      </Button>
+                      <Button onClick={restoreDeletedTiles} variant="outline" className="w-full">
+                          <RotateCcw className="mr-2" />
+                          Restore Deleted
+                      </Button>
+                    </div>
                   </div>
                 </AccordionContent>
               </AccordionItem>

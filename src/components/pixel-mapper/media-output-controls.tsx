@@ -6,6 +6,7 @@ import { Download, FileOutput, AlertTriangle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useMemo } from "react";
+import { Separator } from "@/components/ui/separator";
 
 export function MediaOutputControls() {
   const { 
@@ -38,16 +39,6 @@ export function MediaOutputControls() {
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-sm text-muted-foreground pb-2">Generate different outputs of your pixel map.</p>
-        <div className="space-y-2">
-          <Button size="sm" onClick={() => handleDownloadPng('pixel-map.png')} variant="outline" className="w-full justify-start">
-              <Download className="mr-2" />
-              Download Grid as PNG
-          </Button>
-        </div>
-      </div>
-      
-      <div>
         <Label className="font-semibold">Raster Map Generation</Label>
         <p className="text-sm text-muted-foreground pb-2">Create raster maps for media servers.</p>
         <div className="space-y-2">
@@ -68,15 +59,13 @@ export function MediaOutputControls() {
       </div>
 
       {rasterMapConfig && (
-        <div>
-          <hr className="my-4" />
-          <div className="space-y-4">
-            <div>
-              <Label className="font-semibold">Raster Map Settings</Label>
-              <p className="text-sm text-muted-foreground">
+        <>
+          <Separator />
+          <div>
+            <Label className="font-semibold">Raster Map Settings</Label>
+             <p className="text-sm text-muted-foreground pb-2">
                 Preview: {rasterMapConfig.totalWidth}x{rasterMapConfig.totalHeight} ({rasterMapConfig.slices.length} {rasterMapConfig.slices.length === 1 ? 'slice' : 'slices'})
               </p>
-            </div>
 
             <div className="flex items-end gap-2">
                 <div className="grid w-full gap-1.5">
@@ -99,22 +88,39 @@ export function MediaOutputControls() {
                 </div>
             </div>
             {isOutOfBounds && (
-              <div className="flex items-center gap-2 text-destructive text-xs font-medium p-2 bg-destructive/10 rounded-md">
+              <div className="flex items-center gap-2 text-destructive text-xs font-medium p-2 bg-destructive/10 rounded-md mt-2">
                 <AlertTriangle className="size-4" />
                 <span>Warning: Grid is outside the raster boundary.</span>
               </div>
             )}
+          </div>
+        </>
+      )}
+
+      <Separator />
+
+      <div>
+        <Label className="font-semibold">Downloads</Label>
+        <p className="text-sm text-muted-foreground pb-2">Download generated grid images and raster maps.</p>
+        <div className="space-y-2">
+           <Button size="sm" onClick={() => handleDownloadPng('pixel-map.png')} variant="outline" className="w-full justify-start">
+              <Download className="mr-2" />
+              Download Grid as PNG
+          </Button>
+          {rasterMapConfig && (
             <Button
               onClick={downloadRasterSlices}
               disabled={rasterMapConfig.slices.length === 0}
-              className="w-full"
+              size="sm"
+              variant="outline"
+              className="w-full justify-start"
             >
               <Download className="mr-2" />
               Download Raster Slices ({rasterMapConfig.slices.length})
             </Button>
-          </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

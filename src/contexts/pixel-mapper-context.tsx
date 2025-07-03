@@ -89,7 +89,8 @@ interface PixelMapperState {
   tiles: Tile[];
   labels: string[];
   handleTileClick: (index: number) => void;
-  restoreAll: () => void;
+  restoreDeletedTiles: () => void;
+  resetAllColors: () => void;
   deletedCount: number;
   tileColor: string;
   setTileColor: Dispatch<SetStateAction<string>>;
@@ -296,8 +297,12 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     }
   }, [activeTool, toggleTile, brushColor]);
 
-  const restoreAll = useCallback(() => {
+  const restoreDeletedTiles = useCallback(() => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, deleted: false })));
+  }, []);
+  
+  const resetAllColors = useCallback(() => {
+    setTiles((prev) => prev.map((tile) => ({ ...tile, color: undefined })));
   }, []);
 
   const handleDownloadPng = useCallback((filename: string) => {
@@ -710,7 +715,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     tiles,
     labels,
     handleTileClick,
-    restoreAll,
+    restoreDeletedTiles,
+    resetAllColors,
     deletedCount,
     tileColor,
     setTileColor,
