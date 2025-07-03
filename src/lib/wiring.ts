@@ -131,7 +131,6 @@ export function getWiringData(
 
   let powerCounter = 1;
   let powerGroupCounter = 0;
-  let backupPortCounter = 0;
 
   activeTilesPath.forEach(({ tile: currentTileInfo }, pathIndex) => {
     powerGroupCounter++;
@@ -158,8 +157,20 @@ export function getWiringData(
     const isEndOfGroup = (pathIndex + 1) % subgroupSize === 0;
 
     if (isEndOfGroup || isLastTileInPath) {
-        backupPortCounter++;
-        currentTileInfo.backupLabel = `B${backupPortCounter}`;
+        let backupUniverse: string;
+        if (universeIndex === 0) { // 'A' universe backup is 'B'
+            backupUniverse = 'B';
+        } else {
+            // Backup for C is D, for D is E, etc.
+            const backupUniverseIndex = universeIndex + 1;
+            if (backupUniverseIndex < UNIVERSE_LETTERS.length) {
+                backupUniverse = UNIVERSE_LETTERS[backupUniverseIndex];
+            } else {
+                // Fallback if we run out of letters
+                backupUniverse = `BU${universeIndex}`; 
+            }
+        }
+        currentTileInfo.backupLabel = `${backupUniverse}${subgroupIndexInUniverse}`;
         currentTileInfo.nextTile = null;
     } else {
       const nextTileInfo = activeTilesPath[pathIndex + 1].tile;
