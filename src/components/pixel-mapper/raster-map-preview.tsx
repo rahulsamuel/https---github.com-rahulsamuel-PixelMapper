@@ -2,12 +2,24 @@
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
+import { useMemo } from 'react';
 
 export function RasterMapPreview() {
   const { 
     rasterMapConfig,
     zoom,
   } = usePixelMapper();
+
+  const checkeredBg = useMemo(() => ({
+    backgroundImage: `
+      linear-gradient(45deg, hsl(var(--muted) / 0.5) 25%, transparent 25%),
+      linear-gradient(-45deg, hsl(var(--muted) / 0.5) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, hsl(var(--muted) / 0.5) 75%),
+      linear-gradient(-45deg, transparent 75%, hsl(var(--muted) / 0.5) 75%)
+    `,
+    backgroundSize: '20px 20px',
+    backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
+  }), []);
 
 
   if (!rasterMapConfig) {
@@ -24,7 +36,7 @@ export function RasterMapPreview() {
   const { slices, totalWidth, totalHeight, previewImage } = rasterMapConfig;
 
   return (
-     <div className="p-4 bg-muted/20">
+     <div className="p-4 bg-muted/20 w-full h-full">
         <div 
           className="relative bg-background shadow-lg border"
           style={{ 
@@ -32,11 +44,17 @@ export function RasterMapPreview() {
               height: totalHeight,
               transform: `scale(${zoom})`,
               transformOrigin: 'top left',
-              backgroundImage: previewImage ? `url(${previewImage})` : 'none',
-              backgroundRepeat: 'no-repeat',
+              ...checkeredBg,
               boxSizing: 'content-box'
           }}
         >
+            <div 
+              className="absolute inset-0"
+              style={{
+                backgroundImage: previewImage ? `url(${previewImage})` : 'none',
+                backgroundRepeat: 'no-repeat',
+              }}
+            />
             {slices.map(slice => (
                 <div 
                 key={slice.key} 
