@@ -92,10 +92,10 @@ export function PixelMapperLayout() {
           <TabsContent value="grid" className="flex-grow overflow-auto">
             <LedGrid />
           </TabsContent>
-          <TabsContent value="wiring" className="flex-grow overflow-auto">
+          <TabsContent value="wiring" className="flex-grow">
             <WiringDiagram />
           </TabsContent>
-          <TabsContent value="raster" className="flex-grow overflow-auto">
+          <TabsContent value="raster" className="flex-grow">
             <RasterMapPreview />
           </TabsContent>
         </Tabs>

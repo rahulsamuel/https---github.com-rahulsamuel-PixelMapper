@@ -83,8 +83,8 @@ export function WiringDiagram() {
   }
 
   return (
-    <>
-      <div className="sticky top-0 z-10 bg-background p-4 border-b flex flex-col items-start gap-4">
+    <div className="flex flex-col h-full">
+      <div className="flex-shrink-0 bg-background p-4 border-b flex flex-col items-start gap-4">
         <div className="flex justify-between items-center w-full flex-wrap gap-y-2">
             <div className="flex items-baseline gap-3">
               <h2 className="text-lg font-semibold">Wiring Diagram</h2>
@@ -153,146 +153,148 @@ export function WiringDiagram() {
             </div>
         </div>
       </div>
-      <div className="p-4 bg-muted/20">
-        <div 
-          ref={wiringDiagramRef}
-          className="relative bg-background"
-          style={{ 
-            width: dimensions.screenWidth * TILE_SIZE, 
-            height: dimensions.screenHeight * TILE_SIZE,
-            transform: `scale(${zoom})`,
-            transformOrigin: 'top left',
-          }}
-        >
-          {wiringData.map(({ x, y, dataLabel, powerLabel, backupLabel, isDeleted }, index) => {
-            let bgColor;
-            if (onOffMode) {
-              bgColor = isDeleted ? '#000000' : '#FFFFFF';
-            } else {
-              if (isDeleted) {
-                bgColor = '#000000';
+      <div className="flex-grow overflow-auto">
+        <div className="p-4 bg-muted/20">
+          <div 
+            ref={wiringDiagramRef}
+            className="relative bg-background"
+            style={{ 
+              width: dimensions.screenWidth * TILE_SIZE, 
+              height: dimensions.screenHeight * TILE_SIZE,
+              transform: `scale(${zoom})`,
+              transformOrigin: 'top left',
+            }}
+          >
+            {wiringData.map(({ x, y, dataLabel, powerLabel, backupLabel, isDeleted }, index) => {
+              let bgColor;
+              if (onOffMode) {
+                bgColor = isDeleted ? '#000000' : '#FFFFFF';
               } else {
-                bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
+                if (isDeleted) {
+                  bgColor = '#000000';
+                } else {
+                  bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
+                }
               }
-            }
 
-            const tileStyle = {
-              top: y * TILE_SIZE,
-              width: TILE_SIZE,
-              height: TILE_SIZE,
-              backgroundColor: bgColor,
-              border: isDeleted ? 'none' : '1px solid hsl(var(--border))',
-              ...(isMirrored ? { right: x * TILE_SIZE } : { left: x * TILE_SIZE }),
-            };
-            
-            const currentLabelColor = onOffMode ? '#000000' : labelColor;
-            
-            const originalIndex = y * dimensions.screenWidth + x;
+              const tileStyle = {
+                top: y * TILE_SIZE,
+                width: TILE_SIZE,
+                height: TILE_SIZE,
+                backgroundColor: bgColor,
+                border: isDeleted ? 'none' : '1px solid hsl(var(--border))',
+                ...(isMirrored ? { right: x * TILE_SIZE } : { left: x * TILE_SIZE }),
+              };
+              
+              const currentLabelColor = onOffMode ? '#000000' : labelColor;
+              
+              const originalIndex = y * dimensions.screenWidth + x;
 
-            return (
-              <div
-                key={`wiring-tile-${x}-${y}`}
-                className="absolute flex items-center justify-center overflow-visible"
-                style={tileStyle}
-              >
-                {!isDeleted && (
-                  <>
-                    {showLabels && labels[originalIndex] && (
-                      <span 
-                        className="absolute top-1 left-2 font-mono text-lg font-bold pointer-events-none"
-                        style={{ color: currentLabelColor, opacity: 0.7 }}
-                      >
-                        {labels[originalIndex]}
-                      </span>
-                    )}
-                    <div
-                      className="flex flex-col items-center justify-center h-full w-full text-foreground relative"
-                    >
-                      {showDataLabels && dataLabel && (
-                        <div className="bg-data-wiring text-data-wiring-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold mb-1 z-10">
-                            <span>{dataLabel}</span>
-                        </div>
-                      )}
-                      {showDataLabels && backupLabel && (
-                        <div className="bg-destructive text-destructive-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold mb-1 z-10">
-                            <span>{backupLabel}</span>
-                        </div>
-                      )}
-                      {showPowerLabels && powerLabel && !dataLabel && !backupLabel && (
-                         <span className="text-xs text-primary z-10">{powerLabel}</span>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            );
-          })}
-           <svg
-              className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
-              style={{
-                width: dimensions.screenWidth * TILE_SIZE,
-                height: dimensions.screenHeight * TILE_SIZE,
-              }}
-            >
-              <defs>
-                <marker
-                  id="arrowhead"
-                  viewBox={`0 0 ${arrowheadLength} ${arrowheadSize}`}
-                  refX={arrowheadLength}
-                  refY={arrowheadSize / 2}
-                  markerWidth={arrowheadSize}
-                  markerHeight={arrowheadSize}
-                  orient="auto-start-reverse"
+              return (
+                <div
+                  key={`wiring-tile-${x}-${y}`}
+                  className="absolute flex items-center justify-center overflow-visible"
+                  style={tileStyle}
                 >
-                  <path d={`M 0 0 L ${arrowheadLength} ${arrowheadSize / 2} L 0 ${arrowheadSize} z`} fill="hsl(var(--data-wiring))" />
-                </marker>
-              </defs>
-              {showDataLabels && wiringData.map(({ x, y, nextTile, isDeleted }) => {
-                if (isDeleted || !nextTile) {
-                  return null;
-                }
+                  {!isDeleted && (
+                    <>
+                      {showLabels && labels[originalIndex] && (
+                        <span 
+                          className="absolute top-1 left-2 font-mono text-lg font-bold pointer-events-none"
+                          style={{ color: currentLabelColor, opacity: 0.7 }}
+                        >
+                          {labels[originalIndex]}
+                        </span>
+                      )}
+                      <div
+                        className="flex flex-col items-center justify-center h-full w-full text-foreground relative"
+                      >
+                        {showDataLabels && dataLabel && (
+                          <div className="bg-data-wiring text-data-wiring-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold mb-1 z-10">
+                              <span>{dataLabel}</span>
+                          </div>
+                        )}
+                        {showDataLabels && backupLabel && (
+                          <div className="bg-destructive text-destructive-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold mb-1 z-10">
+                              <span>{backupLabel}</span>
+                          </div>
+                        )}
+                        {showPowerLabels && powerLabel && !dataLabel && !backupLabel && (
+                           <span className="text-xs text-primary z-10">{powerLabel}</span>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+             <svg
+                className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
+                style={{
+                  width: dimensions.screenWidth * TILE_SIZE,
+                  height: dimensions.screenHeight * TILE_SIZE,
+                }}
+              >
+                <defs>
+                  <marker
+                    id="arrowhead"
+                    viewBox={`0 0 ${arrowheadLength} ${arrowheadSize}`}
+                    refX={arrowheadLength}
+                    refY={arrowheadSize / 2}
+                    markerWidth={arrowheadSize}
+                    markerHeight={arrowheadSize}
+                    orient="auto-start-reverse"
+                  >
+                    <path d={`M 0 0 L ${arrowheadLength} ${arrowheadSize / 2} L 0 ${arrowheadSize} z`} fill="hsl(var(--data-wiring))" />
+                  </marker>
+                </defs>
+                {showDataLabels && wiringData.map(({ x, y, nextTile, isDeleted }) => {
+                  if (isDeleted || !nextTile) {
+                    return null;
+                  }
 
-                const TILE_RADIUS = TILE_SIZE / 2;
+                  const TILE_RADIUS = TILE_SIZE / 2;
 
-                const startX_center = (isMirrored ? (dimensions.screenWidth - 1 - x) : x) * TILE_SIZE + TILE_RADIUS;
-                const startY_center = y * TILE_SIZE + TILE_RADIUS;
+                  const startX_center = (isMirrored ? (dimensions.screenWidth - 1 - x) : x) * TILE_SIZE + TILE_RADIUS;
+                  const startY_center = y * TILE_SIZE + TILE_RADIUS;
 
-                const endX_center = (isMirrored ? (dimensions.screenWidth - 1 - nextTile.x) : nextTile.x) * TILE_SIZE + TILE_RADIUS;
-                const endY_center = nextTile.y * TILE_SIZE + TILE_RADIUS;
-                
-                const dx = endX_center - startX_center;
-                const dy = endY_center - startY_center;
-                const distance = Math.sqrt(dx * dx + dy * dy);
+                  const endX_center = (isMirrored ? (dimensions.screenWidth - 1 - nextTile.x) : nextTile.x) * TILE_SIZE + TILE_RADIUS;
+                  const endY_center = nextTile.y * TILE_SIZE + TILE_RADIUS;
+                  
+                  const dx = endX_center - startX_center;
+                  const dy = endY_center - startY_center;
+                  const distance = Math.sqrt(dx * dx + dy * dy);
 
-                if (distance <= arrowGap * 2) {
-                  return null; // Don't draw if tiles are too close for the gap
-                }
+                  if (distance <= arrowGap * 2) {
+                    return null; // Don't draw if tiles are too close for the gap
+                  }
 
-                const startOffsetX = (dx / distance) * arrowGap;
-                const startOffsetY = (dy / distance) * arrowGap;
+                  const startOffsetX = (dx / distance) * arrowGap;
+                  const startOffsetY = (dy / distance) * arrowGap;
 
-                const x1 = startX_center + startOffsetX;
-                const y1 = startY_center + startOffsetY;
+                  const x1 = startX_center + startOffsetX;
+                  const y1 = startY_center + startOffsetY;
 
-                const x2 = endX_center - startOffsetX;
-                const y2 = endY_center - startOffsetY;
+                  const x2 = endX_center - startOffsetX;
+                  const y2 = endY_center - startOffsetY;
 
-                return (
-                  <line
-                    key={`line-${x}-${y}`}
-                    x1={x1}
-                    y1={y1}
-                    x2={x2}
-                    y2={y2}
-                    stroke="hsl(var(--data-wiring))"
-                    strokeWidth="3"
-                    markerEnd="url(#arrowhead)"
-                  />
-                );
-              })}
-            </svg>
+                  return (
+                    <line
+                      key={`line-${x}-${y}`}
+                      x1={x1}
+                      y1={y1}
+                      x2={x2}
+                      y2={y2}
+                      stroke="hsl(var(--data-wiring))"
+                      strokeWidth="3"
+                      markerEnd="url(#arrowhead)"
+                    />
+                  );
+                })}
+              </svg>
+          </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
