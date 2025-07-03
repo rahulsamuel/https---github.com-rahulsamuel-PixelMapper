@@ -43,7 +43,7 @@ interface WiringInfo {
   x: number;
   y: number;
   dataLabel: string;
-  powerLabel: string;
+  powerPortLabel: string;
   backupLabel: string;
   isDeleted: boolean;
   nextTile: { x: number; y: number } | null;
@@ -161,7 +161,10 @@ function applyPowerWiring(
         counters.powerCounter++;
         counters.powerGroupCounter = 1;
       }
-      currentTileInfo.powerLabel = `P${counters.powerCounter}`;
+
+      if (counters.powerGroupCounter === 1) {
+        currentTileInfo.powerPortLabel = `P${counters.powerCounter}`;
+      }
 
       const isLastTileInPath = pathIndex === activeTilesPath.length - 1;
       const isEndOfPowerGroup = counters.powerGroupCounter === tilesPerPowerCircuit;
@@ -206,7 +209,7 @@ export function getWiringData({
     x: index % screenWidth,
     y: Math.floor(index / screenWidth),
     dataLabel: "",
-    powerLabel: "",
+    powerPortLabel: "",
     backupLabel: "",
     isDeleted: tile.deleted,
     nextTile: null,

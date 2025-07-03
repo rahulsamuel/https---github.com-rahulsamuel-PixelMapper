@@ -41,7 +41,7 @@ export function WiringDiagram() {
   } = usePixelMapper();
 
   const [dataWiringColor, setDataWiringColor] = useState('hsl(140, 60%, 40%)'); // Fallback color
-  const [powerWiringColor, setPowerWiringColor] = useState('hsl(30, 90%, 50%)'); // Fallback color
+  const [powerWiringColor, setPowerWiringColor] = useState('hsl(0, 84.2%, 60.2%)'); // Fallback color
 
   useEffect(() => {
     // We need to wait for the component to be mounted to access computed styles from CSS variables
@@ -98,7 +98,7 @@ export function WiringDiagram() {
               transformOrigin: 'top left',
             }}
           >
-            {wiringData.map(({ x, y, dataLabel, powerLabel, backupLabel, isDeleted }, index) => {
+            {wiringData.map(({ x, y, dataLabel, powerPortLabel, backupLabel, isDeleted }, index) => {
               const originalIndex = y * dimensions.screenWidth + x;
               const tile = tiles[originalIndex];
 
@@ -156,8 +156,10 @@ export function WiringDiagram() {
                               <span>{backupLabel}</span>
                           </div>
                         )}
-                        {showPowerLabels && powerLabel && !dataLabel && !backupLabel && (
-                           <span className="absolute bottom-2 right-2 text-xs font-mono" style={{ color: powerWiringColor }}>{powerLabel}</span>
+                        {showPowerLabels && powerPortLabel && !dataLabel && !backupLabel && (
+                           <div className="bg-power-wiring text-power-wiring-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold z-10">
+                              <span>{powerPortLabel}</span>
+                          </div>
                         )}
                       </div>
                     </>
@@ -253,7 +255,7 @@ export function WiringDiagram() {
 
                   return (
                     <g key={`power-arrow-${x}-${y}`}>
-                      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={powerWiringColor} strokeWidth="2" strokeDasharray="4 4" />
+                      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={powerWiringColor} strokeWidth="2" />
                        <polygon points={arrowheadPoints} fill={powerWiringColor} />
                     </g>
                   );
