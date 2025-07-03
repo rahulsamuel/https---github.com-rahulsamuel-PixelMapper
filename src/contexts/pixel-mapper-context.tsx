@@ -347,7 +347,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     } else if (labelFormat !== 'none') {
       for (let i = 0; i < totalTiles; i++) {
         const x = i % screenWidth;
-        const y = Math.floor(i / screenHeight);
+        const y = Math.floor(i / screenWidth);
         
         switch (labelFormat) {
           case 'row-col':
