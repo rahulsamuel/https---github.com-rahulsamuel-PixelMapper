@@ -48,7 +48,6 @@ interface WiringInfo {
   isDeleted: boolean;
   nextTile: { x: number; y: number } | null;
   nextPowerTile: { x: number; y: number } | null;
-  sliceOffsetLabel?: string;
 }
 
 const UNIVERSE_LETTERS = [
@@ -102,8 +101,7 @@ function applyDataWiring(
     activeTilesPath: { tile: WiringInfo; index: number; }[],
     wiringPortConfig: string,
     counters: { groupNumOverall: number; },
-    sliceUniverseIndex: number | null = null,
-    mediaServerOffset?: { x: number, y: number }
+    sliceUniverseIndex: number | null = null
 ) {
     if (activeTilesPath.length === 0) return;
     
@@ -111,10 +109,6 @@ function applyDataWiring(
     const subgroupsPerUniverse = 10;
       
     activeTilesPath.forEach(({ tile: currentTileInfo }, pathIndex) => {
-      if (pathIndex === 0 && mediaServerOffset) {
-        currentTileInfo.sliceOffsetLabel = `(${mediaServerOffset.x},${mediaServerOffset.y})`;
-      }
-      
       // Data
       const isFirstInGroup = pathIndex % subgroupSize === 0;
       if (isFirstInGroup) {
@@ -224,7 +218,6 @@ export function getWiringData({
     isDeleted: tile.deleted,
     nextTile: null,
     nextPowerTile: null,
-    sliceOffsetLabel: undefined,
   }));
 
   const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
@@ -259,19 +252,11 @@ export function getWiringData({
     for (const sliceKey of sortedSliceKeys) {
         const sliceIndices = tilesBySlice.get(sliceKey)!;
         
-        const [sliceRowStr, sliceColStr] = sliceKey.split('-');
-        const sliceRow = parseInt(sliceRowStr, 10);
-        const sliceCol = parseInt(sliceColStr, 10);
-        const mediaServerOffset = {
-            x: -sliceCol * sliceWidth,
-            y: -sliceRow * sliceHeight,
-        };
-
         // Data Path for slice: each slice gets its own universe sequence, restarting from 'A'
         const dataPathOrder = getPathOrder(sliceIndices, wiringPattern, screenWidth, screenHeight);
         const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
         // Reset counters for each slice so wiring starts over.
-        applyDataWiring(dataTilesPath, wiringPortConfig, { groupNumOverall: 0 }, null, mediaServerOffset);
+        applyDataWiring(dataTilesPath, wiringPortConfig, { groupNumOverall: 0 }, null);
         
         // Power Path for slice - power continues across slices
         const powerPathOrder = getPathOrder(sliceIndices, powerWiringPattern, screenWidth, screenHeight);
