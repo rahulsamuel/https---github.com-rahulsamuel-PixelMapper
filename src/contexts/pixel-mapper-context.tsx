@@ -132,9 +132,9 @@ interface PixelMapperState {
   wiringPortConfig: string;
   setWiringPortConfig: Dispatch<SetStateAction<string>>;
   showDataLabels: boolean;
-  setShowDataLabels: Dispatch<SetStateAction<boolean>>;
+  setShowDataLabels: (value: boolean) => void;
   showPowerLabels: boolean;
-  setShowPowerLabels: Dispatch<SetStateAction<boolean>>;
+  setShowPowerLabels: (value: boolean) => void;
   wiringPattern: WiringPattern;
   setWiringPattern: Dispatch<SetStateAction<WiringPattern>>;
   powerWiringPattern: WiringPattern;
@@ -211,8 +211,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   // Wiring state
   const [wiringPortConfig, setWiringPortConfig] = useState("4");
   const [tilesPerPowerString, setTilesPerPowerString] = useState("20");
-  const [showDataLabels, setShowDataLabels] = useState(true);
-  const [showPowerLabels, setShowPowerLabels] = useState(true);
+  const [showDataLabels, _setShowDataLabels] = useState(true);
+  const [showPowerLabels, _setShowPowerLabels] = useState(false);
   const [wiringPattern, setWiringPattern] = useState<WiringPattern>('serpentine-horizontal');
   const [powerWiringPattern, setPowerWiringPattern] = useState<WiringPattern>('left-right');
   const [arrowheadSize, setArrowheadSize] = useState(6);
@@ -222,6 +222,20 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [powerArrowheadLength, setPowerArrowheadLength] = useState(10);
   const [powerArrowGap, setPowerArrowGap] = useState(30);
   const [isWiringMirrored, setIsWiringMirrored] = useState(false);
+
+  const setShowDataLabelsWrapper = (value: boolean) => {
+    _setShowDataLabels(value);
+    if (value) {
+      _setShowPowerLabels(false);
+    }
+  };
+
+  const setShowPowerLabelsWrapper = (value: boolean) => {
+    _setShowPowerLabels(value);
+    if (value) {
+      _setShowDataLabels(false);
+    }
+  };
 
 
   useEffect(() => {
@@ -760,8 +774,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setRasterOffset(data.rasterOffset);
         setLastRasterArgs(data.lastRasterArgs);
         setWiringPortConfig(data.wiringPortConfig);
-        setShowDataLabels(data.showDataLabels);
-        setShowPowerLabels(data.showPowerLabels);
+        _setShowDataLabels(data.showDataLabels);
+        _setShowPowerLabels(data.showPowerLabels);
         setWiringPattern(data.wiringPattern);
         setPowerWiringPattern(data.powerWiringPattern || 'left-right');
         setArrowheadSize(data.arrowheadSize);
@@ -846,9 +860,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     tilesPerPowerString,
     setTilesPerPowerString,
     showDataLabels,
-    setShowDataLabels,
+    setShowDataLabels: setShowDataLabelsWrapper,
     showPowerLabels,
-    setShowPowerLabels,
+    setShowPowerLabels: setShowPowerLabelsWrapper,
     wiringPattern,
     setWiringPattern,
     powerWiringPattern,

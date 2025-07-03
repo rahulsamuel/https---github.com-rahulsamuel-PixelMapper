@@ -157,7 +157,7 @@ export function WiringDiagram() {
                           </div>
                         )}
                         {showPowerLabels && powerPortLabel && (
-                           <div className="absolute bottom-2 bg-power-wiring text-power-wiring-foreground rounded-md px-2 py-1 text-xs font-bold z-10">
+                           <div className="bg-power-wiring text-power-wiring-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold z-10">
                               <span>{powerPortLabel}</span>
                           </div>
                         )}
