@@ -50,12 +50,6 @@ interface WiringInfo {
   nextPowerTile: { x: number; y: number } | null;
 }
 
-const UNIVERSE_PAIRS: [string, string][] = [
-    ['A', 'B'],
-    ['C', 'D'],
-];
-
-
 export function getPathOrder(indices: number[], pattern: WiringPattern, screenWidth: number, screenHeight: number): number[] {
   const getCoords = (index: number) => ({
     x: index % screenWidth,
@@ -98,7 +92,6 @@ function applyDataWiring(
     if (activeTilesPath.length === 0) return;
     
     const subgroupSize = parseInt(wiringPortConfig.trim(), 10) || 4;
-    const subgroupsPerUniverse = 10;
     let groupCounter = 0;
 
     let currentGroupInfo: { main: string, backup: string } | null = null;
@@ -108,22 +101,29 @@ function applyDataWiring(
         
         if (isFirstInGroup) {
             groupCounter++;
-            const universeSetIndex = Math.floor((groupCounter - 1) / subgroupsPerUniverse);
+            
+            const effectiveGroupIndex = (groupCounter - 1) % 20; // Wraps around every 20 ports
+            
+            let mainUniverse: string;
+            let backupUniverse: string;
+            let universePortNumber: number;
 
-            if (universeSetIndex >= UNIVERSE_PAIRS.length) {
-                // If we run out of A/B, C/D pairs, show an error label.
-                currentGroupInfo = { main: "ERR", backup: "ERR" };
+            if (effectiveGroupIndex < 10) {
+                // Ports 1-10, 21-30, etc.
+                mainUniverse = 'A';
+                backupUniverse = 'B';
+                universePortNumber = (effectiveGroupIndex % 10) + 1;
             } else {
-                const mainUniverse = UNIVERSE_PAIRS[universeSetIndex][0]; // A or C
-                const backupUniverse = UNIVERSE_PAIRS[universeSetIndex][1]; // B or D
-                
-                const subgroupIndexInUniverse = ((groupCounter - 1) % subgroupsPerUniverse) + 1;
-                
-                currentGroupInfo = {
-                    main: `${mainUniverse}${subgroupIndexInUniverse}`,
-                    backup: `${backupUniverse}${subgroupIndexInUniverse}`
-                };
+                // Ports 11-20, 31-40, etc.
+                mainUniverse = 'C';
+                backupUniverse = 'D';
+                universePortNumber = (effectiveGroupIndex % 10) + 1;
             }
+            
+            currentGroupInfo = {
+                main: `${mainUniverse}${universePortNumber}`,
+                backup: `${backupUniverse}${universePortNumber}`
+            };
             
             currentTileInfo.dataLabel = currentGroupInfo.main;
         } else {
@@ -145,6 +145,7 @@ function applyDataWiring(
         }
     });
 }
+
 
 function applyPowerWiring(
     activeTilesPath: { tile: WiringInfo; index: number; }[],
