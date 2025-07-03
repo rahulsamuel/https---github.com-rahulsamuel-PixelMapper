@@ -107,7 +107,7 @@ export function WiringDiagram() {
             transformOrigin: 'top left',
           }}
         >
-          {wiringData.map(({ x, y, dataLabel, powerLabel, isDeleted, arrowTo }, index) => {
+          {wiringData.map(({ x, y, dataLabel, powerLabel, backupLabel, isDeleted, arrowTo }, index) => {
             let bgColor;
             if (onOffMode) {
               bgColor = isDeleted ? '#000000' : '#FFFFFF';
@@ -167,7 +167,12 @@ export function WiringDiagram() {
                             <span>{dataLabel}</span>
                         </div>
                       )}
-                      {showPowerLabels && (
+                      {showDataLabels && backupLabel && (
+                        <div className="bg-destructive text-destructive-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold mb-1 z-10">
+                            <span>{backupLabel}</span>
+                        </div>
+                      )}
+                      {showPowerLabels && powerLabel && !dataLabel && !backupLabel && (
                          <span className="text-xs text-primary z-10">{powerLabel}</span>
                       )}
                     </div>

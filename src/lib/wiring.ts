@@ -16,6 +16,7 @@ interface WiringInfo {
   y: number;
   dataLabel: string;
   powerLabel: string;
+  backupLabel: string;
   isDeleted: boolean;
   arrowTo: 'up' | 'down' | 'left' | 'right' | null;
 }
@@ -54,7 +55,7 @@ export function getWiringData(
     const x = index % screenWidth;
     const y = Math.floor(index / screenWidth);
     return {
-      x, y, dataLabel: "", powerLabel: "",
+      x, y, dataLabel: "", powerLabel: "", backupLabel: "",
       isDeleted: tile.deleted,
       arrowTo: null as "up" | "down" | "left" | "right" | null,
     };
@@ -66,7 +67,7 @@ export function getWiringData(
     const rowIsReversed = y % 2 !== 0;
     for (let i = 0; i < screenWidth; i++) {
       const x = rowIsReversed ? screenWidth - 1 - i : i;
-      const tileIndex = y * screenWidth + x;
+      const tileIndex = y * screenHeight + x;
       const tileData = allTilesData[tileIndex];
       if (tileData && !tileData.isDeleted) {
         activeTilesPath.push({ tile: tileData, index: tileIndex });
@@ -80,6 +81,7 @@ export function getWiringData(
 
   let powerCounter = 1;
   let powerGroupCounter = 0;
+  let backupPortCounter = 0;
 
   activeTilesPath.forEach(({ tile }, pathIndex) => {
     // Power Label Logic
@@ -90,9 +92,8 @@ export function getWiringData(
     }
     tile.powerLabel = `P${powerCounter}`;
 
-    // Data Label Logic using modulo
+    // Data Label Logic
     const isFirstInGroup = pathIndex % subgroupSize === 0;
-
     if (isFirstInGroup) {
       const groupNum = Math.floor(pathIndex / subgroupSize);
       const universeIndex = Math.floor(groupNum / subgroupsPerUniverse);
@@ -104,11 +105,15 @@ export function getWiringData(
       tile.dataLabel = "";
     }
     
-    // Arrow Logic using modulo
-    const isLastTileOverall = pathIndex >= activeTilesPath.length - 1;
-    const isLastInGroup = (pathIndex + 1) % subgroupSize === 0;
+    // Arrow and Backup Label Logic
+    const isLastTileInPath = pathIndex === activeTilesPath.length - 1;
+    const isEndOfGroup = (pathIndex + 1) % subgroupSize === 0;
 
-    if (!isLastTileOverall && !isLastInGroup) {
+    if (isEndOfGroup || isLastTileInPath) {
+        backupPortCounter++;
+        tile.backupLabel = `B${backupPortCounter}`;
+        tile.arrowTo = null; // No arrow from the end of a string.
+    } else {
       const currentPos = { x: tile.x, y: tile.y };
       const nextPos = {
         x: activeTilesPath[pathIndex + 1].tile.x,
@@ -118,8 +123,6 @@ export function getWiringData(
       else if (nextPos.x < currentPos.x) tile.arrowTo = "left";
       else if (nextPos.y > currentPos.y) tile.arrowTo = "down";
       else if (nextPos.y < currentPos.y) tile.arrowTo = "up";
-    } else {
-        tile.arrowTo = null;
     }
   });
 
