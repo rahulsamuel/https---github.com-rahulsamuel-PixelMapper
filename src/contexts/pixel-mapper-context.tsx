@@ -625,10 +625,16 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         outputCtx.fillStyle = 'black';
         outputCtx.fillRect(0,0, outputCanvas.width, outputCanvas.height);
         
+        // Calculate the destination coordinates for the full content canvas
+        // relative to the current slice's origin.
+        const destX = rasterOffset.x - slice.x;
+        const destY = rasterOffset.y - slice.y;
+
+        // Draw the entire content canvas. The destination canvas acts as a viewport/clipper.
         outputCtx.drawImage(
             masterContentCanvas,
-            slice.x, slice.y, slice.width, slice.height,
-            rasterOffset.x, rasterOffset.y, slice.width, slice.height
+            destX, 
+            destY
         );
         
         downloadCanvas(outputCanvas, slice.filename);
