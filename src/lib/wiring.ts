@@ -224,7 +224,7 @@ export function getWiringData({
 
   // Sliced wiring logic
   if (rasterMapConfig && activeBounds && rasterMapConfig.slices.length > 1 && rasterMapConfig.outputWidth > 0 && rasterMapConfig.outputHeight > 0) {
-    const { outputWidth: sliceWidth, outputHeight: sliceHeight } = rasterMapConfig;
+    const { outputWidth: sliceWidth, outputHeight: sliceHeight, rasterOffset } = rasterMapConfig;
     
     const tilesBySlice = new Map<string, number[]>();
     activeTileIndices.forEach(index => {
@@ -235,8 +235,11 @@ export function getWiringData({
       const tileContentX = (x - activeBounds.minX) * tileWidth;
       const tileContentY = (y - activeBounds.minY) * tileHeight;
       
-      const sliceCol = Math.floor(tileContentX / sliceWidth);
-      const sliceRow = Math.floor(tileContentY / sliceHeight);
+      const absoluteContentX = tileContentX + rasterOffset.x;
+      const absoluteContentY = tileContentY + rasterOffset.y;
+
+      const sliceCol = Math.floor(absoluteContentX / sliceWidth);
+      const sliceRow = Math.floor(absoluteContentY / sliceHeight);
       const sliceKey = `${sliceRow}-${sliceCol}`;
       
       if (!tilesBySlice.has(sliceKey)) tilesBySlice.set(sliceKey, []);
