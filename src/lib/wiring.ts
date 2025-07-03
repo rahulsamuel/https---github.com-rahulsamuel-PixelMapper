@@ -20,7 +20,7 @@ interface WiringInfo {
   powerLabel: string;
   backupLabel: string;
   isDeleted: boolean;
-  arrowTo: 'up' | 'down' | 'left' | 'right' | 'up-left' | 'up-right' | 'down-left' | 'down-right' | null;
+  nextTile: { x: number; y: number } | null;
 }
 
 const TILES_PER_POWER_CIRCUIT = 20;
@@ -58,7 +58,7 @@ export function getWiringData(
     return {
       x, y, dataLabel: "", powerLabel: "", backupLabel: "",
       isDeleted: tile.deleted,
-      arrowTo: null,
+      nextTile: null,
     };
   });
 
@@ -151,25 +151,10 @@ export function getWiringData(
     if (isEndOfGroup || isLastTileInPath) {
         backupPortCounter++;
         currentTileInfo.backupLabel = `B${backupPortCounter}`;
-        currentTileInfo.arrowTo = null;
+        currentTileInfo.nextTile = null;
     } else {
       const nextTileInfo = activeTilesPath[pathIndex + 1].tile;
-      const dx = nextTileInfo.x - currentTileInfo.x;
-      const dy = nextTileInfo.y - currentTileInfo.y;
-
-      if (dy < 0) { // Moving up
-          if (dx < 0) currentTileInfo.arrowTo = 'up-left';
-          else if (dx > 0) currentTileInfo.arrowTo = 'up-right';
-          else currentTileInfo.arrowTo = 'up';
-      } else if (dy > 0) { // Moving down
-          if (dx < 0) currentTileInfo.arrowTo = 'down-left';
-          else if (dx > 0) currentTileInfo.arrowTo = 'down-right';
-          else currentTileInfo.arrowTo = 'down';
-      } else { // Moving horizontally
-          if (dx < 0) currentTileInfo.arrowTo = 'left';
-          else if (dx > 0) currentTileInfo.arrowTo = 'right';
-          else currentTileInfo.arrowTo = null;
-      }
+      currentTileInfo.nextTile = { x: nextTileInfo.x, y: nextTileInfo.y };
     }
   });
 

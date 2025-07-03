@@ -5,7 +5,7 @@ import { usePixelMapper } from "@/contexts/pixel-mapper-context";
 import { getWiringData } from "@/lib/wiring";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, RefreshCw, MoveUp, MoveDown, MoveLeft, MoveRight, MoveUpLeft, MoveUpRight, MoveDownLeft, MoveDownRight } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toPng } from "html-to-image";
@@ -63,7 +63,6 @@ export function WiringDiagram() {
   };
   
   const TILE_SIZE = 120;
-  const ARROW_SIZE = 36;
   
   if (tiles.length === 0) {
     return (
@@ -122,7 +121,7 @@ export function WiringDiagram() {
       <div className="p-4 bg-muted/20">
         <div 
           ref={wiringDiagramRef}
-          className="relative"
+          className="relative bg-background"
           style={{ 
             width: dimensions.screenWidth * TILE_SIZE, 
             height: dimensions.screenHeight * TILE_SIZE,
@@ -130,7 +129,7 @@ export function WiringDiagram() {
             transformOrigin: 'top left',
           }}
         >
-          {wiringData.map(({ x, y, dataLabel, powerLabel, backupLabel, isDeleted, arrowTo }, index) => {
+          {wiringData.map(({ x, y, dataLabel, powerLabel, backupLabel, isDeleted }, index) => {
             let bgColor;
             if (onOffMode) {
               bgColor = isDeleted ? '#000000' : '#FFFFFF';
@@ -142,45 +141,23 @@ export function WiringDiagram() {
               }
             }
 
-            let displayArrowTo = arrowTo;
-            if (isMirrored) {
-              if (arrowTo === 'left') displayArrowTo = 'right';
-              else if (arrowTo === 'right') displayArrowTo = 'left';
-              else if (arrowTo === 'up-left') displayArrowTo = 'up-right';
-              else if (arrowTo === 'up-right') displayArrowTo = 'up-left';
-              else if (arrowTo === 'down-left') displayArrowTo = 'down-right';
-              else if (arrowTo === 'down-right') displayArrowTo = 'down-left';
-            }
-
-            const arrowPositionStyle = {
-                ...(displayArrowTo === 'up' && { top: -ARROW_SIZE / 2, left: '50%', transform: 'translateX(-50%)' }),
-                ...(displayArrowTo === 'down' && { bottom: -ARROW_SIZE / 2, left: '50%', transform: 'translateX(-50%)' }),
-                ...(displayArrowTo === 'left' && { left: -ARROW_SIZE / 2, top: '50%', transform: 'translateY(-50%)' }),
-                ...(displayArrowTo === 'right' && { right: -ARROW_SIZE / 2, top: '50%', transform: 'translateY(-50%)' }),
-                ...(displayArrowTo === 'up-left' && { top: -ARROW_SIZE / 2, left: -ARROW_SIZE / 2 }),
-                ...(displayArrowTo === 'up-right' && { top: -ARROW_SIZE / 2, right: -ARROW_SIZE / 2 }),
-                ...(displayArrowTo === 'down-left' && { bottom: -ARROW_SIZE / 2, left: -ARROW_SIZE / 2 }),
-                ...(displayArrowTo === 'down-right' && { bottom: -ARROW_SIZE / 2, right: -ARROW_SIZE / 2 }),
-            };
-
             const tileStyle = {
               top: y * TILE_SIZE,
               width: TILE_SIZE,
               height: TILE_SIZE,
               backgroundColor: bgColor,
-              borderWidth: isDeleted ? '0px' : '1px',
+              border: isDeleted ? 'none' : '1px solid hsl(var(--border))',
               ...(isMirrored ? { right: x * TILE_SIZE } : { left: x * TILE_SIZE }),
             };
             
             const currentLabelColor = onOffMode ? '#000000' : labelColor;
             
-            // Find the original tile index to get the correct label
             const originalIndex = y * dimensions.screenWidth + x;
 
             return (
               <div
                 key={`wiring-tile-${x}-${y}`}
-                className="absolute border-border flex items-center justify-center overflow-visible"
+                className="absolute flex items-center justify-center overflow-visible"
                 style={tileStyle}
               >
                 {!isDeleted && (
@@ -210,26 +187,58 @@ export function WiringDiagram() {
                          <span className="text-xs text-primary z-10">{powerLabel}</span>
                       )}
                     </div>
-                     {showDataLabels && displayArrowTo && (
-                        <div 
-                            className="absolute text-data-wiring z-20 flex items-center justify-center"
-                            style={arrowPositionStyle}
-                        >
-                            {displayArrowTo === 'up' && <MoveUp size={ARROW_SIZE} />}
-                            {displayArrowTo === 'down' && <MoveDown size={ARROW_SIZE} />}
-                            {displayArrowTo === 'left' && <MoveLeft size={ARROW_SIZE} />}
-                            {displayArrowTo === 'right' && <MoveRight size={ARROW_SIZE} />}
-                            {displayArrowTo === 'up-left' && <MoveUpLeft size={ARROW_SIZE} />}
-                            {displayArrowTo === 'up-right' && <MoveUpRight size={ARROW_SIZE} />}
-                            {displayArrowTo === 'down-left' && <MoveDownLeft size={ARROW_SIZE} />}
-                            {displayArrowTo === 'down-right' && <MoveDownRight size={ARROW_SIZE} />}
-                        </div>
-                    )}
                   </>
                 )}
               </div>
             );
           })}
+           <svg
+              className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
+              style={{
+                width: dimensions.screenWidth * TILE_SIZE,
+                height: dimensions.screenHeight * TILE_SIZE,
+              }}
+            >
+              <defs>
+                <marker
+                  id="arrowhead"
+                  viewBox="0 0 10 10"
+                  refX="8"
+                  refY="5"
+                  markerWidth="6"
+                  markerHeight="6"
+                  orient="auto-start-reverse"
+                >
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="hsl(var(--data-wiring))" />
+                </marker>
+              </defs>
+              {showDataLabels && wiringData.map(({ x, y, nextTile, isDeleted }) => {
+                if (isDeleted || !nextTile) {
+                  return null;
+                }
+
+                const TILE_RADIUS = TILE_SIZE / 2;
+
+                const startX = (isMirrored ? (dimensions.screenWidth - 1 - x) : x) * TILE_SIZE + TILE_RADIUS;
+                const startY = y * TILE_SIZE + TILE_RADIUS;
+
+                const endX = (isMirrored ? (dimensions.screenWidth - 1 - nextTile.x) : nextTile.x) * TILE_SIZE + TILE_RADIUS;
+                const endY = nextTile.y * TILE_SIZE + TILE_RADIUS;
+
+                return (
+                  <line
+                    key={`line-${x}-${y}`}
+                    x1={startX}
+                    y1={startY}
+                    x2={endX}
+                    y2={endY}
+                    stroke="hsl(var(--data-wiring))"
+                    strokeWidth="3"
+                    markerEnd="url(#arrowhead)"
+                  />
+                );
+              })}
+            </svg>
         </div>
       </div>
     </>
