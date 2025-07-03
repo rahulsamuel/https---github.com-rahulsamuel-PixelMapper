@@ -3,12 +3,9 @@
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
 import { getWiringData } from "@/lib/wiring";
-import { useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Download, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { toPng } from "html-to-image";
 
 export function WiringDiagram() {
   const { 
@@ -30,31 +27,13 @@ export function WiringDiagram() {
     arrowGap,
     rasterMapConfig,
     activeBounds,
+    wiringDiagramRef,
+    isWiringMirrored,
+    setIsWiringMirrored,
   } = usePixelMapper();
-  const [isMirrored, setIsMirrored] = useState(false);
-  const wiringDiagramRef = useRef<HTMLDivElement>(null);
 
   const wiringData = getWiringData({ dimensions, tiles, wiringPortConfig, wiringPattern, rasterMapConfig, activeBounds });
   const mainPortsCount = wiringData.filter(d => d.dataLabel).length;
-
-  const handleDownload = () => {
-    if (wiringDiagramRef.current) {
-      toPng(wiringDiagramRef.current, { 
-          cacheBust: true, 
-          backgroundColor: 'hsl(var(--background))',
-          pixelRatio: 2
-      })
-        .then((dataUrl) => {
-          const link = document.createElement("a");
-          link.download = `wiring-diagram${isMirrored ? '-mirrored' : ''}.png`;
-          link.href = dataUrl;
-          link.click();
-        })
-        .catch((err) => {
-          console.error("Failed to generate wiring diagram image", err);
-        });
-    }
-  };
   
   const TILE_SIZE = 120;
   
@@ -79,10 +58,9 @@ export function WiringDiagram() {
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center space-x-2">
-            <Switch id="mirror-switch" checked={isMirrored} onCheckedChange={setIsMirrored} />
+            <Switch id="mirror-switch" checked={isWiringMirrored} onCheckedChange={setIsWiringMirrored} />
             <Label htmlFor="mirror-switch" className="flex items-center gap-2"><RefreshCw className="size-4" /> Mirror</Label>
           </div>
-          <Button onClick={handleDownload}><Download className="mr-2 size-4" /> Download</Button>
         </div>
       </div>
       <div className="flex-grow overflow-auto">
@@ -120,7 +98,7 @@ export function WiringDiagram() {
                 height: TILE_SIZE,
                 backgroundColor: bgColor,
                 border: isDeleted ? 'none' : '1px solid hsl(var(--border))',
-                ...(isMirrored ? { right: x * TILE_SIZE } : { left: x * TILE_SIZE }),
+                ...(isWiringMirrored ? { right: x * TILE_SIZE } : { left: x * TILE_SIZE }),
               };
               
               const currentLabelColor = onOffMode ? '#000000' : labelColor;
@@ -190,10 +168,10 @@ export function WiringDiagram() {
 
                   const TILE_RADIUS = TILE_SIZE / 2;
 
-                  const startX_center = (isMirrored ? (dimensions.screenWidth - 1 - x) : x) * TILE_SIZE + TILE_RADIUS;
+                  const startX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - x) : x) * TILE_SIZE + TILE_RADIUS;
                   const startY_center = y * TILE_SIZE + TILE_RADIUS;
 
-                  const endX_center = (isMirrored ? (dimensions.screenWidth - 1 - nextTile.x) : nextTile.x) * TILE_SIZE + TILE_RADIUS;
+                  const endX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - nextTile.x) : nextTile.x) * TILE_SIZE + TILE_RADIUS;
                   const endY_center = nextTile.y * TILE_SIZE + TILE_RADIUS;
                   
                   const dx = endX_center - startX_center;

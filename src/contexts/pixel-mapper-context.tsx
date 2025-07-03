@@ -84,6 +84,7 @@ interface ProjectData {
 interface PixelMapperState {
   appState: string;
   gridRef: React.RefObject<HTMLDivElement>;
+  wiringDiagramRef: React.RefObject<HTMLDivElement>;
   dimensions: Dimensions;
   setDimensions: Dispatch<SetStateAction<Dimensions>>;
   tiles: Tile[];
@@ -101,6 +102,7 @@ interface PixelMapperState {
   borderColor: string;
   setBorderColor: Dispatch<SetStateAction<string>>;
   handleDownloadPng: (filename: string) => void;
+  handleDownloadWiringDiagram: () => void;
   generateRasterMap: (filename: string, outputWidth?: number, outputHeight?: number) => void;
   downloadRasterSlices: () => void;
   activeTool: ActiveTool;
@@ -140,6 +142,8 @@ interface PixelMapperState {
   importProject: (file: File) => void;
   brushColor: string;
   setBrushColor: Dispatch<SetStateAction<string>>;
+  isWiringMirrored: boolean;
+  setIsWiringMirrored: Dispatch<SetStateAction<boolean>>;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -155,6 +159,7 @@ export const usePixelMapper = () => {
 export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [appState] = useState("ready");
   const gridRef = useRef<HTMLDivElement>(null);
+  const wiringDiagramRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const [dimensions, setDimensions] = useState<Dimensions>({
@@ -196,6 +201,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [arrowheadSize, setArrowheadSize] = useState(6);
   const [arrowheadLength, setArrowheadLength] = useState(10);
   const [arrowGap, setArrowGap] = useState(30);
+  const [isWiringMirrored, setIsWiringMirrored] = useState(false);
 
 
   useEffect(() => {
@@ -587,6 +593,41 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     }
   }, [rasterMapConfig, createFullRasterCanvas, rasterOffset]);
   
+  const handleDownloadWiringDiagram = useCallback(() => {
+    if (wiringDiagramRef.current === null) {
+      toast({
+        title: "Download Failed",
+        description: "Wiring diagram component is not ready.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toPng(wiringDiagramRef.current, {
+      cacheBust: true,
+      backgroundColor: 'hsl(var(--background))',
+      pixelRatio: 2
+    })
+      .then((dataUrl) => {
+        const link = document.createElement("a");
+        link.download = `wiring-diagram${isWiringMirrored ? '-mirrored' : ''}.png`;
+        link.href = dataUrl;
+        link.click();
+        toast({
+          title: "Download Started",
+          description: "Your wiring diagram is being downloaded.",
+        });
+      })
+      .catch((err) => {
+        console.error("Failed to generate wiring diagram image", err);
+        toast({
+          title: "Download Failed",
+          description: "Could not generate the wiring diagram image.",
+          variant: "destructive",
+        });
+      });
+  }, [wiringDiagramRef, isWiringMirrored, toast]);
+
   const exportProject = useCallback(() => {
     const projectData: ProjectData = {
       version: "1.0.0",
@@ -710,6 +751,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const value = {
     appState,
     gridRef,
+    wiringDiagramRef,
     dimensions,
     setDimensions,
     tiles,
@@ -727,6 +769,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     borderColor,
     setBorderColor,
     handleDownloadPng,
+    handleDownloadWiringDiagram,
     generateRasterMap,
     downloadRasterSlices,
     activeTool,
@@ -766,6 +809,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     importProject,
     brushColor,
     setBrushColor,
+    isWiringMirrored,
+    setIsWiringMirrored,
   };
 
   return (

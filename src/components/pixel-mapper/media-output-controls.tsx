@@ -17,7 +17,8 @@ export function MediaOutputControls() {
     rasterMapConfig,
     downloadRasterSlices,
     rasterOffset,
-    setRasterOffset
+    setRasterOffset,
+    handleDownloadWiringDiagram,
   } = usePixelMapper();
   
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : dimensions.screenWidth * dimensions.tileWidth;
@@ -119,6 +120,10 @@ export function MediaOutputControls() {
               Download Raster Slices ({rasterMapConfig.slices.length})
             </Button>
           )}
+          <Button size="sm" onClick={handleDownloadWiringDiagram} variant="outline" className="w-full justify-start">
+            <Download className="mr-2" />
+            Download Wiring Diagram
+          </Button>
         </div>
       </div>
     </div>
