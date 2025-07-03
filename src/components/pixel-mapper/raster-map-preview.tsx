@@ -24,15 +24,16 @@ export function RasterMapPreview() {
   const { slices, totalWidth, totalHeight, previewImage } = rasterMapConfig;
 
   return (
-     <div className="p-8 bg-muted/20 w-full h-full overflow-auto flex items-center justify-center">
+     <div className="p-4 bg-muted/20">
         <div 
-          className="relative bg-background shadow-lg border bg-contain bg-no-repeat bg-center"
+          className="relative bg-background shadow-lg border"
           style={{ 
               width: totalWidth, 
               height: totalHeight,
               transform: `scale(${zoom})`,
-              transformOrigin: 'center center',
+              transformOrigin: 'top left',
               backgroundImage: previewImage ? `url(${previewImage})` : 'none',
+              backgroundRepeat: 'no-repeat',
               boxSizing: 'content-box'
           }}
         >
