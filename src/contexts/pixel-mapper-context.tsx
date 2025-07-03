@@ -688,29 +688,57 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   }, [rasterMapConfig, createFullRasterCanvas, rasterOffset]);
   
   const handleDownloadWiringDiagram = useCallback(() => {
-    if (wiringDiagramRef.current === null) {
+    if (wiringDiagramRef.current === null || !activeBounds) {
       toast({
         title: "Download Failed",
-        description: "Wiring diagram component is not ready.",
+        description: "Wiring diagram component or active grid is not ready.",
         variant: "destructive",
       });
       return;
     }
 
-    toPng(wiringDiagramRef.current, {
+    const node = wiringDiagramRef.current;
+    
+    const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
+    const cropHeight = (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight;
+
+    toPng(node, {
       cacheBust: true,
       backgroundColor: 'hsl(var(--background))',
-      pixelRatio: 2
+      pixelRatio: 2,
+      width: node.scrollWidth,
+      height: node.scrollHeight,
     })
       .then((dataUrl) => {
-        const link = document.createElement("a");
-        link.download = `wiring-diagram${isWiringMirrored ? '-mirrored' : ''}.png`;
-        link.href = dataUrl;
-        link.click();
-        toast({
-          title: "Download Started",
-          description: "Your wiring diagram is being downloaded.",
-        });
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        img.onload = () => {
+            canvas.width = cropWidth * 2;
+            canvas.height = cropHeight * 2;
+
+            const sWidth = cropWidth * 2;
+            const sHeight = cropHeight * 2;
+            const sy = activeBounds.minY * dimensions.tileHeight * 2;
+            
+            const sx = isWiringMirrored 
+                ? (dimensions.screenWidth - 1 - activeBounds.maxX) * dimensions.tileWidth * 2
+                : activeBounds.minX * dimensions.tileWidth * 2;
+
+            ctx?.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
+            
+            const link = document.createElement("a");
+            link.download = `wiring-diagram${isWiringMirrored ? '-mirrored' : ''}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            
+            toast({
+              title: "Download Started",
+              description: "Your wiring diagram is being downloaded.",
+            });
+        };
+        img.src = dataUrl;
       })
       .catch((err) => {
         console.error("Failed to generate wiring diagram image", err);
@@ -720,7 +748,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
           variant: "destructive",
         });
       });
-  }, [wiringDiagramRef, isWiringMirrored, toast]);
+  }, [wiringDiagramRef, isWiringMirrored, toast, activeBounds, dimensions]);
 
   const exportProject = useCallback(() => {
     const projectData: ProjectData = {
