@@ -8,6 +8,8 @@ export function DownloadsControls() {
     const {
         handleDownloadPng,
         handleDownloadWiringDiagram,
+        downloadRasterSlices,
+        rasterMapConfig,
     } = usePixelMapper();
 
     return (
@@ -19,6 +21,16 @@ export function DownloadsControls() {
             <Button size="sm" onClick={handleDownloadWiringDiagram} variant="outline" className="w-full justify-start">
                 <Download className="mr-2" />
                 Download Wiring Diagram
+            </Button>
+            <Button 
+                size="sm" 
+                onClick={downloadRasterSlices} 
+                variant="outline" 
+                className="w-full justify-start"
+                disabled={!rasterMapConfig || rasterMapConfig.slices.length === 0}
+            >
+                <Download className="mr-2" />
+                Download Raster Slices
             </Button>
         </div>
     );
