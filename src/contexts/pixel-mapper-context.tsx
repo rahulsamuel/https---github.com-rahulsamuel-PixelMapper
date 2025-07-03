@@ -229,8 +229,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   // Wiring state
   const [wiringPortConfig, setWiringPortConfig] = useState("4");
   const [tilesPerPowerString, setTilesPerPowerString] = useState("20");
-  const [showDataLabels, _setShowDataLabels] = useState(true);
-  const [showPowerLabels, _setShowPowerLabels] = useState(false);
+  const [showDataLabels, setShowDataLabelsState] = useState(true);
+  const [showPowerLabels, setShowPowerLabelsState] = useState(false);
   const [wiringPattern, setWiringPattern] = useState<WiringPattern>('serpentine-horizontal');
   const [powerWiringPattern, setPowerWiringPattern] = useState<WiringPattern>('left-right');
   const [arrowheadSize, setArrowheadSize] = useState(20);
@@ -257,17 +257,17 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const setShowDataLabelsWrapper = (value: boolean) => {
-    _setShowDataLabels(value);
+  const setShowDataLabels = (value: boolean) => {
+    setShowDataLabelsState(value);
     if (value) {
-      _setShowPowerLabels(false);
+      setShowPowerLabelsState(false);
     }
   };
 
-  const setShowPowerLabelsWrapper = (value: boolean) => {
-    _setShowPowerLabels(value);
+  const setShowPowerLabels = (value: boolean) => {
+    setShowPowerLabelsState(value);
     if (value) {
-      _setShowDataLabels(false);
+      setShowDataLabelsState(false);
     }
   };
 
@@ -397,9 +397,13 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
     toPng(node, {
         cacheBust: true,
-        pixelRatio: 2, // For high-quality export
-        width: node.scrollWidth + 2,
-        height: node.scrollHeight + 2,
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+        width: node.scrollWidth,
+        height: node.scrollHeight,
+        style: {
+          transform: 'none',
+        }
     })
       .then((dataUrl) => {
         // Create a temporary canvas to crop the image
@@ -704,10 +708,13 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
     toPng(node, {
       cacheBust: true,
-      backgroundColor: 'hsl(var(--background))',
+      backgroundColor: '#ffffff',
       pixelRatio: 2,
       width: node.scrollWidth,
       height: node.scrollHeight,
+      style: {
+        transform: 'none',
+      }
     })
       .then((dataUrl) => {
         const canvas = document.createElement('canvas');
@@ -859,8 +866,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setRasterOffset(data.rasterOffset);
         setLastRasterArgs(data.lastRasterArgs);
         setWiringPortConfig(data.wiringPortConfig);
-        _setShowDataLabels(data.showDataLabels);
-        _setShowPowerLabels(data.showPowerLabels);
+        setShowDataLabelsState(data.showDataLabels);
+        setShowPowerLabelsState(data.showPowerLabels);
         setWiringPattern(data.wiringPattern);
         setPowerWiringPattern(data.powerWiringPattern || 'left-right');
         setArrowheadSize(data.arrowheadSize || 20);
@@ -951,9 +958,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     tilesPerPowerString,
     setTilesPerPowerString,
     showDataLabels,
-    setShowDataLabels: setShowDataLabelsWrapper,
+    setShowDataLabels,
     showPowerLabels,
-    setShowPowerLabels: setShowPowerLabelsWrapper,
+    setShowPowerLabels,
     wiringPattern,
     setWiringPattern,
     powerWiringPattern,
