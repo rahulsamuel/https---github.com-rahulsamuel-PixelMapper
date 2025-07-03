@@ -330,7 +330,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
     const newLabels = Array.from({ length: totalTiles }, (_, i) => {
       const x = i % screenWidth;
-      const y = Math.floor(i / screenWidth);
+      const y = Math.floor(i / screenHeight);
       
       switch (labelFormat) {
         case 'sequential':
@@ -394,41 +394,24 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     
     const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
     const cropHeight = (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight;
+    const sx = activeBounds.minX * dimensions.tileWidth;
+    const sy = activeBounds.minY * dimensions.tileHeight;
 
     toPng(node, {
         cacheBust: true,
         backgroundColor: '#ffffff',
         pixelRatio: 2,
-        width: node.scrollWidth,
-        height: node.scrollHeight,
+        width: cropWidth,
+        height: cropHeight,
         style: {
-          transform: 'none',
+          transform: `translate(-${sx}px, -${sy}px)`,
         }
     })
       .then((dataUrl) => {
-        // Create a temporary canvas to crop the image
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const img = new Image();
-        
-        img.onload = () => {
-            canvas.width = cropWidth * 2;
-            canvas.height = cropHeight * 2;
-
-            // Calculate source coordinates, considering pixelRatio
-            const sx = activeBounds.minX * dimensions.tileWidth * 2;
-            const sy = activeBounds.minY * dimensions.tileHeight * 2;
-            const sWidth = cropWidth * 2;
-            const sHeight = cropHeight * 2;
-            
-            ctx?.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-            
-            const link = document.createElement("a");
-            link.download = filename;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-        };
-        img.src = dataUrl;
+        const link = document.createElement("a");
+        link.download = filename;
+        link.href = dataUrl;
+        link.click();
       })
       .catch((err) => {
         console.error("Could not generate PNG.", err);
@@ -705,6 +688,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     
     const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
     const cropHeight = (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight;
+    const sx = isWiringMirrored 
+        ? (dimensions.screenWidth - 1 - activeBounds.maxX) * dimensions.tileWidth
+        : activeBounds.minX * dimensions.tileWidth;
+    const sy = activeBounds.minY * dimensions.tileHeight;
 
     // Manually set colors before capturing
     const computedStyle = getComputedStyle(document.documentElement);
@@ -712,7 +699,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const powerWiringColor = `hsl(${computedStyle.getPropertyValue('--power-wiring').trim()})`;
 
     const svgs = node.querySelectorAll('svg');
-    const modifications: Array<{el: Element, attr: string, originalValue: string}> = [];
+    const modifications: Array<{el: Element, attr: string, originalValue: string | null}> = [];
 
     svgs.forEach(svg => {
         const elementsToModify = svg.querySelectorAll('[stroke*="--data-wiring"], [fill*="--data-wiring"], [stroke*="--power-wiring"], [fill*="--power-wiring"]');
@@ -737,42 +724,22 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       cacheBust: true,
       backgroundColor: '#ffffff',
       pixelRatio: 2,
-      width: node.scrollWidth,
-      height: node.scrollHeight,
+      width: cropWidth,
+      height: cropHeight,
       style: {
-        transform: 'none',
+        transform: `translate(-${sx}px, -${sy}px)`,
       }
     })
       .then((dataUrl) => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const img = new Image();
+        const link = document.createElement("a");
+        link.download = `wiring-diagram${isWiringMirrored ? '-mirrored' : ''}.png`;
+        link.href = dataUrl;
+        link.click();
         
-        img.onload = () => {
-            canvas.width = cropWidth * 2;
-            canvas.height = cropHeight * 2;
-
-            const sWidth = cropWidth * 2;
-            const sHeight = cropHeight * 2;
-            const sy = activeBounds.minY * dimensions.tileHeight * 2;
-            
-            const sx = isWiringMirrored 
-                ? (dimensions.screenWidth - 1 - activeBounds.maxX) * dimensions.tileWidth * 2
-                : activeBounds.minX * dimensions.tileWidth * 2;
-
-            ctx?.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight);
-            
-            const link = document.createElement("a");
-            link.download = `wiring-diagram${isWiringMirrored ? '-mirrored' : ''}.png`;
-            link.href = canvas.toDataURL('image/png');
-            link.click();
-            
-            toast({
-              title: "Download Started",
-              description: "Your wiring diagram is being downloaded.",
-            });
-        };
-        img.src = dataUrl;
+        toast({
+          title: "Download Started",
+          description: "Your wiring diagram is being downloaded.",
+        });
       })
       .catch((err) => {
         console.error("Failed to generate wiring diagram image", err);
@@ -785,7 +752,11 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       .finally(() => {
         // Revert DOM changes
         modifications.forEach(({ el, attr, originalValue }) => {
-            el.setAttribute(attr, originalValue);
+            if (originalValue) {
+                el.setAttribute(attr, originalValue);
+            } else {
+                el.removeAttribute(attr);
+            }
         });
       });
   }, [wiringDiagramRef, isWiringMirrored, toast, activeBounds, dimensions]);
