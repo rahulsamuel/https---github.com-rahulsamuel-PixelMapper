@@ -48,8 +48,8 @@ export function RasterMapPreview() {
   const { slices, totalWidth, totalHeight, previewImage } = rasterMapConfig;
 
   return (
-     <div className="flex flex-col h-full">
-        <div className="p-4 border-b flex-col items-start gap-4">
+     <>
+        <div className="sticky top-0 z-10 bg-background p-4 border-b flex-col items-start gap-4">
             <div className="flex justify-between items-center w-full">
                 <h2 className="text-lg font-semibold">
                 Preview: {totalWidth}x{totalHeight} ({slices.length} {slices.length === 1 ? 'slice' : 'slices'})
@@ -89,7 +89,7 @@ export function RasterMapPreview() {
                 )}
             </div>
         </div>
-        <div className="p-8 bg-muted/20 w-full flex-grow overflow-auto flex items-center justify-center">
+        <div className="p-8 bg-muted/20 w-full flex items-center justify-center">
             <div 
             className="relative bg-background shadow-lg border bg-contain bg-no-repeat bg-center"
             style={{ 
@@ -126,6 +126,6 @@ export function RasterMapPreview() {
             ))}
             </div>
         </div>
-      </div>
+      </>
   );
 }

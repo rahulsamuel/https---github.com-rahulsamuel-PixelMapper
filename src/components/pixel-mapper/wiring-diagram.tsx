@@ -65,8 +65,8 @@ export function WiringDiagram() {
   }
 
   return (
-    <div>
-      <div className="p-4 border-b flex justify-between items-center flex-wrap gap-y-2">
+    <>
+      <div className="sticky top-0 z-10 bg-background p-4 border-b flex justify-between items-center flex-wrap gap-y-2">
         <h2 className="text-lg font-semibold">Wiring Diagram</h2>
         <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -96,7 +96,7 @@ export function WiringDiagram() {
             <Button onClick={handleDownload}><Download className="mr-2 size-4" /> Download</Button>
         </div>
       </div>
-      <div className="p-4 bg-muted/20 overflow-auto">
+      <div className="p-4 bg-muted/20">
         <div 
           ref={wiringDiagramRef}
           className="relative"
@@ -194,6 +194,6 @@ export function WiringDiagram() {
           })}
         </div>
       </div>
-    </div>
+    </>
   );
 }
