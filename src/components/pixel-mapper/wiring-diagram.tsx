@@ -49,6 +49,7 @@ export function WiringDiagram() {
   const wiringDiagramRef = useRef<HTMLDivElement>(null);
 
   const wiringData = getWiringData(dimensions, tiles, wiringPortConfig, wiringPattern);
+  const mainPortsCount = wiringData.filter(d => d.dataLabel).length;
 
   const handleDownload = () => {
     if (wiringDiagramRef.current) {
@@ -83,7 +84,14 @@ export function WiringDiagram() {
     <>
       <div className="sticky top-0 z-10 bg-background p-4 border-b flex flex-col items-start gap-4">
         <div className="flex justify-between items-center w-full flex-wrap gap-y-2">
-            <h2 className="text-lg font-semibold">Wiring Diagram</h2>
+            <div className="flex items-baseline gap-3">
+              <h2 className="text-lg font-semibold">Wiring Diagram</h2>
+              {mainPortsCount > 0 && (
+                <span className="text-sm font-medium text-muted-foreground">
+                  ({mainPortsCount} Main Ports)
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex items-center gap-2">
                     <Label htmlFor="wiring-pattern" className="whitespace-nowrap">Pattern</Label>
