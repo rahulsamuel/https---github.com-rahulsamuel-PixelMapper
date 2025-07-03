@@ -174,7 +174,7 @@ export function PixelMapperLayout() {
           <TabsContent value="wiring" className="flex-grow flex flex-col">
             <WiringDiagram />
           </TabsContent>
-          <TabsContent value="raster" className="flex-grow flex flex-col">
+          <TabsContent value="raster" className="flex-grow overflow-auto">
             <RasterMapPreview />
           </TabsContent>
         </Tabs>
