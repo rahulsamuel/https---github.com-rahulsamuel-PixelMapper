@@ -84,6 +84,7 @@ interface ProjectData {
   powerArrowGap: number;
   brushColor: string;
   tilesPerPowerString: string;
+  isWiringMirrored: boolean;
 }
 
 interface PixelMapperState {
@@ -715,6 +716,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       powerArrowGap,
       brushColor,
       tilesPerPowerString,
+      isWiringMirrored,
     };
 
     const jsonString = JSON.stringify(projectData, null, 2);
@@ -738,7 +740,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     lastRasterArgs, wiringPortConfig, showDataLabels, showPowerLabels, wiringPattern,
     powerWiringPattern, arrowheadSize, arrowheadLength, arrowGap,
     powerArrowheadSize, powerArrowheadLength, powerArrowGap, brushColor, 
-    tilesPerPowerString, toast
+    tilesPerPowerString, isWiringMirrored, toast
   ]);
   
   const importProject = useCallback((file: File) => {
@@ -792,6 +794,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setPowerArrowGap(data.powerArrowGap || 30);
         setBrushColor(data.brushColor || "#e11d48");
         setTilesPerPowerString(data.tilesPerPowerString || "20");
+        setIsWiringMirrored(data.isWiringMirrored || false);
         
         toast({
           title: "Import Successful",
