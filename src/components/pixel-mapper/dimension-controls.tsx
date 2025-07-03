@@ -1,16 +1,8 @@
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Grid3x3 } from "lucide-react";
 
 export function DimensionControls() {
   const { dimensions, setDimensions } = usePixelMapper();
@@ -24,68 +16,55 @@ export function DimensionControls() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Grid3x3 className="size-5" />
-          <CardTitle>Dimensions</CardTitle>
-        </div>
-        <CardDescription>
-          Define the size of your LED tiles and the overall screen grid.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="tileWidth">Tile Width (px)</Label>
-                    <Input 
-                        id="tileWidth"
-                        name="tileWidth"
-                        type="number" 
-                        value={dimensions.tileWidth}
-                        onChange={handleChange}
-                        min="1"
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="tileHeight">Tile Height (px)</Label>
-                    <Input
-                        id="tileHeight"
-                        name="tileHeight"
-                        type="number"
-                        value={dimensions.tileHeight}
-                        onChange={handleChange}
-                        min="1"
-                    />
-                </div>
+    <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Label htmlFor="tileWidth">Tile Width (px)</Label>
+                <Input 
+                    id="tileWidth"
+                    name="tileWidth"
+                    type="number" 
+                    value={dimensions.tileWidth}
+                    onChange={handleChange}
+                    min="1"
+                />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label htmlFor="screenWidth">Screen Width (tiles)</Label>
-                    <Input
-                        id="screenWidth"
-                        name="screenWidth"
-                        type="number"
-                        value={dimensions.screenWidth}
-                        onChange={handleChange}
-                        min="1"
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="screenHeight">Screen Height (tiles)</Label>
-                    <Input
-                        id="screenHeight"
-                        name="screenHeight"
-                        type="number"
-                        value={dimensions.screenHeight}
-                        onChange={handleChange}
-                        min="1"
-                    />
-                </div>
+            <div className="space-y-2">
+                <Label htmlFor="tileHeight">Tile Height (px)</Label>
+                <Input
+                    id="tileHeight"
+                    name="tileHeight"
+                    type="number"
+                    value={dimensions.tileHeight}
+                    onChange={handleChange}
+                    min="1"
+                />
             </div>
         </div>
-      </CardContent>
-    </Card>
+        <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+                <Label htmlFor="screenWidth">Screen Width (tiles)</Label>
+                <Input
+                    id="screenWidth"
+                    name="screenWidth"
+                    type="number"
+                    value={dimensions.screenWidth}
+                    onChange={handleChange}
+                    min="1"
+                />
+            </div>
+            <div className="space-y-2">
+                <Label htmlFor="screenHeight">Screen Height (tiles)</Label>
+                <Input
+                    id="screenHeight"
+                    name="screenHeight"
+                    type="number"
+                    value={dimensions.screenHeight}
+                    onChange={handleChange}
+                    min="1"
+                />
+            </div>
+        </div>
+    </div>
   );
 }

@@ -1,15 +1,6 @@
-
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Calculator } from "lucide-react";
 
 const VIDEO_FORMATS = {
   HD: { width: 1920, height: 1080, label: "HD (1920x1080)" },
@@ -25,20 +16,9 @@ export function OutputCalculator() {
   
   if (totalPixelWidth * totalPixelHeight === 0) {
     return (
-       <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Calculator className="size-5" />
-            <CardTitle>Output Calculator</CardTitle>
-          </div>
-          <CardDescription>
-            Calculates the required media server outputs.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+       <div>
           <p className="text-sm text-muted-foreground">No active tiles to calculate.</p>
-        </CardContent>
-      </Card>
+        </div>
     )
   }
 
@@ -52,24 +32,16 @@ export function OutputCalculator() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Calculator className="size-5" />
-          <CardTitle>Output Calculator</CardTitle>
-        </div>
-        <CardDescription>
-          Outputs required for an active resolution of <span className="font-mono">{totalPixelWidth}x{totalPixelHeight}</span>.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {Object.entries(VIDEO_FORMATS).map(([key, format]) => (
-           <div key={key} className="flex items-center justify-between rounded-lg border p-3">
-             <span className="text-sm font-medium">{format.label}</span>
-             <span className="font-mono text-lg font-bold">{calculateOutputs(format)}</span>
-           </div>
-        ))}
-      </CardContent>
-    </Card>
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Outputs required for an active resolution of <span className="font-mono">{totalPixelWidth}x{totalPixelHeight}</span>.
+      </p>
+      {Object.entries(VIDEO_FORMATS).map(([key, format]) => (
+         <div key={key} className="flex items-center justify-between rounded-lg border p-3">
+           <span className="text-sm font-medium">{format.label}</span>
+           <span className="font-mono text-lg font-bold">{calculateOutputs(format)}</span>
+         </div>
+      ))}
+    </div>
   );
 }

@@ -1,18 +1,9 @@
-
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
-import { CaseSensitive, Type, Palettes } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -35,17 +26,7 @@ export function LabelControls() {
   } = usePixelMapper();
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Type className="size-5" />
-          <CardTitle>Labeling</CardTitle>
-        </div>
-        <CardDescription>
-          Customize the labels on the LED tiles.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="space-y-4">
         <div className="flex items-center justify-between">
           <Label htmlFor="show-labels">Show Labels</Label>
           <Switch
@@ -105,7 +86,6 @@ export function LabelControls() {
             onValueChange={(value) => setLabelFontSize(value[0])}
           />
         </div>
-      </CardContent>
-    </Card>
+      </div>
   );
 }

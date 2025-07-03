@@ -19,23 +19,38 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "./edit-tools";
 import { Button } from "@/components/ui/button";
-import { Download, ZoomIn, ZoomOut } from "lucide-react";
+import { ZoomIn, ZoomOut, Grid3x3, Paintbrush, Type, Wand2, Calculator, FileOutput, Package, RotateCcw, Trash2 } from "lucide-react";
 import { LabelControls } from "./label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { MediaOutputControls } from "./media-output-controls";
 import { OutputCalculator } from "./output-calculator";
 import { RasterMapPreview } from "./raster-map-preview";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 
 export function PixelMapperLayout() {
-  const { dimensions, handleDownloadPng, zoom, setZoom, onOffMode, setOnOffMode, activeBounds } = usePixelMapper();
+  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, restoreAll } = usePixelMapper();
 
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : 0;
   const totalHeight = activeBounds ? (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight : 0;
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.1, 2));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.1));
+  
+  const AccordionSectionTrigger = ({ icon, title }: { icon: React.ReactNode, title: string }) => (
+    <AccordionTrigger className="bg-card hover:bg-muted/50 px-4 py-3 rounded-lg text-base font-semibold border data-[state=closed]:shadow-sm">
+      <div className="flex items-center gap-3">
+        {icon}
+        <span>{title}</span>
+      </div>
+    </AccordionTrigger>
+  );
 
   return (
     <SidebarProvider>
@@ -46,15 +61,74 @@ export function PixelMapperLayout() {
         <Separator />
         <SidebarContent asChild>
           <ScrollArea className="flex-grow">
-            <div className="flex flex-col gap-4 p-4">
-              <DimensionControls />
-              <AppearanceControls />
-              <LabelControls />
-              <EditTools />
-              <PixelMapperActions />
-              <MediaOutputControls />
-              <OutputCalculator />
-            </div>
+            <Accordion type="multiple" defaultValue={['dimensions']} className="p-4 flex flex-col gap-2">
+              <AccordionItem value="project" className="border-none">
+                <AccordionSectionTrigger icon={<Package className="size-5" />} title="Project" />
+                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
+                  <p className="text-sm text-muted-foreground pb-4">Save your work or load a previous project.</p>
+                  <PixelMapperActions />
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="dimensions" className="border-none">
+                <AccordionSectionTrigger icon={<Grid3x3 className="size-5" />} title="Dimensions" />
+                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
+                  <p className="text-sm text-muted-foreground pb-4">Define the size of your LED tiles and the overall screen grid.</p>
+                  <DimensionControls />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="appearance" className="border-none">
+                <AccordionSectionTrigger icon={<Paintbrush className="size-5" />} title="Appearance" />
+                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
+                  <p className="text-sm text-muted-foreground pb-4">Customize the look of the LED tiles.</p>
+                  <AppearanceControls />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="labeling" className="border-none">
+                <AccordionSectionTrigger icon={<Type className="size-5" />} title="Labeling" />
+                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
+                  <p className="text-sm text-muted-foreground pb-4">Customize the labels on the LED tiles.</p>
+                  <LabelControls />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="tools" className="border-none">
+                <AccordionSectionTrigger icon={<Wand2 className="size-5" />} title="Edit & Restore" />
+                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
+                  <p className="text-sm text-muted-foreground pb-4">Select a tool to apply to the grid or restore deleted tiles.</p>
+                  <div className="space-y-4 pt-4">
+                    <EditTools />
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="flex items-center gap-2">
+                        <Trash2 className="size-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Deleted Tiles</span>
+                      </div>
+                      <span className="font-mono text-lg font-bold">{deletedCount}</span>
+                    </div>
+                    <Button onClick={restoreAll} variant="outline" className="w-full">
+                        <RotateCcw className="mr-2" />
+                        Restore All
+                    </Button>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="output" className="border-none">
+                <AccordionSectionTrigger icon={<FileOutput className="size-5" />} title="Media Output" />
+                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
+                  <MediaOutputControls />
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="calculator" className="border-none">
+                <AccordionSectionTrigger icon={<Calculator className="size-5" />} title="Output Calculator" />
+                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
+                  <OutputCalculator />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </ScrollArea>
         </SidebarContent>
       </Sidebar>
@@ -83,10 +157,6 @@ export function PixelMapperLayout() {
                 <Switch id="on-off-switch" checked={onOffMode} onCheckedChange={setOnOffMode} />
                 <Label htmlFor="on-off-switch">ON/OFF</Label>
               </div>
-              <Button size="sm" onClick={() => handleDownloadPng('pixel-map.png')}>
-                <Download className="mr-2" />
-                Download
-              </Button>
             </div>
           </div>
           <TabsContent value="grid" className="flex-grow overflow-auto">
