@@ -60,7 +60,7 @@ for (let i = 0; i < 26; i += 2) {
 }
 
 
-function getPathOrder(indices: number[], pattern: WiringPattern, screenWidth: number, screenHeight: number): number[] {
+export function getPathOrder(indices: number[], pattern: WiringPattern, screenWidth: number, screenHeight: number): number[] {
   const getCoords = (index: number) => ({
     x: index % screenWidth,
     y: Math.floor(index / screenWidth),
@@ -116,11 +116,13 @@ function applyDataWiring(
             let subgroupIndexInUniverse: number;
             
             if (dataUniverseCounter !== undefined) {
+                // This is for raster slice logic
                 const pairIndex = dataUniverseCounter % UNIVERSE_PAIRS.length;
                 mainUniverse = UNIVERSE_PAIRS[pairIndex][0];
                 subgroupIndexInUniverse = groupNumInSlice + 1;
                 groupNumInSlice++;
             } else {
+                // This is for non-raster logic
                 const pairIndex = Math.floor(counters.groupNumOverall / subgroupsPerUniverse) % UNIVERSE_PAIRS.length;
                 mainUniverse = UNIVERSE_PAIRS[pairIndex][0];
                 subgroupIndexInUniverse = (counters.groupNumOverall % subgroupsPerUniverse) + 1;

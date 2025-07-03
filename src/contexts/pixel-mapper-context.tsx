@@ -3,7 +3,7 @@
 
 import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction } from "react";
-import type { WiringPattern } from "@/lib/wiring";
+import { getPathOrder, type WiringPattern } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 
 interface Dimensions {
@@ -328,31 +328,42 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         return;
     }
 
-    const newLabels = Array.from({ length: totalTiles }, (_, i) => {
-      const x = i % screenWidth;
-      const y = Math.floor(i / screenHeight);
+    const newLabels = Array(totalTiles).fill('');
+
+    if (labelFormat === 'sequential' || labelFormat === 'dmx-style') {
+      const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
+      const pathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
       
-      switch (labelFormat) {
-        case 'sequential':
-          return String(i + 1);
-        case 'row-col':
-          return `${y + 1}-${x + 1}`;
-        case 'row-letter-col-number':
+      pathOrder.forEach((originalIndex, pathIndex) => {
+        if (labelFormat === 'sequential') {
+          newLabels[originalIndex] = String(pathIndex + 1);
+        } else { // dmx-style
+          const universeSize = 170;
+          const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(pathIndex / universeSize));
+          const address = (pathIndex % universeSize) + 1;
+          newLabels[originalIndex] = `${universe}${address}`;
+        }
+      });
+    } else if (labelFormat !== 'none') {
+      for (let i = 0; i < totalTiles; i++) {
+        const x = i % screenWidth;
+        const y = Math.floor(i / screenHeight);
+        
+        switch (labelFormat) {
+          case 'row-col':
+            newLabels[i] = `${y + 1}-${x + 1}`;
+            break;
+          case 'row-letter-col-number':
             const rowLetter = String.fromCharCode('A'.charCodeAt(0) + y);
             const colNumber = x + 1;
-            return `${rowLetter}${colNumber}`;
-        case 'dmx-style':
-            const universeSize = 170; // 512 channels / 3 colors ~ 170 pixels
-            const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(i / universeSize));
-            const address = (i % universeSize) + 1;
-            return `${universe}${address}`;
-        case 'none':
-        default:
-          return '';
+            newLabels[i] = `${rowLetter}${colNumber}`;
+            break;
+        }
       }
-    });
+    }
+    
     setLabels(newLabels);
-  }, [dimensions, labelFormat]);
+  }, [dimensions, labelFormat, tiles, wiringPattern]);
 
   const toggleTile = useCallback((index: number) => {
     setTiles((prev) =>
@@ -404,7 +415,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         width: cropWidth,
         height: cropHeight,
         style: {
-          transform: `translate(-${sx}px, -${sy}px)`,
+          transform: `translate(-${sx}px, -${sy}px) scale(1)`,
         }
     })
       .then((dataUrl) => {
@@ -727,7 +738,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       width: cropWidth,
       height: cropHeight,
       style: {
-        transform: `translate(-${sx}px, -${sy}px)`,
+        transform: `translate(-${sx}px, -${sy}px) scale(1)`,
       }
     })
       .then((dataUrl) => {
