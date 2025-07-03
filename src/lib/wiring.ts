@@ -249,17 +249,14 @@ export function getWiringData({
     const powerCounters = { powerCounter: 1, powerGroupCounter: 0 };
     const sortedSliceKeys = Array.from(tilesBySlice.keys()).sort();
     
-    let dataUniverseCounter = 0;
-
     for (const sliceKey of sortedSliceKeys) {
         const sliceIndices = tilesBySlice.get(sliceKey)!;
 
-        // Data Path for slice: each slice gets its own universe sequence
+        // Data Path for slice: each slice gets its own universe sequence, restarting from 'A'
         const dataPathOrder = getPathOrder(sliceIndices, wiringPattern, screenWidth, screenHeight);
         const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
-        // Reset subgroup counter for each slice, but use the incrementing universe counter
-        applyDataWiring(dataTilesPath, wiringPortConfig, { groupNumOverall: 0 }, dataUniverseCounter);
-        dataUniverseCounter++;
+        // Reset counters for each slice so wiring starts over.
+        applyDataWiring(dataTilesPath, wiringPortConfig, { groupNumOverall: 0 });
         
         // Power Path for slice - power continues across slices
         const powerPathOrder = getPathOrder(sliceIndices, powerWiringPattern, screenWidth, screenHeight);
