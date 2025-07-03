@@ -93,38 +93,39 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
 
 function applyDataWiring(
     activeTilesPath: { tile: WiringInfo; index: number; }[],
-    wiringPortConfig: string,
-    counters: { groupNumOverall: number; },
-    dataUniverseCounter?: number
+    wiringPortConfig: string
 ) {
     if (activeTilesPath.length === 0) return;
     
     const subgroupSize = parseInt(wiringPortConfig.trim(), 10) || 4;
-    
     const subgroupsPerUniverse = 10;
-    let groupNumInSlice = 0;
+    let groupCounter = 0;
+
+    let currentGroupInfo: { main: string, backup: string } | null = null;
 
     activeTilesPath.forEach(({ tile: currentTileInfo }, pathIndex) => {
         const isFirstInGroup = pathIndex % subgroupSize === 0;
-
+        
         if (isFirstInGroup) {
-            let mainUniverse: string;
-            let subgroupIndexInUniverse: number;
-            
-            if (dataUniverseCounter !== undefined) {
-                // This is for raster slice logic
-                const pairIndex = dataUniverseCounter % UNIVERSE_PAIRS.length;
-                mainUniverse = UNIVERSE_PAIRS[pairIndex][0];
-                subgroupIndexInUniverse = groupNumInSlice + 1;
-                groupNumInSlice++;
+            groupCounter++;
+            const universeSetIndex = Math.floor((groupCounter - 1) / subgroupsPerUniverse);
+
+            if (universeSetIndex >= UNIVERSE_PAIRS.length) {
+                // If we run out of A/B, C/D pairs, show an error label.
+                currentGroupInfo = { main: "ERR", backup: "ERR" };
             } else {
-                // This is for non-raster logic
-                const pairIndex = Math.floor(counters.groupNumOverall / subgroupsPerUniverse) % UNIVERSE_PAIRS.length;
-                mainUniverse = UNIVERSE_PAIRS[pairIndex][0];
-                subgroupIndexInUniverse = (counters.groupNumOverall % subgroupsPerUniverse) + 1;
-                counters.groupNumOverall++;
+                const mainUniverse = UNIVERSE_PAIRS[universeSetIndex][0]; // A or C
+                const backupUniverse = UNIVERSE_PAIRS[universeSetIndex][1]; // B or D
+                
+                const subgroupIndexInUniverse = ((groupCounter - 1) % subgroupsPerUniverse) + 1;
+                
+                currentGroupInfo = {
+                    main: `${mainUniverse}${subgroupIndexInUniverse}`,
+                    backup: `${backupUniverse}${subgroupIndexInUniverse}`
+                };
             }
-            currentTileInfo.dataLabel = `${mainUniverse}${subgroupIndexInUniverse}`;
+            
+            currentTileInfo.dataLabel = currentGroupInfo.main;
         } else {
             currentTileInfo.dataLabel = "";
         }
@@ -138,21 +139,8 @@ function applyDataWiring(
         }
 
         const isEndOfGroup = (pathIndex + 1) % subgroupSize === 0;
-        if (isEndOfGroup || isLastTileInPath) {
-            let backupUniverse: string;
-            let subgroupIndexInUniverse: number;
-
-            if (dataUniverseCounter !== undefined) {
-                const pairIndex = dataUniverseCounter % UNIVERSE_PAIRS.length;
-                backupUniverse = UNIVERSE_PAIRS[pairIndex][1];
-                subgroupIndexInUniverse = groupNumInSlice;
-            } else {
-                const currentGroupNum = counters.groupNumOverall - 1;
-                const pairIndex = Math.floor(currentGroupNum / subgroupsPerUniverse) % UNIVERSE_PAIRS.length;
-                backupUniverse = UNIVERSE_PAIRS[pairIndex][1];
-                subgroupIndexInUniverse = (currentGroupNum % subgroupsPerUniverse) + 1;
-            }
-            currentTileInfo.backupLabel = `${backupUniverse}${subgroupIndexInUniverse}`;
+        if (currentGroupInfo && (isEndOfGroup || isLastTileInPath)) {
+            currentTileInfo.backupLabel = currentGroupInfo.backup;
             currentTileInfo.nextTile = null;
         }
     });
@@ -260,21 +248,17 @@ export function getWiringData({
         return colA - colB;
     });
     
-    let dataUniverseCounter = 0;
-    
     for (const sliceKey of sortedSliceKeys) {
         const sliceIndices = tilesBySlice.get(sliceKey)!;
         
         const dataPathOrder = getPathOrder(sliceIndices, wiringPattern, screenWidth, screenHeight);
         const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
-        applyDataWiring(dataTilesPath, wiringPortConfig, { groupNumOverall: 0 }, dataUniverseCounter);
-        dataUniverseCounter++;
+        applyDataWiring(dataTilesPath, wiringPortConfig);
     }
   } else {
     const dataPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
     const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
-    const dataCounters = { groupNumOverall: 0 };
-    applyDataWiring(dataTilesPath, wiringPortConfig, dataCounters);
+    applyDataWiring(dataTilesPath, wiringPortConfig);
   }
   
   const powerPathOrder = getPathOrder(activeTileIndices, powerWiringPattern, screenWidth, screenHeight);
