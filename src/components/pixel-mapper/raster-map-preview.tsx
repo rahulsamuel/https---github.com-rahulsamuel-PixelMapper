@@ -7,7 +7,6 @@ export function RasterMapPreview() {
   const { 
     rasterMapConfig,
     zoom,
-    rasterOffset,
   } = usePixelMapper();
 
 
@@ -22,40 +21,41 @@ export function RasterMapPreview() {
     );
   }
 
-  const { totalWidth, totalHeight, outputWidth, outputHeight, previewImage } = rasterMapConfig;
-
-  // The preview area represents the canvas of a single output file (the first slice).
-  // This helps visualize how the content fits and offsets within the export frame.
-  const previewCanvasWidth = outputWidth;
-  const previewCanvasHeight = outputHeight;
+  const { slices, totalWidth, totalHeight, previewImage } = rasterMapConfig;
 
   return (
-     <div className="p-8 bg-muted/20 overflow-auto">
+     <div className="p-8 bg-muted/20 w-full h-full overflow-auto flex items-center justify-center">
         <div 
-          className="relative"
+          className="relative bg-background shadow-lg border bg-contain bg-no-repeat bg-center"
           style={{ 
-              width: previewCanvasWidth, 
-              height: previewCanvasHeight,
+              width: totalWidth, 
+              height: totalHeight,
               transform: `scale(${zoom})`,
-              transformOrigin: 'top left',
+              transformOrigin: 'center center',
+              backgroundImage: previewImage ? `url(${previewImage})` : 'none',
+              boxSizing: 'content-box'
           }}
         >
-          {/* This is the viewport, representing one slice file. It's black and clips content. */}
-          <div
-            className="absolute inset-0 bg-black overflow-hidden border border-border shadow-lg"
-          >
-            {/* This is the full content grid, positioned using the offset */}
-            <div
-              className="absolute bg-contain bg-no-repeat bg-center"
-              style={{
-                width: totalWidth,
-                height: totalHeight,
-                left: rasterOffset.x,
-                top: rasterOffset.y,
-                backgroundImage: previewImage ? `url(${previewImage})` : 'none',
-              }}
-            />
-          </div>
+            {slices.map(slice => (
+                <div 
+                key={slice.key} 
+                className="absolute border border-primary/50 bg-primary/10 flex items-center justify-center pointer-events-none"
+                style={{
+                    left: slice.x,
+                    top: slice.y,
+                    width: slice.width,
+                    height: slice.height,
+                    boxSizing: 'border-box'
+                }}
+                >
+                    <div 
+                        className="text-primary text-center p-1 bg-background/80 rounded"
+                    >
+                        <p className="font-bold whitespace-nowrap">{slice.filename.split('/').pop()?.replace('raster-map-','').replace('.png','')}</p>
+                        <p className="font-mono text-xs whitespace-nowrap">{slice.width}x{slice.height}</p>
+                    </div>
+                </div>
+            ))}
         </div>
     </div>
   );
