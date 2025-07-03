@@ -10,6 +10,13 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toPng } from "html-to-image";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function WiringDiagram() {
   const { 
@@ -28,11 +35,13 @@ export function WiringDiagram() {
     labels,
     showLabels,
     labelColor,
+    wiringPattern,
+    setWiringPattern,
   } = usePixelMapper();
   const [isMirrored, setIsMirrored] = useState(false);
   const wiringDiagramRef = useRef<HTMLDivElement>(null);
 
-  const wiringData = getWiringData(dimensions, tiles, wiringPortConfig);
+  const wiringData = getWiringData(dimensions, tiles, wiringPortConfig, wiringPattern);
 
   const handleDownload = () => {
     if (wiringDiagramRef.current) {
@@ -68,7 +77,21 @@ export function WiringDiagram() {
     <>
       <div className="sticky top-0 z-10 bg-background p-4 border-b flex justify-between items-center flex-wrap gap-y-2">
         <h2 className="text-lg font-semibold">Wiring Diagram</h2>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+                <Label htmlFor="wiring-pattern" className="whitespace-nowrap">Pattern</Label>
+                <Select value={wiringPattern} onValueChange={(v) => setWiringPattern(v as any)}>
+                    <SelectTrigger id="wiring-pattern" className="w-48 h-8">
+                        <SelectValue placeholder="Select pattern" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="serpentine-horizontal">Serpentine (Horizontal)</SelectItem>
+                        <SelectItem value="serpentine-vertical">Serpentine (Vertical)</SelectItem>
+                        <SelectItem value="left-right">Left to Right</SelectItem>
+                        <SelectItem value="top-bottom">Top to Bottom</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
             <div className="flex items-center gap-2">
                 <Label htmlFor="tiles-per-group" className="whitespace-nowrap">Tiles per Group</Label>
                 <Input
@@ -150,6 +173,9 @@ export function WiringDiagram() {
             };
             
             const currentLabelColor = onOffMode ? '#000000' : labelColor;
+            
+            // Find the original tile index to get the correct label
+            const originalIndex = y * dimensions.screenWidth + x;
 
             return (
               <div
@@ -159,12 +185,12 @@ export function WiringDiagram() {
               >
                 {!isDeleted && (
                   <>
-                    {showLabels && labels[index] && (
+                    {showLabels && labels[originalIndex] && (
                       <span 
                         className="absolute top-1 left-2 font-mono text-lg font-bold pointer-events-none"
                         style={{ color: currentLabelColor, opacity: 0.7 }}
                       >
-                        {labels[index]}
+                        {labels[originalIndex]}
                       </span>
                     )}
                     <div

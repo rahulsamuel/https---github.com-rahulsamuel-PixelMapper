@@ -11,6 +11,8 @@ interface Tile {
   deleted: boolean;
 }
 
+export type WiringPattern = 'serpentine-horizontal' | 'serpentine-vertical' | 'left-right' | 'top-bottom';
+
 interface WiringInfo {
   x: number;
   y: number;
@@ -39,7 +41,8 @@ const getUniverseLabel = (n: number): string => {
 export function getWiringData(
   dimensions: Dimensions,
   tiles: Tile[],
-  wiringPortConfig: string
+  wiringPortConfig: string,
+  wiringPattern: WiringPattern
 ): WiringInfo[] {
   const { screenWidth, screenHeight } = dimensions;
   if (!tiles || tiles.length === 0) {
@@ -61,16 +64,59 @@ export function getWiringData(
 
   const activeTilesPath: { tile: WiringInfo; index: number; }[] = [];
 
-  for (let y = 0; y < screenHeight; y++) {
-    const rowIsReversed = y % 2 !== 0;
-    for (let i = 0; i < screenWidth; i++) {
-      const x = rowIsReversed ? screenWidth - 1 - i : i;
-      const tileIndex = y * screenWidth + x;
-      const tileData = allTilesData[tileIndex];
-      if (tileData && !tileData.isDeleted) {
-        activeTilesPath.push({ tile: tileData, index: tileIndex });
+  switch (wiringPattern) {
+    case 'serpentine-vertical':
+      for (let x = 0; x < screenWidth; x++) {
+        const colIsReversed = x % 2 !== 0;
+        for (let i = 0; i < screenHeight; i++) {
+          const y = colIsReversed ? screenHeight - 1 - i : i;
+          const tileIndex = y * screenWidth + x;
+          const tileData = allTilesData[tileIndex];
+          if (tileData && !tileData.isDeleted) {
+            activeTilesPath.push({ tile: tileData, index: tileIndex });
+          }
+        }
       }
-    }
+      break;
+    
+    case 'left-right':
+      for (let y = 0; y < screenHeight; y++) {
+        for (let x = 0; x < screenWidth; x++) {
+          const tileIndex = y * screenWidth + x;
+          const tileData = allTilesData[tileIndex];
+          if (tileData && !tileData.isDeleted) {
+            activeTilesPath.push({ tile: tileData, index: tileIndex });
+          }
+        }
+      }
+      break;
+
+    case 'top-bottom':
+      for (let x = 0; x < screenWidth; x++) {
+        for (let y = 0; y < screenHeight; y++) {
+          const tileIndex = y * screenWidth + x;
+          const tileData = allTilesData[tileIndex];
+          if (tileData && !tileData.isDeleted) {
+            activeTilesPath.push({ tile: tileData, index: tileIndex });
+          }
+        }
+      }
+      break;
+      
+    case 'serpentine-horizontal':
+    default:
+      for (let y = 0; y < screenHeight; y++) {
+        const rowIsReversed = y % 2 !== 0;
+        for (let i = 0; i < screenWidth; i++) {
+          const x = rowIsReversed ? screenWidth - 1 - i : i;
+          const tileIndex = y * screenWidth + x;
+          const tileData = allTilesData[tileIndex];
+          if (tileData && !tileData.isDeleted) {
+            activeTilesPath.push({ tile: tileData, index: tileIndex });
+          }
+        }
+      }
+      break;
   }
 
   if (activeTilesPath.length === 0) {
@@ -89,10 +135,10 @@ export function getWiringData(
     }
     tile.powerLabel = `P${powerCounter}`;
 
-    const groupNumOverall = Math.floor(pathIndex / subgroupSize);
     const indexInGroup = pathIndex % subgroupSize;
 
     if (indexInGroup === 0) {
+      const groupNumOverall = Math.floor(pathIndex / subgroupSize);
       const universeIndex = Math.floor(groupNumOverall / subgroupsPerUniverse);
       const subgroupIndexInUniverse = (groupNumOverall % subgroupsPerUniverse) + 1;
       

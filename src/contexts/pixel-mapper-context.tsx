@@ -3,6 +3,7 @@
 
 import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction } from "react";
+import type { WiringPattern } from "@/lib/wiring";
 
 interface Dimensions {
   tileWidth: number;
@@ -98,6 +99,8 @@ interface PixelMapperState {
   setShowDataLabels: Dispatch<SetStateAction<boolean>>;
   showPowerLabels: boolean;
   setShowPowerLabels: Dispatch<SetStateAction<boolean>>;
+  wiringPattern: WiringPattern;
+  setWiringPattern: Dispatch<SetStateAction<WiringPattern>>;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -148,6 +151,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [wiringPortConfig, setWiringPortConfig] = useState("4");
   const [showDataLabels, setShowDataLabels] = useState(true);
   const [showPowerLabels, setShowPowerLabels] = useState(true);
+  const [wiringPattern, setWiringPattern] = useState<WiringPattern>('serpentine-horizontal');
 
 
   useEffect(() => {
@@ -572,6 +576,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setShowDataLabels,
     showPowerLabels,
     setShowPowerLabels,
+    wiringPattern,
+    setWiringPattern,
   };
 
   return (
