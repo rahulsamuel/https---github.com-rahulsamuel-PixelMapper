@@ -28,6 +28,7 @@ interface ActiveBounds {
 
 type ActiveTool = 'delete' | 'label' | 'color';
 type LabelFormat = 'none' | 'sequential' | 'row-col' | 'dmx-style' | 'row-letter-col-number';
+type ResolutionType = 'content' | 'hd' | '4k-uhd' | '4k-dci';
 
 interface RasterSlice {
   key: string;
@@ -46,6 +47,7 @@ interface RasterMapConfig {
   outputHeight: number;
   previewImage?: string;
   rasterOffset: { x: number; y: number; };
+  resolutionType: ResolutionType;
 }
 
 interface RasterArgs {
@@ -418,6 +420,11 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const finalOutputWidth = outputWidth || contentWidth;
     const finalOutputHeight = outputHeight || contentHeight;
     
+    let resolutionType: ResolutionType = 'content';
+    if (outputWidth === 1920 && outputHeight === 1080) resolutionType = 'hd';
+    else if (outputWidth === 3840 && outputHeight === 2160) resolutionType = '4k-uhd';
+    else if (outputWidth === 4096 && outputHeight === 2160) resolutionType = '4k-dci';
+
     // Calculate slices
     const slices: RasterSlice[] = [];
     const baseFilename = filename.replace('.png', '');
@@ -517,6 +524,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         outputHeight: finalOutputHeight,
         previewImage,
         rasterOffset,
+        resolutionType,
     });
   }, [activeBounds, lastRasterArgs, dimensions, tiles, onOffMode, tileColor, tileColorTwo, showLabels, labels, labelColor, labelFontSize, rasterOffset, borderWidth, borderColor]);
 
