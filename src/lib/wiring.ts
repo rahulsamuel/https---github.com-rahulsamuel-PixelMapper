@@ -78,14 +78,11 @@ export function getWiringData(
     return allTilesData;
   }
 
-  let dataUniverseCounter = 0;
-  let subgroupIndex = 1;
-  let tileIndexInSubgroup = 1;
-  
   let powerCounter = 1;
   let powerGroupCounter = 0;
 
   activeTilesPath.forEach(({ tile }, pathIndex) => {
+    // Power Label Logic
     powerGroupCounter++;
     if (powerGroupCounter > TILES_PER_POWER_CIRCUIT) {
       powerCounter++;
@@ -93,15 +90,23 @@ export function getWiringData(
     }
     tile.powerLabel = `P${powerCounter}`;
 
-    if (tileIndexInSubgroup === 1) {
-      const universe = getUniverseLabel(dataUniverseCounter);
-      tile.dataLabel = `${universe}${subgroupIndex}`;
+    // Data Label Logic using modulo
+    const isFirstInGroup = pathIndex % subgroupSize === 0;
+
+    if (isFirstInGroup) {
+      const groupNum = Math.floor(pathIndex / subgroupSize);
+      const universeIndex = Math.floor(groupNum / subgroupsPerUniverse);
+      const subgroupIndexInUniverse = (groupNum % subgroupsPerUniverse) + 1;
+      
+      const universe = getUniverseLabel(universeIndex);
+      tile.dataLabel = `${universe}${subgroupIndexInUniverse}`;
     } else {
       tile.dataLabel = "";
     }
     
+    // Arrow Logic using modulo
     const isLastTileOverall = pathIndex >= activeTilesPath.length - 1;
-    const isLastInGroup = tileIndexInSubgroup === subgroupSize;
+    const isLastInGroup = (pathIndex + 1) % subgroupSize === 0;
 
     if (!isLastTileOverall && !isLastInGroup) {
       const currentPos = { x: tile.x, y: tile.y };
@@ -113,16 +118,8 @@ export function getWiringData(
       else if (nextPos.x < currentPos.x) tile.arrowTo = "left";
       else if (nextPos.y > currentPos.y) tile.arrowTo = "down";
       else if (nextPos.y < currentPos.y) tile.arrowTo = "up";
-    }
-
-    tileIndexInSubgroup++;
-    if (tileIndexInSubgroup > subgroupSize) {
-      tileIndexInSubgroup = 1;
-      subgroupIndex++;
-      if (subgroupIndex > subgroupsPerUniverse) {
-        subgroupIndex = 1;
-        dataUniverseCounter++;
-      }
+    } else {
+        tile.arrowTo = null;
     }
   });
 
