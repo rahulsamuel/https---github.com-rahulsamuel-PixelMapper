@@ -88,12 +88,8 @@ export function getWiringData(
     }
     tile.powerLabel = `P${powerCounter}`;
 
-    if (dataAddressCounter === 1) {
-      const universe = getUniverseLabel(dataUniverseCounter);
-      tile.dataLabel = `${universe}${dataAddressCounter}`;
-    } else {
-      tile.dataLabel = '';
-    }
+    const universe = getUniverseLabel(dataUniverseCounter);
+    tile.dataLabel = `${universe}${dataAddressCounter}`;
 
     const isLastTileOfRun = dataAddressCounter >= tilesPerPort;
     const isLastTileOverall = pathIndex >= activeTilesPath.length - 1;
