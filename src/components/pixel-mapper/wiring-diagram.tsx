@@ -9,15 +9,6 @@ import { Download, RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toPng } from "html-to-image";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
 
 export function WiringDiagram() {
   const { 
@@ -27,23 +18,16 @@ export function WiringDiagram() {
     tileColorTwo, 
     onOffMode, 
     wiringPortConfig, 
-    setWiringPortConfig, 
     zoom,
     showDataLabels,
-    setShowDataLabels,
     showPowerLabels,
-    setShowPowerLabels,
     labels,
     showLabels,
     labelColor,
     wiringPattern,
-    setWiringPattern,
     arrowheadSize,
-    setArrowheadSize,
     arrowheadLength,
-    setArrowheadLength,
     arrowGap,
-    setArrowGap,
     rasterMapConfig,
     activeBounds,
   } = usePixelMapper();
@@ -84,73 +68,21 @@ export function WiringDiagram() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-shrink-0 bg-background p-4 border-b flex flex-col items-start gap-4">
-        <div className="flex justify-between items-center w-full flex-wrap gap-y-2">
-            <div className="flex items-baseline gap-3">
-              <h2 className="text-lg font-semibold">Wiring Diagram</h2>
-              {mainPortsCount > 0 && (
-                <span className="text-sm font-medium text-muted-foreground">
-                  ({mainPortsCount} Main Ports)
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-2">
-                    <Label htmlFor="wiring-pattern" className="whitespace-nowrap">Pattern</Label>
-                    <Select value={wiringPattern} onValueChange={(v) => setWiringPattern(v as any)}>
-                        <SelectTrigger id="wiring-pattern" className="w-48 h-8">
-                            <SelectValue placeholder="Select pattern" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="serpentine-horizontal">Serpentine (Horizontal)</SelectItem>
-                            <SelectItem value="serpentine-horizontal-reverse">Serpentine (Bottom Up)</SelectItem>
-                            <SelectItem value="serpentine-vertical">Serpentine (Vertical)</SelectItem>
-                            <SelectItem value="left-right">Left to Right</SelectItem>
-                            <SelectItem value="top-bottom">Top to Bottom</SelectItem>
-                            <SelectItem value="bottom-to-top">Bottom to Top</SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Label htmlFor="tiles-per-group" className="whitespace-nowrap">Tiles per Group</Label>
-                    <Input
-                        id="tiles-per-group"
-                        type="number"
-                        value={wiringPortConfig}
-                        onChange={(e) => setWiringPortConfig(e.target.value)}
-                        className="w-20 h-8"
-                        placeholder="e.g., 4"
-                        min="1"
-                    />
-                </div>
-                 <div className="flex items-center space-x-2">
-                    <Switch id="show-data-labels" checked={showDataLabels} onCheckedChange={setShowDataLabels} />
-                    <Label htmlFor="show-data-labels">Data</Label>
-                </div>
-                 <div className="flex items-center space-x-2">
-                    <Switch id="show-power-labels" checked={showPowerLabels} onCheckedChange={setShowPowerLabels} />
-                    <Label htmlFor="show-power-labels">Power</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Switch id="mirror-switch" checked={isMirrored} onCheckedChange={setIsMirrored} />
-                    <Label htmlFor="mirror-switch" className="flex items-center gap-2"><RefreshCw className="size-4" /> Mirror</Label>
-                </div>
-                <Button onClick={handleDownload}><Download className="mr-2 size-4" /> Download</Button>
-            </div>
+      <div className="flex-shrink-0 bg-background p-4 border-b flex justify-between items-center">
+        <div className="flex items-baseline gap-3">
+          <h2 className="text-lg font-semibold">Wiring Diagram</h2>
+          {mainPortsCount > 0 && (
+            <span className="text-sm font-medium text-muted-foreground">
+              ({mainPortsCount} Main Ports)
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-6 flex-wrap w-full">
-            <div className="flex-1 min-w-[150px] space-y-1">
-                <Label htmlFor="arrowhead-size" className="text-xs">Arrowhead Size: {arrowheadSize}</Label>
-                <Slider id="arrowhead-size" min={2} max={20} step={1} value={[arrowheadSize]} onValueChange={(v) => setArrowheadSize(v[0])} />
-            </div>
-            <div className="flex-1 min-w-[150px] space-y-1">
-                <Label htmlFor="arrowhead-length" className="text-xs">Arrowhead Length: {arrowheadLength}</Label>
-                <Slider id="arrowhead-length" min={5} max={30} step={1} value={[arrowheadLength]} onValueChange={(v) => setArrowheadLength(v[0])} />
-            </div>
-            <div className="flex-1 min-w-[150px] space-y-1">
-                <Label htmlFor="arrow-gap" className="text-xs">Arrow Gap: {arrowGap}</Label>
-                <Slider id="arrow-gap" min={0} max={50} step={1} value={[arrowGap]} onValueChange={(v) => setArrowGap(v[0])} />
-            </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center space-x-2">
+            <Switch id="mirror-switch" checked={isMirrored} onCheckedChange={setIsMirrored} />
+            <Label htmlFor="mirror-switch" className="flex items-center gap-2"><RefreshCw className="size-4" /> Mirror</Label>
+          </div>
+          <Button onClick={handleDownload}><Download className="mr-2 size-4" /> Download</Button>
         </div>
       </div>
       <div className="flex-grow overflow-auto">

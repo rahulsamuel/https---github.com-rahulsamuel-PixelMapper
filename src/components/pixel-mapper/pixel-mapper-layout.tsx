@@ -19,13 +19,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "./edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, Grid3x3, Paintbrush, Type, Wand2, Calculator, FileOutput, Package, RotateCcw, Trash2 } from "lucide-react";
+import { ZoomIn, ZoomOut, Grid3x3, Paintbrush, Type, Wand2, Calculator, FileOutput, Package, RotateCcw, Trash2, GitBranch } from "lucide-react";
 import { LabelControls } from "./label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { MediaOutputControls } from "./media-output-controls";
 import { OutputCalculator } from "./output-calculator";
 import { RasterMapPreview } from "./raster-map-preview";
+import { WiringControls } from "./wiring-controls";
 import {
   Accordion,
   AccordionContent,
@@ -61,7 +62,7 @@ export function PixelMapperLayout() {
         <Separator />
         <SidebarContent asChild>
           <ScrollArea className="flex-grow">
-            <Accordion type="multiple" defaultValue={['dimensions']} className="p-4 flex flex-col gap-2">
+            <Accordion type="single" collapsible defaultValue="dimensions" className="p-4 flex flex-col gap-2">
               <AccordionItem value="project" className="border-none">
                 <AccordionSectionTrigger icon={<Package className="size-5" />} title="Project" />
                 <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
@@ -91,6 +92,14 @@ export function PixelMapperLayout() {
                 <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
                   <p className="text-sm text-muted-foreground pb-4">Customize the labels on the LED tiles.</p>
                   <LabelControls />
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="wiring" className="border-none">
+                <AccordionSectionTrigger icon={<GitBranch className="size-5" />} title="Wiring" />
+                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
+                  <p className="text-sm text-muted-foreground pb-4">Define wiring patterns and data port settings.</p>
+                  <WiringControls />
                 </AccordionContent>
               </AccordionItem>
 
@@ -162,10 +171,10 @@ export function PixelMapperLayout() {
           <TabsContent value="grid" className="flex-grow overflow-auto">
             <LedGrid />
           </TabsContent>
-          <TabsContent value="wiring" className="flex-grow">
+          <TabsContent value="wiring" className="flex-grow flex flex-col">
             <WiringDiagram />
           </TabsContent>
-          <TabsContent value="raster" className="flex-grow">
+          <TabsContent value="raster" className="flex-grow flex flex-col">
             <RasterMapPreview />
           </TabsContent>
         </Tabs>
