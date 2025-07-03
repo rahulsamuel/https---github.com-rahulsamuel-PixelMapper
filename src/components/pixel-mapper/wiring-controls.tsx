@@ -65,15 +65,15 @@ export function WiringControls() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="arrowhead-size">Arrowhead Size: {arrowheadSize}</Label>
-        <Slider id="arrowhead-size" min={2} max={20} step={1} value={[arrowheadSize]} onValueChange={(v) => setArrowheadSize(v[0])} />
+        <Slider id="arrowhead-size" min={2} max={40} step={1} value={[arrowheadSize]} onValueChange={(v) => setArrowheadSize(v[0])} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="arrowhead-length">Arrowhead Length: {arrowheadLength}</Label>
-        <Slider id="arrowhead-length" min={5} max={30} step={1} value={[arrowheadLength]} onValueChange={(v) => setArrowheadLength(v[0])} />
+        <Slider id="arrowhead-length" min={5} max={60} step={1} value={[arrowheadLength]} onValueChange={(v) => setArrowheadLength(v[0])} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="arrow-gap">Arrow Gap: {arrowGap}</Label>
-        <Slider id="arrow-gap" min={0} max={50} step={1} value={[arrowGap]} onValueChange={(v) => setArrowGap(v[0])} />
+        <Slider id="arrow-gap" min={0} max={100} step={1} value={[arrowGap]} onValueChange={(v) => setArrowGap(v[0])} />
       </div>
     </div>
   );

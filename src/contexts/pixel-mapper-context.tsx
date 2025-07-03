@@ -227,12 +227,12 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [showPowerLabels, _setShowPowerLabels] = useState(false);
   const [wiringPattern, setWiringPattern] = useState<WiringPattern>('serpentine-horizontal');
   const [powerWiringPattern, setPowerWiringPattern] = useState<WiringPattern>('left-right');
-  const [arrowheadSize, setArrowheadSize] = useState(6);
-  const [arrowheadLength, setArrowheadLength] = useState(10);
-  const [arrowGap, setArrowGap] = useState(30);
-  const [powerArrowheadSize, setPowerArrowheadSize] = useState(6);
-  const [powerArrowheadLength, setPowerArrowheadLength] = useState(10);
-  const [powerArrowGap, setPowerArrowGap] = useState(30);
+  const [arrowheadSize, setArrowheadSize] = useState(20);
+  const [arrowheadLength, setArrowheadLength] = useState(30);
+  const [arrowGap, setArrowGap] = useState(50);
+  const [powerArrowheadSize, setPowerArrowheadSize] = useState(20);
+  const [powerArrowheadLength, setPowerArrowheadLength] = useState(30);
+  const [powerArrowGap, setPowerArrowGap] = useState(50);
   const [isWiringMirrored, setIsWiringMirrored] = useState(false);
 
   const zoom = zoomLevels[activeTab as keyof typeof zoomLevels] || 1;
@@ -825,12 +825,12 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         _setShowPowerLabels(data.showPowerLabels);
         setWiringPattern(data.wiringPattern);
         setPowerWiringPattern(data.powerWiringPattern || 'left-right');
-        setArrowheadSize(data.arrowheadSize);
-        setArrowheadLength(data.arrowheadLength);
-        setArrowGap(data.arrowGap);
-        setPowerArrowheadSize(data.powerArrowheadSize || 6);
-        setPowerArrowheadLength(data.powerArrowheadLength || 10);
-        setPowerArrowGap(data.powerArrowGap || 30);
+        setArrowheadSize(data.arrowheadSize || 20);
+        setArrowheadLength(data.arrowheadLength || 30);
+        setArrowGap(data.arrowGap || 50);
+        setPowerArrowheadSize(data.powerArrowheadSize || 20);
+        setPowerArrowheadLength(data.powerArrowheadLength || 30);
+        setPowerArrowGap(data.powerArrowGap || 50);
         setBrushColor(data.brushColor || "#e11d48");
         setTilesPerPowerString(data.tilesPerPowerString || "20");
         setIsWiringMirrored(data.isWiringMirrored || false);
