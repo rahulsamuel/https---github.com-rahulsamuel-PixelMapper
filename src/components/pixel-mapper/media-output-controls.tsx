@@ -2,7 +2,7 @@
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
 import { Button } from "@/components/ui/button";
-import { Download, FileOutput, AlertTriangle } from "lucide-react";
+import { FileOutput, AlertTriangle } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useMemo } from "react";
@@ -13,12 +13,9 @@ export function MediaOutputControls() {
     generateRasterMap, 
     dimensions, 
     activeBounds, 
-    handleDownloadPng, 
     rasterMapConfig,
-    downloadRasterSlices,
     rasterOffset,
     setRasterOffset,
-    handleDownloadWiringDiagram,
   } = usePixelMapper();
   
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : dimensions.screenWidth * dimensions.tileWidth;
@@ -97,35 +94,6 @@ export function MediaOutputControls() {
           </div>
         </>
       )}
-
-      <Separator />
-
-      <div>
-        <Label className="font-semibold">Downloads</Label>
-        <p className="text-sm text-muted-foreground pb-2">Download generated grid images and raster maps.</p>
-        <div className="space-y-2">
-           <Button size="sm" onClick={() => handleDownloadPng('pixel-map.png')} variant="outline" className="w-full justify-start">
-              <Download className="mr-2" />
-              Download Grid as PNG
-          </Button>
-          {rasterMapConfig && (
-            <Button
-              onClick={downloadRasterSlices}
-              disabled={rasterMapConfig.slices.length === 0}
-              size="sm"
-              variant="outline"
-              className="w-full justify-start"
-            >
-              <Download className="mr-2" />
-              Download Raster Slices ({rasterMapConfig.slices.length})
-            </Button>
-          )}
-          <Button size="sm" onClick={handleDownloadWiringDiagram} variant="outline" className="w-full justify-start">
-            <Download className="mr-2" />
-            Download Wiring Diagram
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

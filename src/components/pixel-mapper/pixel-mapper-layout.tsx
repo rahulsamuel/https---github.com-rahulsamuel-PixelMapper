@@ -1,4 +1,3 @@
-
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
@@ -19,7 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "./edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, Grid3x3, Paintbrush, Type, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser } from "lucide-react";
+import { ZoomIn, ZoomOut, Grid3x3, Paintbrush, Type, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Download } from "lucide-react";
 import { LabelControls } from "./label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -33,6 +32,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { DownloadsControls } from "./downloads-controls";
 
 
 export function PixelMapperLayout() {
@@ -137,6 +137,15 @@ export function PixelMapperLayout() {
                   <MediaOutputControls />
                 </AccordionContent>
               </AccordionItem>
+
+              <AccordionItem value="downloads" className="border-none">
+                <AccordionSectionTrigger icon={<Download className="size-5" />} title="Downloads" />
+                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
+                  <p className="text-sm text-muted-foreground pb-4">Download generated grid images, raster maps and wiring diagrams.</p>
+                  <DownloadsControls />
+                </AccordionContent>
+              </AccordionItem>
+
             </Accordion>
           </ScrollArea>
         </SidebarContent>
