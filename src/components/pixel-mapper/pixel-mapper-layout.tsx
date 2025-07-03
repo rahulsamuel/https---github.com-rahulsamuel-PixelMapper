@@ -19,7 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "./edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, Grid3x3, Paintbrush, Type, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Download, Bolt, Expand } from "lucide-react";
+import { ZoomIn, ZoomOut, Grid3x3, Paintbrush, Type, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Download, Bolt, Expand, Palette } from "lucide-react";
 import { LabelControls } from "./label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -39,7 +39,7 @@ import { useState, useRef } from "react";
 
 
 export function PixelMapperLayout() {
-  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig } = usePixelMapper();
+  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig } = usePixelMapper();
   const [activeTab, setActiveTab] = useState("grid");
   const gridViewportRef = useRef<HTMLDivElement>(null);
   const wiringViewportRef = useRef<HTMLDivElement>(null);
@@ -172,6 +172,13 @@ export function PixelMapperLayout() {
                       </div>
                       <span className="font-mono text-lg font-bold">{deletedCount}</span>
                     </div>
+                    <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/50">
+                      <div className="flex items-center gap-2">
+                        <Palette className="size-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Colored Tiles</span>
+                      </div>
+                      <span className="font-mono text-lg font-bold">{coloredCount}</span>
+                    </div>
                     <div className="grid grid-cols-2 gap-2">
                        <Button onClick={resetAllColors} variant="outline" className="w-full">
                           <Eraser className="mr-2" />
@@ -252,5 +259,3 @@ export function PixelMapperLayout() {
     </SidebarProvider>
   );
 }
-
-    

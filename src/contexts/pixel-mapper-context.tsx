@@ -98,6 +98,7 @@ interface PixelMapperState {
   restoreDeletedTiles: () => void;
   resetAllColors: () => void;
   deletedCount: number;
+  coloredCount: number;
   tileColor: string;
   setTileColor: Dispatch<SetStateAction<string>>;
   tileColorTwo: string;
@@ -185,6 +186,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   });
   const [tiles, setTiles] = useState<Tile[]>([]);
   const [deletedCount, setDeletedCount] = useState(0);
+  const [coloredCount, setColoredCount] = useState(0);
 
   const [tileColor, setTileColor] = useState("#3961b1");
   const [tileColorTwo, setTileColorTwo] = useState("#a7b8ec");
@@ -242,9 +244,6 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const { screenWidth, screenHeight } = dimensions;
     const totalTiles = screenWidth * screenHeight;
 
-    // Only reset tiles if the total number of tiles has changed.
-    // This prevents wiping the state of imported tiles, which are set
-    // immediately after dimensions are updated during an import.
     if (tiles.length === totalTiles) {
       return;
     }
@@ -286,6 +285,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setDeletedCount(tiles.filter((tile) => tile.deleted).length);
+    setColoredCount(tiles.filter((tile) => !!tile.color && !tile.deleted).length);
   }, [tiles]);
 
   useEffect(() => {
@@ -763,7 +763,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
         // Apply state
         setDimensions(data.dimensions);
-        setTiles(data.tiles);
+        // Important: Set tiles *after* dimensions, and don't rely on the useEffect.
+        // This preserves the `deleted` state from the imported file.
+        setTiles(data.tiles); 
         setTileColor(data.tileColor);
         setTileColorTwo(data.tileColorTwo);
         setBorderWidth(data.borderWidth);
@@ -828,6 +830,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     restoreDeletedTiles,
     resetAllColors,
     deletedCount,
+    coloredCount,
     tileColor,
     setTileColor,
     tileColorTwo,
