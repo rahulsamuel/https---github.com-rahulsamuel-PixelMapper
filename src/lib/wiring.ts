@@ -18,12 +18,11 @@ interface WiringInfo {
   powerLabel: string;
   backupLabel: string;
   isDeleted: boolean;
-  arrowTo: 'up' | 'down' | 'left' | 'right' | null;
+  arrowTo: 'up' | 'down' | 'left' | 'right' | 'up-left' | 'up-right' | 'down-left' | 'down-right' | null;
 }
 
 const TILES_PER_POWER_CIRCUIT = 20;
 
-// Correct universe sequence, skipping 'B'.
 const UNIVERSE_LETTERS = [
     'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 
     'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
@@ -33,7 +32,6 @@ const getUniverseLabel = (n: number): string => {
     if (n >= 0 && n < UNIVERSE_LETTERS.length) {
         return UNIVERSE_LETTERS[n];
     }
-    // Fallback for a large number of universes
     return `Universe ${n + 1}`;
 };
 
@@ -51,13 +49,13 @@ export function getWiringData(
   const subgroupSize = parseInt(wiringPortConfig.trim(), 10) || 4;
   const subgroupsPerUniverse = 10;
 
-  const allTilesData = tiles.map((tile, index) => {
+  const allTilesData: WiringInfo[] = tiles.map((tile, index) => {
     const x = index % screenWidth;
     const y = Math.floor(index / screenWidth);
     return {
       x, y, dataLabel: "", powerLabel: "", backupLabel: "",
       isDeleted: tile.deleted,
-      arrowTo: null as "up" | "down" | "left" | "right" | null,
+      arrowTo: null,
     };
   });
 
@@ -84,7 +82,6 @@ export function getWiringData(
   let backupPortCounter = 0;
 
   activeTilesPath.forEach(({ tile }, pathIndex) => {
-    // Power Label Logic
     powerGroupCounter++;
     if (powerGroupCounter > TILES_PER_POWER_CIRCUIT) {
       powerCounter++;
@@ -92,12 +89,12 @@ export function getWiringData(
     }
     tile.powerLabel = `P${powerCounter}`;
 
-    // Data Label Logic
-    const isFirstInGroup = pathIndex % subgroupSize === 0;
-    if (isFirstInGroup) {
-      const groupNum = Math.floor(pathIndex / subgroupSize);
-      const universeIndex = Math.floor(groupNum / subgroupsPerUniverse);
-      const subgroupIndexInUniverse = (groupNum % subgroupsPerUniverse) + 1;
+    const groupNumOverall = Math.floor(pathIndex / subgroupSize);
+    const indexInGroup = pathIndex % subgroupSize;
+
+    if (indexInGroup === 0) {
+      const universeIndex = Math.floor(groupNumOverall / subgroupsPerUniverse);
+      const subgroupIndexInUniverse = (groupNumOverall % subgroupsPerUniverse) + 1;
       
       const universe = getUniverseLabel(universeIndex);
       tile.dataLabel = `${universe}${subgroupIndexInUniverse}`;
@@ -105,24 +102,32 @@ export function getWiringData(
       tile.dataLabel = "";
     }
     
-    // Arrow and Backup Label Logic
     const isLastTileInPath = pathIndex === activeTilesPath.length - 1;
     const isEndOfGroup = (pathIndex + 1) % subgroupSize === 0;
 
     if (isEndOfGroup || isLastTileInPath) {
         backupPortCounter++;
         tile.backupLabel = `B${backupPortCounter}`;
-        tile.arrowTo = null; // No arrow from the end of a string.
+        tile.arrowTo = null;
     } else {
-      const currentPos = { x: tile.x, y: tile.y };
-      const nextPos = {
-        x: activeTilesPath[pathIndex + 1].tile.x,
-        y: activeTilesPath[pathIndex + 1].tile.y,
-      };
-      if (nextPos.x > currentPos.x) tile.arrowTo = "right";
-      else if (nextPos.x < currentPos.x) tile.arrowTo = "left";
-      else if (nextPos.y > currentPos.y) tile.arrowTo = "down";
-      else if (nextPos.y < currentPos.y) tile.arrowTo = "up";
+      const currentTile = activeTilesPath[pathIndex].tile;
+      const nextTile = activeTilesPath[pathIndex + 1].tile;
+      const dx = nextTile.x - currentTile.x;
+      const dy = nextTile.y - currentTile.y;
+
+      if (dy < 0) { // Moving up
+          if (dx < 0) tile.arrowTo = 'up-left';
+          else if (dx > 0) tile.arrowTo = 'up-right';
+          else tile.arrowTo = 'up';
+      } else if (dy > 0) { // Moving down
+          if (dx < 0) tile.arrowTo = 'down-left';
+          else if (dx > 0) tile.arrowTo = 'down-right';
+          else tile.arrowTo = 'down';
+      } else { // Moving horizontally
+          if (dx < 0) tile.arrowTo = 'left';
+          else if (dx > 0) tile.arrowTo = 'right';
+          else tile.arrowTo = null;
+      }
     }
   });
 

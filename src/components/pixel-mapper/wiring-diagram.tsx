@@ -5,7 +5,7 @@ import { usePixelMapper } from "@/contexts/pixel-mapper-context";
 import { getWiringData } from "@/lib/wiring";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, RefreshCw, MoveUp, MoveDown, MoveLeft, MoveRight } from "lucide-react";
+import { Download, RefreshCw, MoveUp, MoveDown, MoveLeft, MoveRight, MoveUpLeft, MoveUpRight, MoveDownLeft, MoveDownRight } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toPng } from "html-to-image";
@@ -123,6 +123,10 @@ export function WiringDiagram() {
             if (isMirrored) {
               if (arrowTo === 'left') displayArrowTo = 'right';
               else if (arrowTo === 'right') displayArrowTo = 'left';
+              else if (arrowTo === 'up-left') displayArrowTo = 'up-right';
+              else if (arrowTo === 'up-right') displayArrowTo = 'up-left';
+              else if (arrowTo === 'down-left') displayArrowTo = 'down-right';
+              else if (arrowTo === 'down-right') displayArrowTo = 'down-left';
             }
 
             const arrowPositionStyle = {
@@ -130,6 +134,10 @@ export function WiringDiagram() {
                 ...(displayArrowTo === 'down' && { bottom: -ARROW_SIZE / 2, left: '50%', transform: 'translateX(-50%)' }),
                 ...(displayArrowTo === 'left' && { left: -ARROW_SIZE / 2, top: '50%', transform: 'translateY(-50%)' }),
                 ...(displayArrowTo === 'right' && { right: -ARROW_SIZE / 2, top: '50%', transform: 'translateY(-50%)' }),
+                ...(displayArrowTo === 'up-left' && { top: -ARROW_SIZE / 2, left: -ARROW_SIZE / 2 }),
+                ...(displayArrowTo === 'up-right' && { top: -ARROW_SIZE / 2, right: -ARROW_SIZE / 2 }),
+                ...(displayArrowTo === 'down-left' && { bottom: -ARROW_SIZE / 2, left: -ARROW_SIZE / 2 }),
+                ...(displayArrowTo === 'down-right' && { bottom: -ARROW_SIZE / 2, right: -ARROW_SIZE / 2 }),
             };
 
             const tileStyle = {
@@ -185,6 +193,10 @@ export function WiringDiagram() {
                             {displayArrowTo === 'down' && <MoveDown size={ARROW_SIZE} />}
                             {displayArrowTo === 'left' && <MoveLeft size={ARROW_SIZE} />}
                             {displayArrowTo === 'right' && <MoveRight size={ARROW_SIZE} />}
+                            {displayArrowTo === 'up-left' && <MoveUpLeft size={ARROW_SIZE} />}
+                            {displayArrowTo === 'up-right' && <MoveUpRight size={ARROW_SIZE} />}
+                            {displayArrowTo === 'down-left' && <MoveDownLeft size={ARROW_SIZE} />}
+                            {displayArrowTo === 'down-right' && <MoveDownRight size={ARROW_SIZE} />}
                         </div>
                     )}
                   </>
