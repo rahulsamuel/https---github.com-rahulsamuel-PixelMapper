@@ -100,7 +100,8 @@ function getPathOrder(indices: number[], pattern: WiringPattern, screenWidth: nu
 function applyDataWiring(
     activeTilesPath: { tile: WiringInfo; index: number; }[],
     wiringPortConfig: string,
-    counters: { groupNumOverall: number; }
+    counters: { groupNumOverall: number; },
+    sliceUniverseIndex: number | null = null
 ) {
     if (activeTilesPath.length === 0) return;
     
@@ -111,7 +112,7 @@ function applyDataWiring(
       // Data
       const isFirstInGroup = pathIndex % subgroupSize === 0;
       if (isFirstInGroup) {
-        const universeIndex = Math.floor(counters.groupNumOverall / subgroupsPerUniverse);
+        const universeIndex = sliceUniverseIndex ?? Math.floor(counters.groupNumOverall / subgroupsPerUniverse);
         const subgroupIndexInUniverse = (counters.groupNumOverall % subgroupsPerUniverse) + 1;
         currentTileInfo.dataLabel = `${getUniverseLabel(universeIndex)}${subgroupIndexInUniverse}`;
         counters.groupNumOverall++;
@@ -132,14 +133,17 @@ function applyDataWiring(
       const isEndOfGroup = (pathIndex + 1) % subgroupSize === 0;
       if (isEndOfGroup || isLastTileInPath) {
         const currentGroupNum = counters.groupNumOverall - 1;
-        const universeIndex = Math.floor(currentGroupNum / subgroupsPerUniverse);
-        const subgroupIndexInUniverse = (currentGroupNum % subgroupsPerUniverse) + 1;
+        const mainUniverseIndex = sliceUniverseIndex ?? Math.floor(currentGroupNum / subgroupsPerUniverse);
+        
         let backupUniverse: string;
-        if (universeIndex === 0) { backupUniverse = 'B'; }
-        else {
-          const backupUniverseIndex = universeIndex + 1;
-          backupUniverse = backupUniverseIndex < UNIVERSE_LETTERS.length ? UNIVERSE_LETTERS[backupUniverseIndex] : `BU${universeIndex}`;
+        if (mainUniverseIndex === 0) { 
+            backupUniverse = 'B'; 
+        } else {
+          const backupUniverseIndex = mainUniverseIndex + 1;
+          backupUniverse = getUniverseLabel(backupUniverseIndex);
         }
+        
+        const subgroupIndexInUniverse = (currentGroupNum % subgroupsPerUniverse) + 1;
         currentTileInfo.backupLabel = `${backupUniverse}${subgroupIndexInUniverse}`;
         currentTileInfo.nextTile = null; // No arrow from end of a group
       }
@@ -241,15 +245,18 @@ export function getWiringData({
 
     const powerCounters = { powerCounter: 1, powerGroupCounter: 0 };
     const sortedSliceKeys = Array.from(tilesBySlice.keys()).sort();
+    
+    let dataUniverseCounter = 0;
 
     for (const sliceKey of sortedSliceKeys) {
         const sliceIndices = tilesBySlice.get(sliceKey)!;
 
-        // Data Path for slice
+        // Data Path for slice: each slice gets its own universe sequence
         const dataPathOrder = getPathOrder(sliceIndices, wiringPattern, screenWidth, screenHeight);
         const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
-        const dataCounters = { groupNumOverall: 0 }; // Reset data for each slice
-        applyDataWiring(dataTilesPath, wiringPortConfig, dataCounters);
+        // Reset subgroup counter for each slice, but use the incrementing universe counter
+        applyDataWiring(dataTilesPath, wiringPortConfig, { groupNumOverall: 0 }, dataUniverseCounter);
+        dataUniverseCounter++;
         
         // Power Path for slice - power continues across slices
         const powerPathOrder = getPathOrder(sliceIndices, powerWiringPattern, screenWidth, screenHeight);
