@@ -101,7 +101,9 @@ export function getWiringData(
     }
     
     const isLastTileOverall = pathIndex >= activeTilesPath.length - 1;
-    if (!isLastTileOverall) {
+    const isLastInGroup = tileIndexInSubgroup === subgroupSize;
+
+    if (!isLastTileOverall && !isLastInGroup) {
       const currentPos = { x: tile.x, y: tile.y };
       const nextPos = {
         x: activeTilesPath[pathIndex + 1].tile.x,
