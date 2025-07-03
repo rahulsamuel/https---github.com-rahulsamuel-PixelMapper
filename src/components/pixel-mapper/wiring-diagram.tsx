@@ -70,14 +70,15 @@ export function WiringDiagram() {
         <h2 className="text-lg font-semibold">Wiring Diagram</h2>
         <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-                <Label htmlFor="tiles-per-port" className="whitespace-nowrap">Tiles per Port</Label>
+                <Label htmlFor="tiles-per-group" className="whitespace-nowrap">Tiles per Group</Label>
                 <Input
-                    id="tiles-per-port"
-                    type="text"
+                    id="tiles-per-group"
+                    type="number"
                     value={wiringPortConfig}
                     onChange={(e) => setWiringPortConfig(e.target.value)}
-                    className="w-28 h-8"
-                    placeholder="e.g., 10,20,10"
+                    className="w-20 h-8"
+                    placeholder="e.g., 4"
+                    min="1"
                 />
             </div>
              <div className="flex items-center space-x-2">

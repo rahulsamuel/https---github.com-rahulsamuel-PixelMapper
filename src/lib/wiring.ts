@@ -47,14 +47,8 @@ export function getWiringData(
     return [];
   }
 
-  const portLengths = wiringPortConfig
-    .split(',')
-    .map(s => parseInt(s.trim(), 10))
-    .filter(n => !isNaN(n) && n > 0);
-
-  if (portLengths.length === 0) {
-    portLengths.push(10); // Default to 10 if input is invalid
-  }
+  const subgroupSize = parseInt(wiringPortConfig.trim(), 10) || 4;
+  const subgroupsPerUniverse = 10;
 
   const allTilesData = tiles.map((tile, index) => {
     const x = index % screenWidth;
@@ -85,7 +79,9 @@ export function getWiringData(
   }
 
   let dataUniverseCounter = 0;
-  let dataAddressCounter = 1;
+  let subgroupIndex = 1;
+  let tileIndexInSubgroup = 1;
+  
   let powerCounter = 1;
   let powerGroupCounter = 0;
 
@@ -97,14 +93,15 @@ export function getWiringData(
     }
     tile.powerLabel = `P${powerCounter}`;
 
-    const universe = getUniverseLabel(dataUniverseCounter);
-    tile.dataLabel = `${universe}${dataAddressCounter}`;
-
-    const currentPortLength = portLengths[dataUniverseCounter] || portLengths[portLengths.length - 1];
-    const isLastTileOfRun = dataAddressCounter >= currentPortLength;
+    if (tileIndexInSubgroup === 1) {
+      const universe = getUniverseLabel(dataUniverseCounter);
+      tile.dataLabel = `${universe}${subgroupIndex}`;
+    } else {
+      tile.dataLabel = "";
+    }
+    
     const isLastTileOverall = pathIndex >= activeTilesPath.length - 1;
-
-    if (!isLastTileOfRun && !isLastTileOverall) {
+    if (!isLastTileOverall) {
       const currentPos = { x: tile.x, y: tile.y };
       const nextPos = {
         x: activeTilesPath[pathIndex + 1].tile.x,
@@ -116,10 +113,14 @@ export function getWiringData(
       else if (nextPos.y < currentPos.y) tile.arrowTo = "up";
     }
 
-    dataAddressCounter++;
-    if (dataAddressCounter > currentPortLength) {
-      dataAddressCounter = 1;
-      dataUniverseCounter++;
+    tileIndexInSubgroup++;
+    if (tileIndexInSubgroup > subgroupSize) {
+      tileIndexInSubgroup = 1;
+      subgroupIndex++;
+      if (subgroupIndex > subgroupsPerUniverse) {
+        subgroupIndex = 1;
+        dataUniverseCounter++;
+      }
     }
   });
 

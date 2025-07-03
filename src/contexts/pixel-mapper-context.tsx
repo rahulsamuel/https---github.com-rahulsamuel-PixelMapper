@@ -145,7 +145,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [lastRasterArgs, setLastRasterArgs] = useState<RasterArgs | null>(null);
 
   // Wiring state
-  const [wiringPortConfig, setWiringPortConfig] = useState("10");
+  const [wiringPortConfig, setWiringPortConfig] = useState("4");
   const [showDataLabels, setShowDataLabels] = useState(true);
   const [showPowerLabels, setShowPowerLabels] = useState(true);
 
@@ -423,8 +423,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Set default raster map on initial load
-    generateRasterMap('raster-map-hd.png', 1920, 1080);
-  }, [generateRasterMap]);
+    if (activeBounds) {
+        generateRasterMap('raster-map-hd.png', 1920, 1080);
+    }
+  }, [generateRasterMap, activeBounds]);
 
   const createFullRasterCanvas = useCallback(() => {
     if (!rasterMapConfig || !activeBounds) return null;
