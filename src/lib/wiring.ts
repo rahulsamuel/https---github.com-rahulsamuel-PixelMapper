@@ -47,25 +47,17 @@ export function getWiringData(
     return [];
   }
 
-  // 1. Create a flat list of all tiles with their coordinates and initial state
   const allTilesData = tiles.map((tile, index) => {
     const x = index % screenWidth;
     const y = Math.floor(index / screenWidth);
     return {
-      x,
-      y,
-      dataLabel: "",
-      powerLabel: "",
+      x, y, dataLabel: "", powerLabel: "",
       isDeleted: tile.deleted,
       arrowTo: null as "up" | "down" | "left" | "right" | null,
     };
   });
 
-  // 2. Create the snake-like path of *active* tiles
-  const activeTilesPath: {
-    tile: WiringInfo;
-    index: number;
-  }[] = [];
+  const activeTilesPath: { tile: WiringInfo; index: number; }[] = [];
 
   for (let y = 0; y < screenHeight; y++) {
     const rowIsReversed = y % 2 !== 0;
@@ -83,14 +75,12 @@ export function getWiringData(
     return allTilesData;
   }
 
-  // 3. Iterate through the active path to assign labels and arrows
   let dataUniverseCounter = 0;
   let dataAddressCounter = 1;
   let powerCounter = 1;
   let powerGroupCounter = 0;
 
   activeTilesPath.forEach(({ tile }, pathIndex) => {
-    // Assign Power Label
     powerGroupCounter++;
     if (powerGroupCounter > TILES_PER_POWER_CIRCUIT) {
       powerCounter++;
@@ -98,22 +88,17 @@ export function getWiringData(
     }
     tile.powerLabel = `P${powerCounter}`;
 
-    // Assign Data Label
     if (dataAddressCounter === 1) {
       const universe = getUniverseLabel(dataUniverseCounter);
       tile.dataLabel = `${universe}${dataAddressCounter}`;
     } else {
-      tile.dataLabel = ''; // Only label the first tile of the port run
+      tile.dataLabel = '';
     }
 
-    dataAddressCounter++;
-    if (dataAddressCounter > tilesPerPort) {
-      dataAddressCounter = 1;
-      dataUniverseCounter++;
-    }
+    const isLastTileOfRun = dataAddressCounter >= tilesPerPort;
+    const isLastTileOverall = pathIndex >= activeTilesPath.length - 1;
 
-    // Assign Arrow direction to next tile
-    if (pathIndex < activeTilesPath.length - 1) {
+    if (!isLastTileOfRun && !isLastTileOverall) {
       const currentPos = { x: tile.x, y: tile.y };
       const nextPos = {
         x: activeTilesPath[pathIndex + 1].tile.x,
@@ -123,6 +108,12 @@ export function getWiringData(
       else if (nextPos.x < currentPos.x) tile.arrowTo = "left";
       else if (nextPos.y > currentPos.y) tile.arrowTo = "down";
       else if (nextPos.y < currentPos.y) tile.arrowTo = "up";
+    }
+
+    dataAddressCounter++;
+    if (dataAddressCounter > tilesPerPort) {
+      dataAddressCounter = 1;
+      dataUniverseCounter++;
     }
   });
 

@@ -162,7 +162,7 @@ export function WiringDiagram() {
                       className="flex flex-col items-center justify-center h-full w-full text-foreground relative"
                     >
                       {showDataLabels && dataLabel && (
-                        <div className="bg-accent text-accent-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold mb-1 z-10">
+                        <div className="bg-data-wiring text-data-wiring-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold mb-1 z-10">
                             <span>{dataLabel}</span>
                         </div>
                       )}
@@ -172,7 +172,7 @@ export function WiringDiagram() {
                     </div>
                      {showDataLabels && displayArrowTo && (
                         <div 
-                            className="absolute text-accent/80 z-20 flex items-center justify-center"
+                            className="absolute text-data-wiring z-20 flex items-center justify-center"
                             style={arrowPositionStyle}
                         >
                             {displayArrowTo === 'up' && <MoveUp size={ARROW_SIZE} />}
@@ -191,4 +191,3 @@ export function WiringDiagram() {
     </div>
   );
 }
-

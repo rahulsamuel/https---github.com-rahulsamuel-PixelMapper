@@ -65,6 +65,10 @@ export default {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
         },
+        'data-wiring': {
+          DEFAULT: 'hsl(var(--data-wiring))',
+          foreground: 'hsl(var(--data-wiring-foreground))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',
