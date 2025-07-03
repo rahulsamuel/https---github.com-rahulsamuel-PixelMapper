@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
 
 export function WiringDiagram() {
   const { 
@@ -37,6 +38,12 @@ export function WiringDiagram() {
     labelColor,
     wiringPattern,
     setWiringPattern,
+    arrowheadSize,
+    setArrowheadSize,
+    arrowheadLength,
+    setArrowheadLength,
+    arrowGap,
+    setArrowGap,
   } = usePixelMapper();
   const [isMirrored, setIsMirrored] = useState(false);
   const wiringDiagramRef = useRef<HTMLDivElement>(null);
@@ -74,50 +81,66 @@ export function WiringDiagram() {
 
   return (
     <>
-      <div className="sticky top-0 z-10 bg-background p-4 border-b flex justify-between items-center flex-wrap gap-y-2">
-        <h2 className="text-lg font-semibold">Wiring Diagram</h2>
-        <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-                <Label htmlFor="wiring-pattern" className="whitespace-nowrap">Pattern</Label>
-                <Select value={wiringPattern} onValueChange={(v) => setWiringPattern(v as any)}>
-                    <SelectTrigger id="wiring-pattern" className="w-48 h-8">
-                        <SelectValue placeholder="Select pattern" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="serpentine-horizontal">Serpentine (Horizontal)</SelectItem>
-                        <SelectItem value="serpentine-horizontal-reverse">Serpentine (Bottom Up)</SelectItem>
-                        <SelectItem value="serpentine-vertical">Serpentine (Vertical)</SelectItem>
-                        <SelectItem value="left-right">Left to Right</SelectItem>
-                        <SelectItem value="top-bottom">Top to Bottom</SelectItem>
-                        <SelectItem value="bottom-to-top">Bottom to Top</SelectItem>
-                    </SelectContent>
-                </Select>
+      <div className="sticky top-0 z-10 bg-background p-4 border-b flex flex-col items-start gap-4">
+        <div className="flex justify-between items-center w-full flex-wrap gap-y-2">
+            <h2 className="text-lg font-semibold">Wiring Diagram</h2>
+            <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                    <Label htmlFor="wiring-pattern" className="whitespace-nowrap">Pattern</Label>
+                    <Select value={wiringPattern} onValueChange={(v) => setWiringPattern(v as any)}>
+                        <SelectTrigger id="wiring-pattern" className="w-48 h-8">
+                            <SelectValue placeholder="Select pattern" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="serpentine-horizontal">Serpentine (Horizontal)</SelectItem>
+                            <SelectItem value="serpentine-horizontal-reverse">Serpentine (Bottom Up)</SelectItem>
+                            <SelectItem value="serpentine-vertical">Serpentine (Vertical)</SelectItem>
+                            <SelectItem value="left-right">Left to Right</SelectItem>
+                            <SelectItem value="top-bottom">Top to Bottom</SelectItem>
+                            <SelectItem value="bottom-to-top">Bottom to Top</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                    <Label htmlFor="tiles-per-group" className="whitespace-nowrap">Tiles per Group</Label>
+                    <Input
+                        id="tiles-per-group"
+                        type="number"
+                        value={wiringPortConfig}
+                        onChange={(e) => setWiringPortConfig(e.target.value)}
+                        className="w-20 h-8"
+                        placeholder="e.g., 4"
+                        min="1"
+                    />
+                </div>
+                 <div className="flex items-center space-x-2">
+                    <Switch id="show-data-labels" checked={showDataLabels} onCheckedChange={setShowDataLabels} />
+                    <Label htmlFor="show-data-labels">Data</Label>
+                </div>
+                 <div className="flex items-center space-x-2">
+                    <Switch id="show-power-labels" checked={showPowerLabels} onCheckedChange={setShowPowerLabels} />
+                    <Label htmlFor="show-power-labels">Power</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Switch id="mirror-switch" checked={isMirrored} onCheckedChange={setIsMirrored} />
+                    <Label htmlFor="mirror-switch" className="flex items-center gap-2"><RefreshCw className="size-4" /> Mirror</Label>
+                </div>
+                <Button onClick={handleDownload}><Download className="mr-2 size-4" /> Download</Button>
             </div>
-            <div className="flex items-center gap-2">
-                <Label htmlFor="tiles-per-group" className="whitespace-nowrap">Tiles per Group</Label>
-                <Input
-                    id="tiles-per-group"
-                    type="number"
-                    value={wiringPortConfig}
-                    onChange={(e) => setWiringPortConfig(e.target.value)}
-                    className="w-20 h-8"
-                    placeholder="e.g., 4"
-                    min="1"
-                />
+        </div>
+        <div className="flex items-center gap-6 flex-wrap w-full">
+            <div className="flex-1 min-w-[150px] space-y-1">
+                <Label htmlFor="arrowhead-size" className="text-xs">Arrowhead Size: {arrowheadSize}</Label>
+                <Slider id="arrowhead-size" min={2} max={20} step={1} value={[arrowheadSize]} onValueChange={(v) => setArrowheadSize(v[0])} />
             </div>
-             <div className="flex items-center space-x-2">
-                <Switch id="show-data-labels" checked={showDataLabels} onCheckedChange={setShowDataLabels} />
-                <Label htmlFor="show-data-labels">Data</Label>
+            <div className="flex-1 min-w-[150px] space-y-1">
+                <Label htmlFor="arrowhead-length" className="text-xs">Arrowhead Length: {arrowheadLength}</Label>
+                <Slider id="arrowhead-length" min={5} max={30} step={1} value={[arrowheadLength]} onValueChange={(v) => setArrowheadLength(v[0])} />
             </div>
-             <div className="flex items-center space-x-2">
-                <Switch id="show-power-labels" checked={showPowerLabels} onCheckedChange={setShowPowerLabels} />
-                <Label htmlFor="show-power-labels">Power</Label>
+            <div className="flex-1 min-w-[150px] space-y-1">
+                <Label htmlFor="arrow-gap" className="text-xs">Arrow Gap: {arrowGap}</Label>
+                <Slider id="arrow-gap" min={0} max={50} step={1} value={[arrowGap]} onValueChange={(v) => setArrowGap(v[0])} />
             </div>
-            <div className="flex items-center space-x-2">
-                <Switch id="mirror-switch" checked={isMirrored} onCheckedChange={setIsMirrored} />
-                <Label htmlFor="mirror-switch" className="flex items-center gap-2"><RefreshCw className="size-4" /> Mirror</Label>
-            </div>
-            <Button onClick={handleDownload}><Download className="mr-2 size-4" /> Download</Button>
         </div>
       </div>
       <div className="p-4 bg-muted/20">
@@ -204,14 +227,14 @@ export function WiringDiagram() {
               <defs>
                 <marker
                   id="arrowhead"
-                  viewBox="0 0 10 10"
-                  refX="8"
-                  refY="5"
-                  markerWidth="6"
-                  markerHeight="6"
+                  viewBox={`0 0 ${arrowheadLength} ${arrowheadSize}`}
+                  refX={arrowheadLength}
+                  refY={arrowheadSize / 2}
+                  markerWidth={arrowheadSize}
+                  markerHeight={arrowheadSize}
                   orient="auto-start-reverse"
                 >
-                  <path d="M 0 0 L 10 5 L 0 10 z" fill="hsl(var(--data-wiring))" />
+                  <path d={`M 0 0 L ${arrowheadLength} ${arrowheadSize / 2} L 0 ${arrowheadSize} z`} fill="hsl(var(--data-wiring))" />
                 </marker>
               </defs>
               {showDataLabels && wiringData.map(({ x, y, nextTile, isDeleted }) => {
@@ -221,19 +244,36 @@ export function WiringDiagram() {
 
                 const TILE_RADIUS = TILE_SIZE / 2;
 
-                const startX = (isMirrored ? (dimensions.screenWidth - 1 - x) : x) * TILE_SIZE + TILE_RADIUS;
-                const startY = y * TILE_SIZE + TILE_RADIUS;
+                const startX_center = (isMirrored ? (dimensions.screenWidth - 1 - x) : x) * TILE_SIZE + TILE_RADIUS;
+                const startY_center = y * TILE_SIZE + TILE_RADIUS;
 
-                const endX = (isMirrored ? (dimensions.screenWidth - 1 - nextTile.x) : nextTile.x) * TILE_SIZE + TILE_RADIUS;
-                const endY = nextTile.y * TILE_SIZE + TILE_RADIUS;
+                const endX_center = (isMirrored ? (dimensions.screenWidth - 1 - nextTile.x) : nextTile.x) * TILE_SIZE + TILE_RADIUS;
+                const endY_center = nextTile.y * TILE_SIZE + TILE_RADIUS;
+                
+                const dx = endX_center - startX_center;
+                const dy = endY_center - startY_center;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance <= arrowGap * 2) {
+                  return null; // Don't draw if tiles are too close for the gap
+                }
+
+                const startOffsetX = (dx / distance) * arrowGap;
+                const startOffsetY = (dy / distance) * arrowGap;
+
+                const x1 = startX_center + startOffsetX;
+                const y1 = startY_center + startOffsetY;
+
+                const x2 = endX_center - startOffsetX;
+                const y2 = endY_center - startOffsetY;
 
                 return (
                   <line
                     key={`line-${x}-${y}`}
-                    x1={startX}
-                    y1={startY}
-                    x2={endX}
-                    y2={endY}
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
                     stroke="hsl(var(--data-wiring))"
                     strokeWidth="3"
                     markerEnd="url(#arrowhead)"

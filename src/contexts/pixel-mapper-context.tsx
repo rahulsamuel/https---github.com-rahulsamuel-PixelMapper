@@ -101,6 +101,12 @@ interface PixelMapperState {
   setShowPowerLabels: Dispatch<SetStateAction<boolean>>;
   wiringPattern: WiringPattern;
   setWiringPattern: Dispatch<SetStateAction<WiringPattern>>;
+  arrowheadSize: number;
+  setArrowheadSize: Dispatch<SetStateAction<number>>;
+  arrowheadLength: number;
+  setArrowheadLength: Dispatch<SetStateAction<number>>;
+  arrowGap: number;
+  setArrowGap: Dispatch<SetStateAction<number>>;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -152,6 +158,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [showDataLabels, setShowDataLabels] = useState(true);
   const [showPowerLabels, setShowPowerLabels] = useState(true);
   const [wiringPattern, setWiringPattern] = useState<WiringPattern>('serpentine-horizontal');
+  const [arrowheadSize, setArrowheadSize] = useState(6);
+  const [arrowheadLength, setArrowheadLength] = useState(10);
+  const [arrowGap, setArrowGap] = useState(30);
 
 
   useEffect(() => {
@@ -578,6 +587,12 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setShowPowerLabels,
     wiringPattern,
     setWiringPattern,
+    arrowheadSize,
+    setArrowheadSize,
+    arrowheadLength,
+    setArrowheadLength,
+    arrowGap,
+    setArrowGap,
   };
 
   return (
