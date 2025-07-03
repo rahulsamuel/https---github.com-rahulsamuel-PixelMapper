@@ -244,7 +244,7 @@ export function PixelMapperLayout() {
       </Sidebar>
       <SidebarInset>
         <Tabs defaultValue="grid" className="flex flex-col h-full w-full" onValueChange={handleTabChange}>
-          <div className="p-4 border-b flex items-center justify-between flex-shrink-0">
+          <div className="sticky top-0 z-10 bg-background p-4 border-b flex items-center justify-between flex-shrink-0">
             <TabsList>
               <TabsTrigger value="grid">LED Grid</TabsTrigger>
               <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
