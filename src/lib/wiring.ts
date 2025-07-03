@@ -50,17 +50,15 @@ interface WiringInfo {
   nextPowerTile: { x: number; y: number } | null;
 }
 
-const UNIVERSE_LETTERS = [
-    'A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 
-    'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'
-];
-
-const getUniverseLabel = (n: number): string => {
-    if (n >= 0 && n < UNIVERSE_LETTERS.length) {
-        return UNIVERSE_LETTERS[n];
+const UNIVERSE_PAIRS: [string, string][] = [];
+for (let i = 0; i < 26; i += 2) {
+    const main = String.fromCharCode('A'.charCodeAt(0) + i);
+    const backup = String.fromCharCode('A'.charCodeAt(0) + i + 1);
+    if (backup <= 'Z') {
+        UNIVERSE_PAIRS.push([main, backup]);
     }
-    return `Universe ${n + 1}`;
-};
+}
+
 
 function getPathOrder(indices: number[], pattern: WiringPattern, screenWidth: number, screenHeight: number): number[] {
   const getCoords = (index: number) => ({
@@ -106,47 +104,59 @@ function applyDataWiring(
     if (activeTilesPath.length === 0) return;
     
     const subgroupSize = parseInt(wiringPortConfig.trim(), 10) || 4;
+    
     const subgroupsPerUniverse = 10;
-      
+    let groupNumInSlice = 0;
+
     activeTilesPath.forEach(({ tile: currentTileInfo }, pathIndex) => {
-      // Data
-      const isFirstInGroup = pathIndex % subgroupSize === 0;
-      if (isFirstInGroup) {
-        const universeIndex = dataUniverseCounter ?? Math.floor(counters.groupNumOverall / subgroupsPerUniverse);
-        const subgroupIndexInUniverse = (counters.groupNumOverall % subgroupsPerUniverse) + 1;
-        currentTileInfo.dataLabel = `${getUniverseLabel(universeIndex)}${subgroupIndexInUniverse}`;
-        counters.groupNumOverall++;
-      } else {
-        currentTileInfo.dataLabel = "";
-      }
-      
-      // Next Tile Arrow
-      const isLastTileInPath = pathIndex === activeTilesPath.length - 1;
-      if (isLastTileInPath) {
-        currentTileInfo.nextTile = null;
-      } else {
-        const nextTileInfo = activeTilesPath[pathIndex + 1].tile;
-        currentTileInfo.nextTile = { x: nextTileInfo.x, y: nextTileInfo.y };
-      }
-      
-      // Backup
-      const isEndOfGroup = (pathIndex + 1) % subgroupSize === 0;
-      if (isEndOfGroup || isLastTileInPath) {
-        const currentGroupNum = counters.groupNumOverall - 1;
-        const mainUniverseIndex = dataUniverseCounter ?? Math.floor(currentGroupNum / subgroupsPerUniverse);
-        
-        let backupUniverse: string;
-        if (mainUniverseIndex === 0) { 
-            backupUniverse = 'B'; 
+        const isFirstInGroup = pathIndex % subgroupSize === 0;
+
+        if (isFirstInGroup) {
+            let mainUniverse: string;
+            let subgroupIndexInUniverse: number;
+            
+            if (dataUniverseCounter !== undefined) {
+                const pairIndex = dataUniverseCounter % UNIVERSE_PAIRS.length;
+                mainUniverse = UNIVERSE_PAIRS[pairIndex][0];
+                subgroupIndexInUniverse = groupNumInSlice + 1;
+                groupNumInSlice++;
+            } else {
+                const pairIndex = Math.floor(counters.groupNumOverall / subgroupsPerUniverse) % UNIVERSE_PAIRS.length;
+                mainUniverse = UNIVERSE_PAIRS[pairIndex][0];
+                subgroupIndexInUniverse = (counters.groupNumOverall % subgroupsPerUniverse) + 1;
+                counters.groupNumOverall++;
+            }
+            currentTileInfo.dataLabel = `${mainUniverse}${subgroupIndexInUniverse}`;
         } else {
-          const backupUniverseIndex = mainUniverseIndex + 1;
-          backupUniverse = getUniverseLabel(backupUniverseIndex);
+            currentTileInfo.dataLabel = "";
         }
-        
-        const subgroupIndexInUniverse = (currentGroupNum % subgroupsPerUniverse) + 1;
-        currentTileInfo.backupLabel = `${backupUniverse}${subgroupIndexInUniverse}`;
-        currentTileInfo.nextTile = null; // No arrow from end of a group
-      }
+
+        const isLastTileInPath = pathIndex === activeTilesPath.length - 1;
+        if (isLastTileInPath) {
+            currentTileInfo.nextTile = null;
+        } else {
+            const nextTileInfo = activeTilesPath[pathIndex + 1].tile;
+            currentTileInfo.nextTile = { x: nextTileInfo.x, y: nextTileInfo.y };
+        }
+
+        const isEndOfGroup = (pathIndex + 1) % subgroupSize === 0;
+        if (isEndOfGroup || isLastTileInPath) {
+            let backupUniverse: string;
+            let subgroupIndexInUniverse: number;
+
+            if (dataUniverseCounter !== undefined) {
+                const pairIndex = dataUniverseCounter % UNIVERSE_PAIRS.length;
+                backupUniverse = UNIVERSE_PAIRS[pairIndex][1];
+                subgroupIndexInUniverse = groupNumInSlice;
+            } else {
+                const currentGroupNum = counters.groupNumOverall - 1;
+                const pairIndex = Math.floor(currentGroupNum / subgroupsPerUniverse) % UNIVERSE_PAIRS.length;
+                backupUniverse = UNIVERSE_PAIRS[pairIndex][1];
+                subgroupIndexInUniverse = (currentGroupNum % subgroupsPerUniverse) + 1;
+            }
+            currentTileInfo.backupLabel = `${backupUniverse}${subgroupIndexInUniverse}`;
+            currentTileInfo.nextTile = null;
+        }
     });
 }
 
@@ -222,8 +232,6 @@ export function getWiringData({
 
   const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
 
-  // --- DATA WIRING ---
-  // Sliced data wiring logic
   if (rasterMapConfig && activeBounds && rasterMapConfig.slices.length > 1 && rasterMapConfig.outputWidth > 0 && rasterMapConfig.outputHeight > 0) {
     const { outputWidth: sliceWidth, outputHeight: sliceHeight, rasterOffset } = rasterMapConfig;
     
@@ -247,28 +255,30 @@ export function getWiringData({
       tilesBySlice.get(sliceKey)!.push(index);
     });
 
-    const sortedSliceKeys = Array.from(tilesBySlice.keys()).sort();
+    const sortedSliceKeys = Array.from(tilesBySlice.keys()).sort((a, b) => {
+        const [rowA, colA] = a.split('-').map(Number);
+        const [rowB, colB] = b.split('-').map(Number);
+        if (rowA !== rowB) return rowA - rowB;
+        return colA - colB;
+    });
+    
     let dataUniverseCounter = 0;
     
     for (const sliceKey of sortedSliceKeys) {
         const sliceIndices = tilesBySlice.get(sliceKey)!;
         
-        // Data Path for slice: each slice gets its own universe sequence
         const dataPathOrder = getPathOrder(sliceIndices, wiringPattern, screenWidth, screenHeight);
         const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
         applyDataWiring(dataTilesPath, wiringPortConfig, { groupNumOverall: 0 }, dataUniverseCounter);
         dataUniverseCounter++;
     }
   } else {
-    // Un-sliced data wiring logic
     const dataPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
     const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
     const dataCounters = { groupNumOverall: 0 };
     applyDataWiring(dataTilesPath, wiringPortConfig, dataCounters);
   }
   
-  // --- POWER WIRING ---
-  // Always applied to the whole grid, regardless of slicing.
   const powerPathOrder = getPathOrder(activeTileIndices, powerWiringPattern, screenWidth, screenHeight);
   const powerTilesPath = powerPathOrder.map(index => ({ tile: allTilesData[index], index }));
   const powerCounters = { powerCounter: 1, powerGroupCounter: 0 };
