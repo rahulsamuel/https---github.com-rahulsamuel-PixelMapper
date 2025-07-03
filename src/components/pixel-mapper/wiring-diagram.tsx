@@ -106,7 +106,7 @@ export function WiringDiagram() {
               return (
                 <div
                   key={`wiring-tile-${x}-${y}`}
-                  className="absolute flex items-center justify-center overflow-visible"
+                  className="absolute overflow-visible"
                   style={tileStyle}
                 >
                   {!isDeleted && (
@@ -123,17 +123,17 @@ export function WiringDiagram() {
                         className="flex flex-col items-center justify-center h-full w-full text-foreground relative"
                       >
                         {showDataLabels && dataLabel && (
-                          <div className="bg-data-wiring text-data-wiring-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold mb-1 z-10">
+                          <div className="bg-data-wiring text-data-wiring-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold z-10">
                               <span>{dataLabel}</span>
                           </div>
                         )}
                         {showDataLabels && backupLabel && (
-                          <div className="bg-destructive text-destructive-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold mb-1 z-10">
+                          <div className="bg-destructive text-destructive-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold z-10">
                               <span>{backupLabel}</span>
                           </div>
                         )}
                         {showPowerLabels && powerLabel && !dataLabel && !backupLabel && (
-                           <span className="text-xs text-primary z-10">{powerLabel}</span>
+                           <span className="absolute bottom-2 right-2 text-xs text-primary/80 font-mono">{powerLabel}</span>
                         )}
                       </div>
                     </>
