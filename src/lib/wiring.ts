@@ -80,14 +80,11 @@ export function getWiringData(
       break;
     
     case 'left-right':
-      for (let y = 0; y < screenHeight; y++) {
-        for (let x = 0; x < screenWidth; x++) {
-          const tileIndex = y * screenWidth + x;
-          const tileData = allTilesData[tileIndex];
+       for (let i = 0; i < allTilesData.length; i++) {
+          const tileData = allTilesData[i];
           if (tileData && !tileData.isDeleted) {
-            activeTilesPath.push({ tile: tileData, index: tileIndex });
+            activeTilesPath.push({ tile: tileData, index: i });
           }
-        }
       }
       break;
 
@@ -127,13 +124,13 @@ export function getWiringData(
   let powerGroupCounter = 0;
   let backupPortCounter = 0;
 
-  activeTilesPath.forEach(({ tile }, pathIndex) => {
+  activeTilesPath.forEach(({ tile: currentTileInfo }, pathIndex) => {
     powerGroupCounter++;
     if (powerGroupCounter > TILES_PER_POWER_CIRCUIT) {
       powerCounter++;
       powerGroupCounter = 1;
     }
-    tile.powerLabel = `P${powerCounter}`;
+    currentTileInfo.powerLabel = `P${powerCounter}`;
 
     const indexInGroup = pathIndex % subgroupSize;
 
@@ -143,9 +140,9 @@ export function getWiringData(
       const subgroupIndexInUniverse = (groupNumOverall % subgroupsPerUniverse) + 1;
       
       const universe = getUniverseLabel(universeIndex);
-      tile.dataLabel = `${universe}${subgroupIndexInUniverse}`;
+      currentTileInfo.dataLabel = `${universe}${subgroupIndexInUniverse}`;
     } else {
-      tile.dataLabel = "";
+      currentTileInfo.dataLabel = "";
     }
     
     const isLastTileInPath = pathIndex === activeTilesPath.length - 1;
@@ -153,26 +150,25 @@ export function getWiringData(
 
     if (isEndOfGroup || isLastTileInPath) {
         backupPortCounter++;
-        tile.backupLabel = `B${backupPortCounter}`;
-        tile.arrowTo = null;
+        currentTileInfo.backupLabel = `B${backupPortCounter}`;
+        currentTileInfo.arrowTo = null;
     } else {
-      const currentTile = activeTilesPath[pathIndex].tile;
-      const nextTile = activeTilesPath[pathIndex + 1].tile;
-      const dx = nextTile.x - currentTile.x;
-      const dy = nextTile.y - currentTile.y;
+      const nextTileInfo = activeTilesPath[pathIndex + 1].tile;
+      const dx = nextTileInfo.x - currentTileInfo.x;
+      const dy = nextTileInfo.y - currentTileInfo.y;
 
       if (dy < 0) { // Moving up
-          if (dx < 0) tile.arrowTo = 'up-left';
-          else if (dx > 0) tile.arrowTo = 'up-right';
-          else tile.arrowTo = 'up';
+          if (dx < 0) currentTileInfo.arrowTo = 'up-left';
+          else if (dx > 0) currentTileInfo.arrowTo = 'up-right';
+          else currentTileInfo.arrowTo = 'up';
       } else if (dy > 0) { // Moving down
-          if (dx < 0) tile.arrowTo = 'down-left';
-          else if (dx > 0) tile.arrowTo = 'down-right';
-          else tile.arrowTo = 'down';
+          if (dx < 0) currentTileInfo.arrowTo = 'down-left';
+          else if (dx > 0) currentTileInfo.arrowTo = 'down-right';
+          else currentTileInfo.arrowTo = 'down';
       } else { // Moving horizontally
-          if (dx < 0) tile.arrowTo = 'left';
-          else if (dx > 0) tile.arrowTo = 'right';
-          else tile.arrowTo = null;
+          if (dx < 0) currentTileInfo.arrowTo = 'left';
+          else if (dx > 0) currentTileInfo.arrowTo = 'right';
+          else currentTileInfo.arrowTo = null;
       }
     }
   });
