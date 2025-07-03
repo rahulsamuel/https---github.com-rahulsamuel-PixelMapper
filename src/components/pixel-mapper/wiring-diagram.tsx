@@ -56,8 +56,21 @@ export function WiringDiagram() {
   }, []);
 
   const wiringData = getWiringData({ dimensions, tiles, wiringPortConfig, wiringPattern, powerWiringPattern, rasterMapConfig, activeBounds, tilesPerPowerString });
-  const mainPortsCount = wiringData.filter(d => d.dataLabel).length;
   
+  const dataPortsCount = wiringData.filter(d => d.dataLabel).length;
+  const powerPortsCount = wiringData.filter(d => d.powerPortLabel).length;
+
+  let portCount = 0;
+  let portLabelText = '';
+
+  if (showDataLabels) {
+    portCount = dataPortsCount;
+    portLabelText = 'Data Ports';
+  } else if (showPowerLabels) {
+    portCount = powerPortsCount;
+    portLabelText = 'Power Ports';
+  }
+
   const TILE_SIZE = 120;
   
   if (tiles.length === 0) {
@@ -73,9 +86,9 @@ export function WiringDiagram() {
       <div className="flex-shrink-0 bg-background p-4 border-b flex justify-between items-center">
         <div className="flex items-baseline gap-3">
           <h2 className="text-lg font-semibold">Wiring Diagram</h2>
-          {mainPortsCount > 0 && (
+          {portCount > 0 && (
             <span className="text-sm font-medium text-muted-foreground">
-              ({mainPortsCount} Main Ports)
+              ({portCount} {portLabelText})
             </span>
           )}
         </div>
@@ -151,14 +164,14 @@ export function WiringDiagram() {
                               <span>{dataLabel}</span>
                           </div>
                         )}
-                        {showDataLabels && backupLabel && (
-                          <div className="bg-destructive text-destructive-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold z-10">
-                              <span>{backupLabel}</span>
-                          </div>
-                        )}
                         {showPowerLabels && powerPortLabel && (
                            <div className="bg-power-wiring text-power-wiring-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold z-10">
                               <span>{powerPortLabel}</span>
+                          </div>
+                        )}
+                        {showDataLabels && backupLabel && (
+                           <div className="absolute bottom-2 right-2 bg-destructive text-destructive-foreground rounded-full size-6 flex items-center justify-center text-xs font-bold z-10">
+                              <span>{backupLabel}</span>
                           </div>
                         )}
                       </div>
