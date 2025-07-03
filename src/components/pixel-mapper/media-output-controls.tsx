@@ -2,37 +2,19 @@
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
 import { Button } from "@/components/ui/button";
-import { FileOutput, AlertTriangle } from "lucide-react";
+import { FileOutput } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { useMemo } from "react";
-import { Separator } from "@/components/ui/separator";
 
 export function MediaOutputControls() {
   const { 
     generateRasterMap, 
     dimensions, 
-    activeBounds, 
-    rasterMapConfig,
-    rasterOffset,
-    setRasterOffset,
+    activeBounds,
   } = usePixelMapper();
   
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : dimensions.screenWidth * dimensions.tileWidth;
   const totalHeight = activeBounds ? (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight : dimensions.screenHeight * dimensions.tileHeight;
   const { tileWidth, tileHeight } = dimensions;
-
-  const isOutOfBounds = useMemo(() => {
-    if (!rasterMapConfig || !activeBounds || !rasterOffset) return false;
-    const contentWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
-    const contentHeight = (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight;
-    
-    return rasterOffset.x < 0 || 
-           rasterOffset.y < 0 || 
-           (rasterOffset.x + contentWidth) > rasterMapConfig.totalWidth ||
-           (rasterOffset.y + contentHeight) > rasterMapConfig.totalHeight;
-
-  }, [rasterMapConfig, activeBounds, dimensions, rasterOffset]);
 
   return (
     <div className="space-y-4">
@@ -55,45 +37,6 @@ export function MediaOutputControls() {
           </Button>
         </div>
       </div>
-
-      {rasterMapConfig && (
-        <>
-          <Separator />
-          <div>
-            <Label className="font-semibold">Raster Map Settings</Label>
-             <p className="text-sm text-muted-foreground pb-2">
-                Preview: {rasterMapConfig.totalWidth}x{rasterMapConfig.totalHeight} ({rasterMapConfig.slices.length} {rasterMapConfig.slices.length === 1 ? 'slice' : 'slices'})
-              </p>
-
-            <div className="flex items-end gap-2">
-                <div className="grid w-full gap-1.5">
-                    <Label htmlFor="offset-x">Offset X</Label>
-                    <Input 
-                        id="offset-x" 
-                        type="number" 
-                        value={rasterOffset.x} 
-                        onChange={(e) => setRasterOffset(prev => ({ ...prev, x: Number(e.target.value) || 0 }))} 
-                    />
-                </div>
-                <div className="grid w-full gap-1.5">
-                    <Label htmlFor="offset-y">Offset Y</Label>
-                    <Input 
-                        id="offset-y" 
-                        type="number" 
-                        value={rasterOffset.y} 
-                        onChange={(e) => setRasterOffset(prev => ({ ...prev, y: Number(e.target.value) || 0 }))} 
-                    />
-                </div>
-            </div>
-            {isOutOfBounds && (
-              <div className="flex items-center gap-2 text-destructive text-xs font-medium p-2 bg-destructive/10 rounded-md mt-2">
-                <AlertTriangle className="size-4" />
-                <span>Warning: Grid is outside the raster boundary.</span>
-              </div>
-            )}
-          </div>
-        </>
-      )}
     </div>
   );
 }
