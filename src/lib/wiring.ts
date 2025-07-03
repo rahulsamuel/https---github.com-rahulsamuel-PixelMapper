@@ -67,7 +67,7 @@ export function getWiringData(
     const rowIsReversed = y % 2 !== 0;
     for (let i = 0; i < screenWidth; i++) {
       const x = rowIsReversed ? screenWidth - 1 - i : i;
-      const tileIndex = y * screenHeight + x;
+      const tileIndex = y * screenWidth + x;
       const tileData = allTilesData[tileIndex];
       if (tileData && !tileData.isDeleted) {
         activeTilesPath.push({ tile: tileData, index: tileIndex });
