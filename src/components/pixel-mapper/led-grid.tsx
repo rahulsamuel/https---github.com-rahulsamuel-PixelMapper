@@ -70,9 +70,6 @@ export function LedGrid() {
           }
 
           const currentLabelColor = onOffMode ? '#000000' : labelColor;
-          const circleBorderColor = onOffMode
-            ? 'rgba(0,0,0,0.2)'
-            : 'rgba(255,255,255,0.2)';
 
           const tileDynamicStyle = {
             ...baseTileStyle,
@@ -90,13 +87,6 @@ export function LedGrid() {
               style={tileDynamicStyle}
               aria-label={`Tile ${index + 1}`}
             >
-              <div
-                className="absolute inset-0 border rounded-full"
-                style={{
-                  borderColor: circleBorderColor,
-                  visibility: tile.deleted ? 'hidden' : 'visible',
-                }}
-              />
               {showLabels && !tile.deleted && (
                 <span
                   className="font-bold text-center pointer-events-none drop-shadow-sm"
