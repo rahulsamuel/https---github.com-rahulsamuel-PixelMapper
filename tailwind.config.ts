@@ -69,6 +69,10 @@ export default {
           DEFAULT: 'hsl(var(--data-wiring))',
           foreground: 'hsl(var(--data-wiring-foreground))',
         },
+        'power-wiring': {
+          DEFAULT: 'hsl(var(--power-wiring))',
+          foreground: 'hsl(var(--power-wiring-foreground))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

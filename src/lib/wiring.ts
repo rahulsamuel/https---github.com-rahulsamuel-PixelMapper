@@ -47,6 +47,7 @@ interface WiringInfo {
   backupLabel: string;
   isDeleted: boolean;
   nextTile: { x: number; y: number } | null;
+  nextPowerTile: { x: number; y: number } | null;
 }
 
 const UNIVERSE_LETTERS = [
@@ -154,13 +155,23 @@ function applyPowerWiring(
     
     const tilesPerPowerCircuit = parseInt(tilesPerPowerString.trim(), 10) || 20;
 
-    activeTilesPath.forEach(({ tile: currentTileInfo }) => {
+    activeTilesPath.forEach(({ tile: currentTileInfo }, pathIndex) => {
       counters.powerGroupCounter++;
       if (counters.powerGroupCounter > tilesPerPowerCircuit) {
         counters.powerCounter++;
         counters.powerGroupCounter = 1;
       }
       currentTileInfo.powerLabel = `P${counters.powerCounter}`;
+
+      const isLastTileInPath = pathIndex === activeTilesPath.length - 1;
+      const isEndOfPowerGroup = counters.powerGroupCounter === tilesPerPowerCircuit;
+
+      if (isLastTileInPath || isEndOfPowerGroup) {
+        currentTileInfo.nextPowerTile = null;
+      } else {
+        const nextTileInfo = activeTilesPath[pathIndex + 1].tile;
+        currentTileInfo.nextPowerTile = { x: nextTileInfo.x, y: nextTileInfo.y };
+      }
     });
 }
 
@@ -199,6 +210,7 @@ export function getWiringData({
     backupLabel: "",
     isDeleted: tile.deleted,
     nextTile: null,
+    nextPowerTile: null,
   }));
 
   const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);

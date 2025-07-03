@@ -22,8 +22,6 @@ export function WiringControls() {
     setWiringPortConfig,
     showDataLabels,
     setShowDataLabels,
-    showPowerLabels,
-    setShowPowerLabels,
     arrowheadSize,
     setArrowheadSize,
     arrowheadLength,
@@ -62,12 +60,8 @@ export function WiringControls() {
         />
       </div>
       <div className="flex items-center justify-between">
-        <Label htmlFor="show-data-labels">Show Data Labels</Label>
+        <Label htmlFor="show-data-labels">Show Data Path</Label>
         <Switch id="show-data-labels" checked={showDataLabels} onCheckedChange={setShowDataLabels} />
-      </div>
-      <div className="flex items-center justify-between">
-        <Label htmlFor="show-power-labels">Show Power Labels</Label>
-        <Switch id="show-power-labels" checked={showPowerLabels} onCheckedChange={setShowPowerLabels} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="arrowhead-size">Arrowhead Size: {arrowheadSize}</Label>

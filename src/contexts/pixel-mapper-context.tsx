@@ -69,7 +69,7 @@ interface ProjectData {
   labelColor: string;
   onOffMode: boolean;
   zoom: number;
-  rasterOffset: { x: number; y: number };
+  rasterOffset: { x: number; y: number; };
   lastRasterArgs: RasterArgs | null;
   wiringPortConfig: string;
   showDataLabels: boolean;
@@ -79,6 +79,9 @@ interface ProjectData {
   arrowheadSize: number;
   arrowheadLength: number;
   arrowGap: number;
+  powerArrowheadSize: number;
+  powerArrowheadLength: number;
+  powerArrowGap: number;
   brushColor: string;
   tilesPerPowerString: string;
 }
@@ -142,6 +145,12 @@ interface PixelMapperState {
   setArrowheadLength: Dispatch<SetStateAction<number>>;
   arrowGap: number;
   setArrowGap: Dispatch<SetStateAction<number>>;
+  powerArrowheadSize: number;
+  setPowerArrowheadSize: Dispatch<SetStateAction<number>>;
+  powerArrowheadLength: number;
+  setPowerArrowheadLength: Dispatch<SetStateAction<number>>;
+  powerArrowGap: number;
+  setPowerArrowGap: Dispatch<SetStateAction<number>>;
   exportProject: () => void;
   importProject: (file: File) => void;
   brushColor: string;
@@ -209,6 +218,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [arrowheadSize, setArrowheadSize] = useState(6);
   const [arrowheadLength, setArrowheadLength] = useState(10);
   const [arrowGap, setArrowGap] = useState(30);
+  const [powerArrowheadSize, setPowerArrowheadSize] = useState(6);
+  const [powerArrowheadLength, setPowerArrowheadLength] = useState(10);
+  const [powerArrowGap, setPowerArrowGap] = useState(30);
   const [isWiringMirrored, setIsWiringMirrored] = useState(false);
 
 
@@ -680,6 +692,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       arrowheadSize,
       arrowheadLength,
       arrowGap,
+      powerArrowheadSize,
+      powerArrowheadLength,
+      powerArrowGap,
       brushColor,
       tilesPerPowerString,
     };
@@ -703,7 +718,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     dimensions, tiles, tileColor, tileColorTwo, borderWidth, borderColor, activeTool,
     showLabels, labelFormat, labelFontSize, labelColor, onOffMode, zoom, rasterOffset,
     lastRasterArgs, wiringPortConfig, showDataLabels, showPowerLabels, wiringPattern,
-    powerWiringPattern, arrowheadSize, arrowheadLength, arrowGap, brushColor, 
+    powerWiringPattern, arrowheadSize, arrowheadLength, arrowGap,
+    powerArrowheadSize, powerArrowheadLength, powerArrowGap, brushColor, 
     tilesPerPowerString, toast
   ]);
   
@@ -751,6 +767,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setArrowheadSize(data.arrowheadSize);
         setArrowheadLength(data.arrowheadLength);
         setArrowGap(data.arrowGap);
+        setPowerArrowheadSize(data.powerArrowheadSize || 6);
+        setPowerArrowheadLength(data.powerArrowheadLength || 10);
+        setPowerArrowGap(data.powerArrowGap || 30);
         setBrushColor(data.brushColor || "#e11d48");
         setTilesPerPowerString(data.tilesPerPowerString || "20");
         
@@ -840,6 +859,12 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setArrowheadLength,
     arrowGap,
     setArrowGap,
+    powerArrowheadSize,
+    setPowerArrowheadSize,
+    powerArrowheadLength,
+    setPowerArrowheadLength,
+    powerArrowGap,
+    setPowerArrowGap,
     exportProject,
     importProject,
     brushColor,

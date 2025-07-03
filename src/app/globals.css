@@ -34,6 +34,8 @@
     --radius: 0.5rem;
     --data-wiring: 140 60% 40%;
     --data-wiring-foreground: 0 0% 100%;
+    --power-wiring: 30 90% 50%;
+    --power-wiring-foreground: 0 0% 100%;
   }
   .dark {
     --background: 0 0% 7%;
@@ -70,6 +72,8 @@
     --sidebar-ring: 274 100% 50%;
     --data-wiring: 140 50% 50%;
     --data-wiring-foreground: 0 0% 100%;
+    --power-wiring: 30 80% 55%;
+    --power-wiring-foreground: 0 0% 100%;
   }
 }
 
