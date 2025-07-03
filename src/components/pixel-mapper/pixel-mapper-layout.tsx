@@ -139,14 +139,18 @@ export function PixelMapperLayout() {
                 <AccordionSectionTrigger icon={<Package className="size-5" />} title="Project" />
                 <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
                   <div>
-                    <h3 className="font-semibold mb-2">Project Files</h3>
-                    <p className="text-sm text-muted-foreground pb-4">Save your work or load a previous project.</p>
+                    <div className="mb-4">
+                      <h3 className="font-semibold">Project Files</h3>
+                      <p className="text-sm text-muted-foreground">Save your work or load a previous project.</p>
+                    </div>
                     <PixelMapperActions />
                   </div>
                   <Separator />
                   <div>
-                    <h3 className="font-semibold mb-2">Downloads</h3>
-                    <p className="text-sm text-muted-foreground pb-4">Download generated grid images, raster maps and wiring diagrams.</p>
+                    <div className="mb-4">
+                      <h3 className="font-semibold">Downloads</h3>
+                      <p className="text-sm text-muted-foreground">Download generated grid images, raster maps and wiring diagrams.</p>
+                    </div>
                     <DownloadsControls />
                   </div>
                 </AccordionContent>
@@ -157,20 +161,26 @@ export function PixelMapperLayout() {
                   <AccordionSectionTrigger icon={<LayoutGrid className="size-5" />} title="Grid Setup" />
                   <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
                     <div>
-                      <h3 className="font-semibold mb-2">Dimensions</h3>
-                      <p className="text-sm text-muted-foreground pb-4">Define the size of your LED tiles and the overall screen grid.</p>
+                      <div className="mb-4">
+                        <h3 className="font-semibold">Dimensions</h3>
+                        <p className="text-sm text-muted-foreground">Define the size of your LED tiles and the overall screen grid.</p>
+                      </div>
                       <DimensionControls />
                     </div>
                     <Separator />
                     <div>
-                      <h3 className="font-semibold mb-2">Appearance</h3>
-                      <p className="text-sm text-muted-foreground pb-4">Customize the look of the LED tiles.</p>
+                      <div className="mb-4">
+                        <h3 className="font-semibold">Appearance</h3>
+                        <p className="text-sm text-muted-foreground">Customize the look of the LED tiles.</p>
+                      </div>
                       <AppearanceControls />
                     </div>
                     <Separator />
                     <div>
-                      <h3 className="font-semibold mb-2">Labeling</h3>
-                      <p className="text-sm text-muted-foreground pb-4">Customize the labels on the LED tiles.</p>
+                      <div className="mb-4">
+                        <h3 className="font-semibold">Labeling</h3>
+                        <p className="text-sm text-muted-foreground">Customize the labels on the LED tiles.</p>
+                      </div>
                       <LabelControls />
                     </div>
                   </AccordionContent>
@@ -182,14 +192,18 @@ export function PixelMapperLayout() {
                   <AccordionSectionTrigger icon={<GitBranch className="size-5" />} title="Wiring" />
                   <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
                      <div>
-                      <h3 className="font-semibold mb-2">Data Wiring</h3>
-                      <p className="text-sm text-muted-foreground pb-4">Define data wiring patterns and port settings.</p>
+                      <div className="mb-4">
+                        <h3 className="font-semibold">Data Wiring</h3>
+                        <p className="text-sm text-muted-foreground">Define data wiring patterns and port settings.</p>
+                      </div>
                       <WiringControls />
                     </div>
                     <Separator />
                     <div>
-                      <h3 className="font-semibold mb-2">Power Wiring</h3>
-                      <p className="text-sm text-muted-foreground pb-4">Define how many tiles are on each power circuit.</p>
+                      <div className="mb-4">
+                        <h3 className="font-semibold">Power Wiring</h3>
+                        <p className="text-sm text-muted-foreground">Define how many tiles are on each power circuit.</p>
+                      </div>
                       <PowerControls />
                     </div>
                   </AccordionContent>
