@@ -159,19 +159,14 @@ export function WiringDiagram() {
                       <div
                         className="flex flex-col items-center justify-center h-full w-full text-foreground relative"
                       >
-                        {showDataLabels && dataLabel && (
-                          <div className="bg-data-wiring text-data-wiring-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold z-10">
-                              <span>{dataLabel}</span>
+                        {showDataLabels && (backupLabel || dataLabel) && (
+                          <div className={`rounded-full size-10 flex items-center justify-center text-sm font-bold z-10 ${backupLabel ? 'bg-destructive text-destructive-foreground' : 'bg-data-wiring text-data-wiring-foreground'}`}>
+                            <span>{backupLabel || dataLabel}</span>
                           </div>
                         )}
                         {showPowerLabels && powerPortLabel && (
                            <div className="bg-power-wiring text-power-wiring-foreground rounded-full size-10 flex items-center justify-center text-sm font-bold z-10">
                               <span>{powerPortLabel}</span>
-                          </div>
-                        )}
-                        {showDataLabels && backupLabel && (
-                           <div className="absolute bottom-2 right-2 bg-destructive text-destructive-foreground rounded-full size-6 flex items-center justify-center text-xs font-bold z-10">
-                              <span>{backupLabel}</span>
                           </div>
                         )}
                       </div>
