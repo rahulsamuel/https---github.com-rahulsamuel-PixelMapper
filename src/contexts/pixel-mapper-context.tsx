@@ -941,20 +941,24 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     }
     
     const { contentWidth, contentHeight, outputWidth, outputHeight } = rasterMapConfig;
-
-    if (contentWidth <= outputWidth && contentHeight <= outputHeight) {
-        toast({
-            title: "Alignment Not Needed",
-            description: "Alignment is only necessary when content spans multiple slices.",
-        });
-        return;
-    }
-
     const { tileWidth, tileHeight } = dimensions;
 
-    let newOffsetX = rasterOffset.x;
-    let newOffsetY = rasterOffset.y;
+    const findDivisors = (n: number) => {
+      const divisors = new Set<number>();
+      for (let i = 1; i <= Math.sqrt(n); i++) {
+        if (n % i === 0) {
+          divisors.add(i);
+          divisors.add(n / i);
+        }
+      }
+      return Array.from(divisors).sort((a, b) => a - b);
+    };
 
+    const isHorizontallySplitting = contentWidth > outputWidth && outputWidth % tileWidth !== 0;
+    const isVerticallySplitting = contentHeight > outputHeight && outputHeight % tileHeight !== 0;
+
+    // Perform best-effort alignment to the first slice boundary regardless
+    let newOffsetX = rasterOffset.x;
     if (contentWidth > outputWidth) {
       const targetRemX = outputWidth % tileWidth;
       const currentRemX = (rasterOffset.x % tileWidth + tileWidth) % tileWidth;
@@ -970,8 +974,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    let newOffsetY = rasterOffset.y;
     if (contentHeight > outputHeight) {
-      const targetRemY = outputHeight % tileHeight;
+       const targetRemY = outputHeight % tileHeight;
       const currentRemY = (rasterOffset.y % tileHeight + tileHeight) % tileHeight;
       let adjustmentY = targetRemY - currentRemY;
 
@@ -984,12 +989,60 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         newOffsetY += tileHeight;
       }
     }
-
-    setRasterOffset({ x: newOffsetX, y: newOffsetY });
     
+    setRasterOffset({ x: newOffsetX, y: newOffsetY });
+
+    // Now, prepare and show a helpful toast message
+    if (!isHorizontallySplitting && !isVerticallySplitting) {
+        toast({
+            title: "Grid Aligned",
+            description: "Tiles align perfectly with all slice boundaries.",
+        });
+        return;
+    }
+
+    let suggestionMessage = "To prevent tiles from splitting, ";
+    const suggestions = [];
+
+    if (isHorizontallySplitting) {
+        const divisors = findDivisors(outputWidth);
+        let smaller = 0;
+        let larger = Infinity;
+        for (const d of divisors) {
+            if (d <= tileWidth) smaller = d;
+            if (d >= tileWidth && d < larger) larger = d;
+        }
+        const options = [];
+        if (smaller > 0) options.push(`${smaller}px`);
+        if (larger !== Infinity) options.push(`${larger}px`);
+        if (options.length > 0) {
+            suggestions.push(`for horizontal alignment, try a tile width of ${options.join(' or ')}`);
+        }
+    }
+
+    if (isVerticallySplitting) {
+        const divisors = findDivisors(outputHeight);
+        let smaller = 0;
+        let larger = Infinity;
+        for (const d of divisors) {
+            if (d <= tileHeight) smaller = d;
+            if (d >= tileHeight && d < larger) larger = d;
+        }
+        const options = [];
+        if (smaller > 0) options.push(`${smaller}px`);
+        if (larger !== Infinity) options.push(`${larger}px`);
+        if (options.length > 0) {
+            suggestions.push(`for vertical alignment, try a tile height of ${options.join(' or ')}`);
+        }
+    }
+    
+    suggestionMessage += suggestions.join(', and ') + '.';
+
     toast({
-        title: "Tiles Aligned",
-        description: `Offset adjusted to (${newOffsetX}, ${newOffsetY}) to minimize tile splitting.`,
+        title: "Warning: Tiles will be split",
+        description: suggestionMessage,
+        variant: "default",
+        duration: 10000,
     });
 
   }, [rasterMapConfig, activeBounds, dimensions, rasterOffset, toast]);
@@ -1084,5 +1137,3 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     </PixelMapperContext.Provider>
   );
 }
-
-    
