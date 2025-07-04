@@ -9,7 +9,6 @@ export function RasterMapPreview() {
   const { 
     rasterMapConfig,
     zoom,
-    rasterOffset,
   } = usePixelMapper();
 
   const checkeredBg = useMemo(() => ({
@@ -35,7 +34,7 @@ export function RasterMapPreview() {
     );
   }
 
-  const { totalWidth, totalHeight, outputWidth, outputHeight, previewImage, slices, resolutionType } = rasterMapConfig;
+  const { totalWidth, totalHeight, previewImage, slices, resolutionType } = rasterMapConfig;
   
   const getSliceBorderColor = () => {
     switch(resolutionType) {
@@ -53,60 +52,48 @@ export function RasterMapPreview() {
   
   return (
      <div className="p-4 bg-muted/20 w-full h-full">
-        {/* Viewport for the output frame */}
+        {/* Viewport now shows the entire content area */}
         <div 
           className="relative bg-background shadow-lg border"
           style={{ 
-              width: outputWidth, 
-              height: outputHeight,
+              width: totalWidth, 
+              height: totalHeight,
               transform: `scale(${zoom})`,
               transformOrigin: 'top left',
               ...checkeredBg,
+              backgroundImage: previewImage ? `url(${previewImage})` : 'none',
+              backgroundRepeat: 'no-repeat',
               boxSizing: 'content-box',
-              overflow: 'hidden' // Important to clip the content
           }}
         >
-            {/* The actual content, positioned via offset */}
-            <div 
-              className="absolute"
-              style={{
-                left: rasterOffset.x,
-                top: rasterOffset.y,
-                width: totalWidth,
-                height: totalHeight,
-                backgroundImage: previewImage ? `url(${previewImage})` : 'none',
-                backgroundRepeat: 'no-repeat',
-              }}
-            >
-                {/* Slices visualization */}
-                {slices && slices.length > 1 && slices.map(slice => (
+            {/* Slices visualization */}
+            {slices && slices.map(slice => (
+                <div 
+                    key={slice.key} 
+                    className={cn(
+                        "absolute border-2 border-dashed flex items-center justify-center pointer-events-none",
+                        getSliceBorderColor()
+                    )}
+                    style={{
+                        left: slice.x,
+                        top: slice.y,
+                        width: slice.width,
+                        height: slice.height,
+                        boxSizing: 'border-box'
+                    }}
+                >
                     <div 
-                        key={slice.key} 
-                        className={cn(
-                            "absolute border-2 border-dashed flex items-center justify-center pointer-events-none",
-                            getSliceBorderColor()
-                        )}
+                        className="text-center p-2 rounded-md bg-background/80"
                         style={{
-                            left: slice.x,
-                            top: slice.y,
-                            width: slice.width,
-                            height: slice.height,
-                            boxSizing: 'border-box'
+                            transform: `scale(${Math.min(2, Math.max(0.5, 1 / zoom))})`, // Adjust label size based on zoom
+                            transformOrigin: 'center center',
                         }}
                     >
-                        <div 
-                            className="text-center p-2 rounded-md bg-background/80"
-                            style={{
-                                transform: `scale(${Math.min(2, Math.max(0.5, 1 / zoom))})`, // Adjust label size based on zoom
-                                transformOrigin: 'center center',
-                            }}
-                        >
-                            <p className="font-bold whitespace-nowrap">{slice.filename.split('/').pop()?.replace('.png','').replace('raster-map-','')}</p>
-                            <p className="font-mono text-xs whitespace-nowrap">Size: {slice.width}x{slice.height}</p>
-                        </div>
+                        <p className="font-bold whitespace-nowrap">{slice.filename.split('/').pop()?.replace('.png','').replace('raster-map-','')}</p>
+                        <p className="font-mono text-xs whitespace-nowrap">Size: {slice.width}x{slice.height}</p>
                     </div>
-                ))}
-            </div>
+                </div>
+            ))}
         </div>
     </div>
   );
