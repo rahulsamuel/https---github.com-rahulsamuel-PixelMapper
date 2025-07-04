@@ -18,6 +18,7 @@ export function LedGrid() {
     showLabels,
     labelFontSize,
     labelColor,
+    labelPosition,
     zoom,
     onOffMode,
   } = usePixelMapper();
@@ -82,14 +83,23 @@ export function LedGrid() {
               key={tile.id}
               onClick={() => handleTileClick(index)}
               className={cn(
-                'relative rounded-none transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:z-10 flex items-center justify-center'
+                'relative rounded-none transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:z-10'
               )}
               style={tileDynamicStyle}
               aria-label={`Tile ${index + 1}`}
             >
               {showLabels && !tile.deleted && (
                 <span
-                  className="font-bold text-center pointer-events-none drop-shadow-sm"
+                  className={cn(
+                    "absolute font-bold pointer-events-none drop-shadow-sm",
+                    {
+                        'top-1 left-2': labelPosition === 'top-left',
+                        'top-1 right-2 text-right': labelPosition === 'top-right',
+                        'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center': labelPosition === 'center',
+                        'bottom-1 left-2': labelPosition === 'bottom-left',
+                        'bottom-1 right-2 text-right': labelPosition === 'bottom-right',
+                    }
+                  )}
                   style={{
                     fontSize: `${labelFontSize}px`,
                     color: currentLabelColor,

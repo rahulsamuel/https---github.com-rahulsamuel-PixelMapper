@@ -1,3 +1,4 @@
+
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
@@ -23,6 +24,8 @@ export function LabelControls() {
     setLabelFontSize,
     labelColor,
     setLabelColor,
+    labelPosition,
+    setLabelPosition
   } = usePixelMapper();
 
   return (
@@ -51,6 +54,25 @@ export function LabelControls() {
               <SelectItem value="row-col">Row-Col (1-1, 1-2, ...)</SelectItem>
               <SelectItem value="row-letter-col-number">Row Letter-Col Number (A1, B1, ..)</SelectItem>
               <SelectItem value="dmx-style">DMX-Style (A1, A2, ...)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="label-position">Label Position</Label>
+          <Select
+            value={labelPosition}
+            onValueChange={(value) => setLabelPosition(value as any)}
+          >
+            <SelectTrigger id="label-position">
+              <SelectValue placeholder="Select position" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="top-left">Top Left</SelectItem>
+              <SelectItem value="top-right">Top Right</SelectItem>
+              <SelectItem value="center">Center</SelectItem>
+              <SelectItem value="bottom-left">Bottom Left</SelectItem>
+              <SelectItem value="bottom-right">Bottom Right</SelectItem>
             </SelectContent>
           </Select>
         </div>

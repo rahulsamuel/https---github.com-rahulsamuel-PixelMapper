@@ -28,6 +28,7 @@ interface ActiveBounds {
 
 type ActiveTool = 'delete' | 'label' | 'color';
 type LabelFormat = 'none' | 'sequential' | 'row-col' | 'dmx-style' | 'row-letter-col-number';
+type LabelPosition = 'top-left' | 'top-right' | 'center' | 'bottom-left' | 'bottom-right';
 type ResolutionType = 'content' | 'hd' | '4k-uhd' | '4k-dci';
 
 interface RasterSlice {
@@ -71,6 +72,7 @@ interface ProjectData {
   labelFormat: LabelFormat;
   labelFontSize: number;
   labelColor: string;
+  labelPosition: LabelPosition;
   onOffMode: boolean;
   zoom?: number; // For backwards compatibility
   zoomLevels: { grid: number; wiring: number; raster: number; };
@@ -130,6 +132,8 @@ interface PixelMapperState {
   setLabelFontSize: Dispatch<SetStateAction<number>>;
   labelColor: string;
   setLabelColor: Dispatch<SetStateAction<string>>;
+  labelPosition: LabelPosition;
+  setLabelPosition: Dispatch<SetStateAction<LabelPosition>>;
   onOffMode: boolean;
   setOnOffMode: Dispatch<SetStateAction<boolean>>;
   zoom: number;
@@ -213,8 +217,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   // Labeling state
   const [showLabels, setShowLabels] = useState(true);
   const [labelFormat, setLabelFormat] = useState<LabelFormat>('row-col');
-  const [labelFontSize, setLabelFontSize] = useState(48);
+  const [labelFontSize, setLabelFontSize] = useState(30);
   const [labelColor, setLabelColor] = useState("#ffffff");
+  const [labelPosition, setLabelPosition] = useState<LabelPosition>('center');
   const [labels, setLabels] = useState<string[]>([]);
   
   const [zoomLevels, setZoomLevels] = useState({ grid: 1, wiring: 1, raster: 1 });
@@ -795,6 +800,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       labelFormat,
       labelFontSize,
       labelColor,
+      labelPosition,
       onOffMode,
       zoomLevels,
       activeTab,
@@ -835,7 +841,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     });
   }, [
     dimensions, tiles, tileColor, tileColorTwo, borderWidth, borderColor, activeTool,
-    showLabels, labelFormat, labelFontSize, labelColor, onOffMode, zoomLevels, activeTab, rasterOffset,
+    showLabels, labelFormat, labelFontSize, labelColor, labelPosition, onOffMode, zoomLevels, activeTab, rasterOffset,
     lastRasterArgs, wiringPortConfig, showDataLabels, showPowerLabels, wiringPattern,
     powerWiringPattern, arrowheadSize, arrowheadLength, arrowGap,
     powerArrowheadSize, powerArrowheadLength, powerArrowGap, brushColor, 
@@ -876,6 +882,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setLabelFormat(data.labelFormat);
         setLabelFontSize(data.labelFontSize);
         setLabelColor(data.labelColor);
+        setLabelPosition(data.labelPosition || 'center');
         setOnOffMode(data.onOffMode);
         
         if (data.zoomLevels) {
@@ -1053,6 +1060,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setLabelFontSize,
     labelColor,
     setLabelColor,
+    labelPosition,
+    setLabelPosition,
     onOffMode,
     setOnOffMode,
     zoom,
