@@ -175,6 +175,7 @@ interface PixelMapperState {
   setDataLabelSize: Dispatch<SetStateAction<number>>;
   powerLabelSize: number;
   setPowerLabelSize: Dispatch<SetStateAction<number>>;
+  calculateAndApplyOptimalOffset: () => void;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -928,6 +929,59 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     reader.readAsText(file);
   }, [toast]);
 
+  const calculateAndApplyOptimalOffset = useCallback(() => {
+    if (!rasterMapConfig || !activeBounds || dimensions.tileWidth <= 0 || dimensions.tileHeight <= 0) {
+        toast({
+            title: "Cannot Align",
+            description: "Raster map and dimensions must be configured first.",
+            variant: "destructive",
+        });
+        return;
+    }
+    
+    if (rasterMapConfig.slices.length <= 1) {
+        toast({
+            title: "Alignment Not Needed",
+            description: "Alignment is only necessary when content spans multiple slices.",
+        });
+        return;
+    }
+
+    const { outputWidth, outputHeight } = rasterMapConfig;
+    const { tileWidth, tileHeight } = dimensions;
+
+    // To prevent a tile from being cut by a slice boundary, we want the offset, relative to the tile size,
+    // to be the same as the slice dimension relative to the tile size.
+    // This ensures that if a slice boundary falls within the content, it falls on a tile boundary.
+    const targetRemX = outputWidth % tileWidth;
+    const targetRemY = outputHeight % tileHeight;
+    
+    const currentRemX = (rasterOffset.x % tileWidth + tileWidth) % tileWidth;
+    const currentRemY = (rasterOffset.y % tileHeight + tileHeight) % tileHeight;
+
+    let adjustmentX = targetRemX - currentRemX;
+    let adjustmentY = targetRemY - currentRemY;
+
+    // Find the shortest path to the target remainder (e.g., is it shorter to add 10 or subtract 90).
+    if (Math.abs(adjustmentX) > tileWidth / 2) {
+        adjustmentX = adjustmentX > 0 ? adjustmentX - tileWidth : adjustmentX + tileWidth;
+    }
+    if (Math.abs(adjustmentY) > tileHeight / 2) {
+        adjustmentY = adjustmentY > 0 ? adjustmentY - tileHeight : adjustmentY + tileHeight;
+    }
+
+    const newOffsetX = rasterOffset.x + adjustmentX;
+    const newOffsetY = rasterOffset.y + adjustmentY;
+    
+    setRasterOffset({ x: newOffsetX, y: newOffsetY });
+    
+    toast({
+        title: "Tiles Aligned",
+        description: `Offset adjusted to (${newOffsetX}, ${newOffsetY}) to minimize tile splitting.`,
+    });
+
+  }, [rasterMapConfig, activeBounds, dimensions, rasterOffset, toast]);
+
 
   const value = {
     appState,
@@ -1009,6 +1063,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setDataLabelSize,
     powerLabelSize,
     setPowerLabelSize,
+    calculateAndApplyOptimalOffset,
   };
 
   return (

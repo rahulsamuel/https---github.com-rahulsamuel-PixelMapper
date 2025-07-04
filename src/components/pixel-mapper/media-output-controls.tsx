@@ -4,7 +4,7 @@
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
 import { useMemo } from 'react';
 import { Button } from "@/components/ui/button";
-import { FileOutput, AlertTriangle } from "lucide-react";
+import { FileOutput, AlertTriangle, WandSparkles } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
@@ -15,7 +15,8 @@ export function MediaOutputControls() {
     activeBounds,
     rasterMapConfig, 
     rasterOffset, 
-    setRasterOffset
+    setRasterOffset,
+    calculateAndApplyOptimalOffset,
   } = usePixelMapper();
   
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : dimensions.screenWidth * dimensions.tileWidth;
@@ -36,6 +37,10 @@ export function MediaOutputControls() {
     return isHorizontallyOut || isVerticallyOut;
 
   }, [rasterMapConfig, activeBounds, dimensions, rasterOffset]);
+
+  const canAlign = useMemo(() => {
+    return rasterMapConfig && rasterMapConfig.slices.length > 1;
+  }, [rasterMapConfig]);
 
 
   return (
@@ -88,6 +93,17 @@ export function MediaOutputControls() {
               <span>Content is outside the raster boundary.</span>
               </div>
           )}
+          <div className="pt-2">
+            <Button 
+                onClick={calculateAndApplyOptimalOffset} 
+                variant="outline" 
+                className="w-full"
+                disabled={!canAlign}
+            >
+                <WandSparkles className="mr-2 size-4" />
+                Align Tiles to Slices
+            </Button>
+          </div>
       </div>
     </div>
   );
