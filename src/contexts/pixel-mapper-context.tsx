@@ -3,7 +3,7 @@
 
 import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction } from "react";
-import { getPathOrder, type WiringPattern } from "@/lib/wiring";
+import { getPathOrder, type WiringPattern, isColorDark } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 
 interface Dimensions {
@@ -29,6 +29,7 @@ interface ActiveBounds {
 type ActiveTool = 'delete' | 'label' | 'color';
 type LabelFormat = 'none' | 'sequential' | 'row-col' | 'dmx-style' | 'row-letter-col-number';
 type LabelPosition = 'top-left' | 'top-right' | 'center' | 'bottom-left' | 'bottom-right';
+type LabelColorMode = 'single' | 'auto';
 type ResolutionType = 'content' | 'hd' | '4k-uhd' | '4k-dci';
 
 interface RasterSlice {
@@ -73,6 +74,7 @@ interface ProjectData {
   labelFontSize: number;
   labelColor: string;
   labelPosition: LabelPosition;
+  labelColorMode: LabelColorMode;
   onOffMode: boolean;
   zoom?: number; // For backwards compatibility
   zoomLevels: { grid: number; wiring: number; raster: number; };
@@ -134,6 +136,8 @@ interface PixelMapperState {
   setLabelColor: Dispatch<SetStateAction<string>>;
   labelPosition: LabelPosition;
   setLabelPosition: Dispatch<SetStateAction<LabelPosition>>;
+  labelColorMode: LabelColorMode;
+  setLabelColorMode: Dispatch<SetStateAction<LabelColorMode>>;
   onOffMode: boolean;
   setOnOffMode: Dispatch<SetStateAction<boolean>>;
   zoom: number;
@@ -220,6 +224,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [labelFontSize, setLabelFontSize] = useState(30);
   const [labelColor, setLabelColor] = useState("#ffffff");
   const [labelPosition, setLabelPosition] = useState<LabelPosition>('center');
+  const [labelColorMode, setLabelColorMode] = useState<LabelColorMode>('single');
   const [labels, setLabels] = useState<string[]>([]);
   
   const [zoomLevels, setZoomLevels] = useState({ grid: 1, wiring: 1, raster: 1 });
@@ -542,7 +547,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
           }
 
           if (showLabels && labels[index]) {
-            const currentLabelColor = onOffMode ? '#000000' : labelColor;
+            const currentLabelColor = labelColorMode === 'auto'
+              ? isColorDark(bgColor) ? '#FFFFFF' : '#000000'
+              : labelColor;
             masterCtx.fillStyle = currentLabelColor;
             masterCtx.font = `bold ${labelFontSize}px sans-serif`;
             masterCtx.textAlign = 'center';
@@ -567,7 +574,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         rasterOffset,
         resolutionType,
     });
-  }, [activeBounds, lastRasterArgs, dimensions, tiles, onOffMode, tileColor, tileColorTwo, showLabels, labels, labelColor, labelFontSize, rasterOffset, borderWidth, borderColor]);
+  }, [activeBounds, lastRasterArgs, dimensions, tiles, onOffMode, tileColor, tileColorTwo, showLabels, labels, labelColor, labelFontSize, rasterOffset, borderWidth, borderColor, labelColorMode]);
 
 
   useEffect(() => {
@@ -634,7 +641,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
 
           if (showLabels && labels[index]) {
-            const currentLabelColor = onOffMode ? '#000000' : labelColor;
+            const currentLabelColor = labelColorMode === 'auto'
+              ? isColorDark(bgColor) ? '#FFFFFF' : '#000000'
+              : labelColor;
             masterCtx.fillStyle = currentLabelColor;
             masterCtx.font = `bold ${labelFontSize}px sans-serif`;
             masterCtx.textAlign = 'center';
@@ -646,7 +655,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     });
 
     return masterCanvas;
-  }, [activeBounds, dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize, borderWidth, borderColor]);
+  }, [activeBounds, dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize, borderWidth, borderColor, labelColorMode]);
 
 
   const downloadRasterSlices = useCallback(() => {
@@ -801,6 +810,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       labelFontSize,
       labelColor,
       labelPosition,
+      labelColorMode,
       onOffMode,
       zoomLevels,
       activeTab,
@@ -845,7 +855,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     lastRasterArgs, wiringPortConfig, showDataLabels, showPowerLabels, wiringPattern,
     powerWiringPattern, arrowheadSize, arrowheadLength, arrowGap,
     powerArrowheadSize, powerArrowheadLength, powerArrowGap, brushColor, 
-    tilesPerPowerString, isWiringMirrored, dataLabelSize, powerLabelSize, toast
+    tilesPerPowerString, isWiringMirrored, dataLabelSize, powerLabelSize, toast, labelColorMode
   ]);
   
   const importProject = useCallback((file: File) => {
@@ -883,6 +893,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setLabelFontSize(data.labelFontSize);
         setLabelColor(data.labelColor);
         setLabelPosition(data.labelPosition || 'center');
+        setLabelColorMode(data.labelColorMode || 'single');
         setOnOffMode(data.onOffMode);
         
         if (data.zoomLevels) {
@@ -938,41 +949,38 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   const calculateAndApplyOptimalOffset = useCallback(() => {
-    if (!rasterMapConfig || !activeBounds || dimensions.tileWidth <= 0 || dimensions.tileHeight <= 0) {
-        toast({
-            title: "Cannot Align",
-            description: "Raster map and dimensions must be configured first.",
-            variant: "destructive",
-        });
-        return;
+    if (!rasterMapConfig || !activeBounds) {
+      toast({
+          title: "Cannot Align",
+          description: "Raster map and active grid are required.",
+          variant: "destructive",
+      });
+      return;
     }
     
     const { contentWidth, contentHeight, outputWidth, outputHeight } = rasterMapConfig;
     const { tileWidth, tileHeight } = dimensions;
 
-    const shouldAlignX = contentWidth > outputWidth;
-    const shouldAlignY = contentHeight > outputHeight;
-
-    let newOffsetX = 0;
-    if (shouldAlignX && tileWidth > 0) {
-        // Calculate the required offset to align with the first vertical slice boundary
-        newOffsetX = outputWidth % tileWidth;
+    let newOffsetX = rasterOffset.x;
+    if (contentWidth > outputWidth && tileWidth > 0) {
+        let adjustmentX = (outputWidth - (rasterOffset.x % tileWidth) + tileWidth) % tileWidth;
+        newOffsetX += adjustmentX;
     }
-
-    let newOffsetY = 0;
-    if (shouldAlignY && tileHeight > 0) {
-        // Calculate the required offset to align with the first horizontal slice boundary
-        newOffsetY = outputHeight % tileHeight;
+    
+    let newOffsetY = rasterOffset.y;
+    if (contentHeight > outputHeight && tileHeight > 0) {
+        let adjustmentY = (outputHeight - (rasterOffset.y % tileHeight) + tileHeight) % tileHeight;
+        newOffsetY += adjustmentY;
     }
 
     setRasterOffset({ x: newOffsetX, y: newOffsetY });
 
     toast({
         title: "Grid Aligned",
-        description: `Offsets adjusted for best fit. X: ${newOffsetX}px, Y: ${newOffsetY}px.`,
+        description: `Offsets adjusted for best fit.`,
         duration: 5000,
     });
-  }, [rasterMapConfig, activeBounds, dimensions, toast]);
+  }, [rasterMapConfig, activeBounds, dimensions, toast, rasterOffset]);
 
 
   const value = {
@@ -1012,6 +1020,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setLabelColor,
     labelPosition,
     setLabelPosition,
+    labelColorMode,
+    setLabelColorMode,
     onOffMode,
     setOnOffMode,
     zoom,

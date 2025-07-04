@@ -2,7 +2,7 @@
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
-import { cn } from "@/lib/utils";
+import { cn, isColorDark } from "@/lib/utils";
 
 export function LedGrid() {
   const {
@@ -18,6 +18,7 @@ export function LedGrid() {
     showLabels,
     labelFontSize,
     labelColor,
+    labelColorMode,
     labelPosition,
     zoom,
     onOffMode,
@@ -70,7 +71,9 @@ export function LedGrid() {
             }
           }
 
-          const currentLabelColor = onOffMode ? '#000000' : labelColor;
+          const currentLabelColor = labelColorMode === 'auto'
+            ? isColorDark(bgColor) ? '#FFFFFF' : '#000000'
+            : labelColor;
 
           const tileDynamicStyle = {
             ...baseTileStyle,

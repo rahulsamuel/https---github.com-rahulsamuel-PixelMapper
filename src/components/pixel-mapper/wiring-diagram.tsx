@@ -7,7 +7,7 @@ import { RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
-import { cn } from "@/lib/utils";
+import { cn, isColorDark } from "@/lib/utils";
 
 export function WiringDiagram() {
   const { 
@@ -26,6 +26,7 @@ export function WiringDiagram() {
     labelFontSize,
     labelPosition,
     labelColor,
+    labelColorMode,
     wiringPattern,
     powerWiringPattern,
     arrowheadSize,
@@ -132,7 +133,9 @@ export function WiringDiagram() {
                 ...(isWiringMirrored ? { right: x * dimensions.tileWidth } : { left: x * dimensions.tileWidth }),
               };
               
-              const currentLabelColor = onOffMode ? '#000000' : labelColor;
+              const currentLabelColor = labelColorMode === 'auto'
+                ? isColorDark(bgColor) ? '#FFFFFF' : '#000000'
+                : labelColor;
 
               return (
                 <div

@@ -25,7 +25,9 @@ export function LabelControls() {
     labelColor,
     setLabelColor,
     labelPosition,
-    setLabelPosition
+    setLabelPosition,
+    labelColorMode,
+    setLabelColorMode
   } = usePixelMapper();
 
   return (
@@ -76,26 +78,45 @@ export function LabelControls() {
             </SelectContent>
           </Select>
         </div>
-
+        
         <div className="space-y-2">
-          <Label htmlFor="label-color">Label Color</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="label-color"
-              type="color"
-              value={labelColor}
-              onChange={(e) => setLabelColor(e.target.value)}
-              className="w-14 p-1"
-            />
-            <Input
-              type="text"
-              value={labelColor}
-              onChange={(e) => setLabelColor(e.target.value)}
-              placeholder="#ffffff"
-              className="font-mono"
-            />
-          </div>
+          <Label htmlFor="label-color-mode">Label Color Mode</Label>
+          <Select
+            value={labelColorMode}
+            onValueChange={(value) => setLabelColorMode(value as 'single' | 'auto')}
+          >
+            <SelectTrigger id="label-color-mode">
+              <SelectValue placeholder="Select mode" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="single">Single Color</SelectItem>
+              <SelectItem value="auto">Automatic (B&W)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+
+        {labelColorMode === 'single' && (
+          <div className="space-y-2">
+            <Label htmlFor="label-color">Label Color</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="label-color"
+                type="color"
+                value={labelColor}
+                onChange={(e) => setLabelColor(e.target.value)}
+                className="w-14 p-1"
+              />
+              <Input
+                type="text"
+                value={labelColor}
+                onChange={(e) => setLabelColor(e.target.value)}
+                placeholder="#ffffff"
+                className="font-mono"
+              />
+            </div>
+          </div>
+        )}
+
 
         <div className="space-y-2">
           <Label htmlFor="label-font-size">Font Size: {labelFontSize}px</Label>
