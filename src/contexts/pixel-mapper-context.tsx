@@ -41,8 +41,10 @@ interface RasterSlice {
 
 interface RasterMapConfig {
   slices: RasterSlice[];
-  totalWidth: number; 
+  totalWidth: number;
   totalHeight: number;
+  contentWidth: number;
+  contentHeight: number;
   outputWidth: number;
   outputHeight: number;
   previewImage?: string;
@@ -458,6 +460,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const numCols = Math.ceil(contentWidth / finalOutputWidth);
     const numRows = Math.ceil(contentHeight / finalOutputHeight);
 
+    const totalPreviewWidth = numCols * finalOutputWidth;
+    const totalPreviewHeight = numRows * finalOutputHeight;
+
     for (let row = 0; row < numRows; row++) {
         for (let col = 0; col < numCols; col++) {
             const sliceX = col * finalOutputWidth;
@@ -545,8 +550,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
     setRasterMapConfig({
         slices,
-        totalWidth: contentWidth,
-        totalHeight: contentHeight,
+        totalWidth: totalPreviewWidth,
+        totalHeight: totalPreviewHeight,
+        contentWidth,
+        contentHeight,
         outputWidth: finalOutputWidth,
         outputHeight: finalOutputHeight,
         previewImage,

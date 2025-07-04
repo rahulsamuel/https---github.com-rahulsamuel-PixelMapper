@@ -9,6 +9,7 @@ export function RasterMapPreview() {
   const { 
     rasterMapConfig,
     zoom,
+    rasterOffset,
   } = usePixelMapper();
 
   const checkeredBg = useMemo(() => ({
@@ -34,7 +35,7 @@ export function RasterMapPreview() {
     );
   }
 
-  const { totalWidth, totalHeight, previewImage, slices, resolutionType } = rasterMapConfig;
+  const { totalWidth, totalHeight, previewImage, slices, resolutionType, contentWidth, contentHeight } = rasterMapConfig;
   
   const getSliceBorderColor = () => {
     switch(resolutionType) {
@@ -52,7 +53,6 @@ export function RasterMapPreview() {
   
   return (
      <div className="p-4 bg-muted/20 w-full h-full">
-        {/* Viewport now shows the entire content area */}
         <div 
           className="relative bg-background shadow-lg border"
           style={{ 
@@ -62,13 +62,20 @@ export function RasterMapPreview() {
               transformOrigin: 'top left',
               ...checkeredBg,
               boxSizing: 'content-box',
+              overflow: 'hidden',
           }}
         >
             {previewImage && (
                 <img 
                     src={previewImage} 
                     alt="LED Grid Preview"
-                    className="absolute top-0 left-0 w-full h-full object-contain"
+                    className="absolute"
+                    style={{
+                        left: rasterOffset.x,
+                        top: rasterOffset.y,
+                        width: contentWidth,
+                        height: contentHeight,
+                    }}
                 />
             )}
             {/* Slices visualization */}
