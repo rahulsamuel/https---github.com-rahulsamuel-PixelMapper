@@ -1,3 +1,4 @@
+
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
@@ -24,7 +25,7 @@ export function AppearanceControls() {
                 type="text"
                 value={tileColor}
                 onChange={(e) => setTileColor(e.target.value)}
-                placeholder="#3961b1"
+                placeholder="#34495e"
                 className="font-mono"
             />
           </div>
@@ -43,7 +44,7 @@ export function AppearanceControls() {
                 type="text"
                 value={tileColorTwo}
                 onChange={(e) => setTileColorTwo(e.target.value)}
-                placeholder="#a7b8ec"
+                placeholder="#bdc3c7"
                 className="font-mono"
             />
           </div>

@@ -204,8 +204,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [deletedCount, setDeletedCount] = useState(0);
   const [coloredCount, setColoredCount] = useState(0);
 
-  const [tileColor, setTileColor] = useState("#3961b1");
-  const [tileColorTwo, setTileColorTwo] = useState("#a7b8ec");
+  const [tileColor, setTileColor] = useState("#34495e");
+  const [tileColorTwo, setTileColorTwo] = useState("#bdc3c7");
   const [borderWidth, setBorderWidth] = useState(1);
   const [borderColor, setBorderColor] = useState("#ffffff");
   const [activeTool, setActiveTool] = useState<ActiveTool>("delete");
