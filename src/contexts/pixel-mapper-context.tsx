@@ -3,7 +3,7 @@
 
 import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction } from "react";
-import { getPathOrder, type WiringPattern } from "@/lib/wiring";
+import { getWiringData, type WiringPattern } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 
 interface Dimensions {
@@ -332,11 +332,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     }
 
     const newLabels = Array(totalTiles).fill('');
+    const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
+    const pathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
 
     if (labelFormat === 'sequential' || labelFormat === 'dmx-style') {
-      const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
-      const pathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
-      
       pathOrder.forEach((originalIndex, pathIndex) => {
         if (labelFormat === 'sequential') {
           newLabels[originalIndex] = String(pathIndex + 1);
@@ -349,18 +348,20 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       });
     } else if (labelFormat !== 'none') {
       for (let i = 0; i < totalTiles; i++) {
-        const x = i % screenWidth;
-        const y = Math.floor(i / screenWidth);
-        
-        switch (labelFormat) {
-          case 'row-col':
-            newLabels[i] = `${y + 1}-${x + 1}`;
-            break;
-          case 'row-letter-col-number':
-            const rowLetter = String.fromCharCode('A'.charCodeAt(0) + y);
-            const colNumber = x + 1;
-            newLabels[i] = `${rowLetter}${colNumber}`;
-            break;
+        if (tiles[i] && !tiles[i].deleted) {
+          const x = i % screenWidth;
+          const y = Math.floor(i / screenWidth);
+          
+          switch (labelFormat) {
+            case 'row-col':
+              newLabels[i] = `${y + 1}-${x + 1}`;
+              break;
+            case 'row-letter-col-number':
+              const rowLetter = String.fromCharCode('A'.charCodeAt(0) + y);
+              const colNumber = x + 1;
+              newLabels[i] = `${rowLetter}${colNumber}`;
+              break;
+          }
         }
       }
     }
@@ -950,9 +951,6 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const { outputWidth, outputHeight } = rasterMapConfig;
     const { tileWidth, tileHeight } = dimensions;
 
-    // To prevent a tile from being cut by a slice boundary, we want the offset, relative to the tile size,
-    // to be the same as the slice dimension relative to the tile size.
-    // This ensures that if a slice boundary falls within the content, it falls on a tile boundary.
     const targetRemX = outputWidth % tileWidth;
     const targetRemY = outputHeight % tileHeight;
     
@@ -962,7 +960,6 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     let adjustmentX = targetRemX - currentRemX;
     let adjustmentY = targetRemY - currentRemY;
 
-    // Find the shortest path to the target remainder (e.g., is it shorter to add 10 or subtract 90).
     if (Math.abs(adjustmentX) > tileWidth / 2) {
         adjustmentX = adjustmentX > 0 ? adjustmentX - tileWidth : adjustmentX + tileWidth;
     }
@@ -970,9 +967,16 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         adjustmentY = adjustmentY > 0 ? adjustmentY - tileHeight : adjustmentY + tileHeight;
     }
 
-    const newOffsetX = rasterOffset.x + adjustmentX;
-    const newOffsetY = rasterOffset.y + adjustmentY;
+    let newOffsetX = rasterOffset.x + adjustmentX;
+    let newOffsetY = rasterOffset.y + adjustmentY;
     
+    while (newOffsetX < 0) {
+      newOffsetX += tileWidth;
+    }
+    while (newOffsetY < 0) {
+      newOffsetY += tileHeight;
+    }
+
     setRasterOffset({ x: newOffsetX, y: newOffsetY });
     
     toast({
