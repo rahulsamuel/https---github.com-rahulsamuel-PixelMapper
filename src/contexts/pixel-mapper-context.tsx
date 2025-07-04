@@ -212,7 +212,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   
   // Labeling state
   const [showLabels, setShowLabels] = useState(true);
-  const [labelFormat, setLabelFormat] = useState<LabelFormat>('sequential');
+  const [labelFormat, setLabelFormat] = useState<LabelFormat>('row-col');
   const [labelFontSize, setLabelFontSize] = useState(48);
   const [labelColor, setLabelColor] = useState("#ffffff");
   const [labels, setLabels] = useState<string[]>([]);
@@ -943,7 +943,6 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const { contentWidth, contentHeight, outputWidth, outputHeight } = rasterMapConfig;
     const { tileWidth, tileHeight } = dimensions;
 
-    // Only align an axis if the content is larger than the slice
     const shouldAlignX = contentWidth > outputWidth;
     const shouldAlignY = contentHeight > outputHeight;
 
@@ -957,16 +956,12 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       }
       return Array.from(divisors).sort((a, b) => a - b);
     };
-
-    const isHorizontallySplitting = shouldAlignX && outputWidth % tileWidth !== 0;
-    const isVerticallySplitting = shouldAlignY && outputHeight % tileHeight !== 0;
-
-    let newOffsetX = 0;
-    let newOffsetY = 0;
     
-    setRasterOffset({ x: newOffsetX, y: newOffsetY });
+    const isPerfectlyAlignedX = shouldAlignX ? outputWidth % tileWidth === 0 : true;
+    const isPerfectlyAlignedY = shouldAlignY ? outputHeight % tileHeight === 0 : true;
 
-    if (!isHorizontallySplitting && !isVerticallySplitting) {
+    if (isPerfectlyAlignedX && isPerfectlyAlignedY) {
+        setRasterOffset({ x: 0, y: 0 });
         toast({
             title: "Grid Aligned",
             description: "Tiles align perfectly with all slice boundaries.",
@@ -974,10 +969,12 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         return;
     }
 
+    setRasterOffset({ x: 0, y: 0 });
+
     let suggestionMessage = "To prevent tiles from splitting, ";
     const suggestions = [];
 
-    if (isHorizontallySplitting) {
+    if (!isPerfectlyAlignedX) {
         const divisors = findDivisors(outputWidth);
         let smaller = 0;
         let larger = Infinity;
@@ -993,7 +990,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    if (isVerticallySplitting) {
+    if (!isPerfectlyAlignedY) {
         const divisors = findDivisors(outputHeight);
         let smaller = 0;
         let larger = Infinity;
