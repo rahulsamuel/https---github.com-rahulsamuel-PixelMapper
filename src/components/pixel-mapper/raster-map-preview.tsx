@@ -61,17 +61,22 @@ export function RasterMapPreview() {
               transform: `scale(${zoom})`,
               transformOrigin: 'top left',
               ...checkeredBg,
-              backgroundImage: previewImage ? `url(${previewImage})` : 'none',
-              backgroundRepeat: 'no-repeat',
               boxSizing: 'content-box',
           }}
         >
+            {previewImage && (
+                <img 
+                    src={previewImage} 
+                    alt="LED Grid Preview"
+                    className="absolute top-0 left-0 w-full h-full object-contain"
+                />
+            )}
             {/* Slices visualization */}
             {slices && slices.map(slice => (
                 <div 
                     key={slice.key} 
                     className={cn(
-                        "absolute border-2 border-dashed flex items-center justify-center pointer-events-none",
+                        "absolute border-2 border-dashed flex items-center justify-center pointer-events-none z-10",
                         getSliceBorderColor()
                     )}
                     style={{
