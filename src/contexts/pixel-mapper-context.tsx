@@ -3,7 +3,7 @@
 
 import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction } from "react";
-import { getWiringData, getPathOrder, type WiringPattern } from "@/lib/wiring";
+import { getPathOrder, type WiringPattern } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 
 interface Dimensions {
@@ -940,7 +940,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         return;
     }
     
-    if (rasterMapConfig.slices.length <= 1) {
+    const { contentWidth, contentHeight, outputWidth, outputHeight } = rasterMapConfig;
+
+    if (contentWidth <= outputWidth && contentHeight <= outputHeight) {
         toast({
             title: "Alignment Not Needed",
             description: "Alignment is only necessary when content spans multiple slices.",
@@ -948,33 +950,39 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         return;
     }
 
-    const { outputWidth, outputHeight } = rasterMapConfig;
     const { tileWidth, tileHeight } = dimensions;
 
-    const targetRemX = outputWidth % tileWidth;
-    const targetRemY = outputHeight % tileHeight;
-    
-    const currentRemX = (rasterOffset.x % tileWidth + tileWidth) % tileWidth;
-    const currentRemY = (rasterOffset.y % tileHeight + tileHeight) % tileHeight;
+    let newOffsetX = rasterOffset.x;
+    let newOffsetY = rasterOffset.y;
 
-    let adjustmentX = targetRemX - currentRemX;
-    let adjustmentY = targetRemY - currentRemY;
+    if (contentWidth > outputWidth) {
+      const targetRemX = outputWidth % tileWidth;
+      const currentRemX = (rasterOffset.x % tileWidth + tileWidth) % tileWidth;
+      let adjustmentX = targetRemX - currentRemX;
 
-    if (Math.abs(adjustmentX) > tileWidth / 2) {
-        adjustmentX = adjustmentX > 0 ? adjustmentX - tileWidth : adjustmentX + tileWidth;
-    }
-    if (Math.abs(adjustmentY) > tileHeight / 2) {
-        adjustmentY = adjustmentY > 0 ? adjustmentY - tileHeight : adjustmentY + tileHeight;
+      if (Math.abs(adjustmentX) > tileWidth / 2) {
+          adjustmentX = adjustmentX > 0 ? adjustmentX - tileWidth : adjustmentX + tileWidth;
+      }
+      newOffsetX = rasterOffset.x + adjustmentX;
+      
+      while (newOffsetX < 0) {
+        newOffsetX += tileWidth;
+      }
     }
 
-    let newOffsetX = rasterOffset.x + adjustmentX;
-    let newOffsetY = rasterOffset.y + adjustmentY;
-    
-    while (newOffsetX < 0) {
-      newOffsetX += tileWidth;
-    }
-    while (newOffsetY < 0) {
-      newOffsetY += tileHeight;
+    if (contentHeight > outputHeight) {
+      const targetRemY = outputHeight % tileHeight;
+      const currentRemY = (rasterOffset.y % tileHeight + tileHeight) % tileHeight;
+      let adjustmentY = targetRemY - currentRemY;
+
+      if (Math.abs(adjustmentY) > tileHeight / 2) {
+          adjustmentY = adjustmentY > 0 ? adjustmentY - tileHeight : adjustmentY + tileHeight;
+      }
+      newOffsetY = rasterOffset.y + adjustmentY;
+
+      while (newOffsetY < 0) {
+        newOffsetY += tileHeight;
+      }
     }
 
     setRasterOffset({ x: newOffsetX, y: newOffsetY });
@@ -1076,3 +1084,5 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     </PixelMapperContext.Provider>
   );
 }
+
+    
