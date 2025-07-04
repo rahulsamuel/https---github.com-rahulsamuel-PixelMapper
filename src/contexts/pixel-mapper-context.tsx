@@ -204,8 +204,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [deletedCount, setDeletedCount] = useState(0);
   const [coloredCount, setColoredCount] = useState(0);
 
-  const [tileColor, setTileColor] = useState("#34495e");
-  const [tileColorTwo, setTileColorTwo] = useState("#bdc3c7");
+  const [tileColor, setTileColor] = useState("#273a5e");
+  const [tileColorTwo, setTileColorTwo] = useState("#d1d9e6");
   const [borderWidth, setBorderWidth] = useState(1);
   const [borderColor, setBorderColor] = useState("#ffffff");
   const [activeTool, setActiveTool] = useState<ActiveTool>("delete");
@@ -943,6 +943,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const { contentWidth, contentHeight, outputWidth, outputHeight } = rasterMapConfig;
     const { tileWidth, tileHeight } = dimensions;
 
+    // Only align an axis if the content is larger than the slice
+    const shouldAlignX = contentWidth > outputWidth;
+    const shouldAlignY = contentHeight > outputHeight;
+
     const findDivisors = (n: number) => {
       const divisors = new Set<number>();
       for (let i = 1; i <= Math.sqrt(n); i++) {
@@ -954,45 +958,14 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       return Array.from(divisors).sort((a, b) => a - b);
     };
 
-    const isHorizontallySplitting = contentWidth > outputWidth && outputWidth % tileWidth !== 0;
-    const isVerticallySplitting = contentHeight > outputHeight && outputHeight % tileHeight !== 0;
+    const isHorizontallySplitting = shouldAlignX && outputWidth % tileWidth !== 0;
+    const isVerticallySplitting = shouldAlignY && outputHeight % tileHeight !== 0;
 
-    // Perform best-effort alignment to the first slice boundary regardless
-    let newOffsetX = rasterOffset.x;
-    if (contentWidth > outputWidth) {
-      const targetRemX = outputWidth % tileWidth;
-      const currentRemX = (rasterOffset.x % tileWidth + tileWidth) % tileWidth;
-      let adjustmentX = targetRemX - currentRemX;
-
-      if (Math.abs(adjustmentX) > tileWidth / 2) {
-          adjustmentX = adjustmentX > 0 ? adjustmentX - tileWidth : adjustmentX + tileWidth;
-      }
-      newOffsetX = rasterOffset.x + adjustmentX;
-      
-      while (newOffsetX < 0) {
-        newOffsetX += tileWidth;
-      }
-    }
-
-    let newOffsetY = rasterOffset.y;
-    if (contentHeight > outputHeight) {
-       const targetRemY = outputHeight % tileHeight;
-      const currentRemY = (rasterOffset.y % tileHeight + tileHeight) % tileHeight;
-      let adjustmentY = targetRemY - currentRemY;
-
-      if (Math.abs(adjustmentY) > tileHeight / 2) {
-          adjustmentY = adjustmentY > 0 ? adjustmentY - tileHeight : adjustmentY + tileHeight;
-      }
-      newOffsetY = rasterOffset.y + adjustmentY;
-
-      while (newOffsetY < 0) {
-        newOffsetY += tileHeight;
-      }
-    }
+    let newOffsetX = 0;
+    let newOffsetY = 0;
     
     setRasterOffset({ x: newOffsetX, y: newOffsetY });
 
-    // Now, prepare and show a helpful toast message
     if (!isHorizontallySplitting && !isVerticallySplitting) {
         toast({
             title: "Grid Aligned",
@@ -1039,13 +1012,13 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     suggestionMessage += suggestions.join(', and ') + '.';
 
     toast({
-        title: "Warning: Tiles will be split",
+        title: "Warning: Tiles may be split",
         description: suggestionMessage,
         variant: "default",
         duration: 10000,
     });
 
-  }, [rasterMapConfig, activeBounds, dimensions, rasterOffset, toast]);
+  }, [rasterMapConfig, activeBounds, dimensions, toast]);
 
 
   const value = {

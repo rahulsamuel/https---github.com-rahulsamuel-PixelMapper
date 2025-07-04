@@ -25,7 +25,7 @@ export function AppearanceControls() {
                 type="text"
                 value={tileColor}
                 onChange={(e) => setTileColor(e.target.value)}
-                placeholder="#34495e"
+                placeholder="#273a5e"
                 className="font-mono"
             />
           </div>
@@ -44,7 +44,7 @@ export function AppearanceControls() {
                 type="text"
                 value={tileColorTwo}
                 onChange={(e) => setTileColorTwo(e.target.value)}
-                placeholder="#bdc3c7"
+                placeholder="#d1d9e6"
                 className="font-mono"
             />
           </div>
