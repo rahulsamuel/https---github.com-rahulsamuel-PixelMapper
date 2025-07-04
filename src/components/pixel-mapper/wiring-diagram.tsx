@@ -7,6 +7,7 @@ import { RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 export function WiringDiagram() {
   const { 
@@ -22,6 +23,8 @@ export function WiringDiagram() {
     showPowerLabels,
     labels,
     showLabels,
+    labelFontSize,
+    labelPosition,
     labelColor,
     wiringPattern,
     powerWiringPattern,
@@ -140,9 +143,22 @@ export function WiringDiagram() {
                   {!isDeleted && (
                     <>
                       {showLabels && labels[originalIndex] && (
-                        <span 
-                          className="absolute top-1 left-2 font-mono text-lg font-bold pointer-events-none"
-                          style={{ color: currentLabelColor, opacity: 0.7 }}
+                        <span
+                          className={cn(
+                            "absolute font-bold pointer-events-none drop-shadow-sm",
+                            {
+                                'top-1 left-2': labelPosition === 'top-left',
+                                'top-1 right-2 text-right': labelPosition === 'top-right',
+                                'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center': labelPosition === 'center',
+                                'bottom-1 left-2': labelPosition === 'bottom-left',
+                                'bottom-1 right-2 text-right': labelPosition === 'bottom-right',
+                            }
+                          )}
+                          style={{
+                            fontSize: `${labelFontSize}px`,
+                            color: currentLabelColor,
+                            opacity: 0.7,
+                          }}
                         >
                           {labels[originalIndex]}
                         </span>
