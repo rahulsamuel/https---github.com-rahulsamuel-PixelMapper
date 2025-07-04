@@ -41,9 +41,7 @@ import { useState, useRef, useEffect } from "react";
 export function PixelMapperLayout() {
   const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab } = usePixelMapper();
   const [activeAccordion, setActiveAccordion] = useState("grid-setup");
-  const gridViewportRef = useRef<HTMLDivElement>(null);
-  const wiringViewportRef = useRef<HTMLDivElement>(null);
-  const rasterViewportRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : 0;
   const totalHeight = activeBounds ? (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight : 0;
@@ -54,25 +52,22 @@ export function PixelMapperLayout() {
   const handleFitToScreen = () => {
     let gridWidth = 0;
     let gridHeight = 0;
-    let viewportEl: HTMLDivElement | null = null;
+    const viewportEl = viewportRef.current;
 
     switch (activeTab) {
       case 'grid':
         gridWidth = dimensions.screenWidth * dimensions.tileWidth;
         gridHeight = dimensions.screenHeight * dimensions.tileHeight;
-        viewportEl = gridViewportRef.current;
         break;
       case 'wiring':
         gridWidth = dimensions.screenWidth * dimensions.tileWidth;
         gridHeight = dimensions.screenHeight * dimensions.tileHeight;
-        viewportEl = wiringViewportRef.current;
         break;
       case 'raster':
         if (rasterMapConfig) {
           gridWidth = rasterMapConfig.totalWidth;
           gridHeight = rasterMapConfig.totalHeight;
         }
-        viewportEl = rasterViewportRef.current;
         break;
     }
 
@@ -260,49 +255,51 @@ export function PixelMapperLayout() {
         </SidebarContent>
       </Sidebar>
       <SidebarInset>
-        <Tabs value={activeTab} className="flex flex-col h-full w-full" onValueChange={handleTabChange}>
-          <div className="sticky top-0 z-10 bg-background p-4 border-b flex items-center justify-between flex-shrink-0">
-            <TabsList>
-              <TabsTrigger value="grid">LED Grid</TabsTrigger>
-              <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
-              <TabsTrigger value="raster">Raster Map Preview</TabsTrigger>
-            </TabsList>
-            <div className="flex items-center gap-4">
-              <div className="text-sm text-muted-foreground">
-                Resolution: <span className="font-mono">{totalWidth}px</span> x <span className="font-mono">{totalHeight}px</span>
-              </div>
-               <div className="flex items-center space-x-2">
-                <Switch id="on-off-switch" checked={onOffMode} onCheckedChange={setOnOffMode} />
-                <Label htmlFor="on-off-switch">ON/OFF</Label>
-              </div>
-              <Separator orientation="vertical" className="h-6" />
-              <div className="flex items-center gap-1">
-                <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom Out">
-                  <ZoomOut />
-                </Button>
-                <div className="w-14 text-center font-mono text-sm" title="Current Zoom">
-                  {Math.round(zoom * 100)}%
+        <div className="h-full w-full overflow-auto" ref={viewportRef}>
+          <Tabs value={activeTab} className="flex flex-col min-h-full" onValueChange={handleTabChange}>
+            <div className="sticky top-0 z-10 bg-background p-4 border-b flex items-center justify-between flex-shrink-0">
+              <TabsList>
+                <TabsTrigger value="grid">LED Grid</TabsTrigger>
+                <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
+                <TabsTrigger value="raster">Raster Map Preview</TabsTrigger>
+              </TabsList>
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-muted-foreground">
+                  Resolution: <span className="font-mono">{totalWidth}px</span> x <span className="font-mono">{totalHeight}px</span>
                 </div>
-                <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom In">
-                  <ZoomIn />
-                </Button>
-                <Separator orientation="vertical" className="h-6 mx-1" />
-                <Button onClick={handleFitToScreen} variant="ghost" size="icon" className="h-8 w-8" aria-label="Fit to Screen">
-                  <Expand />
-                </Button>
+                 <div className="flex items-center space-x-2">
+                  <Switch id="on-off-switch" checked={onOffMode} onCheckedChange={setOnOffMode} />
+                  <Label htmlFor="on-off-switch">ON/OFF</Label>
+                </div>
+                <Separator orientation="vertical" className="h-6" />
+                <div className="flex items-center gap-1">
+                  <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom Out">
+                    <ZoomOut />
+                  </Button>
+                  <div className="w-14 text-center font-mono text-sm" title="Current Zoom">
+                    {Math.round(zoom * 100)}%
+                  </div>
+                  <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom In">
+                    <ZoomIn />
+                  </Button>
+                  <Separator orientation="vertical" className="h-6 mx-1" />
+                  <Button onClick={handleFitToScreen} variant="ghost" size="icon" className="h-8 w-8" aria-label="Fit to Screen">
+                    <Expand />
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-          <TabsContent value="grid" className="flex-grow overflow-auto" ref={gridViewportRef}>
-            <LedGrid />
-          </TabsContent>
-          <TabsContent value="wiring" className="flex-grow overflow-auto" ref={wiringViewportRef}>
-            <WiringDiagram />
-          </TabsContent>
-          <TabsContent value="raster" className="flex-grow overflow-auto" ref={rasterViewportRef}>
-            <RasterMapPreview />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="grid" className="flex-grow">
+              <LedGrid />
+            </TabsContent>
+            <TabsContent value="wiring" className="flex-grow">
+              <WiringDiagram />
+            </TabsContent>
+            <TabsContent value="raster" className="flex-grow">
+              <RasterMapPreview />
+            </TabsContent>
+          </Tabs>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );
