@@ -953,75 +953,25 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const shouldAlignX = contentWidth > outputWidth;
     const shouldAlignY = contentHeight > outputHeight;
 
-    const findDivisors = (n: number) => {
-      const divisors = new Set<number>();
-      for (let i = 1; i <= Math.sqrt(n); i++) {
-        if (n % i === 0) {
-          divisors.add(i);
-          divisors.add(n / i);
-        }
-      }
-      return Array.from(divisors).sort((a, b) => a - b);
-    };
-    
-    const isPerfectlyAlignedX = shouldAlignX ? outputWidth % tileWidth === 0 : true;
-    const isPerfectlyAlignedY = shouldAlignY ? outputHeight % tileHeight === 0 : true;
-
-    if (isPerfectlyAlignedX && isPerfectlyAlignedY) {
-        setRasterOffset({ x: 0, y: 0 });
-        toast({
-            title: "Grid Aligned",
-            description: "Tiles align perfectly with all slice boundaries.",
-        });
-        return;
+    let newOffsetX = 0;
+    if (shouldAlignX && tileWidth > 0) {
+        // Calculate the required offset to align with the first vertical slice boundary
+        newOffsetX = outputWidth % tileWidth;
     }
 
-    setRasterOffset({ x: 0, y: 0 });
-
-    let suggestionMessage = "To prevent tiles from splitting, ";
-    const suggestions = [];
-
-    if (!isPerfectlyAlignedX) {
-        const divisors = findDivisors(outputWidth);
-        let smaller = 0;
-        let larger = Infinity;
-        for (const d of divisors) {
-            if (d <= tileWidth) smaller = d;
-            if (d >= tileWidth && d < larger) larger = d;
-        }
-        const options = [];
-        if (smaller > 0) options.push(`${smaller}px`);
-        if (larger !== Infinity) options.push(`${larger}px`);
-        if (options.length > 0) {
-            suggestions.push(`for horizontal alignment, try a tile width of ${options.join(' or ')}`);
-        }
+    let newOffsetY = 0;
+    if (shouldAlignY && tileHeight > 0) {
+        // Calculate the required offset to align with the first horizontal slice boundary
+        newOffsetY = outputHeight % tileHeight;
     }
 
-    if (!isPerfectlyAlignedY) {
-        const divisors = findDivisors(outputHeight);
-        let smaller = 0;
-        let larger = Infinity;
-        for (const d of divisors) {
-            if (d <= tileHeight) smaller = d;
-            if (d >= tileHeight && d < larger) larger = d;
-        }
-        const options = [];
-        if (smaller > 0) options.push(`${smaller}px`);
-        if (larger !== Infinity) options.push(`${larger}px`);
-        if (options.length > 0) {
-            suggestions.push(`for vertical alignment, try a tile height of ${options.join(' or ')}`);
-        }
-    }
-    
-    suggestionMessage += suggestions.join(', and ') + '.';
+    setRasterOffset({ x: newOffsetX, y: newOffsetY });
 
     toast({
-        title: "Warning: Tiles may be split",
-        description: suggestionMessage,
-        variant: "default",
-        duration: 10000,
+        title: "Grid Aligned",
+        description: `Offsets adjusted for best fit. X: ${newOffsetX}px, Y: ${newOffsetY}px.`,
+        duration: 5000,
     });
-
   }, [rasterMapConfig, activeBounds, dimensions, toast]);
 
 
