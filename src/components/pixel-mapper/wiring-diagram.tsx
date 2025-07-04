@@ -77,7 +77,7 @@ export function WiringDiagram() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <>
       <div className="flex-shrink-0 bg-background p-4 border-b flex justify-between items-center">
         <div className="flex items-baseline gap-3">
           <h2 className="text-lg font-semibold">Wiring Diagram</h2>
@@ -94,202 +94,200 @@ export function WiringDiagram() {
           </div>
         </div>
       </div>
-      <div className="flex-grow overflow-auto">
-        <div className="p-4 bg-muted/20">
-          <div 
-            ref={wiringDiagramRef}
-            className="relative bg-background"
-            style={{ 
-              width: dimensions.screenWidth * dimensions.tileWidth, 
-              height: dimensions.screenHeight * dimensions.tileHeight,
-              transform: `scale(${zoom})`,
-              transformOrigin: 'top left',
-            }}
-          >
-            {wiringData.map(({ x, y, dataLabel, powerPortLabel, backupLabel, isDeleted }, index) => {
-              const originalIndex = y * dimensions.screenWidth + x;
-              const tile = tiles[originalIndex];
+      <div className="p-4 bg-muted/20">
+        <div 
+          ref={wiringDiagramRef}
+          className="relative bg-background"
+          style={{ 
+            width: dimensions.screenWidth * dimensions.tileWidth, 
+            height: dimensions.screenHeight * dimensions.tileHeight,
+            transform: `scale(${zoom})`,
+            transformOrigin: 'top left',
+          }}
+        >
+          {wiringData.map(({ x, y, dataLabel, powerPortLabel, backupLabel, isDeleted }, index) => {
+            const originalIndex = y * dimensions.screenWidth + x;
+            const tile = tiles[originalIndex];
 
-              let bgColor;
-              if (onOffMode) {
-                bgColor = isDeleted ? '#000000' : '#FFFFFF';
+            let bgColor;
+            if (onOffMode) {
+              bgColor = isDeleted ? '#000000' : '#FFFFFF';
+            } else {
+              if (isDeleted) {
+                bgColor = '#000000';
+              } else if (tile?.color) {
+                bgColor = tile.color;
               } else {
-                if (isDeleted) {
-                  bgColor = '#000000';
-                } else if (tile?.color) {
-                  bgColor = tile.color;
-                } else {
-                  bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
-                }
+                bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
               }
+            }
 
-              const tileStyle = {
-                top: y * dimensions.tileHeight,
-                width: dimensions.tileWidth,
-                height: dimensions.tileHeight,
-                backgroundColor: bgColor,
-                border: isDeleted ? 'none' : `${borderWidth}px solid ${borderColor}`,
-                boxSizing: 'border-box',
-                ...(isWiringMirrored ? { right: x * dimensions.tileWidth } : { left: x * dimensions.tileWidth }),
-              };
-              
-              const currentLabelColor = labelColorMode === 'auto'
-                ? isColorDark(bgColor) ? '#FFFFFF' : '#000000'
-                : labelColor;
+            const tileStyle = {
+              top: y * dimensions.tileHeight,
+              width: dimensions.tileWidth,
+              height: dimensions.tileHeight,
+              backgroundColor: bgColor,
+              border: isDeleted ? 'none' : `${borderWidth}px solid ${borderColor}`,
+              boxSizing: 'border-box',
+              ...(isWiringMirrored ? { right: x * dimensions.tileWidth } : { left: x * dimensions.tileWidth }),
+            };
+            
+            const currentLabelColor = labelColorMode === 'auto'
+              ? isColorDark(bgColor) ? '#FFFFFF' : '#000000'
+              : labelColor;
 
-              return (
-                <div
-                  key={`wiring-tile-${x}-${y}`}
-                  className="absolute overflow-visible"
-                  style={tileStyle}
-                >
-                  {!isDeleted && (
-                    <>
-                      {showLabels && labels[originalIndex] && (
-                        <span
-                          className={cn(
-                            "absolute font-bold pointer-events-none drop-shadow-sm",
-                            {
-                                'top-1 left-2': labelPosition === 'top-left',
-                                'top-1 right-2 text-right': labelPosition === 'top-right',
-                                'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center': labelPosition === 'center',
-                                'bottom-1 left-2': labelPosition === 'bottom-left',
-                                'bottom-1 right-2 text-right': labelPosition === 'bottom-right',
-                            }
-                          )}
+            return (
+              <div
+                key={`wiring-tile-${x}-${y}`}
+                className="absolute overflow-visible"
+                style={tileStyle}
+              >
+                {!isDeleted && (
+                  <>
+                    {showLabels && labels[originalIndex] && (
+                      <span
+                        className={cn(
+                          "absolute font-bold pointer-events-none drop-shadow-sm",
+                          {
+                              'top-1 left-2': labelPosition === 'top-left',
+                              'top-1 right-2 text-right': labelPosition === 'top-right',
+                              'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center': labelPosition === 'center',
+                              'bottom-1 left-2': labelPosition === 'bottom-left',
+                              'bottom-1 right-2 text-right': labelPosition === 'bottom-right',
+                          }
+                        )}
+                        style={{
+                          fontSize: `${labelFontSize}px`,
+                          color: currentLabelColor,
+                          opacity: 0.7,
+                        }}
+                      >
+                        {labels[originalIndex]}
+                      </span>
+                    )}
+                    <div
+                      className="flex flex-col items-center justify-center h-full w-full text-foreground relative"
+                    >
+                      {showDataLabels && (backupLabel || dataLabel) && (
+                        <div 
+                          className={`rounded-full flex items-center justify-center font-bold z-10 ${backupLabel ? 'bg-destructive text-destructive-foreground' : 'bg-data-wiring text-data-wiring-foreground'}`}
                           style={{
-                            fontSize: `${labelFontSize}px`,
-                            color: currentLabelColor,
-                            opacity: 0.7,
+                            width: `${dataLabelSize}px`,
+                            height: `${dataLabelSize}px`,
+                            fontSize: `${Math.max(8, dataLabelSize * 0.4)}px`,
                           }}
                         >
-                          {labels[originalIndex]}
-                        </span>
+                          <span>{backupLabel || dataLabel}</span>
+                        </div>
                       )}
-                      <div
-                        className="flex flex-col items-center justify-center h-full w-full text-foreground relative"
-                      >
-                        {showDataLabels && (backupLabel || dataLabel) && (
-                          <div 
-                            className={`rounded-full flex items-center justify-center font-bold z-10 ${backupLabel ? 'bg-destructive text-destructive-foreground' : 'bg-data-wiring text-data-wiring-foreground'}`}
+                      {showPowerLabels && powerPortLabel && (
+                         <div 
+                            className="bg-power-wiring text-power-wiring-foreground rounded-full flex items-center justify-center font-bold z-10"
                             style={{
-                              width: `${dataLabelSize}px`,
-                              height: `${dataLabelSize}px`,
-                              fontSize: `${Math.max(8, dataLabelSize * 0.4)}px`,
+                              width: `${powerLabelSize}px`,
+                              height: `${powerLabelSize}px`,
+                              fontSize: `${Math.max(8, powerLabelSize * 0.4)}px`,
                             }}
-                          >
-                            <span>{backupLabel || dataLabel}</span>
-                          </div>
-                        )}
-                        {showPowerLabels && powerPortLabel && (
-                           <div 
-                              className="bg-power-wiring text-power-wiring-foreground rounded-full flex items-center justify-center font-bold z-10"
-                              style={{
-                                width: `${powerLabelSize}px`,
-                                height: `${powerLabelSize}px`,
-                                fontSize: `${Math.max(8, powerLabelSize * 0.4)}px`,
-                              }}
-                           >
-                              <span>{powerPortLabel}</span>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })}
-             <svg
-                className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
-                style={{
-                  width: dimensions.screenWidth * dimensions.tileWidth,
-                  height: dimensions.screenHeight * dimensions.tileHeight,
-                }}
-              >
-                {/* Data Arrows */}
-                {isClient && showDataLabels && wiringData.map(({ x, y, nextTile, isDeleted }) => {
-                  if (isDeleted || !nextTile) return null;
+                         >
+                            <span>{powerPortLabel}</span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+           <svg
+              className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
+              style={{
+                width: dimensions.screenWidth * dimensions.tileWidth,
+                height: dimensions.screenHeight * dimensions.tileHeight,
+              }}
+            >
+              {/* Data Arrows */}
+              {isClient && showDataLabels && wiringData.map(({ x, y, nextTile, isDeleted }) => {
+                if (isDeleted || !nextTile) return null;
 
-                  const startX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - x) : x) * dimensions.tileWidth + dimensions.tileWidth / 2;
-                  const startY_center = y * dimensions.tileHeight + dimensions.tileHeight / 2;
-                  const endX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - nextTile.x) : nextTile.x) * dimensions.tileWidth + dimensions.tileWidth / 2;
-                  const endY_center = nextTile.y * dimensions.tileHeight + dimensions.tileHeight / 2;
-                  
-                  const dx = endX_center - startX_center;
-                  const dy = endY_center - startY_center;
-                  const distance = Math.sqrt(dx * dx + dy * dy);
+                const startX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - x) : x) * dimensions.tileWidth + dimensions.tileWidth / 2;
+                const startY_center = y * dimensions.tileHeight + dimensions.tileHeight / 2;
+                const endX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - nextTile.x) : nextTile.x) * dimensions.tileWidth + dimensions.tileWidth / 2;
+                const endY_center = nextTile.y * dimensions.tileHeight + dimensions.tileHeight / 2;
+                
+                const dx = endX_center - startX_center;
+                const dy = endY_center - startY_center;
+                const distance = Math.sqrt(dx * dx + dy * dy);
 
-                  if (distance <= arrowGap * 2) return null;
+                if (distance <= arrowGap * 2) return null;
 
-                  const nx = dx / distance;
-                  const ny = dy / distance;
-                  const x1 = startX_center + nx * arrowGap;
-                  const y1 = startY_center + ny * arrowGap;
-                  const x2 = endX_center - nx * arrowGap;
-                  const y2 = endY_center - ny * arrowGap;
-                  
-                  const tipX = x2;
-                  const tipY = y2;
-                  const baseCenterX = tipX - nx * arrowheadLength;
-                  const baseCenterY = tipY - ny * arrowheadLength;
-                  const p2x = baseCenterX - ny * (arrowheadSize / 2);
-                  const p2y = baseCenterY + nx * (arrowheadSize / 2);
-                  const p3x = baseCenterX + ny * (arrowheadSize / 2);
-                  const p3y = baseCenterY - nx * (arrowheadSize / 2);
-                  const arrowheadPoints = `${tipX},${tipY} ${p2x},${p2y} ${p3x},${p3y}`;
+                const nx = dx / distance;
+                const ny = dy / distance;
+                const x1 = startX_center + nx * arrowGap;
+                const y1 = startY_center + ny * arrowGap;
+                const x2 = endX_center - nx * arrowGap;
+                const y2 = endY_center - ny * arrowGap;
+                
+                const tipX = x2;
+                const tipY = y2;
+                const baseCenterX = tipX - nx * arrowheadLength;
+                const baseCenterY = tipY - ny * arrowheadLength;
+                const p2x = baseCenterX - ny * (arrowheadSize / 2);
+                const p2y = baseCenterY + nx * (arrowheadSize / 2);
+                const p3x = baseCenterX + ny * (arrowheadSize / 2);
+                const p3y = baseCenterY - nx * (arrowheadSize / 2);
+                const arrowheadPoints = `${tipX},${tipY} ${p2x},${p2y} ${p3x},${p3y}`;
 
-                  return (
-                    <g key={`data-arrow-${x}-${y}`}>
-                      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="hsl(var(--data-wiring))" strokeWidth="3" />
-                       <polygon points={arrowheadPoints} fill="hsl(var(--data-wiring))" />
-                    </g>
-                  );
-                })}
+                return (
+                  <g key={`data-arrow-${x}-${y}`}>
+                    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="hsl(var(--data-wiring))" strokeWidth="3" />
+                     <polygon points={arrowheadPoints} fill="hsl(var(--data-wiring))" />
+                  </g>
+                );
+              })}
 
-                {/* Power Arrows */}
-                {isClient && showPowerLabels && wiringData.map(({ x, y, nextPowerTile, isDeleted }) => {
-                  if (isDeleted || !nextPowerTile) return null;
+              {/* Power Arrows */}
+              {isClient && showPowerLabels && wiringData.map(({ x, y, nextPowerTile, isDeleted }) => {
+                if (isDeleted || !nextPowerTile) return null;
 
-                  const startX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - x) : x) * dimensions.tileWidth + dimensions.tileWidth / 2;
-                  const startY_center = y * dimensions.tileHeight + dimensions.tileHeight / 2;
-                  const endX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - nextPowerTile.x) : nextPowerTile.x) * dimensions.tileWidth + dimensions.tileWidth / 2;
-                  const endY_center = nextPowerTile.y * dimensions.tileHeight + dimensions.tileHeight / 2;
-                  
-                  const dx = endX_center - startX_center;
-                  const dy = endY_center - startY_center;
-                  const distance = Math.sqrt(dx * dx + dy * dy);
+                const startX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - x) : x) * dimensions.tileWidth + dimensions.tileWidth / 2;
+                const startY_center = y * dimensions.tileHeight + dimensions.tileHeight / 2;
+                const endX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - nextPowerTile.x) : nextPowerTile.x) * dimensions.tileWidth + dimensions.tileWidth / 2;
+                const endY_center = nextPowerTile.y * dimensions.tileHeight + dimensions.tileHeight / 2;
+                
+                const dx = endX_center - startX_center;
+                const dy = endY_center - startY_center;
+                const distance = Math.sqrt(dx * dx + dy * dy);
 
-                  if (distance <= powerArrowGap * 2) return null;
+                if (distance <= powerArrowGap * 2) return null;
 
-                  const nx = dx / distance;
-                  const ny = dy / distance;
+                const nx = dx / distance;
+                const ny = dy / distance;
 
-                  const x1 = startX_center + nx * powerArrowGap;
-                  const y1 = startY_center + ny * powerArrowGap;
-                  const x2 = endX_center - nx * powerArrowGap;
-                  const y2 = endY_center - ny * powerArrowGap;
-                  
-                  const tipX = x2;
-                  const tipY = y2;
-                  const baseCenterX = tipX - nx * powerArrowheadLength;
-                  const baseCenterY = tipY - ny * powerArrowheadLength;
-                  const p2x = baseCenterX - ny * (powerArrowheadSize / 2);
-                  const p2y = baseCenterY + nx * (powerArrowheadSize / 2);
-                  const p3x = baseCenterX + ny * (powerArrowheadSize / 2);
-                  const p3y = baseCenterY - nx * (powerArrowheadSize / 2);
-                  const arrowheadPoints = `${tipX},${tipY} ${p2x},${p2y} ${p3x},${p3y}`;
+                const x1 = startX_center + nx * powerArrowGap;
+                const y1 = startY_center + ny * powerArrowGap;
+                const x2 = endX_center - nx * powerArrowGap;
+                const y2 = endY_center - ny * powerArrowGap;
+                
+                const tipX = x2;
+                const tipY = y2;
+                const baseCenterX = tipX - nx * powerArrowheadLength;
+                const baseCenterY = tipY - ny * powerArrowheadLength;
+                const p2x = baseCenterX - ny * (powerArrowheadSize / 2);
+                const p2y = baseCenterY + nx * (powerArrowheadSize / 2);
+                const p3x = baseCenterX + ny * (powerArrowheadSize / 2);
+                const p3y = baseCenterY - nx * (powerArrowheadSize / 2);
+                const arrowheadPoints = `${tipX},${tipY} ${p2x},${p2y} ${p3x},${p3y}`;
 
-                  return (
-                    <g key={`power-arrow-${x}-${y}`}>
-                      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="hsl(var(--power-wiring))" strokeWidth="2" />
-                       <polygon points={arrowheadPoints} fill="hsl(var(--power-wiring))" />
-                    </g>
-                  );
-                })}
-              </svg>
-          </div>
+                return (
+                  <g key={`power-arrow-${x}-${y}`}>
+                    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="hsl(var(--power-wiring))" strokeWidth="2" />
+                     <polygon points={arrowheadPoints} fill="hsl(var(--power-wiring))" />
+                  </g>
+                );
+              })}
+            </svg>
         </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -296,7 +296,7 @@ export function PixelMapperLayout() {
           <TabsContent value="grid" className="flex-grow overflow-auto" ref={gridViewportRef}>
             <LedGrid />
           </TabsContent>
-          <TabsContent value="wiring" className="flex-grow flex flex-col" ref={wiringViewportRef}>
+          <TabsContent value="wiring" className="flex-grow overflow-auto" ref={wiringViewportRef}>
             <WiringDiagram />
           </TabsContent>
           <TabsContent value="raster" className="flex-grow overflow-auto" ref={rasterViewportRef}>

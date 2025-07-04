@@ -52,7 +52,7 @@ export function RasterMapPreview() {
   }
   
   return (
-     <div className="p-4 bg-muted/20 w-full h-full">
+     <div className="p-4 bg-muted/20 w-full">
         <div 
           className="relative bg-background shadow-lg border"
           style={{ 
