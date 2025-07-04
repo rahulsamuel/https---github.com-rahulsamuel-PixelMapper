@@ -1,4 +1,3 @@
-
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
@@ -255,51 +254,51 @@ export function PixelMapperLayout() {
         </SidebarContent>
       </Sidebar>
       <SidebarInset>
-        <div className="h-full w-full overflow-auto" ref={viewportRef}>
-          <Tabs value={activeTab} className="flex flex-col min-h-full" onValueChange={handleTabChange}>
-            <div className="sticky top-0 z-10 bg-background p-4 border-b flex items-center justify-between flex-shrink-0">
-              <TabsList>
-                <TabsTrigger value="grid">LED Grid</TabsTrigger>
-                <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
-                <TabsTrigger value="raster">Raster Map Preview</TabsTrigger>
-              </TabsList>
-              <div className="flex items-center gap-4">
-                <div className="text-sm text-muted-foreground">
-                  Resolution: <span className="font-mono">{totalWidth}px</span> x <span className="font-mono">{totalHeight}px</span>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full w-full">
+          <div className="flex-shrink-0 bg-background p-4 border-b flex items-center justify-between z-10">
+            <TabsList>
+              <TabsTrigger value="grid">LED Grid</TabsTrigger>
+              <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
+              <TabsTrigger value="raster">Raster Map Preview</TabsTrigger>
+            </TabsList>
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-muted-foreground">
+                Resolution: <span className="font-mono">{totalWidth}px</span> x <span className="font-mono">{totalHeight}px</span>
+              </div>
+               <div className="flex items-center space-x-2">
+                <Switch id="on-off-switch" checked={onOffMode} onCheckedChange={setOnOffMode} />
+                <Label htmlFor="on-off-switch">ON/OFF</Label>
+              </div>
+              <Separator orientation="vertical" className="h-6" />
+              <div className="flex items-center gap-1">
+                <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom Out">
+                  <ZoomOut />
+                </Button>
+                <div className="w-14 text-center font-mono text-sm" title="Current Zoom">
+                  {Math.round(zoom * 100)}%
                 </div>
-                 <div className="flex items-center space-x-2">
-                  <Switch id="on-off-switch" checked={onOffMode} onCheckedChange={setOnOffMode} />
-                  <Label htmlFor="on-off-switch">ON/OFF</Label>
-                </div>
-                <Separator orientation="vertical" className="h-6" />
-                <div className="flex items-center gap-1">
-                  <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom Out">
-                    <ZoomOut />
-                  </Button>
-                  <div className="w-14 text-center font-mono text-sm" title="Current Zoom">
-                    {Math.round(zoom * 100)}%
-                  </div>
-                  <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom In">
-                    <ZoomIn />
-                  </Button>
-                  <Separator orientation="vertical" className="h-6 mx-1" />
-                  <Button onClick={handleFitToScreen} variant="ghost" size="icon" className="h-8 w-8" aria-label="Fit to Screen">
-                    <Expand />
-                  </Button>
-                </div>
+                <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom In">
+                  <ZoomIn />
+                </Button>
+                <Separator orientation="vertical" className="h-6 mx-1" />
+                <Button onClick={handleFitToScreen} variant="ghost" size="icon" className="h-8 w-8" aria-label="Fit to Screen">
+                  <Expand />
+                </Button>
               </div>
             </div>
-            <TabsContent value="grid" className="flex-grow">
+          </div>
+          <div className="flex-grow overflow-auto" ref={viewportRef}>
+            <TabsContent value="grid" className="mt-0">
               <LedGrid />
             </TabsContent>
-            <TabsContent value="wiring" className="flex-grow">
+            <TabsContent value="wiring" className="mt-0">
               <WiringDiagram />
             </TabsContent>
-            <TabsContent value="raster" className="flex-grow">
+            <TabsContent value="raster" className="mt-0">
               <RasterMapPreview />
             </TabsContent>
-          </Tabs>
-        </div>
+          </div>
+        </Tabs>
       </SidebarInset>
     </SidebarProvider>
   );
