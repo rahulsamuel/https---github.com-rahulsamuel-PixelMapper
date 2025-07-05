@@ -3,7 +3,7 @@
 
 import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction } from "react";
-import { getPathOrder, type WiringPattern } from "@/lib/wiring";
+import { getWiringData, type WiringPattern } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 import { isColorDark } from "@/lib/utils";
 
@@ -959,43 +959,12 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       return;
     }
     
-    const { contentWidth, outputWidth, contentHeight, outputHeight } = rasterMapConfig;
-    const { tileWidth, tileHeight } = dimensions;
-
-    const sliceWidthMultiple = tileWidth > 0 ? (outputWidth % tileWidth === 0) : true;
-    const sliceHeightMultiple = tileHeight > 0 ? (outputHeight % tileHeight === 0) : true;
-    
-    if (sliceWidthMultiple && sliceHeightMultiple) {
-        setRasterOffset({ x: 0, y: 0 });
-        toast({
-            title: "Grid Aligned",
-            description: "The grid aligns perfectly with the raster slices.",
-            duration: 5000,
-        });
-        return;
-    }
-
-    let message = "";
-    if (!sliceWidthMultiple) {
-        const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
-        const commonDivisor = gcd(outputWidth, tileWidth);
-        const suggestedWidth = outputWidth / Math.round(outputWidth / tileWidth);
-        message += `The slice width (${outputWidth}px) is not a multiple of the tile width (${tileWidth}px). Tiles will be split horizontally. Try a tile width of ${suggestedWidth.toFixed(0)}px. `;
-    }
-    if (!sliceHeightMultiple) {
-        const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
-        const commonDivisor = gcd(outputHeight, tileHeight);
-        const suggestedHeight = outputHeight / Math.round(outputHeight / tileHeight);
-        message += `The slice height (${outputHeight}px) is not a multiple of the tile height (${tileHeight}px). Tiles will be split vertically. Try a tile height of ${suggestedHeight.toFixed(0)}px. `;
-    }
-
+    setRasterOffset({ x: 0, y: 0 });
     toast({
-        title: "Alignment Warning",
-        description: message,
-        variant: "destructive",
-        duration: 10000,
+      title: "Offset Reset",
+      description: "Raster offset has been reset to (0, 0).",
     });
-  }, [rasterMapConfig, activeBounds, dimensions, toast]);
+  }, [rasterMapConfig, activeBounds, toast]);
 
 
   const value = {

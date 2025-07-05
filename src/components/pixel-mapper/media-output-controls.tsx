@@ -4,7 +4,7 @@
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
 import { useMemo } from 'react';
 import { Button } from "@/components/ui/button";
-import { FileOutput, AlertTriangle, WandSparkles } from "lucide-react";
+import { FileOutput, WandSparkles } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
@@ -22,21 +22,6 @@ export function MediaOutputControls() {
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : dimensions.screenWidth * dimensions.tileWidth;
   const totalHeight = activeBounds ? (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight : dimensions.screenHeight * dimensions.tileHeight;
   const { tileWidth, tileHeight } = dimensions;
-
-  const isOutOfBounds = useMemo(() => {
-    if (!rasterMapConfig || !activeBounds || !rasterOffset) return false;
-    
-    const contentWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
-    const contentHeight = (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight;
-    const { outputWidth, outputHeight } = rasterMapConfig;
-
-    // Warn if the entire content area is moved outside the output frame.
-    const isHorizontallyOut = (rasterOffset.x + contentWidth) <= 0 || rasterOffset.x >= outputWidth;
-    const isVerticallyOut = (rasterOffset.y + contentHeight) <= 0 || rasterOffset.y >= outputHeight;
-    
-    return isHorizontallyOut || isVerticallyOut;
-
-  }, [rasterMapConfig, activeBounds, dimensions, rasterOffset]);
 
   const canAlign = useMemo(() => {
     return rasterMapConfig && rasterMapConfig.slices.length > 1;
@@ -87,12 +72,6 @@ export function MediaOutputControls() {
                   />
               </div>
           </div>
-          {isOutOfBounds && (
-              <div className="flex items-center gap-2 text-destructive text-sm font-medium pt-2">
-              <AlertTriangle className="size-4" />
-              <span>Content is outside the raster boundary.</span>
-              </div>
-          )}
           <div className="pt-2">
             <Button 
                 onClick={calculateAndApplyOptimalOffset} 
