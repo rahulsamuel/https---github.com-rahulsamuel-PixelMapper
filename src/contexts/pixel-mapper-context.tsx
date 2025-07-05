@@ -3,7 +3,7 @@
 
 import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction } from "react";
-import { getWiringData, type WiringPattern } from "@/lib/wiring";
+import { getWiringData, type WiringPattern, getPathOrder } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 import { isColorDark } from "@/lib/utils";
 
