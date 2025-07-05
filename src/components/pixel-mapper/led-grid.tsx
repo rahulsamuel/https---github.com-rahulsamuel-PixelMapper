@@ -29,14 +29,6 @@ export function LedGrid() {
     bottomHalfTile,
   } = usePixelMapper();
 
-  if (tiles.length === 0) {
-    return (
-      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-        <p>Set dimensions to see the grid.</p>
-      </div>
-    );
-  }
-
   const totalGridPixelHeight = useMemo(() => {
     let height = dimensions.screenHeight * dimensions.tileHeight;
     if (topHalfTile && dimensions.screenHeight >= 1) {
@@ -47,6 +39,14 @@ export function LedGrid() {
     }
     return Math.max(0, height);
   }, [dimensions.screenHeight, dimensions.tileHeight, topHalfTile, bottomHalfTile]);
+
+  if (tiles.length === 0) {
+    return (
+      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+        <p>Set dimensions to see the grid.</p>
+      </div>
+    );
+  }
 
   const gridStyle: React.CSSProperties = {
     display: "grid",
