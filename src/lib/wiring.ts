@@ -239,7 +239,7 @@ export function getWiringData({
 
       const sliceCol = Math.floor(absoluteContentX / sliceWidth);
       const sliceRow = Math.floor(absoluteContentY / sliceHeight);
-      const sliceKey = `${sliceRow}-${col}`;
+      const sliceKey = `${sliceRow}-${sliceCol}`;
       
       if (!tilesBySlice.has(sliceKey)) tilesBySlice.set(sliceKey, []);
       tilesBySlice.get(sliceKey)!.push(index);
