@@ -13,7 +13,7 @@ export function RasterMapPreview() {
     sliceOffsetLabels,
     dimensions,
     activeBounds,
-    showDataLabels,
+    showSliceOffsetLabels,
   } = usePixelMapper();
 
   const checkeredBg = useMemo(() => ({
@@ -84,7 +84,7 @@ export function RasterMapPreview() {
             )}
 
             {/* Offset labels */}
-            {showDataLabels && activeBounds && sliceOffsetLabels.map((label, index) => {
+            {showSliceOffsetLabels && activeBounds && sliceOffsetLabels.map((label, index) => {
               if (!label) return null;
 
               const tileX = index % dimensions.screenWidth;

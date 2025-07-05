@@ -30,6 +30,8 @@ export function WiringControls() {
     setArrowGap,
     dataLabelSize,
     setDataLabelSize,
+    showSliceOffsetLabels,
+    setShowSliceOffsetLabels,
   } = usePixelMapper();
 
   return (
@@ -64,6 +66,10 @@ export function WiringControls() {
       <div className="flex items-center justify-between">
         <Label htmlFor="show-data-labels">Show Data Path</Label>
         <Switch id="show-data-labels" checked={showDataLabels} onCheckedChange={setShowDataLabels} />
+      </div>
+       <div className="flex items-center justify-between">
+        <Label htmlFor="show-slice-offsets">Show Content Offsets</Label>
+        <Switch id="show-slice-offsets" checked={showSliceOffsetLabels} onCheckedChange={setShowSliceOffsetLabels} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="data-label-size">Label Size: {dataLabelSize}px</Label>

@@ -98,6 +98,7 @@ interface ProjectData {
   isWiringMirrored: boolean;
   dataLabelSize?: number;
   powerLabelSize?: number;
+  showSliceOffsetLabels: boolean;
 }
 
 interface PixelMapperState {
@@ -186,6 +187,8 @@ interface PixelMapperState {
   powerLabelSize: number;
   setPowerLabelSize: Dispatch<SetStateAction<number>>;
   calculateAndApplyOptimalOffset: () => void;
+  showSliceOffsetLabels: boolean;
+  setShowSliceOffsetLabels: Dispatch<SetStateAction<boolean>>;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -247,6 +250,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [tilesPerPowerString, setTilesPerPowerString] = useState("20");
   const [showDataLabels, setShowDataLabelsState] = useState(true);
   const [showPowerLabels, setShowPowerLabelsState] = useState(false);
+  const [showSliceOffsetLabels, setShowSliceOffsetLabels] = useState(true);
   const [wiringPattern, setWiringPattern] = useState<WiringPattern>('serpentine-horizontal');
   const [powerWiringPattern, setPowerWiringPattern] = useState<WiringPattern>('left-right');
   const [arrowheadSize, setArrowheadSize] = useState(20);
@@ -902,6 +906,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       isWiringMirrored,
       dataLabelSize,
       powerLabelSize,
+      showSliceOffsetLabels,
     };
 
     const jsonString = JSON.stringify(projectData, null, 2);
@@ -925,7 +930,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     lastRasterArgs, wiringPortConfig, showDataLabels, showPowerLabels, wiringPattern,
     powerWiringPattern, arrowheadSize, arrowheadLength, arrowGap,
     powerArrowheadSize, powerArrowheadLength, powerArrowGap, brushColor, 
-    tilesPerPowerString, isWiringMirrored, dataLabelSize, powerLabelSize, toast, labelColorMode
+    tilesPerPowerString, isWiringMirrored, dataLabelSize, powerLabelSize, toast, labelColorMode, showSliceOffsetLabels
   ]);
   
   const importProject = useCallback((file: File) => {
@@ -993,6 +998,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setIsWiringMirrored(data.isWiringMirrored || false);
         setDataLabelSize(data.dataLabelSize || 100);
         setPowerLabelSize(data.powerLabelSize || 100);
+        setShowSliceOffsetLabels(data.showSliceOffsetLabels ?? true);
         
         toast({
           title: "Import Successful",
@@ -1122,6 +1128,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     powerLabelSize,
     setPowerLabelSize,
     calculateAndApplyOptimalOffset,
+    showSliceOffsetLabels,
+    setShowSliceOffsetLabels,
   };
 
   return (
@@ -1130,5 +1138,3 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     </PixelMapperContext.Provider>
   );
 }
-
-    
