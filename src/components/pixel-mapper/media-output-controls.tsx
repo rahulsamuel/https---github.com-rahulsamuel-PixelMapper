@@ -2,9 +2,8 @@
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
-import { useMemo } from 'react';
 import { Button } from "@/components/ui/button";
-import { FileOutput, WandSparkles } from "lucide-react";
+import { FileOutput, RotateCcw } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
@@ -22,10 +21,6 @@ export function MediaOutputControls() {
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : dimensions.screenWidth * dimensions.tileWidth;
   const totalHeight = activeBounds ? (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight : dimensions.screenHeight * dimensions.tileHeight;
   const { tileWidth, tileHeight } = dimensions;
-
-  const canAlign = useMemo(() => {
-    return rasterMapConfig && rasterMapConfig.slices.length > 1;
-  }, [rasterMapConfig]);
 
 
   return (
@@ -77,10 +72,10 @@ export function MediaOutputControls() {
                 onClick={calculateAndApplyOptimalOffset} 
                 variant="outline" 
                 className="w-full"
-                disabled={!canAlign}
+                disabled={!rasterMapConfig}
             >
-                <WandSparkles className="mr-2 size-4" />
-                Align Tiles to Slices
+                <RotateCcw className="mr-2 size-4" />
+                Reset the Offset
             </Button>
           </div>
       </div>

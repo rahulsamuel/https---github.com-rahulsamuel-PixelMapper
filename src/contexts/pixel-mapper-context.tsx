@@ -952,7 +952,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const calculateAndApplyOptimalOffset = useCallback(() => {
     if (!rasterMapConfig || !activeBounds) {
       toast({
-          title: "Cannot Align",
+          title: "Cannot Reset Offset",
           description: "Raster map and active grid are required.",
           variant: "destructive",
       });
