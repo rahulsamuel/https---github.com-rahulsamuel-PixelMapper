@@ -821,13 +821,46 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
             masterCtx.textBaseline = 'middle';
             masterCtx.fillText(labels[index], tileXPos + tileWidth / 2, currentDrawY + rowPixelHeight / 2);
           }
+          
+          if (showSliceOffsetLabels && sliceOffsetLabels[index]) {
+            const labelText = sliceOffsetLabels[index];
+            const FONT_SIZE = 12;
+            const PADDING_X = 4;
+            const PADDING_Y = 2;
+            const OFFSET_X = 4;
+            const OFFSET_Y = 4;
+            
+            masterCtx.font = `${FONT_SIZE}px monospace`;
+            masterCtx.textBaseline = 'top';
+            masterCtx.textAlign = 'left';
+
+            const textMetrics = masterCtx.measureText(labelText);
+            const textWidth = textMetrics.width;
+            
+            // Background
+            masterCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            masterCtx.fillRect(
+                tileXPos + OFFSET_X,
+                currentDrawY + OFFSET_Y, 
+                textWidth + PADDING_X * 2, 
+                FONT_SIZE + PADDING_Y * 2
+            );
+            
+            // Text
+            masterCtx.fillStyle = 'white';
+            masterCtx.fillText(
+                labelText, 
+                tileXPos + OFFSET_X + PADDING_X, 
+                currentDrawY + OFFSET_Y + PADDING_Y
+            );
+          }
         }
       }
       currentDrawY += rowPixelHeight;
     }
 
     return masterCanvas;
-  }, [activeBounds, dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize, borderWidth, borderColor, labelColorMode, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
+  }, [activeBounds, dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize, borderWidth, borderColor, labelColorMode, topHalfTile, bottomHalfTile, effectiveScreenHeight, showSliceOffsetLabels, sliceOffsetLabels]);
 
 
   const downloadRasterSlices = useCallback(() => {
@@ -1313,5 +1346,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     </PixelMapperContext.Provider>
   );
 }
+
+    
 
     
