@@ -14,6 +14,7 @@ export function RasterMapPreview() {
     dimensions,
     activeBounds,
     showSliceOffsetLabels,
+    rasterMapRef,
   } = usePixelMapper();
 
   const checkeredBg = useMemo(() => ({
@@ -58,6 +59,7 @@ export function RasterMapPreview() {
   return (
      <div className="p-4 bg-muted/20 w-full">
         <div 
+          ref={rasterMapRef}
           className="relative bg-background shadow-lg border"
           style={{ 
               width: totalWidth, 

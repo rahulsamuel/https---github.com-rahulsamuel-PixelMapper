@@ -107,6 +107,7 @@ interface PixelMapperState {
   appState: string;
   gridRef: React.RefObject<HTMLDivElement>;
   wiringDiagramRef: React.RefObject<HTMLDivElement>;
+  rasterMapRef: React.RefObject<HTMLDivElement>;
   dimensions: Dimensions;
   setDimensions: Dispatch<SetStateAction<Dimensions>>;
   tiles: Tile[];
@@ -127,6 +128,7 @@ interface PixelMapperState {
   setBorderColor: Dispatch<SetStateAction<string>>;
   handleDownloadPng: (filename: string) => void;
   handleDownloadWiringDiagram: () => void;
+  handleDownloadFullRaster: () => void;
   generateRasterMap: (filename: string, outputWidth?: number, outputHeight?: number) => void;
   downloadRasterSlices: () => void;
   activeTool: ActiveTool;
@@ -212,6 +214,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [appState] = useState("ready");
   const gridRef = useRef<HTMLDivElement>(null);
   const wiringDiagramRef = useRef<HTMLDivElement>(null);
+  const rasterMapRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const nextTileId = useRef(0);
 
@@ -276,7 +279,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [bottomHalfTile, setBottomHalfTile] = useState(false);
 
   const effectiveScreenHeight = useMemo(() => {
-    return dimensions.screenHeight + (topHalfTile ? 1 : 0) + (bottomHalfTile ? 1 : 0);
+    let height = dimensions.screenHeight;
+    if (topHalfTile) height++;
+    if (bottomHalfTile) height++;
+    return height;
   }, [dimensions.screenHeight, topHalfTile, bottomHalfTile]);
 
   const zoom = zoomLevels[activeTab as keyof typeof zoomLevels] || 1;
@@ -978,6 +984,54 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       });
   }, [wiringDiagramRef, isWiringMirrored, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
 
+  const handleDownloadFullRaster = useCallback(() => {
+    if (rasterMapRef.current === null || !rasterMapConfig) {
+      toast({
+        title: "Download Failed",
+        description: "Raster map preview is not ready.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const node = rasterMapRef.current;
+    const { totalWidth, totalHeight } = rasterMapConfig;
+
+    const originalTransform = node.style.transform;
+    node.style.transform = 'none';
+
+    toPng(node, {
+      cacheBust: true,
+      backgroundColor: '#ffffff',
+      pixelRatio: 2,
+      width: totalWidth,
+      height: totalHeight,
+    })
+      .then((dataUrl) => {
+        const link = document.createElement("a");
+        link.download = `full-raster-map.png`;
+        link.href = dataUrl;
+        link.click();
+        
+        toast({
+          title: "Download Started",
+          description: "Your full raster map is being downloaded.",
+        });
+      })
+      .catch((err) => {
+        console.error("Failed to generate full raster map image", err);
+        toast({
+          title: "Download Failed",
+          description: "Could not generate the full raster map image.",
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        node.style.transform = originalTransform;
+      });
+  }, [rasterMapRef, rasterMapConfig, toast]);
+
+
   const exportProject = useCallback(() => {
     const projectData: ProjectData = {
       version: "1.0.3",
@@ -1160,6 +1214,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     appState,
     gridRef,
     wiringDiagramRef,
+    rasterMapRef,
     dimensions,
     setDimensions,
     tiles,
@@ -1180,6 +1235,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setBorderColor,
     handleDownloadPng,
     handleDownloadWiringDiagram,
+    handleDownloadFullRaster,
     generateRasterMap,
     downloadRasterSlices,
     activeTool,
