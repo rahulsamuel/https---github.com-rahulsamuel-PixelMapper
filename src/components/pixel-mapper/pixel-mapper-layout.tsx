@@ -204,40 +204,42 @@ export function PixelMapperLayout() {
                 </AccordionItem>
               )}
               
-              <AccordionItem value="editing" className="border-none">
-                <AccordionSectionTrigger icon={<Wand2 className="size-5" />} title="Editing Tools" />
-                <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
-                  <p className="text-sm text-muted-foreground pb-4">Select a tool to apply to the grid or restore deleted tiles.</p>
-                  <div className="space-y-4 pt-4">
-                    <EditTools />
-                    {activeTool === 'color' && <ColorToolControls />}
-                    <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/50">
-                      <div className="flex items-center gap-2">
-                        <Trash2 className="size-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">Deleted Tiles</span>
+              {activeTab === 'grid' && (
+                <AccordionItem value="editing" className="border-none">
+                  <AccordionSectionTrigger icon={<Wand2 className="size-5" />} title="Editing Tools" />
+                  <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
+                    <p className="text-sm text-muted-foreground pb-4">Select a tool to apply to the grid or restore deleted tiles.</p>
+                    <div className="space-y-4 pt-4">
+                      <EditTools />
+                      {activeTool === 'color' && <ColorToolControls />}
+                      <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/50">
+                        <div className="flex items-center gap-2">
+                          <Trash2 className="size-4 text-muted-foreground" />
+                          <span className="text-sm font-medium">Deleted Tiles</span>
+                        </div>
+                        <span className="font-mono text-lg font-bold">{deletedCount}</span>
                       </div>
-                      <span className="font-mono text-lg font-bold">{deletedCount}</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/50">
-                      <div className="flex items-center gap-2">
-                        <Palette className="size-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">Colored Tiles</span>
+                      <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/50">
+                        <div className="flex items-center gap-2">
+                          <Palette className="size-4 text-muted-foreground" />
+                          <span className="text-sm font-medium">Colored Tiles</span>
+                        </div>
+                        <span className="font-mono text-lg font-bold">{coloredCount}</span>
                       </div>
-                      <span className="font-mono text-lg font-bold">{coloredCount}</span>
+                      <div className="grid grid-cols-2 gap-2">
+                         <Button onClick={resetAllColors} variant="outline" className="w-full">
+                            <Eraser className="mr-2" />
+                            Reset Colors
+                        </Button>
+                        <Button onClick={restoreDeletedTiles} variant="outline" className="w-full">
+                            <RotateCcw className="mr-2" />
+                            Restore Deleted
+                        </Button>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                       <Button onClick={resetAllColors} variant="outline" className="w-full">
-                          <Eraser className="mr-2" />
-                          Reset Colors
-                      </Button>
-                      <Button onClick={restoreDeletedTiles} variant="outline" className="w-full">
-                          <RotateCcw className="mr-2" />
-                          Restore Deleted
-                      </Button>
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
 
               {activeTab === 'raster' && (
                 <AccordionItem value="export" className="border-none">
