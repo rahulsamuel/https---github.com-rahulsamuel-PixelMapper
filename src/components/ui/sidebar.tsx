@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -176,6 +177,11 @@ const Sidebar = React.forwardRef<
     ref
   ) => {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+    const [isClient, setIsClient] = React.useState(false)
+
+    React.useEffect(() => {
+      setIsClient(true)
+    }, [])
 
     if (collapsible === "none") {
       return (
@@ -188,6 +194,24 @@ const Sidebar = React.forwardRef<
           {...props}
         >
           {children}
+        </div>
+      )
+    }
+
+    if (!isClient) {
+       return (
+         <div
+          ref={ref}
+          className="group peer hidden md:block text-sidebar-foreground"
+          data-state="expanded"
+          data-variant={variant}
+          data-side={side}
+        >
+          <div
+            className={cn(
+              "duration-200 relative h-svh w-[--sidebar-width] bg-transparent transition-[width] ease-linear"
+            )}
+          />
         </div>
       )
     }
