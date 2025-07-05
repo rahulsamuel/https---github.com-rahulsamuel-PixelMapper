@@ -422,7 +422,20 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       
       if (currentSlice && pathOrder.length > 0) {
         const firstTileIndex = pathOrder[0];
-        newLabels[firstTileIndex] = `(${currentSlice.x},${currentSlice.y})`;
+        
+        const x = firstTileIndex % screenWidth;
+        const y = Math.floor(firstTileIndex / screenWidth);
+
+        const tileContentX = (x - activeBounds.minX) * tileWidth;
+        const tileContentY = (y - activeBounds.minY) * tileHeight;
+
+        const absoluteContentX = tileContentX + rasterOffset.x;
+        const absoluteContentY = tileContentY + rasterOffset.y;
+
+        const offsetXInSlice = absoluteContentX - currentSlice.x;
+        const offsetYInSlice = absoluteContentY - currentSlice.y;
+
+        newLabels[firstTileIndex] = `(${offsetXInSlice},${offsetYInSlice})`;
       }
     });
 
@@ -520,8 +533,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     // Calculate slices
     const slices: RasterSlice[] = [];
     const baseFilename = filename.replace('.png', '');
-    const numCols = Math.ceil(contentWidth / finalOutputWidth);
-    const numRows = Math.ceil(contentHeight / finalOutputHeight);
+    const numCols = Math.ceil((contentWidth + rasterOffset.x) / finalOutputWidth);
+    const numRows = Math.ceil((contentHeight + rasterOffset.y) / finalOutputHeight);
 
     const totalPreviewWidth = numCols * finalOutputWidth;
     const totalPreviewHeight = numRows * finalOutputHeight;
@@ -531,10 +544,16 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
             const sliceX = col * finalOutputWidth;
             const sliceY = row * finalOutputHeight;
             
-            const sliceContentWidth = Math.min(finalOutputWidth, contentWidth - sliceX);
-            const sliceContentHeight = Math.min(finalOutputHeight, contentHeight - sliceY);
+            // Check if this slice actually contains any part of the content
+            const contentRect = { x: rasterOffset.x, y: rasterOffset.y, width: contentWidth, height: contentHeight };
+            const sliceRect = { x: sliceX, y: sliceY, width: finalOutputWidth, height: finalOutputHeight };
 
-            if (sliceContentWidth <= 0 || sliceContentHeight <= 0) continue;
+            const intersects = (contentRect.x < sliceRect.x + sliceRect.width &&
+                                contentRect.x + contentRect.width > sliceRect.x &&
+                                contentRect.y < sliceRect.y + sliceRect.height &&
+                                contentRect.y + contentRect.height > sliceRect.y);
+            
+            if (!intersects) continue;
 
             const sliceFilename = (numCols > 1 || numRows > 1)
               ? `${baseFilename}-R${row + 1}-C${col + 1}.png`
@@ -1111,3 +1130,5 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     </PixelMapperContext.Provider>
   );
 }
+
+    

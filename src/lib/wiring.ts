@@ -264,7 +264,19 @@ export function getWiringData({
         const currentSlice = rasterMapConfig.slices.find(s => s.key === sliceKey);
         if (currentSlice && dataPathOrder.length > 0) {
             const firstTileIndex = dataPathOrder[0];
-            allTilesData[firstTileIndex].sliceOffsetLabel = `(${currentSlice.x},${currentSlice.y})`;
+            
+            const x = firstTileIndex % screenWidth;
+            const y = Math.floor(firstTileIndex / screenWidth);
+
+            const tileContentX = (x - activeBounds.minX) * tileWidth;
+            const tileContentY = (y - activeBounds.minY) * tileHeight;
+
+            if (rasterOffset) {
+              const absoluteContentX = tileContentX + rasterOffset.x;
+              const absoluteContentY = tileContentY + rasterOffset.y;
+
+              allTilesData[firstTileIndex].sliceOffsetLabel = `(${offsetXInSlice},${offsetYInSlice})`;
+            }
         }
     }
   } else {
@@ -280,3 +292,5 @@ export function getWiringData({
 
   return allTilesData;
 }
+
+    
