@@ -1,11 +1,14 @@
+
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 
 export function DimensionControls() {
-  const { dimensions, setDimensions } = usePixelMapper();
+  const { dimensions, setDimensions, topHalfTile, setTopHalfTile, bottomHalfTile, setBottomHalfTile } = usePixelMapper();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDimensions(prevDimensions => ({
@@ -62,6 +65,26 @@ export function DimensionControls() {
                     value={dimensions.screenHeight}
                     onChange={handleChange}
                     min="1"
+                />
+            </div>
+        </div>
+        <Separator />
+        <div className="space-y-4">
+            <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/20">
+                <Label htmlFor="top-half-tile">Add Top Half Tile</Label>
+                <Switch
+                    id="top-half-tile"
+                    checked={topHalfTile}
+                    onCheckedChange={setTopHalfTile}
+                />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/20">
+                <Label htmlFor="bottom-half-tile">Add Bottom Half Tile</Label>
+                <Switch
+                    id="bottom-half-tile"
+                    checked={bottomHalfTile}
+                    onCheckedChange={setBottomHalfTile}
+                    disabled={dimensions.screenHeight === 1 && topHalfTile}
                 />
             </div>
         </div>

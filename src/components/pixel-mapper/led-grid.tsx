@@ -3,6 +3,7 @@
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
 import { cn, isColorDark } from "@/lib/utils";
+import { useMemo } from "react";
 
 export function LedGrid() {
   const {
@@ -24,6 +25,8 @@ export function LedGrid() {
     onOffMode,
     sliceOffsetLabels,
     showSliceOffsetLabels,
+    topHalfTile,
+    bottomHalfTile,
   } = usePixelMapper();
 
   if (tiles.length === 0) {
@@ -34,23 +37,43 @@ export function LedGrid() {
     );
   }
 
+  const totalGridPixelHeight = useMemo(() => {
+    let height = dimensions.screenHeight * dimensions.tileHeight;
+    if (topHalfTile && dimensions.screenHeight >= 1) {
+      height -= dimensions.tileHeight / 2;
+    }
+    if (bottomHalfTile && dimensions.screenHeight > (topHalfTile ? 1 : 0)) {
+       height -= dimensions.tileHeight / 2;
+    }
+    return Math.max(0, height);
+  }, [dimensions.screenHeight, dimensions.tileHeight, topHalfTile, bottomHalfTile]);
+
   const gridStyle: React.CSSProperties = {
     display: "grid",
     gridTemplateColumns: `repeat(${dimensions.screenWidth}, 1fr)`,
-    gridTemplateRows: `repeat(${dimensions.screenHeight}, 1fr)`,
+    gridTemplateRows: `repeat(${dimensions.screenHeight}, auto)`,
     width: `${dimensions.screenWidth * dimensions.tileWidth}px`,
-    height: `${dimensions.screenHeight * dimensions.tileHeight}px`,
+    height: `${totalGridPixelHeight}px`,
     borderWidth: '1px',
     borderColor: 'hsl(var(--border))',
     transform: `scale(${zoom})`,
     transformOrigin: 'top left',
   };
 
-  const baseTileStyle: React.CSSProperties = {
-    width: `${dimensions.tileWidth}px`,
-    height: `${dimensions.tileHeight}px`,
-    borderWidth: `${borderWidth}px`,
-    borderColor: borderColor,
+  const getTileHeight = (y: number) => {
+    const isTopRow = y === 0;
+    const isBottomRow = y === dimensions.screenHeight - 1;
+
+    if (isTopRow && topHalfTile) {
+      return dimensions.tileHeight / 2;
+    }
+    if (isBottomRow && bottomHalfTile) {
+      // Avoid double-dipping for single-row screens
+      if (!isTopRow || !topHalfTile) {
+        return dimensions.tileHeight / 2;
+      }
+    }
+    return dimensions.tileHeight;
   };
 
   return (
@@ -77,10 +100,15 @@ export function LedGrid() {
             ? isColorDark(bgColor) ? '#FFFFFF' : '#000000'
             : labelColor;
 
-          const tileDynamicStyle = {
-            ...baseTileStyle,
+          const tileEffectiveHeight = getTileHeight(y);
+
+          const tileDynamicStyle: React.CSSProperties = {
+            width: `${dimensions.tileWidth}px`,
+            height: `${tileEffectiveHeight}px`,
+            borderWidth: `${borderWidth}px`,
+            borderColor: borderColor,
             backgroundColor: bgColor,
-            borderWidth: tile.deleted ? '0px' : `${borderWidth}px`,
+            borderStyle: tile.deleted ? 'none' : 'solid',
           };
 
           return (

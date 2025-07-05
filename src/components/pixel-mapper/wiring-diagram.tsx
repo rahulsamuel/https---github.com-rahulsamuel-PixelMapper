@@ -6,7 +6,7 @@ import { getWiringData } from "@/lib/wiring";
 import { RefreshCw } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { cn, isColorDark } from "@/lib/utils";
 
 export function WiringDiagram() {
@@ -46,6 +46,8 @@ export function WiringDiagram() {
     powerLabelSize,
     rasterOffset,
     showSliceOffsetLabels,
+    topHalfTile,
+    bottomHalfTile,
   } = usePixelMapper();
 
   const [isClient, setIsClient] = useState(false);
@@ -69,6 +71,28 @@ export function WiringDiagram() {
     portCount = powerPortsCount;
     portLabelText = 'Power Ports';
   }
+
+  const rowData = useMemo(() => {
+    const data: { yPos: number; height: number }[] = [];
+    let currentY = 0;
+    for (let i = 0; i < dimensions.screenHeight; i++) {
+        const isTop = i === 0;
+        const isBottom = i === dimensions.screenHeight - 1;
+        
+        let rowHeight = dimensions.tileHeight;
+        if (isTop && topHalfTile) {
+            rowHeight /= 2;
+        } else if (isBottom && bottomHalfTile) {
+             rowHeight /= 2;
+        }
+
+        data.push({ yPos: currentY, height: rowHeight });
+        currentY += rowHeight;
+    }
+    return data;
+  }, [dimensions, topHalfTile, bottomHalfTile]);
+
+  const totalGridPixelHeight = rowData.reduce((acc, curr) => acc + curr.height, 0);
 
   if (tiles.length === 0) {
     return (
@@ -102,7 +126,7 @@ export function WiringDiagram() {
           className="relative bg-background"
           style={{ 
             width: dimensions.screenWidth * dimensions.tileWidth, 
-            height: dimensions.screenHeight * dimensions.tileHeight,
+            height: totalGridPixelHeight,
             transform: `scale(${zoom})`,
             transformOrigin: 'top left',
           }}
@@ -110,6 +134,7 @@ export function WiringDiagram() {
           {wiringData.map(({ x, y, dataLabel, powerPortLabel, backupLabel, isDeleted, sliceOffsetLabel }, index) => {
             const originalIndex = y * dimensions.screenWidth + x;
             const tile = tiles[originalIndex];
+            const { yPos, height: tileHeight } = rowData[y];
 
             let bgColor;
             if (onOffMode) {
@@ -125,9 +150,9 @@ export function WiringDiagram() {
             }
 
             const tileStyle = {
-              top: y * dimensions.tileHeight,
+              top: yPos,
               width: dimensions.tileWidth,
-              height: dimensions.tileHeight,
+              height: tileHeight,
               backgroundColor: bgColor,
               border: isDeleted ? 'none' : `${borderWidth}px solid ${borderColor}`,
               boxSizing: 'border-box',
@@ -211,17 +236,20 @@ export function WiringDiagram() {
               className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
               style={{
                 width: dimensions.screenWidth * dimensions.tileWidth,
-                height: dimensions.screenHeight * dimensions.tileHeight,
+                height: totalGridPixelHeight,
               }}
             >
               {/* Data Arrows */}
               {isClient && showDataLabels && wiringData.map(({ x, y, nextTile, isDeleted }) => {
                 if (isDeleted || !nextTile) return null;
+                
+                const startRow = rowData[y];
+                const endRow = rowData[nextTile.y];
 
                 const startX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - x) : x) * dimensions.tileWidth + dimensions.tileWidth / 2;
-                const startY_center = y * dimensions.tileHeight + dimensions.tileHeight / 2;
+                const startY_center = startRow.yPos + startRow.height / 2;
                 const endX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - nextTile.x) : nextTile.x) * dimensions.tileWidth + dimensions.tileWidth / 2;
-                const endY_center = nextTile.y * dimensions.tileHeight + dimensions.tileHeight / 2;
+                const endY_center = endRow.yPos + endRow.height / 2;
                 
                 const dx = endX_center - startX_center;
                 const dy = endY_center - startY_center;
@@ -258,10 +286,13 @@ export function WiringDiagram() {
               {isClient && showPowerLabels && wiringData.map(({ x, y, nextPowerTile, isDeleted }) => {
                 if (isDeleted || !nextPowerTile) return null;
 
+                const startRow = rowData[y];
+                const endRow = rowData[nextPowerTile.y];
+
                 const startX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - x) : x) * dimensions.tileWidth + dimensions.tileWidth / 2;
-                const startY_center = y * dimensions.tileHeight + dimensions.tileHeight / 2;
+                const startY_center = startRow.yPos + startRow.height / 2;
                 const endX_center = (isWiringMirrored ? (dimensions.screenWidth - 1 - nextPowerTile.x) : nextPowerTile.x) * dimensions.tileWidth + dimensions.tileWidth / 2;
-                const endY_center = nextPowerTile.y * dimensions.tileHeight + dimensions.tileHeight / 2;
+                const endY_center = endRow.yPos + endRow.height / 2;
                 
                 const dx = endX_center - startX_center;
                 const dy = endY_center - startY_center;

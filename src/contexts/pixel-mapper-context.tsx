@@ -2,7 +2,7 @@
 "use client";
 
 import { toPng } from "html-to-image";
-import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction } from "react";
+import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction, useMemo } from "react";
 import { getWiringData, type WiringPattern, getPathOrder } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 import { isColorDark } from "@/lib/utils";
@@ -99,6 +99,8 @@ interface ProjectData {
   dataLabelSize?: number;
   powerLabelSize?: number;
   showSliceOffsetLabels: boolean;
+  topHalfTile?: boolean;
+  bottomHalfTile?: boolean;
 }
 
 interface PixelMapperState {
@@ -189,6 +191,10 @@ interface PixelMapperState {
   calculateAndApplyOptimalOffset: () => void;
   showSliceOffsetLabels: boolean;
   setShowSliceOffsetLabels: Dispatch<SetStateAction<boolean>>;
+  topHalfTile: boolean;
+  setTopHalfTile: Dispatch<SetStateAction<boolean>>;
+  bottomHalfTile: boolean;
+  setBottomHalfTile: Dispatch<SetStateAction<boolean>>;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -262,6 +268,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [isWiringMirrored, setIsWiringMirrored] = useState(false);
   const [dataLabelSize, setDataLabelSize] = useState(100);
   const [powerLabelSize, setPowerLabelSize] = useState(100);
+
+  // Half-tile state
+  const [topHalfTile, setTopHalfTile] = useState(false);
+  const [bottomHalfTile, setBottomHalfTile] = useState(false);
 
   const zoom = zoomLevels[activeTab as keyof typeof zoomLevels] || 1;
   
@@ -404,10 +414,26 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       const x = index % screenWidth;
       const y = Math.floor(index / screenWidth);
 
-      if (x < activeBounds.minX || x > activeBounds.maxX || y < activeBounds.minY || y > activeBounds.maxY) return;
+      if (x < activeBounds.minX || x > activeBounds.maxX || y < activeBounds.minY || y > activeBounds.maxY) {
+                return;
+              }
       
       const tileContentX = (x - activeBounds.minX) * tileWidth;
-      const tileContentY = (y - activeBounds.minY) * tileHeight;
+      const tileContentY = (() => {
+        let height = 0;
+        for (let i = activeBounds.minY; i < y; i++) {
+          const isTopRow = i === 0;
+          const isBottomRow = i === screenHeight - 1;
+          let rowHeight = tileHeight;
+          if (isTopRow && topHalfTile) {
+            rowHeight /= 2;
+          } else if (isBottomRow && bottomHalfTile) {
+            rowHeight /= 2;
+          }
+          height += rowHeight;
+        }
+        return height;
+      })();
       
       const absoluteContentX = tileContentX + rasterOffset.x;
       const absoluteContentY = tileContentY + rasterOffset.y;
@@ -431,7 +457,21 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         const y = Math.floor(firstTileIndex / screenWidth);
 
         const tileContentX = (x - activeBounds.minX) * tileWidth;
-        const tileContentY = (y - activeBounds.minY) * tileHeight;
+        const tileContentY = (() => {
+          let height = 0;
+          for (let i = activeBounds.minY; i < y; i++) {
+            const isTopRow = i === 0;
+            const isBottomRow = i === screenHeight - 1;
+            let rowHeight = tileHeight;
+            if (isTopRow && topHalfTile) {
+              rowHeight /= 2;
+            } else if (isBottomRow && bottomHalfTile) {
+              rowHeight /= 2;
+            }
+            height += rowHeight;
+          }
+          return height;
+        })();
 
         const absoluteContentX = tileContentX + rasterOffset.x;
         const absoluteContentY = tileContentY + rasterOffset.y;
@@ -444,7 +484,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     });
 
     setSliceOffsetLabels(newLabels);
-  }, [tiles, dimensions, rasterMapConfig, activeBounds, rasterOffset, wiringPattern]);
+  }, [tiles, dimensions, rasterMapConfig, activeBounds, rasterOffset, wiringPattern, topHalfTile, bottomHalfTile]);
 
 
   const toggleTile = useCallback((index: number) => {
@@ -485,10 +525,36 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
     const node = gridRef.current;
     
+    const rowYPositions = [0];
+    let accumulator = 0;
+    for (let i = 0; i < dimensions.screenHeight -1; i++) {
+        const isTopRow = i === 0;
+        const rowHeight = (isTopRow && topHalfTile) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
+        accumulator += rowHeight;
+        rowYPositions.push(accumulator);
+    }
+
+    const contentPixelHeight = (() => {
+        if (!activeBounds) return 0;
+        let height = 0;
+        for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
+          const isTopRow = y === 0;
+          const isBottomRow = y === dimensions.screenHeight - 1;
+          let rowHeight = dimensions.tileHeight;
+          if (isTopRow && topHalfTile) {
+            rowHeight /= 2;
+          } else if (isBottomRow && bottomHalfTile) {
+            rowHeight /= 2;
+          }
+          height += rowHeight;
+        }
+        return height;
+      })();
+
     const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
-    const cropHeight = (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight;
+    const cropHeight = contentPixelHeight;
     const sx = activeBounds.minX * dimensions.tileWidth;
-    const sy = activeBounds.minY * dimensions.tileHeight;
+    const sy = rowYPositions[activeBounds.minY];
 
     toPng(node, {
         cacheBust: true,
@@ -509,7 +575,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       .catch((err) => {
         console.error("Could not generate PNG.", err);
       });
-  }, [gridRef, activeBounds, dimensions]);
+  }, [gridRef, activeBounds, dimensions, topHalfTile, bottomHalfTile]);
 
   const regenerateRasterPreview = useCallback(() => {
     if (!activeBounds || !lastRasterArgs) {
@@ -518,8 +584,26 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     }
     const { filename, outputWidth, outputHeight } = lastRasterArgs;
     const { screenWidth, tileWidth, tileHeight } = dimensions;
+
+    const contentPixelHeight = (() => {
+        if (!activeBounds) return 0;
+        let height = 0;
+        for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
+          const isTopRow = y === 0;
+          const isBottomRow = y === dimensions.screenHeight - 1;
+          let rowHeight = dimensions.tileHeight;
+          if (isTopRow && topHalfTile) {
+            rowHeight /= 2;
+          } else if (isBottomRow && bottomHalfTile) {
+            rowHeight /= 2;
+          }
+          height += rowHeight;
+        }
+        return height;
+      })();
+      
     const contentWidth = (activeBounds.maxX - activeBounds.minX + 1) * tileWidth;
-    const contentHeight = (activeBounds.maxY - activeBounds.minY + 1) * tileHeight;
+    const contentHeight = contentPixelHeight;
 
     if (contentWidth <= 0 || contentHeight <= 0) {
       setRasterMapConfig(null);
@@ -588,15 +672,22 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     masterCtx.fillStyle = 'black';
     masterCtx.fillRect(0, 0, fullContentCanvas.width, fullContentCanvas.height);
 
-    tiles.forEach((tile, index) => {
-      if (!tile.deleted) {
-        const x = index % screenWidth;
-        const y = Math.floor(index / screenWidth);
+    let currentDrawY = 0;
+    for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
+      const isTopRow = y === 0;
+      const isBottomRow = y === screenHeight - 1;
+      let rowPixelHeight = tileHeight;
+      if (isTopRow && topHalfTile) {
+        rowPixelHeight /= 2;
+      } else if (isBottomRow && bottomHalfTile) {
+        rowPixelHeight /= 2;
+      }
 
-        if (x >= activeBounds.minX && x <= activeBounds.maxX && y >= activeBounds.minY && y <= activeBounds.maxY) {
+      for (let x = activeBounds.minX; x <= activeBounds.maxX; x++) {
+        const index = y * screenWidth + x;
+        const tile = tiles[index];
+        if (tile && !tile.deleted) {
           const tileXPos = (x - activeBounds.minX) * tileWidth;
-          const tileYPos = (y - activeBounds.minY) * tileHeight;
-          
           let bgColor;
           if (onOffMode) {
             bgColor = '#FFFFFF';
@@ -607,16 +698,16 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
           }
 
           masterCtx.fillStyle = bgColor;
-          masterCtx.fillRect(tileXPos, tileYPos, tileWidth, tileHeight);
+          masterCtx.fillRect(tileXPos, currentDrawY, tileWidth, rowPixelHeight);
 
           if (borderWidth > 0) {
               masterCtx.strokeStyle = borderColor;
               masterCtx.lineWidth = borderWidth;
               masterCtx.strokeRect(
                   tileXPos + borderWidth / 2, 
-                  tileYPos + borderWidth / 2, 
+                  currentDrawY + borderWidth / 2, 
                   tileWidth - borderWidth, 
-                  tileHeight - borderWidth
+                  rowPixelHeight - borderWidth
               );
           }
 
@@ -628,11 +719,12 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
             masterCtx.font = `bold ${labelFontSize}px sans-serif`;
             masterCtx.textAlign = 'center';
             masterCtx.textBaseline = 'middle';
-            masterCtx.fillText(labels[index], tileXPos + tileWidth / 2, tileYPos + tileHeight / 2);
+            masterCtx.fillText(labels[index], tileXPos + tileWidth / 2, currentDrawY + rowPixelHeight / 2);
           }
         }
       }
-    });
+      currentDrawY += rowPixelHeight;
+    }
     
     const previewImage = fullContentCanvas.toDataURL('image/png');
 
@@ -648,7 +740,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         rasterOffset,
         resolutionType,
     });
-  }, [activeBounds, lastRasterArgs, dimensions, tiles, onOffMode, tileColor, tileColorTwo, showLabels, labels, labelColor, labelFontSize, rasterOffset, borderWidth, borderColor, labelColorMode]);
+  }, [activeBounds, lastRasterArgs, dimensions, tiles, onOffMode, tileColor, tileColorTwo, showLabels, labels, labelColor, labelFontSize, rasterOffset, borderWidth, borderColor, labelColorMode, topHalfTile, bottomHalfTile]);
 
 
   useEffect(() => {
@@ -673,9 +765,27 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     if (!activeBounds) return null;
 
     const { screenWidth, tileWidth, tileHeight } = dimensions;
+    const { screenHeight } = dimensions;
+
+    const contentPixelHeight = (() => {
+        if (!activeBounds) return 0;
+        let height = 0;
+        for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
+          const isTopRow = y === 0;
+          const isBottomRow = y === screenHeight - 1;
+          let rowHeight = tileHeight;
+          if (isTopRow && topHalfTile) {
+            rowHeight /= 2;
+          } else if (isBottomRow && bottomHalfTile) {
+            rowHeight /= 2;
+          }
+          height += rowHeight;
+        }
+        return height;
+    })();
 
     const contentWidth = (activeBounds.maxX - activeBounds.minX + 1) * tileWidth;
-    const contentHeight = (activeBounds.maxY - activeBounds.minY + 1) * tileHeight;
+    const contentHeight = contentPixelHeight;
 
     const masterCanvas = document.createElement('canvas');
     masterCanvas.width = contentWidth;
@@ -686,14 +796,22 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     masterCtx.fillStyle = 'black';
     masterCtx.fillRect(0, 0, masterCanvas.width, masterCanvas.height);
 
-    tiles.forEach((tile, index) => {
-      if (!tile.deleted) {
-        const x = index % screenWidth;
-        const y = Math.floor(index / screenWidth);
+    let currentDrawY = 0;
+    for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
+      const isTopRow = y === 0;
+      const isBottomRow = y === screenHeight - 1;
+      let rowPixelHeight = tileHeight;
+      if (isTopRow && topHalfTile) {
+        rowPixelHeight /= 2;
+      } else if (isBottomRow && bottomHalfTile) {
+        rowPixelHeight /= 2;
+      }
 
-        if (x >= activeBounds.minX && x <= activeBounds.maxX && y >= activeBounds.minY && y <= activeBounds.maxY) {
+      for (let x = activeBounds.minX; x <= activeBounds.maxX; x++) {
+        const index = y * screenWidth + x;
+        const tile = tiles[index];
+        if (tile && !tile.deleted) {
           const tileXPos = (x - activeBounds.minX) * tileWidth;
-          const tileYPos = (y - activeBounds.minY) * tileHeight;
           
           let bgColor;
           if (onOffMode) {
@@ -705,12 +823,12 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
           }
 
           masterCtx.fillStyle = bgColor;
-          masterCtx.fillRect(tileXPos, tileYPos, tileWidth, tileHeight);
+          masterCtx.fillRect(tileXPos, currentDrawY, tileWidth, rowPixelHeight);
 
           if (borderWidth > 0) {
             masterCtx.strokeStyle = borderColor;
             masterCtx.lineWidth = borderWidth;
-            masterCtx.strokeRect(tileXPos + borderWidth / 2, tileYPos + borderWidth / 2, tileWidth - borderWidth, tileHeight - borderWidth);
+            masterCtx.strokeRect(tileXPos + borderWidth / 2, currentDrawY + borderWidth / 2, tileWidth - borderWidth, rowPixelHeight - borderWidth);
           }
 
 
@@ -722,14 +840,15 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
             masterCtx.font = `bold ${labelFontSize}px sans-serif`;
             masterCtx.textAlign = 'center';
             masterCtx.textBaseline = 'middle';
-            masterCtx.fillText(labels[index], tileXPos + tileWidth / 2, tileYPos + tileHeight / 2);
+            masterCtx.fillText(labels[index], tileXPos + tileWidth / 2, currentDrawY + rowPixelHeight / 2);
           }
         }
       }
-    });
+      currentDrawY += rowPixelHeight;
+    }
 
     return masterCanvas;
-  }, [activeBounds, dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize, borderWidth, borderColor, labelColorMode]);
+  }, [activeBounds, dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize, borderWidth, borderColor, labelColorMode, topHalfTile, bottomHalfTile]);
 
 
   const downloadRasterSlices = useCallback(() => {
@@ -794,12 +913,38 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
     const node = wiringDiagramRef.current;
     
+    const contentPixelHeight = (() => {
+        if (!activeBounds) return 0;
+        let height = 0;
+        for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
+          const isTopRow = y === 0;
+          const isBottomRow = y === dimensions.screenHeight - 1;
+          let rowHeight = dimensions.tileHeight;
+          if (isTopRow && topHalfTile) {
+            rowHeight /= 2;
+          } else if (isBottomRow && bottomHalfTile) {
+            rowHeight /= 2;
+          }
+          height += rowHeight;
+        }
+        return height;
+      })();
+    
+    const rowYPositions = [0];
+    let accumulator = 0;
+    for (let i = 0; i < dimensions.screenHeight -1; i++) {
+        const isTopRow = i === 0;
+        const rowHeight = (isTopRow && topHalfTile) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
+        accumulator += rowHeight;
+        rowYPositions.push(accumulator);
+    }
+    
     const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
-    const cropHeight = (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight;
+    const cropHeight = contentPixelHeight;
     const sx = isWiringMirrored 
         ? (dimensions.screenWidth - 1 - activeBounds.maxX) * dimensions.tileWidth
         : activeBounds.minX * dimensions.tileWidth;
-    const sy = activeBounds.minY * dimensions.tileHeight;
+    const sy = rowYPositions[activeBounds.minY];
 
     // Manually set colors before capturing
     const computedStyle = getComputedStyle(document.documentElement);
@@ -867,11 +1012,11 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
             }
         });
       });
-  }, [wiringDiagramRef, isWiringMirrored, toast, activeBounds, dimensions]);
+  }, [wiringDiagramRef, isWiringMirrored, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile]);
 
   const exportProject = useCallback(() => {
     const projectData: ProjectData = {
-      version: "1.0.1",
+      version: "1.0.2",
       dimensions,
       tiles,
       tileColor,
@@ -907,6 +1052,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       dataLabelSize,
       powerLabelSize,
       showSliceOffsetLabels,
+      topHalfTile,
+      bottomHalfTile,
     };
 
     const jsonString = JSON.stringify(projectData, null, 2);
@@ -930,7 +1077,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     lastRasterArgs, wiringPortConfig, showDataLabels, showPowerLabels, wiringPattern,
     powerWiringPattern, arrowheadSize, arrowheadLength, arrowGap,
     powerArrowheadSize, powerArrowheadLength, powerArrowGap, brushColor, 
-    tilesPerPowerString, isWiringMirrored, dataLabelSize, powerLabelSize, toast, labelColorMode, showSliceOffsetLabels
+    tilesPerPowerString, isWiringMirrored, dataLabelSize, powerLabelSize, toast, labelColorMode, showSliceOffsetLabels,
+    topHalfTile, bottomHalfTile
   ]);
   
   const importProject = useCallback((file: File) => {
@@ -955,8 +1103,6 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
         // Apply state
         setDimensions(data.dimensions);
-        // Important: Set tiles *after* dimensions, and don't rely on the useEffect.
-        // This preserves the `deleted` state from the imported file.
         setTiles(data.tiles); 
         setTileColor(data.tileColor);
         setTileColorTwo(data.tileColorTwo);
@@ -974,7 +1120,6 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         if (data.zoomLevels) {
           setZoomLevels(data.zoomLevels);
         } else if (data.zoom) {
-          // Handle legacy projects with a single zoom value
           const legacyZoom = data.zoom;
           setZoomLevels({ grid: legacyZoom, wiring: legacyZoom, raster: legacyZoom });
         }
@@ -999,6 +1144,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setDataLabelSize(data.dataLabelSize || 100);
         setPowerLabelSize(data.powerLabelSize || 100);
         setShowSliceOffsetLabels(data.showSliceOffsetLabels ?? true);
+        setTopHalfTile(data.topHalfTile ?? false);
+        setBottomHalfTile(data.bottomHalfTile ?? false);
         
         toast({
           title: "Import Successful",
@@ -1130,6 +1277,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     calculateAndApplyOptimalOffset,
     showSliceOffsetLabels,
     setShowSliceOffsetLabels,
+    topHalfTile,
+    setTopHalfTile,
+    bottomHalfTile,
+    setBottomHalfTile,
   };
 
   return (

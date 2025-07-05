@@ -1,3 +1,4 @@
+
 "use client";
 
 import { usePixelMapper } from "@/contexts/pixel-mapper-context";
@@ -34,16 +35,34 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { DownloadsControls } from "./downloads-controls";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 
 
 export function PixelMapperLayout() {
-  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab } = usePixelMapper();
+  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile } = usePixelMapper();
   const [activeAccordion, setActiveAccordion] = useState("grid-setup");
   const viewportRef = useRef<HTMLDivElement>(null);
 
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : 0;
-  const totalHeight = activeBounds ? (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight : 0;
+  
+  const totalHeight = useMemo(() => {
+    if (!activeBounds) return 0;
+    let height = 0;
+    for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
+      const isTopRow = y === 0;
+      const isBottomRow = y === dimensions.screenHeight - 1;
+      
+      let rowHeight = dimensions.tileHeight;
+      if (isTopRow && topHalfTile) {
+        rowHeight /= 2;
+      } else if (isBottomRow && bottomHalfTile) {
+        rowHeight /= 2;
+      }
+      height += rowHeight;
+    }
+    return height;
+  }, [activeBounds, dimensions, topHalfTile, bottomHalfTile]);
+
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev * 1.2, 5));
   const handleZoomOut = () => setZoom(prev => Math.max(prev / 1.2, 0.1));
