@@ -274,6 +274,9 @@ export function getWiringData({
             if (rasterOffset) {
               const absoluteContentX = tileContentX + rasterOffset.x;
               const absoluteContentY = tileContentY + rasterOffset.y;
+              
+              const offsetXInSlice = absoluteContentX - currentSlice.x;
+              const offsetYInSlice = absoluteContentY - currentSlice.y;
 
               allTilesData[firstTileIndex].sliceOffsetLabel = `(${offsetXInSlice},${offsetYInSlice})`;
             }
@@ -292,5 +295,3 @@ export function getWiringData({
 
   return allTilesData;
 }
-
-    
