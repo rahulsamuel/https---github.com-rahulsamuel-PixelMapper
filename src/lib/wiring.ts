@@ -49,6 +49,7 @@ interface WiringInfo {
   isDeleted: boolean;
   nextTile: { x: number; y: number } | null;
   nextPowerTile: { x: number; y: number } | null;
+  sliceOffsetLabel?: string;
 }
 
 export function getPathOrder(indices: number[], pattern: WiringPattern, screenWidth: number, screenHeight: number): number[] {
@@ -216,6 +217,7 @@ export function getWiringData({
     isDeleted: tile.deleted,
     nextTile: null,
     nextPowerTile: null,
+    sliceOffsetLabel: "",
   }));
 
   const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
@@ -237,7 +239,7 @@ export function getWiringData({
 
       const sliceCol = Math.floor(absoluteContentX / sliceWidth);
       const sliceRow = Math.floor(absoluteContentY / sliceHeight);
-      const sliceKey = `${sliceRow}-${sliceCol}`;
+      const sliceKey = `${sliceRow}-${col}`;
       
       if (!tilesBySlice.has(sliceKey)) tilesBySlice.set(sliceKey, []);
       tilesBySlice.get(sliceKey)!.push(index);
@@ -256,6 +258,12 @@ export function getWiringData({
         const dataPathOrder = getPathOrder(sliceIndices, wiringPattern, screenWidth, screenHeight);
         const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
         applyDataWiring(dataTilesPath, wiringPortConfig);
+        
+        const currentSlice = rasterMapConfig.slices.find(s => s.key === sliceKey);
+        if (currentSlice && dataPathOrder.length > 0) {
+            const firstTileIndex = dataPathOrder[0];
+            allTilesData[firstTileIndex].sliceOffsetLabel = `(${currentSlice.x},${currentSlice.y})`;
+        }
     }
   } else {
     const dataPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
@@ -269,28 +277,4 @@ export function getWiringData({
   applyPowerWiring(powerTilesPath, tilesPerPowerString, powerCounters);
 
   return allTilesData;
-}
-
-
-/**
- * Determines if a given hex color is dark.
- * @param hexColor - The color in hex format (e.g., "#RRGGBB").
- * @returns True if the color is dark, false otherwise.
- */
-export function isColorDark(hexColor: string): boolean {
-  if (!hexColor || hexColor.length < 4) {
-    // Return a default for invalid or short hex codes
-    return false;
-  }
-  
-  // Convert hex to RGB
-  const hex = hexColor.replace("#", "");
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-
-  // Calculate luminance
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-
-  return luminance < 0.5;
 }

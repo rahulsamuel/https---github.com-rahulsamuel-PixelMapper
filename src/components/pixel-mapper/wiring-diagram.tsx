@@ -105,7 +105,7 @@ export function WiringDiagram() {
             transformOrigin: 'top left',
           }}
         >
-          {wiringData.map(({ x, y, dataLabel, powerPortLabel, backupLabel, isDeleted }, index) => {
+          {wiringData.map(({ x, y, dataLabel, powerPortLabel, backupLabel, isDeleted, sliceOffsetLabel }, index) => {
             const originalIndex = y * dimensions.screenWidth + x;
             const tile = tiles[originalIndex];
 
@@ -164,6 +164,13 @@ export function WiringDiagram() {
                       >
                         {labels[originalIndex]}
                       </span>
+                    )}
+                    {showDataLabels && sliceOffsetLabel && (
+                        <div
+                            className="absolute top-1 left-1 bg-black/60 text-white text-xs font-mono px-1 py-0.5 rounded z-20"
+                        >
+                            {sliceOffsetLabel}
+                        </div>
                     )}
                     <div
                       className="flex flex-col items-center justify-center h-full w-full text-foreground relative"

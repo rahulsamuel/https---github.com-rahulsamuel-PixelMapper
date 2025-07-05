@@ -3,8 +3,9 @@
 
 import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction } from "react";
-import { getPathOrder, type WiringPattern, isColorDark } from "@/lib/wiring";
+import { getPathOrder, type WiringPattern } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
+import { isColorDark } from "@/lib/utils";
 
 interface Dimensions {
   tileWidth: number;
@@ -224,7 +225,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [labelFontSize, setLabelFontSize] = useState(30);
   const [labelColor, setLabelColor] = useState("#ffffff");
   const [labelPosition, setLabelPosition] = useState<LabelPosition>('center');
-  const [labelColorMode, setLabelColorMode] = useState<LabelColorMode>('single');
+  const [labelColorMode, setLabelColorMode] = useState<LabelColorMode>('auto');
   const [labels, setLabels] = useState<string[]>([]);
   
   const [zoomLevels, setZoomLevels] = useState({ grid: 1, wiring: 1, raster: 1 });
@@ -893,7 +894,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setLabelFontSize(data.labelFontSize);
         setLabelColor(data.labelColor);
         setLabelPosition(data.labelPosition || 'center');
-        setLabelColorMode(data.labelColorMode || 'single');
+        setLabelColorMode(data.labelColorMode || 'auto');
         setOnOffMode(data.onOffMode);
         
         if (data.zoomLevels) {
@@ -958,29 +959,43 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       return;
     }
     
-    const { contentWidth, contentHeight, outputWidth, outputHeight } = rasterMapConfig;
+    const { contentWidth, outputWidth, contentHeight, outputHeight } = rasterMapConfig;
     const { tileWidth, tileHeight } = dimensions;
 
-    let newOffsetX = rasterOffset.x;
-    if (contentWidth > outputWidth && tileWidth > 0) {
-        let adjustmentX = (outputWidth - (rasterOffset.x % tileWidth) + tileWidth) % tileWidth;
-        newOffsetX += adjustmentX;
-    }
+    const sliceWidthMultiple = tileWidth > 0 ? (outputWidth % tileWidth === 0) : true;
+    const sliceHeightMultiple = tileHeight > 0 ? (outputHeight % tileHeight === 0) : true;
     
-    let newOffsetY = rasterOffset.y;
-    if (contentHeight > outputHeight && tileHeight > 0) {
-        let adjustmentY = (outputHeight - (rasterOffset.y % tileHeight) + tileHeight) % tileHeight;
-        newOffsetY += adjustmentY;
+    if (sliceWidthMultiple && sliceHeightMultiple) {
+        setRasterOffset({ x: 0, y: 0 });
+        toast({
+            title: "Grid Aligned",
+            description: "The grid aligns perfectly with the raster slices.",
+            duration: 5000,
+        });
+        return;
     }
 
-    setRasterOffset({ x: newOffsetX, y: newOffsetY });
+    let message = "";
+    if (!sliceWidthMultiple) {
+        const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+        const commonDivisor = gcd(outputWidth, tileWidth);
+        const suggestedWidth = outputWidth / Math.round(outputWidth / tileWidth);
+        message += `The slice width (${outputWidth}px) is not a multiple of the tile width (${tileWidth}px). Tiles will be split horizontally. Try a tile width of ${suggestedWidth.toFixed(0)}px. `;
+    }
+    if (!sliceHeightMultiple) {
+        const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+        const commonDivisor = gcd(outputHeight, tileHeight);
+        const suggestedHeight = outputHeight / Math.round(outputHeight / tileHeight);
+        message += `The slice height (${outputHeight}px) is not a multiple of the tile height (${tileHeight}px). Tiles will be split vertically. Try a tile height of ${suggestedHeight.toFixed(0)}px. `;
+    }
 
     toast({
-        title: "Grid Aligned",
-        description: `Offsets adjusted for best fit.`,
-        duration: 5000,
+        title: "Alignment Warning",
+        description: message,
+        variant: "destructive",
+        duration: 10000,
     });
-  }, [rasterMapConfig, activeBounds, dimensions, toast, rasterOffset]);
+  }, [rasterMapConfig, activeBounds, dimensions, toast]);
 
 
   const value = {
