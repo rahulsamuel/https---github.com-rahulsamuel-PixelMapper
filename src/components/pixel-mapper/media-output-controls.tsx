@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { FileOutput, RotateCcw } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 
 export function MediaOutputControls() {
   const { 
@@ -16,6 +18,8 @@ export function MediaOutputControls() {
     rasterOffset, 
     setRasterOffset,
     calculateAndApplyOptimalOffset,
+    showSliceOffsetLabels,
+    setShowSliceOffsetLabels,
   } = usePixelMapper();
   
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : dimensions.screenWidth * dimensions.tileWidth;
@@ -78,6 +82,11 @@ export function MediaOutputControls() {
                 Reset the Offset
             </Button>
           </div>
+      </div>
+      <Separator />
+      <div className="flex items-center justify-between">
+          <Label htmlFor="show-slice-offsets-raster">Show Content Offsets</Label>
+          <Switch id="show-slice-offsets-raster" checked={showSliceOffsetLabels} onCheckedChange={setShowSliceOffsetLabels} />
       </div>
     </div>
   );

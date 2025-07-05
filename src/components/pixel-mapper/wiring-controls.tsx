@@ -68,8 +68,8 @@ export function WiringControls() {
         <Switch id="show-data-labels" checked={showDataLabels} onCheckedChange={setShowDataLabels} />
       </div>
        <div className="flex items-center justify-between">
-        <Label htmlFor="show-slice-offsets">Show Content Offsets</Label>
-        <Switch id="show-slice-offsets" checked={showSliceOffsetLabels} onCheckedChange={setShowSliceOffsetLabels} />
+        <Label htmlFor="show-slice-offsets-wiring">Show Content Offsets</Label>
+        <Switch id="show-slice-offsets-wiring" checked={showSliceOffsetLabels} onCheckedChange={setShowSliceOffsetLabels} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="data-label-size">Label Size: {dataLabelSize}px</Label>

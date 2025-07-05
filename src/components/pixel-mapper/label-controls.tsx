@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 
 export function LabelControls() {
   const {
@@ -27,13 +28,15 @@ export function LabelControls() {
     labelPosition,
     setLabelPosition,
     labelColorMode,
-    setLabelColorMode
+    setLabelColorMode,
+    showSliceOffsetLabels,
+    setShowSliceOffsetLabels,
   } = usePixelMapper();
 
   return (
     <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label htmlFor="show-labels">Show Labels</Label>
+          <Label htmlFor="show-labels">Show Tile Labels</Label>
           <Switch
             id="show-labels"
             checked={showLabels}
@@ -128,6 +131,13 @@ export function LabelControls() {
             value={[labelFontSize]}
             onValueChange={(value) => setLabelFontSize(value[0])}
           />
+        </div>
+
+        <Separator />
+
+        <div className="flex items-center justify-between">
+          <Label htmlFor="show-slice-offsets-grid">Show Content Offsets</Label>
+          <Switch id="show-slice-offsets-grid" checked={showSliceOffsetLabels} onCheckedChange={setShowSliceOffsetLabels} />
         </div>
       </div>
   );
