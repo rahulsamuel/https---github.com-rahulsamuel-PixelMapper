@@ -44,6 +44,7 @@ export function WiringDiagram() {
     borderColor,
     dataLabelSize,
     powerLabelSize,
+    rasterOffset,
   } = usePixelMapper();
 
   const [isClient, setIsClient] = useState(false);
@@ -52,7 +53,7 @@ export function WiringDiagram() {
     setIsClient(true);
   }, []);
 
-  const wiringData = getWiringData({ dimensions, tiles, wiringPortConfig, wiringPattern, powerWiringPattern, rasterMapConfig, activeBounds, tilesPerPowerString });
+  const wiringData = getWiringData({ dimensions, tiles, wiringPortConfig, wiringPattern, powerWiringPattern, rasterMapConfig, activeBounds, tilesPerPowerString, rasterOffset });
   
   const dataPortsCount = wiringData.filter(d => d.dataLabel).length;
   const powerPortsCount = wiringData.filter(d => d.powerPortLabel).length;

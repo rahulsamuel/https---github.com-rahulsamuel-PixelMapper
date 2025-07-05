@@ -191,6 +191,7 @@ interface GetWiringDataArgs {
     powerWiringPattern: WiringPattern;
     rasterMapConfig?: RasterMapConfig | null;
     activeBounds?: ActiveBounds | null;
+    rasterOffset?: { x: number; y: number; };
 }
 
 export function getWiringData({
@@ -201,7 +202,8 @@ export function getWiringData({
   wiringPattern,
   powerWiringPattern,
   rasterMapConfig,
-  activeBounds
+  activeBounds,
+  rasterOffset
 }: GetWiringDataArgs): WiringInfo[] {
   const { screenWidth, screenHeight, tileWidth, tileHeight } = dimensions;
   if (!tiles || tiles.length === 0) {
@@ -222,8 +224,8 @@ export function getWiringData({
 
   const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
 
-  if (rasterMapConfig && activeBounds && rasterMapConfig.slices.length > 0 && rasterMapConfig.outputWidth > 0 && rasterMapConfig.outputHeight > 0) {
-    const { outputWidth: sliceWidth, outputHeight: sliceHeight, rasterOffset } = rasterMapConfig;
+  if (rasterMapConfig && activeBounds && rasterMapConfig.slices.length > 0 && rasterMapConfig.outputWidth > 0 && rasterMapConfig.outputHeight > 0 && rasterOffset) {
+    const { outputWidth: sliceWidth, outputHeight: sliceHeight } = rasterMapConfig;
     
     const tilesBySlice = new Map<string, number[]>();
     activeTileIndices.forEach(index => {
