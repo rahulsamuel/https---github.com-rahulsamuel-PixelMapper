@@ -222,7 +222,7 @@ export function getWiringData({
 
   const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
 
-  if (rasterMapConfig && activeBounds && rasterMapConfig.slices.length > 1 && rasterMapConfig.outputWidth > 0 && rasterMapConfig.outputHeight > 0) {
+  if (rasterMapConfig && activeBounds && rasterMapConfig.slices.length > 0 && rasterMapConfig.outputWidth > 0 && rasterMapConfig.outputHeight > 0) {
     const { outputWidth: sliceWidth, outputHeight: sliceHeight, rasterOffset } = rasterMapConfig;
     
     const tilesBySlice = new Map<string, number[]>();
