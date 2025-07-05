@@ -22,6 +22,8 @@ export function LedGrid() {
     labelPosition,
     zoom,
     onOffMode,
+    sliceOffsetLabels,
+    showDataLabels,
   } = usePixelMapper();
 
   if (tiles.length === 0) {
@@ -91,6 +93,13 @@ export function LedGrid() {
               style={tileDynamicStyle}
               aria-label={`Tile ${index + 1}`}
             >
+              {showDataLabels && !tile.deleted && sliceOffsetLabels[index] && (
+                  <div
+                      className="absolute top-1 left-1 bg-black/60 text-white text-xs font-mono px-1 py-0.5 rounded z-20"
+                  >
+                      {sliceOffsetLabels[index]}
+                  </div>
+              )}
               {showLabels && !tile.deleted && (
                 <span
                   className={cn(

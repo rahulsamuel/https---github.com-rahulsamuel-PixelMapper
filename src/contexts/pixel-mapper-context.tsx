@@ -108,6 +108,7 @@ interface PixelMapperState {
   setDimensions: Dispatch<SetStateAction<Dimensions>>;
   tiles: Tile[];
   labels: string[];
+  sliceOffsetLabels: string[];
   handleTileClick: (index: number) => void;
   restoreDeletedTiles: () => void;
   resetAllColors: () => void;
@@ -227,6 +228,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [labelPosition, setLabelPosition] = useState<LabelPosition>('center');
   const [labelColorMode, setLabelColorMode] = useState<LabelColorMode>('auto');
   const [labels, setLabels] = useState<string[]>([]);
+  const [sliceOffsetLabels, setSliceOffsetLabels] = useState<string[]>([]);
   
   const [zoomLevels, setZoomLevels] = useState({ grid: 1, wiring: 1, raster: 1 });
   const [activeTab, setActiveTab] = useState('grid');
@@ -379,6 +381,54 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     
     setLabels(newLabels);
   }, [dimensions, labelFormat, tiles, wiringPattern]);
+
+  // Effect to calculate slice offset labels
+  useEffect(() => {
+    if (!rasterMapConfig || !activeBounds || !rasterMapConfig.slices.length || !rasterOffset || !wiringPattern) {
+      setSliceOffsetLabels([]);
+      return;
+    }
+
+    const { screenWidth, screenHeight, tileWidth, tileHeight } = dimensions;
+    const { slices, outputWidth, outputHeight } = rasterMapConfig;
+    
+    const newLabels = Array(screenWidth * screenHeight).fill('');
+    const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
+
+    const tilesBySlice = new Map<string, number[]>();
+    activeTileIndices.forEach(index => {
+      const x = index % screenWidth;
+      const y = Math.floor(index / screenWidth);
+
+      if (x < activeBounds.minX || x > activeBounds.maxX || y < activeBounds.minY || y > activeBounds.maxY) return;
+      
+      const tileContentX = (x - activeBounds.minX) * tileWidth;
+      const tileContentY = (y - activeBounds.minY) * tileHeight;
+      
+      const absoluteContentX = tileContentX + rasterOffset.x;
+      const absoluteContentY = tileContentY + rasterOffset.y;
+
+      const sliceCol = Math.floor(absoluteContentX / outputWidth);
+      const sliceRow = Math.floor(absoluteContentY / outputHeight);
+      const sliceKey = `${sliceRow}-${sliceCol}`;
+      
+      if (!tilesBySlice.has(sliceKey)) tilesBySlice.set(sliceKey, []);
+      tilesBySlice.get(sliceKey)!.push(index);
+    });
+
+    tilesBySlice.forEach((sliceIndices, sliceKey) => {
+      const pathOrder = getPathOrder(sliceIndices, wiringPattern, screenWidth, screenHeight);
+      const currentSlice = slices.find(s => s.key === sliceKey);
+      
+      if (currentSlice && pathOrder.length > 0) {
+        const firstTileIndex = pathOrder[0];
+        newLabels[firstTileIndex] = `(${currentSlice.x},${currentSlice.y})`;
+      }
+    });
+
+    setSliceOffsetLabels(newLabels);
+  }, [tiles, dimensions, rasterMapConfig, activeBounds, rasterOffset, wiringPattern]);
+
 
   const toggleTile = useCallback((index: number) => {
     setTiles((prev) =>
@@ -975,6 +1025,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     setDimensions,
     tiles,
     labels,
+    sliceOffsetLabels,
     handleTileClick,
     restoreDeletedTiles,
     resetAllColors,
