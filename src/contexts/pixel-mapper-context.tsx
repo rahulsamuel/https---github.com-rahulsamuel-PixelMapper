@@ -561,7 +561,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     toPng(node, {
         cacheBust: true,
         backgroundColor: '#ffffff',
-        pixelRatio: 2,
+        pixelRatio: 1,
         width: cropWidth,
         height: cropHeight,
         style: {
@@ -946,7 +946,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     toPng(node, {
       cacheBust: true,
       backgroundColor: '#ffffff',
-      pixelRatio: 2,
+      pixelRatio: 1,
       width: cropWidth,
       height: cropHeight,
       style: {
@@ -1003,7 +1003,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     toPng(node, {
       cacheBust: true,
       backgroundColor: '#ffffff',
-      pixelRatio: 2,
+      pixelRatio: 1,
       width: totalWidth,
       height: totalHeight,
     })
@@ -1313,3 +1313,5 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     </PixelMapperContext.Provider>
   );
 }
+
+    
