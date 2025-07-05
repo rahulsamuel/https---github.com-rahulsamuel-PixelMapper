@@ -1030,9 +1030,6 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const node = rasterMapRef.current;
     const { totalWidth, totalHeight } = rasterMapConfig;
 
-    const originalTransform = node.style.transform;
-    node.style.transform = 'none';
-
     toPng(node, {
       cacheBust: true,
       backgroundColor: '#ffffff',
@@ -1060,14 +1057,13 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         });
       })
       .finally(() => {
-        node.style.transform = originalTransform;
       });
   }, [rasterMapRef, rasterMapConfig, toast]);
 
 
   const exportProject = useCallback(() => {
     const projectData: ProjectData = {
-      version: "1.0.3",
+      version: "1.1.0",
       dimensions,
       tiles,
       tileColor,
