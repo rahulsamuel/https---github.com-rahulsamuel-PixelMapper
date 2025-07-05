@@ -48,6 +48,7 @@ export function WiringDiagram() {
     showSliceOffsetLabels,
     topHalfTile,
     bottomHalfTile,
+    effectiveScreenHeight,
   } = usePixelMapper();
 
   const [isClient, setIsClient] = useState(false);
@@ -56,7 +57,19 @@ export function WiringDiagram() {
     setIsClient(true);
   }, []);
 
-  const wiringData = getWiringData({ dimensions, tiles, wiringPortConfig, wiringPattern, powerWiringPattern, rasterMapConfig, activeBounds, tilesPerPowerString, rasterOffset });
+  const wiringData = getWiringData({ 
+      dimensions: { ...dimensions, screenHeight: effectiveScreenHeight }, 
+      tiles, 
+      wiringPortConfig, 
+      wiringPattern, 
+      powerWiringPattern, 
+      rasterMapConfig, 
+      activeBounds, 
+      tilesPerPowerString, 
+      rasterOffset,
+      topHalfTile,
+      bottomHalfTile,
+  });
   
   const dataPortsCount = wiringData.filter(d => d.dataLabel).length;
   const powerPortsCount = wiringData.filter(d => d.powerPortLabel).length;
@@ -75,22 +88,20 @@ export function WiringDiagram() {
   const rowData = useMemo(() => {
     const data: { yPos: number; height: number }[] = [];
     let currentY = 0;
-    for (let i = 0; i < dimensions.screenHeight; i++) {
-        const isTop = i === 0;
-        const isBottom = i === dimensions.screenHeight - 1;
+    for (let i = 0; i < effectiveScreenHeight; i++) {
+        const isTopHalfRow = topHalfTile && i === 0;
+        const isBottomHalfRow = bottomHalfTile && i === effectiveScreenHeight - 1;
         
         let rowHeight = dimensions.tileHeight;
-        if (isTop && topHalfTile) {
+        if (isTopHalfRow || isBottomHalfRow) {
             rowHeight /= 2;
-        } else if (isBottom && bottomHalfTile) {
-             rowHeight /= 2;
         }
 
         data.push({ yPos: currentY, height: rowHeight });
         currentY += rowHeight;
     }
     return data;
-  }, [dimensions, topHalfTile, bottomHalfTile]);
+  }, [dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
 
   const totalGridPixelHeight = rowData.reduce((acc, curr) => acc + curr.height, 0);
 
@@ -134,6 +145,8 @@ export function WiringDiagram() {
           {wiringData.map(({ x, y, dataLabel, powerPortLabel, backupLabel, isDeleted, sliceOffsetLabel }, index) => {
             const originalIndex = y * dimensions.screenWidth + x;
             const tile = tiles[originalIndex];
+            if (!tile) return null; // Guard against out of bounds if arrays desync
+            
             const { yPos, height: tileHeight } = rowData[y];
 
             let bgColor;
@@ -142,7 +155,7 @@ export function WiringDiagram() {
             } else {
               if (isDeleted) {
                 bgColor = '#000000';
-              } else if (tile?.color) {
+              } else if (tile.color) {
                 bgColor = tile.color;
               } else {
                 bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
@@ -165,7 +178,7 @@ export function WiringDiagram() {
 
             return (
               <div
-                key={`wiring-tile-${x}-${y}`}
+                key={`wiring-tile-${tile.id}`}
                 className="absolute overflow-visible"
                 style={tileStyle}
               >

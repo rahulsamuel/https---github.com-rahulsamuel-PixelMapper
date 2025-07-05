@@ -27,18 +27,15 @@ export function LedGrid() {
     showSliceOffsetLabels,
     topHalfTile,
     bottomHalfTile,
+    effectiveScreenHeight,
   } = usePixelMapper();
 
   const totalGridPixelHeight = useMemo(() => {
-    let height = dimensions.screenHeight * dimensions.tileHeight;
-    if (topHalfTile && dimensions.screenHeight >= 1) {
-      height -= dimensions.tileHeight / 2;
-    }
-    if (bottomHalfTile && dimensions.screenHeight > (topHalfTile ? 1 : 0)) {
-       height -= dimensions.tileHeight / 2;
-    }
-    return Math.max(0, height);
+    return (dimensions.screenHeight * dimensions.tileHeight) + 
+           (topHalfTile ? dimensions.tileHeight / 2 : 0) + 
+           (bottomHalfTile ? dimensions.tileHeight / 2 : 0);
   }, [dimensions.screenHeight, dimensions.tileHeight, topHalfTile, bottomHalfTile]);
+
 
   if (tiles.length === 0) {
     return (
@@ -51,7 +48,7 @@ export function LedGrid() {
   const gridStyle: React.CSSProperties = {
     display: "grid",
     gridTemplateColumns: `repeat(${dimensions.screenWidth}, 1fr)`,
-    gridTemplateRows: `repeat(${dimensions.screenHeight}, auto)`,
+    gridTemplateRows: `repeat(${effectiveScreenHeight}, auto)`,
     width: `${dimensions.screenWidth * dimensions.tileWidth}px`,
     height: `${totalGridPixelHeight}px`,
     borderWidth: '1px',
@@ -61,17 +58,11 @@ export function LedGrid() {
   };
 
   const getTileHeight = (y: number) => {
-    const isTopRow = y === 0;
-    const isBottomRow = y === dimensions.screenHeight - 1;
+    const isTopHalfRow = topHalfTile && y === 0;
+    const isBottomHalfRow = bottomHalfTile && y === effectiveScreenHeight - 1;
 
-    if (isTopRow && topHalfTile) {
+    if (isTopHalfRow || isBottomHalfRow) {
       return dimensions.tileHeight / 2;
-    }
-    if (isBottomRow && bottomHalfTile) {
-      // Avoid double-dipping for single-row screens
-      if (!isTopRow || !topHalfTile) {
-        return dimensions.tileHeight / 2;
-      }
     }
     return dimensions.tileHeight;
   };
@@ -114,7 +105,7 @@ export function LedGrid() {
           return (
             <button
               key={tile.id}
-              onClick={() => handleTileClick(index)}
+              onClick={() => handleTileClick(tile.id)}
               className={cn(
                 'relative rounded-none transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:z-10'
               )}

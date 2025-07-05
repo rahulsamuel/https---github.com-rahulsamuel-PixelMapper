@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 
 export function DimensionControls() {
-  const { dimensions, setDimensions, topHalfTile, setTopHalfTile, bottomHalfTile, setBottomHalfTile } = usePixelMapper();
+  const { dimensions, setDimensions, topHalfTile, handleTopHalfTileChange, bottomHalfTile, handleBottomHalfTileChange } = usePixelMapper();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDimensions(prevDimensions => ({
@@ -57,7 +57,7 @@ export function DimensionControls() {
                 />
             </div>
             <div className="space-y-2">
-                <Label htmlFor="screenHeight">Screen Height (tiles)</Label>
+                <Label htmlFor="screenHeight">Screen Height (full tiles)</Label>
                 <Input
                     id="screenHeight"
                     name="screenHeight"
@@ -75,7 +75,7 @@ export function DimensionControls() {
                 <Switch
                     id="top-half-tile"
                     checked={topHalfTile}
-                    onCheckedChange={setTopHalfTile}
+                    onCheckedChange={handleTopHalfTileChange}
                 />
             </div>
             <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/20">
@@ -83,8 +83,8 @@ export function DimensionControls() {
                 <Switch
                     id="bottom-half-tile"
                     checked={bottomHalfTile}
-                    onCheckedChange={setBottomHalfTile}
-                    disabled={dimensions.screenHeight === 1 && topHalfTile}
+                    onCheckedChange={handleBottomHalfTileChange}
+                    disabled={dimensions.screenHeight < 1 && !topHalfTile}
                 />
             </div>
         </div>

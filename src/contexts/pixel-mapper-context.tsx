@@ -99,8 +99,8 @@ interface ProjectData {
   dataLabelSize?: number;
   powerLabelSize?: number;
   showSliceOffsetLabels: boolean;
-  topHalfTile?: boolean;
-  bottomHalfTile?: boolean;
+  topHalfTile: boolean;
+  bottomHalfTile: boolean;
 }
 
 interface PixelMapperState {
@@ -112,7 +112,7 @@ interface PixelMapperState {
   tiles: Tile[];
   labels: string[];
   sliceOffsetLabels: string[];
-  handleTileClick: (index: number) => void;
+  handleTileClick: (tileId: number) => void;
   restoreDeletedTiles: () => void;
   resetAllColors: () => void;
   deletedCount: number;
@@ -192,9 +192,10 @@ interface PixelMapperState {
   showSliceOffsetLabels: boolean;
   setShowSliceOffsetLabels: Dispatch<SetStateAction<boolean>>;
   topHalfTile: boolean;
-  setTopHalfTile: Dispatch<SetStateAction<boolean>>;
+  handleTopHalfTileChange: (add: boolean) => void;
   bottomHalfTile: boolean;
-  setBottomHalfTile: Dispatch<SetStateAction<boolean>>;
+  handleBottomHalfTileChange: (add: boolean) => void;
+  effectiveScreenHeight: number;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -212,6 +213,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const gridRef = useRef<HTMLDivElement>(null);
   const wiringDiagramRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const nextTileId = useRef(0);
 
   const [dimensions, setDimensions] = useState<Dimensions>({
     tileWidth: 200,
@@ -273,6 +275,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [topHalfTile, setTopHalfTile] = useState(false);
   const [bottomHalfTile, setBottomHalfTile] = useState(false);
 
+  const effectiveScreenHeight = useMemo(() => {
+    return dimensions.screenHeight + (topHalfTile ? 1 : 0) + (bottomHalfTile ? 1 : 0);
+  }, [dimensions.screenHeight, topHalfTile, bottomHalfTile]);
+
   const zoom = zoomLevels[activeTab as keyof typeof zoomLevels] || 1;
   
   const setZoom = (value: number | ((prevZoom: number) => number)) => {
@@ -301,23 +307,45 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     }
   };
 
-
   useEffect(() => {
     const { screenWidth, screenHeight } = dimensions;
     const totalTiles = screenWidth * screenHeight;
-
-    if (tiles.length === totalTiles) {
-      return;
-    }
+    nextTileId.current = 0;
+    setTopHalfTile(false);
+    setBottomHalfTile(false);
 
     if (totalTiles > 0 && totalTiles <= 4096) { // Safety limit
       setTiles(
-        Array.from({ length: totalTiles }, (_, i) => ({ id: i, deleted: false }))
+        Array.from({ length: totalTiles }, () => ({ id: nextTileId.current++, deleted: false }))
       );
     } else {
       setTiles([]);
     }
-  }, [dimensions, tiles.length]);
+  }, [dimensions]);
+
+  const handleTopHalfTileChange = (add: boolean) => {
+    setTopHalfTile(add);
+    setTiles(currentTiles => {
+        if (add) {
+            const newRow = Array.from({ length: dimensions.screenWidth }, () => ({ id: nextTileId.current++, deleted: false }));
+            return [...newRow, ...currentTiles];
+        } else {
+            return currentTiles.slice(dimensions.screenWidth);
+        }
+    });
+  };
+  
+  const handleBottomHalfTileChange = (add: boolean) => {
+    setBottomHalfTile(add);
+    setTiles(currentTiles => {
+        if (add) {
+            const newRow = Array.from({ length: dimensions.screenWidth }, () => ({ id: nextTileId.current++, deleted: false }));
+            return [...currentTiles, ...newRow];
+        } else {
+            return currentTiles.slice(0, currentTiles.length - dimensions.screenWidth);
+        }
+    });
+  };
 
   useEffect(() => {
     const { screenWidth } = dimensions;
@@ -351,8 +379,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   }, [tiles]);
 
   useEffect(() => {
-    const { screenWidth, screenHeight } = dimensions;
-    const totalTiles = screenWidth * screenHeight;
+    const { screenWidth } = dimensions;
+    const totalTiles = tiles.length;
     if (totalTiles <= 0) {
         setLabels([]);
         return;
@@ -360,7 +388,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
     const newLabels = Array(totalTiles).fill('');
     const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
-    const pathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
+    const pathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, effectiveScreenHeight);
 
     if (labelFormat === 'sequential' || labelFormat === 'dmx-style') {
       pathOrder.forEach((originalIndex, pathIndex) => {
@@ -394,7 +422,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     }
     
     setLabels(newLabels);
-  }, [dimensions, labelFormat, tiles, wiringPattern]);
+  }, [dimensions, labelFormat, tiles, wiringPattern, effectiveScreenHeight]);
 
   // Effect to calculate slice offset labels
   useEffect(() => {
@@ -403,10 +431,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const { screenWidth, screenHeight, tileWidth, tileHeight } = dimensions;
+    const { screenWidth, tileHeight } = dimensions;
     const { slices, outputWidth, outputHeight } = rasterMapConfig;
     
-    const newLabels = Array(screenWidth * screenHeight).fill('');
+    const newLabels = Array(screenWidth * effectiveScreenHeight).fill('');
     const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
 
     const tilesBySlice = new Map<string, number[]>();
@@ -418,23 +446,14 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
                 return;
               }
       
-      const tileContentX = (x - activeBounds.minX) * tileWidth;
-      const tileContentY = (() => {
-        let height = 0;
-        for (let i = activeBounds.minY; i < y; i++) {
-          const isTopRow = i === 0;
-          const isBottomRow = i === screenHeight - 1;
-          let rowHeight = tileHeight;
-          if (isTopRow && topHalfTile) {
-            rowHeight /= 2;
-          } else if (isBottomRow && bottomHalfTile) {
-            rowHeight /= 2;
-          }
-          height += rowHeight;
-        }
-        return height;
-      })();
-      
+      let tileContentY = 0;
+      for (let i = activeBounds.minY; i < y; i++) {
+        const isTopRow = topHalfTile && i === 0;
+        const isBottomRow = bottomHalfTile && i === effectiveScreenHeight - 1;
+        tileContentY += (isTopRow || isBottomRow) ? tileHeight / 2 : tileHeight;
+      }
+
+      const tileContentX = (x - activeBounds.minX) * dimensions.tileWidth;
       const absoluteContentX = tileContentX + rasterOffset.x;
       const absoluteContentY = tileContentY + rasterOffset.y;
 
@@ -447,7 +466,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     });
 
     tilesBySlice.forEach((sliceIndices, sliceKey) => {
-      const pathOrder = getPathOrder(sliceIndices, wiringPattern, screenWidth, screenHeight);
+      const pathOrder = getPathOrder(sliceIndices, wiringPattern, screenWidth, effectiveScreenHeight);
       const currentSlice = slices.find(s => s.key === sliceKey);
       
       if (currentSlice && pathOrder.length > 0) {
@@ -456,23 +475,14 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         const x = firstTileIndex % screenWidth;
         const y = Math.floor(firstTileIndex / screenWidth);
 
-        const tileContentX = (x - activeBounds.minX) * tileWidth;
-        const tileContentY = (() => {
-          let height = 0;
-          for (let i = activeBounds.minY; i < y; i++) {
-            const isTopRow = i === 0;
-            const isBottomRow = i === screenHeight - 1;
-            let rowHeight = tileHeight;
-            if (isTopRow && topHalfTile) {
-              rowHeight /= 2;
-            } else if (isBottomRow && bottomHalfTile) {
-              rowHeight /= 2;
-            }
-            height += rowHeight;
-          }
-          return height;
-        })();
+        let tileContentY = 0;
+        for (let i = activeBounds.minY; i < y; i++) {
+            const isTopRow = topHalfTile && i === 0;
+            const isBottomRow = bottomHalfTile && i === effectiveScreenHeight - 1;
+            tileContentY += (isTopRow || isBottomRow) ? tileHeight / 2 : tileHeight;
+        }
 
+        const tileContentX = (x - activeBounds.minX) * dimensions.tileWidth;
         const absoluteContentX = tileContentX + rasterOffset.x;
         const absoluteContentY = tileContentY + rasterOffset.y;
 
@@ -484,31 +494,26 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     });
 
     setSliceOffsetLabels(newLabels);
-  }, [tiles, dimensions, rasterMapConfig, activeBounds, rasterOffset, wiringPattern, topHalfTile, bottomHalfTile]);
+  }, [tiles, dimensions, rasterMapConfig, activeBounds, rasterOffset, wiringPattern, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
 
 
-  const toggleTile = useCallback((index: number) => {
-    setTiles((prev) =>
-      prev.map((tile, i) => (i === index ? { ...tile, deleted: !tile.deleted } : tile))
-    );
-  }, []);
-
-  const handleTileClick = useCallback((index: number) => {
+  const handleTileClick = useCallback((tileId: number) => {
     switch (activeTool) {
       case 'delete':
-        toggleTile(index);
+        setTiles(prev =>
+          prev.map(tile => (tile.id === tileId ? { ...tile, deleted: !tile.deleted } : tile))
+        );
         break;
       case 'color':
-        setTiles((prev) =>
-            prev.map((tile, i) =>
-                i === index ? { ...tile, color: brushColor, deleted: false } : tile
-            )
+        setTiles(prev =>
+          prev.map(tile => (tile.id === tileId ? { ...tile, color: brushColor, deleted: false } : tile))
         );
         break;
       default:
         break;
     }
-  }, [activeTool, toggleTile, brushColor]);
+  }, [activeTool, brushColor]);
+
 
   const restoreDeletedTiles = useCallback(() => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, deleted: false })));
@@ -525,28 +530,19 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
     const node = gridRef.current;
     
-    const rowYPositions = [0];
-    let accumulator = 0;
-    for (let i = 0; i < dimensions.screenHeight -1; i++) {
-        const isTopRow = i === 0;
-        const rowHeight = (isTopRow && topHalfTile) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
-        accumulator += rowHeight;
-        rowYPositions.push(accumulator);
+    let yPosOfMinY = 0;
+    for (let i = 0; i < activeBounds.minY; i++) {
+        const isTopHalfRow = topHalfTile && i === 0;
+        yPosOfMinY += isTopHalfRow ? dimensions.tileHeight / 2 : dimensions.tileHeight;
     }
 
     const contentPixelHeight = (() => {
         if (!activeBounds) return 0;
         let height = 0;
         for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
-          const isTopRow = y === 0;
-          const isBottomRow = y === dimensions.screenHeight - 1;
-          let rowHeight = dimensions.tileHeight;
-          if (isTopRow && topHalfTile) {
-            rowHeight /= 2;
-          } else if (isBottomRow && bottomHalfTile) {
-            rowHeight /= 2;
-          }
-          height += rowHeight;
+          const isTopHalf = topHalfTile && y === 0;
+          const isBottomHalf = bottomHalfTile && y === (effectiveScreenHeight - 1);
+          height += (isTopHalf || isBottomHalf) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
         }
         return height;
       })();
@@ -554,7 +550,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
     const cropHeight = contentPixelHeight;
     const sx = activeBounds.minX * dimensions.tileWidth;
-    const sy = rowYPositions[activeBounds.minY];
+    const sy = yPosOfMinY;
 
     toPng(node, {
         cacheBust: true,
@@ -575,7 +571,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       .catch((err) => {
         console.error("Could not generate PNG.", err);
       });
-  }, [gridRef, activeBounds, dimensions, topHalfTile, bottomHalfTile]);
+  }, [gridRef, activeBounds, dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
 
   const regenerateRasterPreview = useCallback(() => {
     if (!activeBounds || !lastRasterArgs) {
@@ -589,15 +585,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         if (!activeBounds) return 0;
         let height = 0;
         for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
-          const isTopRow = y === 0;
-          const isBottomRow = y === dimensions.screenHeight - 1;
-          let rowHeight = dimensions.tileHeight;
-          if (isTopRow && topHalfTile) {
-            rowHeight /= 2;
-          } else if (isBottomRow && bottomHalfTile) {
-            rowHeight /= 2;
-          }
-          height += rowHeight;
+          const isTopHalf = topHalfTile && y === 0;
+          const isBottomHalf = bottomHalfTile && y === (effectiveScreenHeight - 1);
+          height += (isTopHalf || isBottomHalf) ? tileHeight / 2 : tileHeight;
         }
         return height;
       })();
@@ -674,14 +664,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
     let currentDrawY = 0;
     for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
-      const isTopRow = y === 0;
-      const isBottomRow = y === screenHeight - 1;
-      let rowPixelHeight = tileHeight;
-      if (isTopRow && topHalfTile) {
-        rowPixelHeight /= 2;
-      } else if (isBottomRow && bottomHalfTile) {
-        rowPixelHeight /= 2;
-      }
+      const isTopHalfRow = topHalfTile && y === 0;
+      const isBottomHalfRow = bottomHalfTile && y === (effectiveScreenHeight - 1);
+      const rowPixelHeight = (isTopHalfRow || isBottomHalfRow) ? tileHeight / 2 : tileHeight;
 
       for (let x = activeBounds.minX; x <= activeBounds.maxX; x++) {
         const index = y * screenWidth + x;
@@ -740,7 +725,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         rasterOffset,
         resolutionType,
     });
-  }, [activeBounds, lastRasterArgs, dimensions, tiles, onOffMode, tileColor, tileColorTwo, showLabels, labels, labelColor, labelFontSize, rasterOffset, borderWidth, borderColor, labelColorMode, topHalfTile, bottomHalfTile]);
+  }, [activeBounds, lastRasterArgs, dimensions, tiles, onOffMode, tileColor, tileColorTwo, showLabels, labels, labelColor, labelFontSize, rasterOffset, borderWidth, borderColor, labelColorMode, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
 
 
   useEffect(() => {
@@ -765,21 +750,14 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     if (!activeBounds) return null;
 
     const { screenWidth, tileWidth, tileHeight } = dimensions;
-    const { screenHeight } = dimensions;
 
     const contentPixelHeight = (() => {
         if (!activeBounds) return 0;
         let height = 0;
         for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
-          const isTopRow = y === 0;
-          const isBottomRow = y === screenHeight - 1;
-          let rowHeight = tileHeight;
-          if (isTopRow && topHalfTile) {
-            rowHeight /= 2;
-          } else if (isBottomRow && bottomHalfTile) {
-            rowHeight /= 2;
-          }
-          height += rowHeight;
+          const isTopHalf = topHalfTile && y === 0;
+          const isBottomHalf = bottomHalfTile && y === (effectiveScreenHeight - 1);
+          height += (isTopHalf || isBottomHalf) ? tileHeight / 2 : tileHeight;
         }
         return height;
     })();
@@ -798,14 +776,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
     let currentDrawY = 0;
     for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
-      const isTopRow = y === 0;
-      const isBottomRow = y === screenHeight - 1;
-      let rowPixelHeight = tileHeight;
-      if (isTopRow && topHalfTile) {
-        rowPixelHeight /= 2;
-      } else if (isBottomRow && bottomHalfTile) {
-        rowPixelHeight /= 2;
-      }
+        const isTopHalfRow = topHalfTile && y === 0;
+        const isBottomHalfRow = bottomHalfTile && y === (effectiveScreenHeight - 1);
+        const rowPixelHeight = (isTopHalfRow || isBottomHalfRow) ? tileHeight / 2 : tileHeight;
 
       for (let x = activeBounds.minX; x <= activeBounds.maxX; x++) {
         const index = y * screenWidth + x;
@@ -848,7 +821,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     }
 
     return masterCanvas;
-  }, [activeBounds, dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize, borderWidth, borderColor, labelColorMode, topHalfTile, bottomHalfTile]);
+  }, [activeBounds, dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize, borderWidth, borderColor, labelColorMode, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
 
 
   const downloadRasterSlices = useCallback(() => {
@@ -917,26 +890,17 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         if (!activeBounds) return 0;
         let height = 0;
         for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
-          const isTopRow = y === 0;
-          const isBottomRow = y === dimensions.screenHeight - 1;
-          let rowHeight = dimensions.tileHeight;
-          if (isTopRow && topHalfTile) {
-            rowHeight /= 2;
-          } else if (isBottomRow && bottomHalfTile) {
-            rowHeight /= 2;
-          }
-          height += rowHeight;
+            const isTopHalf = topHalfTile && y === 0;
+            const isBottomHalf = bottomHalfTile && y === (effectiveScreenHeight - 1);
+            height += (isTopHalf || isBottomHalf) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
         }
         return height;
-      })();
+    })();
     
-    const rowYPositions = [0];
-    let accumulator = 0;
-    for (let i = 0; i < dimensions.screenHeight -1; i++) {
-        const isTopRow = i === 0;
-        const rowHeight = (isTopRow && topHalfTile) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
-        accumulator += rowHeight;
-        rowYPositions.push(accumulator);
+    let yPosOfMinY = 0;
+    for (let i = 0; i < activeBounds.minY; i++) {
+        const isTopHalfRow = topHalfTile && i === 0;
+        yPosOfMinY += isTopHalfRow ? dimensions.tileHeight / 2 : dimensions.tileHeight;
     }
     
     const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
@@ -944,7 +908,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     const sx = isWiringMirrored 
         ? (dimensions.screenWidth - 1 - activeBounds.maxX) * dimensions.tileWidth
         : activeBounds.minX * dimensions.tileWidth;
-    const sy = rowYPositions[activeBounds.minY];
+    const sy = yPosOfMinY;
 
     // Manually set colors before capturing
     const computedStyle = getComputedStyle(document.documentElement);
@@ -1012,11 +976,11 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
             }
         });
       });
-  }, [wiringDiagramRef, isWiringMirrored, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile]);
+  }, [wiringDiagramRef, isWiringMirrored, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
 
   const exportProject = useCallback(() => {
     const projectData: ProjectData = {
-      version: "1.0.2",
+      version: "1.0.3",
       dimensions,
       tiles,
       tileColor,
@@ -1100,6 +1064,9 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         if (!data.version || !data.dimensions || !data.tiles) {
           throw new Error("Invalid project file format.");
         }
+        
+        const maxId = data.tiles.reduce((max, tile) => Math.max(max, tile.id), -1);
+        nextTileId.current = maxId + 1;
 
         // Apply state
         setDimensions(data.dimensions);
@@ -1278,9 +1245,10 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     showSliceOffsetLabels,
     setShowSliceOffsetLabels,
     topHalfTile,
-    setTopHalfTile,
+    handleTopHalfTileChange,
     bottomHalfTile,
-    setBottomHalfTile,
+    handleBottomHalfTileChange,
+    effectiveScreenHeight,
   };
 
   return (

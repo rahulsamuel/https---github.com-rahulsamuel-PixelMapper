@@ -39,7 +39,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 
 
 export function PixelMapperLayout() {
-  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile } = usePixelMapper();
+  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, effectiveScreenHeight } = usePixelMapper();
   const [activeAccordion, setActiveAccordion] = useState("grid-setup");
   const viewportRef = useRef<HTMLDivElement>(null);
 
@@ -47,21 +47,29 @@ export function PixelMapperLayout() {
   
   const totalHeight = useMemo(() => {
     if (!activeBounds) return 0;
+    
     let height = 0;
-    for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
-      const isTopRow = y === 0;
-      const isBottomRow = y === dimensions.screenHeight - 1;
+    const uniqueY = new Set<number>();
+    
+    const activeTiles = activeBounds 
+      ? Array.from({ length: (activeBounds.maxY - activeBounds.minY + 1) }, (_, i) => i + activeBounds.minY)
+      : [];
       
-      let rowHeight = dimensions.tileHeight;
-      if (isTopRow && topHalfTile) {
-        rowHeight /= 2;
-      } else if (isBottomRow && bottomHalfTile) {
-        rowHeight /= 2;
+    activeTiles.forEach(y => uniqueY.add(y));
+
+    uniqueY.forEach(y => {
+      const isTopHalfRow = topHalfTile && y === 0;
+      const isBottomHalfRow = bottomHalfTile && y === effectiveScreenHeight - 1;
+
+      if (isTopHalfRow || isBottomHalfRow) {
+        height += dimensions.tileHeight / 2;
+      } else {
+        height += dimensions.tileHeight;
       }
-      height += rowHeight;
-    }
+    });
+
     return height;
-  }, [activeBounds, dimensions, topHalfTile, bottomHalfTile]);
+  }, [activeBounds, dimensions.tileHeight, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
 
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev * 1.2, 5));
@@ -74,12 +82,11 @@ export function PixelMapperLayout() {
 
     switch (activeTab) {
       case 'grid':
-        gridWidth = dimensions.screenWidth * dimensions.tileWidth;
-        gridHeight = dimensions.screenHeight * dimensions.tileHeight;
-        break;
       case 'wiring':
         gridWidth = dimensions.screenWidth * dimensions.tileWidth;
-        gridHeight = dimensions.screenHeight * dimensions.tileHeight;
+        gridHeight = (dimensions.screenHeight * dimensions.tileHeight) + 
+                     (topHalfTile ? dimensions.tileHeight / 2 : 0) + 
+                     (bottomHalfTile ? dimensions.tileHeight / 2 : 0);
         break;
       case 'raster':
         if (rasterMapConfig) {
@@ -284,7 +291,7 @@ export function PixelMapperLayout() {
             </TabsList>
             <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground">
-                Resolution: <span className="font-mono">{totalWidth}px</span> x <span className="font-mono">{totalHeight}px</span>
+                Resolution: <span className="font-mono">{totalWidth}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
               </div>
                <div className="flex items-center space-x-2">
                 <Switch id="on-off-switch" checked={onOffMode} onCheckedChange={setOnOffMode} />

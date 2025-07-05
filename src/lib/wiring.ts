@@ -192,6 +192,8 @@ interface GetWiringDataArgs {
     rasterMapConfig?: RasterMapConfig | null;
     activeBounds?: ActiveBounds | null;
     rasterOffset?: { x: number; y: number; };
+    topHalfTile: boolean;
+    bottomHalfTile: boolean;
 }
 
 export function getWiringData({
@@ -203,7 +205,9 @@ export function getWiringData({
   powerWiringPattern,
   rasterMapConfig,
   activeBounds,
-  rasterOffset
+  rasterOffset,
+  topHalfTile,
+  bottomHalfTile,
 }: GetWiringDataArgs): WiringInfo[] {
   const { screenWidth, screenHeight, tileWidth, tileHeight } = dimensions;
   if (!tiles || tiles.length === 0) {
@@ -233,9 +237,14 @@ export function getWiringData({
       const y = Math.floor(index / screenWidth);
       if (x < activeBounds.minX || x > activeBounds.maxX || y < activeBounds.minY || y > activeBounds.maxY) return;
       
+      let tileContentY = 0;
+      for (let i = activeBounds.minY; i < y; i++) {
+        const isTopHalf = topHalfTile && i === 0;
+        const isBottomHalf = bottomHalfTile && i === screenHeight -1;
+        tileContentY += (isTopHalf || isBottomHalf) ? tileHeight / 2 : tileHeight;
+      }
       const tileContentX = (x - activeBounds.minX) * tileWidth;
-      const tileContentY = (y - activeBounds.minY) * tileHeight;
-      
+
       const absoluteContentX = tileContentX + rasterOffset.x;
       const absoluteContentY = tileContentY + rasterOffset.y;
 
@@ -269,7 +278,13 @@ export function getWiringData({
             const y = Math.floor(firstTileIndex / screenWidth);
 
             const tileContentX = (x - activeBounds.minX) * tileWidth;
-            const tileContentY = (y - activeBounds.minY) * tileHeight;
+            
+            let tileContentY = 0;
+            for (let i = activeBounds.minY; i < y; i++) {
+                const isTopHalf = topHalfTile && i === 0;
+                const isBottomHalf = bottomHalfTile && i === screenHeight -1;
+                tileContentY += (isTopHalf || isBottomHalf) ? tileHeight / 2 : tileHeight;
+            }
 
             if (rasterOffset) {
               const absoluteContentX = tileContentX + rasterOffset.x;
