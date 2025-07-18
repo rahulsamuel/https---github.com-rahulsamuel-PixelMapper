@@ -39,8 +39,9 @@ interface RasterMapConfig {
 }
 
 export type WiringPattern = 'serpentine-horizontal' | 'serpentine-vertical' | 'serpentine-horizontal-reverse' | 'left-right' | 'top-bottom' | 'bottom-to-top';
+type ProcessorType = 'Brompton' | 'Novastar';
 
-interface WiringInfo {
+export interface WiringInfo {
   x: number;
   y: number;
   dataLabel: string;
@@ -89,7 +90,8 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
 
 function applyDataWiring(
     activeTilesPath: { tile: WiringInfo; index: number; }[],
-    wiringPortConfig: string
+    wiringPortConfig: string,
+    processorType: ProcessorType
 ) {
     if (activeTilesPath.length === 0) return;
     
@@ -110,16 +112,22 @@ function applyDataWiring(
             let backupUniverse: string;
             let universePortNumber: number;
 
-            if (effectiveGroupIndex < 10) {
-                // Ports 1-10, 21-30, etc.
-                mainUniverse = 'A';
-                backupUniverse = 'B';
-                universePortNumber = (effectiveGroupIndex % 10) + 1;
-            } else {
-                // Ports 11-20, 31-40, etc.
-                mainUniverse = 'C';
-                backupUniverse = 'D';
-                universePortNumber = (effectiveGroupIndex % 10) + 1;
+            if (processorType === 'Brompton') {
+                if (effectiveGroupIndex < 10) {
+                    // Ports 1-10, 21-30, etc.
+                    mainUniverse = 'A';
+                    backupUniverse = 'B';
+                    universePortNumber = (effectiveGroupIndex % 10) + 1;
+                } else {
+                    // Ports 11-20, 31-40, etc.
+                    mainUniverse = 'C';
+                    backupUniverse = 'D';
+                    universePortNumber = (effectiveGroupIndex % 10) + 1;
+                }
+            } else { // Novastar (or other default)
+                mainUniverse = String.fromCharCode('A'.charCodeAt(0) + (groupCounter - 1));
+                backupUniverse = `Back ${mainUniverse}`;
+                universePortNumber = 1; // Novastar often just uses port number, but we'll stick to a simple label
             }
             
             currentGroupInfo = {
@@ -141,7 +149,7 @@ function applyDataWiring(
         }
 
         const isEndOfGroup = (pathIndex + 1) % subgroupSize === 0;
-        if (currentGroupInfo && (isEndOfGroup || isLastTileInPath)) {
+        if (processorType === 'Brompton' && currentGroupInfo && (isEndOfGroup || isLastTileInPath)) {
             currentTileInfo.backupLabel = currentGroupInfo.backup;
             currentTileInfo.nextTile = null;
         }
@@ -189,6 +197,7 @@ interface GetWiringDataArgs {
     tilesPerPowerString: string;
     wiringPattern: WiringPattern;
     powerWiringPattern: WiringPattern;
+    processorType: ProcessorType;
     rasterMapConfig?: RasterMapConfig | null;
     activeBounds?: ActiveBounds | null;
     rasterOffset?: { x: number; y: number; };
@@ -203,6 +212,7 @@ export function getWiringData({
   tilesPerPowerString,
   wiringPattern,
   powerWiringPattern,
+  processorType,
   rasterMapConfig,
   activeBounds,
   rasterOffset,
@@ -268,7 +278,7 @@ export function getWiringData({
         
         const dataPathOrder = getPathOrder(sliceIndices, wiringPattern, screenWidth, screenHeight);
         const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
-        applyDataWiring(dataTilesPath, wiringPortConfig);
+        applyDataWiring(dataTilesPath, wiringPortConfig, processorType);
         
         const currentSlice = rasterMapConfig.slices.find(s => s.key === sliceKey);
         if (currentSlice && dataPathOrder.length > 0) {
@@ -300,7 +310,7 @@ export function getWiringData({
   } else {
     const dataPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
     const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
-    applyDataWiring(dataTilesPath, wiringPortConfig);
+    applyDataWiring(dataTilesPath, wiringPortConfig, processorType);
   }
   
   const powerPathOrder = getPathOrder(activeTileIndices, powerWiringPattern, screenWidth, screenHeight);

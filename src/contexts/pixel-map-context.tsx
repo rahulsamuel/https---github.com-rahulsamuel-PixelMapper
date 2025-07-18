@@ -3,7 +3,7 @@
 
 import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction, useMemo } from "react";
-import { getWiringData, type WiringPattern, getPathOrder } from "@/lib/wiring";
+import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 import { isColorDark } from "@/lib/utils";
 
@@ -115,6 +115,7 @@ interface PixelMapState {
   tiles: Tile[];
   labels: string[];
   sliceOffsetLabels: string[];
+  wiringData: WiringInfo[];
   handleTileClick: (tileId: number) => void;
   restoreDeletedTiles: () => void;
   resetAllColors: () => void;
@@ -289,6 +290,26 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     if (bottomHalfTile) height++;
     return height;
   }, [dimensions.screenHeight, topHalfTile, bottomHalfTile]);
+
+  const wiringData = useMemo(() => getWiringData({ 
+    dimensions: { ...dimensions, screenHeight: effectiveScreenHeight }, 
+    tiles, 
+    wiringPortConfig, 
+    wiringPattern, 
+    powerWiringPattern, 
+    rasterMapConfig, 
+    activeBounds, 
+    tilesPerPowerString, 
+    rasterOffset,
+    topHalfTile,
+    bottomHalfTile,
+    processorType,
+  }), [
+    dimensions, effectiveScreenHeight, tiles, wiringPortConfig, wiringPattern,
+    powerWiringPattern, rasterMapConfig, activeBounds, tilesPerPowerString,
+    rasterOffset, topHalfTile, bottomHalfTile, processorType
+  ]);
+
 
   const zoom = zoomLevels[activeTab as keyof typeof zoomLevels] || 1;
   
@@ -1256,6 +1277,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     tiles,
     labels,
     sliceOffsetLabels,
+    wiringData,
     handleTileClick,
     restoreDeletedTiles,
     resetAllColors,
@@ -1351,3 +1373,4 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     </PixelMapContext.Provider>
   );
 }
+
