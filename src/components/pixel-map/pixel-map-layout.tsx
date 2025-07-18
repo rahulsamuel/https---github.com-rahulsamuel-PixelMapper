@@ -355,7 +355,7 @@ export function PixelMapLayout() {
               </div>
             </div>
           </div>
-          <div className="flex-grow overflow-auto bg-muted/20" ref={viewportRef}>
+          <ScrollArea className="flex-grow bg-muted/20" viewportRef={viewportRef}>
               <TabsContent value="grid" className="mt-0 h-full w-full">
                 <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: totalHeight * zoom }}>
                   <LedGrid />
@@ -371,7 +371,7 @@ export function PixelMapLayout() {
                   <RasterMapPreview />
                 </div>
               </TabsContent>
-          </div>
+          </ScrollArea>
         </Tabs>
       </SidebarInset>
     </SidebarProvider>
