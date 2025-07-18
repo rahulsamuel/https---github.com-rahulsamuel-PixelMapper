@@ -306,58 +306,61 @@ export function PixelMapLayout() {
       </Sidebar>
       <SidebarInset>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-screen w-full">
-          <div className="flex-shrink-0 bg-background p-4 border-b flex items-center justify-between z-20">
-            <div className="flex-1"></div>
-            <div className="flex-1 flex justify-center">
-              <TabsList>
-                <TabsTrigger value="grid">LED Grid</TabsTrigger>
-                <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
-                <TabsTrigger value="raster">Raster Map Preview</TabsTrigger>
-              </TabsList>
-            </div>
-            <div className="flex-1 flex justify-end items-center gap-4">
-              <div className="text-sm text-muted-foreground">
-                Resolution: <span className="font-mono">{totalWidth}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
+          <header className="sticky top-0 z-10 flex-shrink-0 bg-background p-2 border-b">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-muted-foreground">
+                  Res: <span className="font-mono">{totalWidth}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
+                </div>
+                {activeTab === 'wiring' && portCount > 0 && (
+                  <>
+                    <Separator orientation="vertical" className="h-6" />
+                    <span className="text-sm font-medium text-muted-foreground">
+                      ({portCount} {portLabelText})
+                    </span>
+                  </>
+                )}
               </div>
-              {activeTab === 'wiring' && portCount > 0 && (
-                <>
-                  <Separator orientation="vertical" className="h-6" />
-                  <span className="text-sm font-medium text-muted-foreground">
-                    ({portCount} {portLabelText})
-                  </span>
-                </>
-              )}
-               <div className="flex items-center space-x-2">
-                <Switch id="on-off-switch" checked={onOffMode} onCheckedChange={setOnOffMode} />
-                <Label htmlFor="on-off-switch">ON/OFF</Label>
+              
+              <div className="absolute left-1/2 -translate-x-1/2">
+                <TabsList>
+                  <TabsTrigger value="grid">LED Grid</TabsTrigger>
+                  <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
+                  <TabsTrigger value="raster">Raster Map</TabsTrigger>
+                </TabsList>
               </div>
-              {activeTab === 'wiring' && (
-                <>
-                  <Separator orientation="vertical" className="h-6" />
+
+              <div className="flex items-center gap-2">
+                 <div className="flex items-center space-x-2">
+                  <Switch id="on-off-switch" checked={onOffMode} onCheckedChange={setOnOffMode} />
+                  <Label htmlFor="on-off-switch">ON/OFF</Label>
+                </div>
+                {activeTab === 'wiring' && (
                   <div className="flex items-center space-x-2">
+                    <Separator orientation="vertical" className="h-6" />
                     <Switch id="mirror-switch" checked={isWiringMirrored} onCheckedChange={setIsWiringMirrored} />
                     <Label htmlFor="mirror-switch" className="flex items-center gap-2"><RefreshCw className="size-4" /> Mirror</Label>
                   </div>
-                </>
-              )}
-              <Separator orientation="vertical" className="h-6 mx-1" />
-              <div className="flex items-center gap-1">
-                <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom Out">
-                  <ZoomOut />
-                </Button>
-                <div className="w-14 text-center font-mono text-sm" title="Current Zoom">
-                  {Math.round(zoom * 100)}%
+                )}
+                <Separator orientation="vertical" className="h-6 mx-1" />
+                <div className="flex items-center gap-1">
+                  <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom Out">
+                    <ZoomOut />
+                  </Button>
+                  <div className="w-14 text-center font-mono text-sm" title="Current Zoom">
+                    {Math.round(zoom * 100)}%
+                  </div>
+                  <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom In">
+                    <ZoomIn />
+                  </Button>
                 </div>
-                <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom In">
-                  <ZoomIn />
-                </Button>
                 <Separator orientation="vertical" className="h-6 mx-1" />
                 <Button onClick={handleFitToScreen} variant="ghost" size="icon" className="h-8 w-8" aria-label="Fit to Screen">
                   <Expand />
                 </Button>
               </div>
             </div>
-          </div>
+          </header>
           <ScrollArea className="flex-grow bg-muted/20" viewportRef={viewportRef}>
               <TabsContent value="grid" className="mt-0 h-full w-full">
                 <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: totalHeight * zoom }}>
