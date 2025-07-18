@@ -43,7 +43,7 @@ export function LandingPage() {
                 </div>
               </div>
               <Image
-                src="https://placehold.co/600x400.png"
+                src="/hero-image.png"
                 width="600"
                 height="400"
                 alt="MapMyLED Screenshot"
