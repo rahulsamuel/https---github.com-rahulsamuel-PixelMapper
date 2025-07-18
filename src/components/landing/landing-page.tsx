@@ -43,7 +43,7 @@ export function LandingPage() {
                 </div>
               </div>
               <Image
-                src="https://firebasestorage.googleapis.com/v0/b/pixelmapper-3rrq2.appspot.com/o/500x500.png?alt=media&token=PASTE_YOUR_TOKEN_HERE"
+                src="https://firebasestorage.googleapis.com/v0/b/pixelmapper-3rrq2.firebasestorage.app/o/500x500.png?alt=media&token=ac870fb8-0ed1-4662-a3ed-52743577b02c"
                 width="500"
                 height="500"
                 alt="MapMyLED Screenshot"
