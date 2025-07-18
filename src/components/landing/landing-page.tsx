@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,17 +65,6 @@ export function LandingPage() {
               </div>
             </div>
             <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3 pt-12">
-              <Card>
-                <CardHeader className="flex flex-row items-center gap-4">
-                  <LayoutGrid className="w-8 h-8 text-primary" />
-                  <CardTitle>Visual Grid Setup</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Interactively design your LED screen layout. Add, remove, and color tiles with intuitive editing tools for precise control.
-                  </p>
-                </CardContent>
-              </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center gap-4">
                     <Shapes className="w-8 h-8 text-primary" />
