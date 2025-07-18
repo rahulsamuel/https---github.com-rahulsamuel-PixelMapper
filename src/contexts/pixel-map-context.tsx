@@ -1373,4 +1373,3 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     </PixelMapContext.Provider>
   );
 }
-
