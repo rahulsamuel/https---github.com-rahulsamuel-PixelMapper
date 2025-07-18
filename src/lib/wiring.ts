@@ -99,7 +99,6 @@ function applyDataWiring(
     let groupCounter = 0;
 
     let currentGroupInfo: { main: string, backup: string } | null = null;
-    let currentNovastarGroup: { main: string, backup: string } | null = null;
 
 
     activeTilesPath.forEach(({ tile: currentTileInfo }, pathIndex) => {
@@ -111,8 +110,14 @@ function applyDataWiring(
             if (processorType === 'Novastar') {
                 const portNumber = String(groupCounter);
                 currentTileInfo.dataLabel = portNumber;
-                currentNovastarGroup = { main: portNumber, backup: `${portNumber}B` };
-            } else { // Brompton and Helios (default)
+                currentGroupInfo = { main: portNumber, backup: `${portNumber}B` };
+            } else if (processorType === 'Helios') {
+                const portNumber = (groupCounter - 1) % 12 + 1;
+                const mainLabel = `${portNumber}M`;
+                const backupLabel = `${portNumber}B`;
+                currentTileInfo.dataLabel = mainLabel;
+                currentGroupInfo = { main: mainLabel, backup: backupLabel };
+            } else { // Brompton
                 const effectiveGroupIndex = (groupCounter - 1) % 20; // Wraps around every 20 ports
                 
                 let mainUniverse: string;
@@ -153,11 +158,8 @@ function applyDataWiring(
         
         const endOfChain = isEndOfGroup || isLastTileInPath;
 
-        if ((processorType === 'Brompton' || processorType === 'Helios') && currentGroupInfo && endOfChain) {
+        if (currentGroupInfo && endOfChain) {
             currentTileInfo.backupLabel = currentGroupInfo.backup;
-            currentTileInfo.nextTile = null;
-        } else if (processorType === 'Novastar' && currentNovastarGroup && endOfChain) {
-            currentTileInfo.backupLabel = currentNovastarGroup.backup;
             currentTileInfo.nextTile = null;
         }
     });
