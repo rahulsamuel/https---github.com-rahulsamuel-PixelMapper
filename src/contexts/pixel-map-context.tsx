@@ -579,8 +579,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         return height;
       })();
 
-    const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
-    const cropHeight = contentPixelHeight;
+    const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth + 1;
+    const cropHeight = contentPixelHeight + 1;
     const sx = activeBounds.minX * dimensions.tileWidth;
     const sy = yPosOfMinY;
 
@@ -968,8 +968,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         yPosOfMinY += isTopHalfRow ? dimensions.tileHeight / 2 : dimensions.tileHeight;
     }
     
-    const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
-    const cropHeight = contentPixelHeight;
+    const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth + 1;
+    const cropHeight = contentPixelHeight + 1;
     const sx = isWiringMirrored 
         ? (dimensions.screenWidth - 1 - activeBounds.maxX) * dimensions.tileWidth
         : activeBounds.minX * dimensions.tileWidth;
@@ -1373,3 +1373,5 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     </PixelMapContext.Provider>
   );
 }
+
+    
