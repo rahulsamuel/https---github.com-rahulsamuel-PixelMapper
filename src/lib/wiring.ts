@@ -99,6 +99,8 @@ function applyDataWiring(
     let groupCounter = 0;
 
     let currentGroupInfo: { main: string, backup: string } | null = null;
+    let currentNovastarGroup: { main: string, backup: string } | null = null;
+
 
     activeTilesPath.forEach(({ tile: currentTileInfo }, pathIndex) => {
         const isFirstInGroup = pathIndex % subgroupSize === 0;
@@ -107,8 +109,9 @@ function applyDataWiring(
             groupCounter++;
             
             if (processorType === 'Novastar') {
-                currentTileInfo.dataLabel = String(groupCounter);
-                currentGroupInfo = null; // Novastar doesn't use backup labels in this context
+                const portNumber = String(groupCounter);
+                currentTileInfo.dataLabel = portNumber;
+                currentNovastarGroup = { main: portNumber, backup: `${portNumber}B` };
             } else { // Brompton is the default
                 const effectiveGroupIndex = (groupCounter - 1) % 20; // Wraps around every 20 ports
                 
@@ -147,8 +150,14 @@ function applyDataWiring(
         }
 
         const isEndOfGroup = (pathIndex + 1) % subgroupSize === 0;
-        if (processorType === 'Brompton' && currentGroupInfo && (isEndOfGroup || isLastTileInPath)) {
+        
+        const endOfChain = isEndOfGroup || isLastTileInPath;
+
+        if (processorType === 'Brompton' && currentGroupInfo && endOfChain) {
             currentTileInfo.backupLabel = currentGroupInfo.backup;
+            currentTileInfo.nextTile = null;
+        } else if (processorType === 'Novastar' && currentNovastarGroup && endOfChain) {
+            currentTileInfo.backupLabel = currentNovastarGroup.backup;
             currentTileInfo.nextTile = null;
         }
     });
