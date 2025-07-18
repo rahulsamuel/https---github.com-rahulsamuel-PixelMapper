@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { LayoutGrid, GitBranch, FileOutput, Download, Upload, Cpu } from 'lucide-react';
+import { LayoutGrid, GitBranch, FileOutput, Download, Upload, Cpu, Shapes } from 'lucide-react';
 import Image from 'next/image';
 
 export function LandingPage() {
@@ -71,8 +71,19 @@ export function LandingPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Interactively design your LED screen layout. Add, remove, and color tiles with intuitive editing tools. Supports full and half-tiles for complex shapes.
+                    Interactively design your LED screen layout. Add, remove, and color tiles with intuitive editing tools for precise control.
                   </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center gap-4">
+                    <Shapes className="w-8 h-8 text-primary" />
+                    <CardTitle>Custom & Half-Tiles</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                        Create pixel maps for non-rectangular and custom-designed LED walls. Add half-tiles to the top or bottom for complex shapes.
+                    </p>
                 </CardContent>
               </Card>
               <Card>
@@ -93,7 +104,7 @@ export function LandingPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Tailor your wiring and port assignments for different video processors, starting with Brompton and Novastar.
+                    Tailor your wiring and port assignments for different video processors, starting with Brompton, Novastar and Helios.
                   </p>
                 </CardContent>
               </Card>
