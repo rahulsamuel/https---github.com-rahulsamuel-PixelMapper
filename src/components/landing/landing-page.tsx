@@ -43,7 +43,7 @@ export function LandingPage() {
                 </div>
               </div>
               <Image
-                src="https://placehold.co/500x500.png"
+                src="https://firebasestorage.googleapis.com/v0/b/pixelmapper-3rrq2.appspot.com/o/500x500.png?alt=media&token=PASTE_YOUR_TOKEN_HERE"
                 width="500"
                 height="500"
                 alt="MapMyLED Screenshot"
