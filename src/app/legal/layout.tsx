@@ -16,9 +16,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
       </header>
       <main className="flex-1 py-12">
         <div className="container">
-            <article className="prose prose-invert max-w-4xl mx-auto">
-                {children}
-            </article>
+            {children}
         </div>
       </main>
       <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
