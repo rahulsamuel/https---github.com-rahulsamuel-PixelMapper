@@ -9,37 +9,38 @@ import {
   SidebarContent,
   SidebarInset,
 } from "@/components/ui/sidebar";
-import { DimensionControls } from "./dimension-controls";
-import { AppearanceControls } from "./appearance-controls";
-import { PixelMapActions } from "./pixel-map-actions";
+import { DimensionControls } from "../pixel-mapper/dimension-controls";
+import { AppearanceControls } from "../pixel-mapper/appearance-controls";
+import { PixelMapActions } from "../pixel-mapper/pixel-mapper-actions";
 import { LedGrid } from "./led-grid";
 import { WiringDiagram } from "./wiring-diagram";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { EditTools } from "./edit-tools";
+import { EditTools } from "../pixel-mapper/edit-tools";
 import { Button } from "@/components/ui/button";
 import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu } from "lucide-react";
-import { LabelControls } from "./label-controls";
+import { LabelControls } from "../pixel-mapper/label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { MediaOutputControls } from "./media-output-controls";
+import { MediaOutputControls } from "../pixel-mapper/media-output-controls";
 import { RasterMapPreview } from "./raster-map-preview";
-import { WiringControls } from "./wiring-controls";
-import { PowerControls } from "./power-controls";
-import { ColorToolControls } from "./color-tool-controls";
+import { WiringControls } from "../pixel-mapper/wiring-controls";
+import { PowerControls } from "../pixel-mapper/power-controls";
+import { ColorToolControls } from "../pixel-mapper/color-tool-controls";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { DownloadsControls } from "./downloads-controls";
+import { DownloadsControls } from "../pixel-mapper/downloads-controls";
 import { useState, useRef, useEffect, useMemo } from "react";
+import Link from "next/link";
 
 
 export function PixelMapLayout() {
-  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, effectiveScreenHeight, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels } = usePixelMap();
+  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, effectiveScreenHeight, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels, processorType, setProcessorType } = usePixelMap();
   const [activeAccordion, setActiveAccordion] = useState("grid-setup");
   const viewportRef = useRef<HTMLDivElement>(null);
 
@@ -357,13 +358,19 @@ export function PixelMapLayout() {
           <div className="flex-grow overflow-auto bg-muted/20" ref={viewportRef}>
               <Tabs value={activeTab} className="h-full w-full">
                 <TabsContent value="grid" className="mt-0 h-full w-full">
-                  <LedGrid />
+                  <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: totalHeight * zoom }}>
+                    <LedGrid />
+                  </div>
                 </TabsContent>
                 <TabsContent value="wiring" className="mt-0 h-full w-full">
-                  <WiringDiagram />
+                  <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: totalHeight * zoom }}>
+                    <WiringDiagram />
+                  </div>
                 </TabsContent>
                 <TabsContent value="raster" className="mt-0 h-full w-full">
-                  <RasterMapPreview />
+                   <div style={{ width: (rasterMapConfig?.totalWidth ?? 0) * zoom, height: (rasterMapConfig?.totalHeight ?? 0) * zoom }}>
+                    <RasterMapPreview />
+                  </div>
                 </TabsContent>
               </Tabs>
           </div>
