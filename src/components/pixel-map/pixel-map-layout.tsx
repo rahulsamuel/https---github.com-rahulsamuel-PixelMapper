@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/sidebar";
 import { DimensionControls } from "../pixel-mapper/dimension-controls";
 import { AppearanceControls } from "../pixel-mapper/appearance-controls";
-import { PixelMapActions } from "../pixel-mapper/pixel-mapper-actions";
+import { PixelMapActions } from "../pixel-mapper/pixel-map-actions";
 import { LedGrid } from "./led-grid";
 import { WiringDiagram } from "./wiring-diagram";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -307,12 +307,15 @@ export function PixelMapLayout() {
       <SidebarInset>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-screen w-full">
           <div className="sticky top-0 flex-shrink-0 bg-background p-4 border-b flex items-center justify-between z-20">
-            <TabsList>
-              <TabsTrigger value="grid">LED Grid</TabsTrigger>
-              <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
-              <TabsTrigger value="raster">Raster Map Preview</TabsTrigger>
-            </TabsList>
-            <div className="flex items-center gap-4">
+            <div className="flex-1"></div>
+            <div className="flex-1 flex justify-center">
+              <TabsList>
+                <TabsTrigger value="grid">LED Grid</TabsTrigger>
+                <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
+                <TabsTrigger value="raster">Raster Map Preview</TabsTrigger>
+              </TabsList>
+            </div>
+            <div className="flex-1 flex justify-end items-center gap-4">
               <div className="text-sm text-muted-foreground">
                 Resolution: <span className="font-mono">{totalWidth}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
               </div>
