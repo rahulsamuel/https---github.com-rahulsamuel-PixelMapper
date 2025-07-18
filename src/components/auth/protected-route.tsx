@@ -16,7 +16,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     }
   }, [user, loading, router]);
 
-  if (loading || !user) {
+  if (loading) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
             <div className="w-full max-w-md space-y-4">
@@ -27,6 +27,10 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
             </div>
         </div>
     );
+  }
+
+  if (!user) {
+      return null;
   }
 
   return <>{children}</>;

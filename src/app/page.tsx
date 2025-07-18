@@ -1,12 +1,12 @@
 
 import { LandingPage } from "@/components/landing/landing-page";
-import { auth } from "@/firebase/server";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 
 export default async function Home() {
-  const { currentUser } = auth;
+  const userCookie = cookies().get('user');
 
-  if (currentUser) {
+  if (userCookie) {
     redirect('/app');
   }
 
