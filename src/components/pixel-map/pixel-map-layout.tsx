@@ -78,18 +78,21 @@ export function PixelMapLayout() {
   
   const handleFitToScreen = () => {
     if (!viewportRef.current) return;
-
+  
     const viewportWidth = viewportRef.current.clientWidth;
     const viewportHeight = viewportRef.current.clientHeight;
-
+  
     let contentWidth = 0;
     let contentHeight = 0;
-
+  
     switch (activeTab) {
       case 'grid':
       case 'wiring':
         contentWidth = dimensions.screenWidth * dimensions.tileWidth;
-        contentHeight = totalHeight; // Use the calculated totalHeight
+        // Calculate the total height of the *entire* grid, not just the active area
+        contentHeight = (dimensions.screenHeight * dimensions.tileHeight) + 
+                       (topHalfTile ? dimensions.tileHeight / 2 : 0) + 
+                       (bottomHalfTile ? dimensions.tileHeight / 2 : 0);
         break;
       case 'raster':
         if (rasterMapConfig) {
@@ -98,16 +101,16 @@ export function PixelMapLayout() {
         }
         break;
     }
-
+  
     if (contentWidth <= 0 || contentHeight <= 0) {
       setZoom(1);
       return;
     }
-
-    const padding = 32; // Add some padding around the content
+  
+    const padding = 32;
     const scaleX = (viewportWidth - padding) / contentWidth;
     const scaleY = (viewportHeight - padding) / contentHeight;
-
+  
     const newZoom = Math.min(scaleX, scaleY);
     setZoom(newZoom > 0 ? newZoom : 1);
   };
@@ -139,8 +142,8 @@ export function PixelMapLayout() {
     }
   }, [activeTab]);
 
-  const dataPortsCount = wiringData.filter(d => d.dataLabel).length;
-  const powerPortsCount = wiringData.filter(d => d.powerPortLabel).length;
+  const dataPortsCount = wiringData ? wiringData.filter(d => d.dataLabel).length : 0;
+  const powerPortsCount = wiringData ? wiringData.filter(d => d.powerPortLabel).length : 0;
   let portCount = 0;
   let portLabelText = '';
 
@@ -299,7 +302,7 @@ export function PixelMapLayout() {
       </Sidebar>
       <SidebarInset>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-screen w-full">
-          <header className="sticky top-0 z-10 flex-shrink-0 bg-background p-2 border-b">
+           <header className="sticky top-0 z-10 flex-shrink-0 bg-background p-2 border-b">
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-4">
                 <div className="text-sm text-muted-foreground">
@@ -354,23 +357,23 @@ export function PixelMapLayout() {
               </div>
             </div>
           </header>
-            <ScrollArea className="h-full w-full bg-muted/20" viewportRef={viewportRef}>
-                <TabsContent value="grid" className="mt-0 h-full w-full">
-                  <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: totalHeight * zoom }}>
-                    <LedGrid />
-                  </div>
-                </TabsContent>
-                <TabsContent value="wiring" className="mt-0 h-full w-full">
-                  <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: totalHeight * zoom }}>
-                    <WiringDiagram />
-                  </div>
-                </TabsContent>
-                <TabsContent value="raster" className="mt-0 h-full w-full">
-                   <div style={{ width: (rasterMapConfig?.totalWidth ?? 0) * zoom, height: (rasterMapConfig?.totalHeight ?? 0) * zoom }}>
-                    <RasterMapPreview />
-                  </div>
-                </TabsContent>
-            </ScrollArea>
+          <ScrollArea className="h-full w-full bg-muted/20" viewportRef={viewportRef}>
+              <TabsContent value="grid" className="mt-0 h-full w-full">
+                <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: totalHeight * zoom }}>
+                  <LedGrid />
+                </div>
+              </TabsContent>
+              <TabsContent value="wiring" className="mt-0 h-full w-full">
+                <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: totalHeight * zoom }}>
+                  <WiringDiagram />
+                </div>
+              </TabsContent>
+              <TabsContent value="raster" className="mt-0 h-full w-full">
+                 <div style={{ width: (rasterMapConfig?.totalWidth ?? 0) * zoom, height: (rasterMapConfig?.totalHeight ?? 0) * zoom }}>
+                  <RasterMapPreview />
+                </div>
+              </TabsContent>
+          </ScrollArea>
         </Tabs>
       </SidebarInset>
     </SidebarProvider>
