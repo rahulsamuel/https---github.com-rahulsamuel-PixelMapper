@@ -1,13 +1,13 @@
 
 "use client";
 
-import { usePixelMap } from "@/contexts/pixel-map-context";
+import { usePixelMapper } from "@/contexts/pixel-mapper-context";
 import { Button } from "@/components/ui/button";
 import { Download, Upload } from "lucide-react";
 import { useRef } from "react";
 
-export function PixelMapActions() {
-  const { exportProject, importProject } = usePixelMap();
+export function PixelMapperActions() {
+  const { exportProject, importProject } = usePixelMapper();
   const importInputRef = useRef<HTMLInputElement>(null);
   
   const handleImportClick = () => {

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { usePixelMap } from "@/contexts/pixel-map-context";
+import { usePixelMapper } from "@/contexts/pixel-mapper-context";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -30,7 +30,7 @@ export function PowerControls() {
     setPowerArrowGap,
     powerLabelSize,
     setPowerLabelSize,
-  } = usePixelMap();
+  } = usePixelMapper();
 
   return (
     <div className="space-y-4">

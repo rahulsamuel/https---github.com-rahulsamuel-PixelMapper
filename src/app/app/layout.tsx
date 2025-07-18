@@ -1,10 +1,10 @@
-import { PixelMapProvider } from "@/contexts/pixel-map-context";
+import { PixelMapperProvider } from "@/contexts/pixel-mapper-context";
 import type { ReactNode } from "react";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
-    <PixelMapProvider>
+    <PixelMapperProvider>
         {children}
-    </PixelMapProvider>
+    </PixelMapperProvider>
   )
 }

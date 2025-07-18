@@ -11,11 +11,11 @@ export function LandingPage() {
         <div className="container flex h-14 items-center">
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <LayoutGrid className="h-6 w-6 text-primary" />
-            <span className="font-bold sm:inline-block">PixelMap</span>
+            <span className="font-bold sm:inline-block">PixelMapper</span>
           </Link>
           <div className="flex flex-1 items-center justify-end space-x-4">
             <Link href="/app">
-              <Button>Launch PixelMap</Button>
+              <Button>Launch PixelMapper</Button>
             </Link>
           </div>
         </div>
@@ -31,7 +31,7 @@ export function LandingPage() {
                     Advanced LED Screen Mapping, Simplified.
                   </h1>
                   <p className="max-w-[600px] text-muted-foreground md:text-xl">
-                    PixelMap is a powerful web-based tool for designing, documenting, and generating configurations for professional LED video walls.
+                    PixelMapper is a powerful web-based tool for designing, documenting, and generating configurations for professional LED video walls.
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
@@ -44,7 +44,7 @@ export function LandingPage() {
                 src="https://placehold.co/600x400.png"
                 width="600"
                 height="400"
-                alt="PixelMap Screenshot"
+                alt="PixelMapper Screenshot"
                 className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
                 data-ai-hint="led screen abstract"
               />
@@ -59,7 +59,7 @@ export function LandingPage() {
                 <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm">Key Features</div>
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl font-headline">Everything You Need for Your LED Setup</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  From initial design to final export, PixelMap streamlines your entire workflow.
+                  From initial design to final export, PixelMapper streamlines your entire workflow.
                 </p>
               </div>
             </div>
@@ -136,7 +136,7 @@ export function LandingPage() {
       </main>
 
       <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
-        <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} PixelMap. All rights reserved.</p>
+        <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} PixelMapper. All rights reserved.</p>
       </footer>
     </div>
   );

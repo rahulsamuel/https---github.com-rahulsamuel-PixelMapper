@@ -3,7 +3,7 @@
 
 import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction, useMemo } from "react";
-import { getWiringData, type WiringPattern, getPathOrder } from "@/lib/wiring";
+import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 import { isColorDark } from "@/lib/utils";
 
@@ -32,6 +32,7 @@ type LabelFormat = 'none' | 'sequential' | 'row-col' | 'dmx-style' | 'row-letter
 type LabelPosition = 'top-left' | 'top-right' | 'center' | 'bottom-left' | 'bottom-right';
 type LabelColorMode = 'single' | 'auto';
 type ResolutionType = 'content' | 'hd' | '4k-uhd' | '4k-dci';
+type ProcessorType = 'Brompton' | 'Novastar';
 
 interface RasterSlice {
   key: string;
@@ -101,6 +102,7 @@ interface ProjectData {
   showSliceOffsetLabels: boolean;
   topHalfTile: boolean;
   bottomHalfTile: boolean;
+  processorType: ProcessorType;
 }
 
 interface PixelMapperState {
@@ -113,6 +115,7 @@ interface PixelMapperState {
   tiles: Tile[];
   labels: string[];
   sliceOffsetLabels: string[];
+  wiringData: WiringInfo[];
   handleTileClick: (tileId: number) => void;
   restoreDeletedTiles: () => void;
   resetAllColors: () => void;
@@ -198,6 +201,8 @@ interface PixelMapperState {
   bottomHalfTile: boolean;
   handleBottomHalfTileChange: (add: boolean) => void;
   effectiveScreenHeight: number;
+  processorType: ProcessorType;
+  setProcessorType: Dispatch<SetStateAction<ProcessorType>>;
 }
 
 const PixelMapperContext = createContext<PixelMapperState | undefined>(undefined);
@@ -257,6 +262,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   const [lastRasterArgs, setLastRasterArgs] = useState<RasterArgs | null>(null);
 
   // Wiring state
+  const [processorType, setProcessorType] = useState<ProcessorType>('Brompton');
   const [wiringPortConfig, setWiringPortConfig] = useState("4");
   const [tilesPerPowerString, setTilesPerPowerString] = useState("20");
   const [showDataLabels, setShowDataLabelsState] = useState(true);
@@ -284,6 +290,26 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     if (bottomHalfTile) height++;
     return height;
   }, [dimensions.screenHeight, topHalfTile, bottomHalfTile]);
+
+  const wiringData = useMemo(() => getWiringData({ 
+    dimensions: { ...dimensions, screenHeight: effectiveScreenHeight }, 
+    tiles, 
+    wiringPortConfig, 
+    wiringPattern, 
+    powerWiringPattern, 
+    rasterMapConfig, 
+    activeBounds, 
+    tilesPerPowerString, 
+    rasterOffset,
+    topHalfTile,
+    bottomHalfTile,
+    processorType,
+  }), [
+    dimensions, effectiveScreenHeight, tiles, wiringPortConfig, wiringPattern,
+    powerWiringPattern, rasterMapConfig, activeBounds, tilesPerPowerString,
+    rasterOffset, topHalfTile, bottomHalfTile, processorType
+  ]);
+
 
   const zoom = zoomLevels[activeTab as keyof typeof zoomLevels] || 1;
   
@@ -1063,7 +1089,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
 
   const exportProject = useCallback(() => {
     const projectData: ProjectData = {
-      version: "1.1.0",
+      version: "1.2.0",
       dimensions,
       tiles,
       tileColor,
@@ -1101,6 +1127,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
       showSliceOffsetLabels,
       topHalfTile,
       bottomHalfTile,
+      processorType,
     };
 
     const jsonString = JSON.stringify(projectData, null, 2);
@@ -1125,7 +1152,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     powerWiringPattern, arrowheadSize, arrowheadLength, arrowGap,
     powerArrowheadSize, powerArrowheadLength, powerArrowGap, brushColor, 
     tilesPerPowerString, isWiringMirrored, dataLabelSize, powerLabelSize, toast, labelColorMode, showSliceOffsetLabels,
-    topHalfTile, bottomHalfTile
+    topHalfTile, bottomHalfTile, processorType
   ]);
   
   const importProject = useCallback((file: File) => {
@@ -1196,6 +1223,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
         setShowSliceOffsetLabels(data.showSliceOffsetLabels ?? true);
         setTopHalfTile(data.topHalfTile ?? false);
         setBottomHalfTile(data.bottomHalfTile ?? false);
+        setProcessorType(data.processorType || 'Brompton');
         
         toast({
           title: "Import Successful",
@@ -1239,7 +1267,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
   }, [rasterMapConfig, activeBounds, toast]);
 
 
-  const value = {
+  const value: PixelMapperState = {
     appState,
     gridRef,
     wiringDiagramRef,
@@ -1249,6 +1277,7 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     tiles,
     labels,
     sliceOffsetLabels,
+    wiringData,
     handleTileClick,
     restoreDeletedTiles,
     resetAllColors,
@@ -1334,6 +1363,8 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     bottomHalfTile,
     handleBottomHalfTileChange,
     effectiveScreenHeight,
+    processorType,
+    setProcessorType,
   };
 
   return (
@@ -1342,7 +1373,3 @@ export function PixelMapperProvider({ children }: { children: ReactNode }) {
     </PixelMapperContext.Provider>
   );
 }
-
-    
-
-    

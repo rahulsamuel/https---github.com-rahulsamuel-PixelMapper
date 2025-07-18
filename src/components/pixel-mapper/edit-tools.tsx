@@ -1,12 +1,12 @@
 
 "use client";
 
-import { usePixelMap } from "@/contexts/pixel-map-context";
+import { usePixelMapper } from "@/contexts/pixel-mapper-context";
 import { Button } from "@/components/ui/button";
 import { Palette, Trash2 } from "lucide-react";
 
 export function EditTools() {
-  const { activeTool, setActiveTool } = usePixelMap();
+  const { activeTool, setActiveTool } = usePixelMapper();
 
   return (
     <div className="grid grid-cols-2 gap-2">
