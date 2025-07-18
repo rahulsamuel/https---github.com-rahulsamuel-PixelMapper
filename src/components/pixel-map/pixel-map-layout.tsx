@@ -298,7 +298,7 @@ export function PixelMapLayout() {
         </SidebarContent>
       </Sidebar>
       <SidebarInset>
-        <div className="flex flex-col h-screen w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-screen w-full">
           <header className="sticky top-0 z-10 flex-shrink-0 bg-background p-2 border-b">
             <div className="flex items-center justify-between w-full">
               <div className="flex items-center gap-4">
@@ -317,9 +317,9 @@ export function PixelMapLayout() {
               
               <div className="absolute left-1/2 -translate-x-1/2">
                 <TabsList>
-                  <TabsTrigger value="grid" onClick={() => handleTabChange('grid')}>LED Grid</TabsTrigger>
-                  <TabsTrigger value="wiring" onClick={() => handleTabChange('wiring')}>Wiring Diagram</TabsTrigger>
-                  <TabsTrigger value="raster" onClick={() => handleTabChange('raster')}>Raster Map</TabsTrigger>
+                  <TabsTrigger value="grid">LED Grid</TabsTrigger>
+                  <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
+                  <TabsTrigger value="raster">Raster Map</TabsTrigger>
                 </TabsList>
               </div>
 
@@ -354,7 +354,6 @@ export function PixelMapLayout() {
               </div>
             </div>
           </header>
-          <Tabs value={activeTab} className="flex-grow">
             <ScrollArea className="h-full w-full bg-muted/20" viewportRef={viewportRef}>
                 <TabsContent value="grid" className="mt-0 h-full w-full">
                   <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: totalHeight * zoom }}>
@@ -372,8 +371,7 @@ export function PixelMapLayout() {
                   </div>
                 </TabsContent>
             </ScrollArea>
-          </Tabs>
-        </div>
+        </Tabs>
       </SidebarInset>
     </SidebarProvider>
   );
