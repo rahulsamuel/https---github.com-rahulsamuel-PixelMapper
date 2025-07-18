@@ -151,7 +151,7 @@ interface PixelMapState {
   onOffMode: boolean;
   setOnOffMode: Dispatch<SetStateAction<boolean>>;
   zoom: number;
-  setZoom: (value: number | ((prev: number) => number)) => void;
+  setZoom: (value: number | ((prev: number) => number), applyToAllTabs?: boolean) => void;
   activeTab: string;
   setActiveTab: Dispatch<SetStateAction<string>>;
   activeBounds: ActiveBounds | null;
@@ -313,11 +313,20 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
   const zoom = zoomLevels[activeTab as keyof typeof zoomLevels] || 1;
   
-  const setZoom = (value: number | ((prevZoom: number) => number)) => {
+  const setZoom = (value: number | ((prevZoom: number) => number), applyToAllTabs = false) => {
     setZoomLevels(prevLevels => {
       const currentTabKey = activeTab as keyof typeof prevLevels;
       const currentZoom = prevLevels[currentTabKey];
       const newZoom = typeof value === 'function' ? value(currentZoom) : value;
+
+      if (applyToAllTabs) {
+        return {
+          grid: newZoom,
+          wiring: newZoom,
+          raster: newZoom,
+        };
+      }
+
       return {
         ...prevLevels,
         [currentTabKey]: newZoom,

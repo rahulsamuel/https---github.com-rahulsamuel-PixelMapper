@@ -50,24 +50,11 @@ export function PixelMapLayout() {
     if (!activeBounds) return 0;
     
     let height = 0;
-    const uniqueY = new Set<number>();
-    
-    const activeTiles = activeBounds 
-      ? Array.from({ length: (activeBounds.maxY - activeBounds.minY + 1) }, (_, i) => i + activeBounds.minY)
-      : [];
-      
-    activeTiles.forEach(y => uniqueY.add(y));
-
-    uniqueY.forEach(y => {
+    for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
       const isTopHalfRow = topHalfTile && y === 0;
       const isBottomHalfRow = bottomHalfTile && y === effectiveScreenHeight - 1;
-
-      if (isTopHalfRow || isBottomHalfRow) {
-        height += dimensions.tileHeight / 2;
-      } else {
-        height += dimensions.tileHeight;
-      }
-    });
+      height += (isTopHalfRow || isBottomHalfRow) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
+    }
 
     return height;
   }, [activeBounds, dimensions.tileHeight, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
@@ -90,9 +77,16 @@ export function PixelMapLayout() {
       case 'wiring':
         contentWidth = dimensions.screenWidth * dimensions.tileWidth;
         // Calculate the total height of the *entire* grid, not just the active area
-        contentHeight = (dimensions.screenHeight * dimensions.tileHeight) + 
-                       (topHalfTile ? dimensions.tileHeight / 2 : 0) + 
-                       (bottomHalfTile ? dimensions.tileHeight / 2 : 0);
+        contentHeight = 0;
+        for (let i = 0; i < effectiveScreenHeight; i++) {
+            const isTopHalfRow = topHalfTile && i === 0;
+            const isBottomHalfRow = bottomHalfTile && i === effectiveScreenHeight - 1;
+            let rowHeight = dimensions.tileHeight;
+            if (isTopHalfRow || isBottomHalfRow) {
+                rowHeight /= 2;
+            }
+            contentHeight += rowHeight;
+        }
         break;
       case 'raster':
         if (rasterMapConfig) {
@@ -103,7 +97,7 @@ export function PixelMapLayout() {
     }
   
     if (contentWidth <= 0 || contentHeight <= 0) {
-      setZoom(1);
+      setZoom(1, true);
       return;
     }
   
@@ -112,7 +106,7 @@ export function PixelMapLayout() {
     const scaleY = (viewportHeight - padding) / contentHeight;
   
     const newZoom = Math.min(scaleX, scaleY);
-    setZoom(newZoom > 0 ? newZoom : 1);
+    setZoom(newZoom > 0 ? newZoom : 1, true);
   };
   
   const AccordionSectionTrigger = ({ icon, title }: { icon: React.ReactNode, title: string }) => (
@@ -154,6 +148,20 @@ export function PixelMapLayout() {
     portCount = powerPortsCount;
     portLabelText = 'Power Ports';
   }
+  
+  const fullGridHeight = useMemo(() => {
+    let height = 0;
+    for (let i = 0; i < effectiveScreenHeight; i++) {
+        const isTopHalfRow = topHalfTile && i === 0;
+        const isBottomHalfRow = bottomHalfTile && i === effectiveScreenHeight - 1;
+        let rowHeight = dimensions.tileHeight;
+        if (isTopHalfRow || isBottomHalfRow) {
+            rowHeight /= 2;
+        }
+        height += rowHeight;
+    }
+    return height;
+  }, [effectiveScreenHeight, dimensions.tileHeight, topHalfTile, bottomHalfTile]);
 
   return (
     <SidebarProvider>
@@ -304,67 +312,67 @@ export function PixelMapLayout() {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-screen w-full">
            <header className="sticky top-0 z-10 flex-shrink-0 bg-background p-2 border-b">
             <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-4">
-                <div className="text-sm text-muted-foreground">
-                  Res: <span className="font-mono">{totalWidth}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
-                </div>
-                {activeTab === 'wiring' && portCount > 0 && (
-                  <>
-                    <Separator orientation="vertical" className="h-6" />
-                    <span className="text-sm font-medium text-muted-foreground">
-                      ({portCount} {portLabelText})
-                    </span>
-                  </>
-                )}
-              </div>
+               <div className="flex items-center gap-4">
+                 <div className="text-sm text-muted-foreground">
+                   Res: <span className="font-mono">{totalWidth}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
+                 </div>
+                 {activeTab === 'wiring' && portCount > 0 && (
+                   <>
+                     <Separator orientation="vertical" className="h-6" />
+                     <span className="text-sm font-medium text-muted-foreground">
+                       ({portCount} {portLabelText})
+                     </span>
+                   </>
+                 )}
+               </div>
               
-              <div className="absolute left-1/2 -translate-x-1/2">
+               <div className="absolute left-1/2 -translate-x-1/2">
                 <TabsList>
                   <TabsTrigger value="grid">LED Grid</TabsTrigger>
                   <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
                   <TabsTrigger value="raster">Raster Map</TabsTrigger>
                 </TabsList>
-              </div>
+               </div>
 
-              <div className="flex items-center gap-2">
-                 <div className="flex items-center space-x-2">
-                  <Switch id="on-off-switch" checked={onOffMode} onCheckedChange={setOnOffMode} />
-                  <Label htmlFor="on-off-switch">ON/OFF</Label>
-                </div>
-                {activeTab === 'wiring' && (
+               <div className="flex items-center gap-2">
                   <div className="flex items-center space-x-2">
-                    <Separator orientation="vertical" className="h-6" />
-                    <Switch id="mirror-switch" checked={isWiringMirrored} onCheckedChange={setIsWiringMirrored} />
-                    <Label htmlFor="mirror-switch" className="flex items-center gap-2"><RefreshCw className="size-4" /> Mirror</Label>
-                  </div>
-                )}
-                <Separator orientation="vertical" className="h-6 mx-1" />
-                <div className="flex items-center gap-1">
-                  <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom Out">
-                    <ZoomOut />
-                  </Button>
-                  <div className="w-14 text-center font-mono text-sm" title="Current Zoom">
-                    {Math.round(zoom * 100)}%
-                  </div>
-                  <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom In">
-                    <ZoomIn />
-                  </Button>
-                </div>
-                <Separator orientation="vertical" className="h-6 mx-1" />
-                <Button onClick={handleFitToScreen} variant="ghost" size="icon" className="h-8 w-8" aria-label="Fit to Screen">
-                  <Expand />
-                </Button>
-              </div>
-            </div>
-          </header>
+                   <Switch id="on-off-switch" checked={onOffMode} onCheckedChange={setOnOffMode} />
+                   <Label htmlFor="on-off-switch">ON/OFF</Label>
+                 </div>
+                 {activeTab === 'wiring' && (
+                   <div className="flex items-center space-x-2">
+                     <Separator orientation="vertical" className="h-6" />
+                     <Switch id="mirror-switch" checked={isWiringMirrored} onCheckedChange={setIsWiringMirrored} />
+                     <Label htmlFor="mirror-switch" className="flex items-center gap-2"><RefreshCw className="size-4" /> Mirror</Label>
+                   </div>
+                 )}
+                 <Separator orientation="vertical" className="h-6 mx-1" />
+                 <div className="flex items-center gap-1">
+                   <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom Out">
+                     <ZoomOut />
+                   </Button>
+                   <div className="w-14 text-center font-mono text-sm" title="Current Zoom">
+                     {Math.round(zoom * 100)}%
+                   </div>
+                   <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom In">
+                     <ZoomIn />
+                   </Button>
+                 </div>
+                 <Separator orientation="vertical" className="h-6 mx-1" />
+                 <Button onClick={handleFitToScreen} variant="ghost" size="icon" className="h-8 w-8" aria-label="Fit to Screen">
+                   <Expand />
+                 </Button>
+               </div>
+             </div>
+           </header>
           <ScrollArea className="h-full w-full bg-muted/20" viewportRef={viewportRef}>
               <TabsContent value="grid" className="mt-0 h-full w-full">
-                <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: totalHeight * zoom }}>
+                <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: fullGridHeight * zoom }}>
                   <LedGrid />
                 </div>
               </TabsContent>
               <TabsContent value="wiring" className="mt-0 h-full w-full">
-                <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: totalHeight * zoom }}>
+                <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: fullGridHeight * zoom }}>
                   <WiringDiagram />
                 </div>
               </TabsContent>
