@@ -5,8 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GitBranch, FileOutput, Download, Upload, Cpu, Shapes } from 'lucide-react';
 import Image from 'next/image';
 import { Logo } from '../logo';
+import { getAuthenticatedUser } from '@/lib/auth/get-authenticated-user';
 
-export function LandingPage() {
+export async function LandingPage() {
+  const user = await getAuthenticatedUser();
+
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -16,7 +19,7 @@ export function LandingPage() {
             <span className="font-bold sm:inline-block">MapMyLED</span>
           </Link>
           <div className="flex flex-1 items-center justify-end space-x-4">
-            <Link href="/app">
+            <Link href={user ? "/app" : "/auth/signin"}>
               <Button>Launch App</Button>
             </Link>
           </div>
@@ -37,7 +40,7 @@ export function LandingPage() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                   <Link href="/app">
+                   <Link href={user ? "/app" : "/auth/signup"}>
                     <Button size="lg">Get Started for Free</Button>
                   </Link>
                 </div>
@@ -145,6 +148,9 @@ export function LandingPage() {
           </Link>
           <Link href="/legal/privacy" className="text-xs hover:underline underline-offset-4">
             Privacy Policy
+          </Link>
+          <Link href="/contact" className="text-xs hover:underline underline-offset-4">
+            Contact Us
           </Link>
         </nav>
       </footer>

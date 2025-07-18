@@ -30,6 +30,9 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
           <Link href="/legal/privacy" className="text-xs hover:underline underline-offset-4">
             Privacy Policy
           </Link>
+          <Link href="/contact" className="text-xs hover:underline underline-offset-4">
+            Contact Us
+          </Link>
         </nav>
       </footer>
     </div>
