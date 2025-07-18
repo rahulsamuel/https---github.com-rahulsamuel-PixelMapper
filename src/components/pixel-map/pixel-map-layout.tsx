@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/sidebar";
 import { DimensionControls } from "../pixel-mapper/dimension-controls";
 import { AppearanceControls } from "../pixel-mapper/appearance-controls";
-import { PixelMapActions } from "../pixel-mapper/pixel-map-actions";
+import { PixelMapActions } from "../pixel-mapper/pixel-mapper-actions";
 import { LedGrid } from "./led-grid";
 import { WiringDiagram } from "./wiring-diagram";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -340,7 +340,7 @@ export function PixelMapLayout() {
                   </div>
                 </>
               )}
-              <Separator orientation="vertical" className="h-6" />
+              <Separator orientation="vertical" className="h-6 mx-1" />
               <div className="flex items-center gap-1">
                 <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom Out">
                   <ZoomOut />
