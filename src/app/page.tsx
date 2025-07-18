@@ -1,10 +1,7 @@
-import { PixelMapperLayout } from "@/components/pixel-mapper/pixel-mapper-layout";
-import { PixelMapperProvider } from "@/contexts/pixel-mapper-context";
+import { LandingPage } from "@/components/landing/landing-page";
 
 export default function Home() {
   return (
-    <PixelMapperProvider>
-      <PixelMapperLayout />
-    </PixelMapperProvider>
+    <LandingPage />
   );
 }

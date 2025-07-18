@@ -3,7 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'PixelMapper',
+  title: 'PixelMap',
   description: 'An advanced tool for LED screen mapping and configuration.',
 };
 

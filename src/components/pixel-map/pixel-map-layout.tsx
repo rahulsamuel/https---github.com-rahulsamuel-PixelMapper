@@ -19,7 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "./edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette } from "lucide-react";
+import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu } from "lucide-react";
 import { LabelControls } from "./label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -39,7 +39,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 
 
 export function PixelMapLayout() {
-  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, effectiveScreenHeight } = usePixelMap();
+  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, effectiveScreenHeight, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels } = usePixelMap();
   const [activeAccordion, setActiveAccordion] = useState("grid-setup");
   const viewportRef = useRef<HTMLDivElement>(null);
 
@@ -76,37 +76,44 @@ export function PixelMapLayout() {
   const handleZoomOut = () => setZoom(prev => Math.max(prev / 1.2, 0.1));
   
   const handleFitToScreen = () => {
-    let gridWidth = 0;
-    let gridHeight = 0;
-    const viewportEl = viewportRef.current;
-
+    if (!viewportRef.current) return;
+  
+    const viewportWidth = viewportRef.current.clientWidth;
+    const viewportHeight = viewportRef.current.clientHeight;
+  
+    let contentWidth = 0;
+    let contentHeight = 0;
+  
     switch (activeTab) {
       case 'grid':
+        contentWidth = dimensions.screenWidth * dimensions.tileWidth;
+        contentHeight = (dimensions.screenHeight * dimensions.tileHeight) + 
+                       (topHalfTile ? dimensions.tileHeight / 2 : 0) + 
+                       (bottomHalfTile ? dimensions.tileHeight / 2 : 0);
+        break;
       case 'wiring':
-        gridWidth = dimensions.screenWidth * dimensions.tileWidth;
-        gridHeight = (dimensions.screenHeight * dimensions.tileHeight) + 
-                     (topHalfTile ? dimensions.tileHeight / 2 : 0) + 
-                     (bottomHalfTile ? dimensions.tileHeight / 2 : 0);
+        contentWidth = dimensions.screenWidth * dimensions.tileWidth;
+        contentHeight = (dimensions.screenHeight * dimensions.tileHeight) + 
+                       (topHalfTile ? dimensions.tileHeight / 2 : 0) + 
+                       (bottomHalfTile ? dimensions.tileHeight / 2 : 0);
         break;
       case 'raster':
         if (rasterMapConfig) {
-          gridWidth = rasterMapConfig.totalWidth;
-          gridHeight = rasterMapConfig.totalHeight;
+          contentWidth = rasterMapConfig.totalWidth;
+          contentHeight = rasterMapConfig.totalHeight;
         }
         break;
     }
-
-    if (!viewportEl || gridWidth <= 0 || gridHeight <= 0) {
-      setZoom(1); // Fallback
+  
+    if (contentWidth <= 0 || contentHeight <= 0) {
+      setZoom(1);
       return;
     }
-
-    const { clientWidth: viewportWidth, clientHeight: viewportHeight } = viewportEl;
-    const padding = 64; // Add some padding around the content
-
-    const scaleX = (viewportWidth - padding) / gridWidth;
-    const scaleY = (viewportHeight - padding) / gridHeight;
-
+  
+    const padding = 32;
+    const scaleX = (viewportWidth - padding) / contentWidth;
+    const scaleY = (viewportHeight - padding) / contentHeight;
+  
     const newZoom = Math.min(scaleX, scaleY);
     setZoom(newZoom > 0 ? newZoom : 1);
   };
@@ -138,12 +145,27 @@ export function PixelMapLayout() {
     }
   }, [activeTab]);
 
+  const dataPortsCount = wiringData.filter(d => d.dataLabel).length;
+  const powerPortsCount = wiringData.filter(d => d.powerPortLabel).length;
+  let portCount = 0;
+  let portLabelText = '';
+
+  if (showDataLabels) {
+    portCount = dataPortsCount;
+    portLabelText = 'Data Ports';
+  } else if (showPowerLabels) {
+    portCount = powerPortsCount;
+    portLabelText = 'Power Ports';
+  }
 
   return (
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader className="p-4">
-          <h1 className="text-2xl font-bold font-headline text-primary-foreground">PixelMap</h1>
+          <Link href="/" className="flex items-center gap-2">
+            <LayoutGrid className="w-8 h-8 text-primary" />
+            <h1 className="text-2xl font-bold font-headline text-primary-foreground">PixelMap</h1>
+          </Link>
         </SidebarHeader>
         <Separator />
         <SidebarContent asChild>
@@ -282,21 +304,38 @@ export function PixelMapLayout() {
         </SidebarContent>
       </Sidebar>
       <SidebarInset>
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full w-full">
-          <div className="sticky top-0 flex-shrink-0 bg-background p-4 border-b flex items-center justify-between z-10">
+        <div className="flex flex-col h-screen">
+          <div className="sticky top-0 flex-shrink-0 bg-background p-4 border-b flex items-center justify-between z-20">
             <TabsList>
-              <TabsTrigger value="grid">LED Grid</TabsTrigger>
-              <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
-              <TabsTrigger value="raster">Raster Map Preview</TabsTrigger>
+              <TabsTrigger value="grid" onClick={() => handleTabChange('grid')}>LED Grid</TabsTrigger>
+              <TabsTrigger value="wiring" onClick={() => handleTabChange('wiring')}>Wiring Diagram</TabsTrigger>
+              <TabsTrigger value="raster" onClick={() => handleTabChange('raster')}>Raster Map Preview</TabsTrigger>
             </TabsList>
             <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground">
                 Resolution: <span className="font-mono">{totalWidth}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
               </div>
+              {activeTab === 'wiring' && portCount > 0 && (
+                <>
+                  <Separator orientation="vertical" className="h-6" />
+                  <span className="text-sm font-medium text-muted-foreground">
+                    ({portCount} {portLabelText})
+                  </span>
+                </>
+              )}
                <div className="flex items-center space-x-2">
                 <Switch id="on-off-switch" checked={onOffMode} onCheckedChange={setOnOffMode} />
                 <Label htmlFor="on-off-switch">ON/OFF</Label>
               </div>
+              {activeTab === 'wiring' && (
+                <>
+                  <Separator orientation="vertical" className="h-6" />
+                  <div className="flex items-center space-x-2">
+                    <Switch id="mirror-switch" checked={isWiringMirrored} onCheckedChange={setIsWiringMirrored} />
+                    <Label htmlFor="mirror-switch" className="flex items-center gap-2"><RefreshCw className="size-4" /> Mirror</Label>
+                  </div>
+                </>
+              )}
               <Separator orientation="vertical" className="h-6" />
               <div className="flex items-center gap-1">
                 <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom Out">
@@ -315,18 +354,20 @@ export function PixelMapLayout() {
               </div>
             </div>
           </div>
-          <div className="flex-grow overflow-auto" ref={viewportRef}>
-            <TabsContent value="grid" className="mt-0">
-              <LedGrid />
-            </TabsContent>
-            <TabsContent value="wiring" className="mt-0">
-              <WiringDiagram />
-            </TabsContent>
-            <TabsContent value="raster" className="mt-0">
-              <RasterMapPreview />
-            </TabsContent>
+          <div className="flex-grow overflow-auto bg-muted/20" ref={viewportRef}>
+              <Tabs value={activeTab} className="h-full w-full">
+                <TabsContent value="grid" className="mt-0 h-full w-full">
+                  <LedGrid />
+                </TabsContent>
+                <TabsContent value="wiring" className="mt-0 h-full w-full">
+                  <WiringDiagram />
+                </TabsContent>
+                <TabsContent value="raster" className="mt-0 h-full w-full">
+                  <RasterMapPreview />
+                </TabsContent>
+              </Tabs>
           </div>
-        </Tabs>
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );
