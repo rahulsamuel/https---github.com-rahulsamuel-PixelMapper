@@ -16,8 +16,11 @@ export function LandingPage() {
             <span className="font-bold sm:inline-block">MapMyLED</span>
           </Link>
           <div className="flex flex-1 items-center justify-end space-x-4">
-            <Link href="/app">
-              <Button>Launch MapMyLED</Button>
+            <Link href="/auth/signin">
+              <Button variant="ghost">Sign In</Button>
+            </Link>
+            <Link href="/auth/signup">
+              <Button>Sign Up</Button>
             </Link>
           </div>
         </div>
@@ -37,8 +40,8 @@ export function LandingPage() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Link href="/app">
-                    <Button size="lg">Get Started</Button>
+                   <Link href="/auth/signup">
+                    <Button size="lg">Get Started for Free</Button>
                   </Link>
                 </div>
               </div>
