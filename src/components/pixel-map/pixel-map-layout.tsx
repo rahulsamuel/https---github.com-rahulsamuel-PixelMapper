@@ -40,7 +40,7 @@ import Link from "next/link";
 
 
 export function PixelMapLayout() {
-  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, effectiveScreenHeight, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels, processorType, setProcessorType } = usePixelMap();
+  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, effectiveScreenHeight, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels } = usePixelMap();
   const [activeAccordion, setActiveAccordion] = useState("grid-setup");
   const viewportRef = useRef<HTMLDivElement>(null);
 
@@ -305,12 +305,12 @@ export function PixelMapLayout() {
         </SidebarContent>
       </Sidebar>
       <SidebarInset>
-        <div className="flex flex-col h-screen">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-screen w-full">
           <div className="sticky top-0 flex-shrink-0 bg-background p-4 border-b flex items-center justify-between z-20">
             <TabsList>
-              <TabsTrigger value="grid" onClick={() => handleTabChange('grid')}>LED Grid</TabsTrigger>
-              <TabsTrigger value="wiring" onClick={() => handleTabChange('wiring')}>Wiring Diagram</TabsTrigger>
-              <TabsTrigger value="raster" onClick={() => handleTabChange('raster')}>Raster Map Preview</TabsTrigger>
+              <TabsTrigger value="grid">LED Grid</TabsTrigger>
+              <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
+              <TabsTrigger value="raster">Raster Map Preview</TabsTrigger>
             </TabsList>
             <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground">
@@ -356,25 +356,23 @@ export function PixelMapLayout() {
             </div>
           </div>
           <div className="flex-grow overflow-auto bg-muted/20" ref={viewportRef}>
-              <Tabs value={activeTab} className="h-full w-full">
-                <TabsContent value="grid" className="mt-0 h-full w-full">
-                  <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: totalHeight * zoom }}>
-                    <LedGrid />
-                  </div>
-                </TabsContent>
-                <TabsContent value="wiring" className="mt-0 h-full w-full">
-                  <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: totalHeight * zoom }}>
-                    <WiringDiagram />
-                  </div>
-                </TabsContent>
-                <TabsContent value="raster" className="mt-0 h-full w-full">
-                   <div style={{ width: (rasterMapConfig?.totalWidth ?? 0) * zoom, height: (rasterMapConfig?.totalHeight ?? 0) * zoom }}>
-                    <RasterMapPreview />
-                  </div>
-                </TabsContent>
-              </Tabs>
+              <TabsContent value="grid" className="mt-0 h-full w-full">
+                <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: totalHeight * zoom }}>
+                  <LedGrid />
+                </div>
+              </TabsContent>
+              <TabsContent value="wiring" className="mt-0 h-full w-full">
+                <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: totalHeight * zoom }}>
+                  <WiringDiagram />
+                </div>
+              </TabsContent>
+              <TabsContent value="raster" className="mt-0 h-full w-full">
+                 <div style={{ width: (rasterMapConfig?.totalWidth ?? 0) * zoom, height: (rasterMapConfig?.totalHeight ?? 0) * zoom }}>
+                  <RasterMapPreview />
+                </div>
+              </TabsContent>
           </div>
-        </div>
+        </Tabs>
       </SidebarInset>
     </SidebarProvider>
   );
