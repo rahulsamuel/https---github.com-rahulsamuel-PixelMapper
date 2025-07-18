@@ -1,7 +1,7 @@
-import { PixelMapperLayout } from "@/components/pixel-mapper/pixel-mapper-layout";
+import { PixelMapLayout } from "@/components/pixel-map/pixel-map-layout";
 
 export default function AppPage() {
   return (
-      <PixelMapperLayout />
+      <PixelMapLayout />
   );
 }

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { usePixelMapper } from "@/contexts/pixel-mapper-context";
+import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -15,7 +15,7 @@ export function DownloadsControls() {
         rasterMapConfig,
         activeBounds,
         activeTab,
-    } = usePixelMapper();
+    } = usePixelMap();
 
     const isGridEmpty = !activeBounds;
     const isGridTab = activeTab === 'grid';
@@ -64,7 +64,7 @@ export function DownloadsControls() {
                         <TooltipContent><p>{pngTooltip}</p></TooltipContent>
                     </Tooltip>
                 ) : (
-                    <Button size="sm" onClick={() => handleDownloadPng('pixel-mapper-grid.png')} variant="outline" className="w-full justify-start">
+                    <Button size="sm" onClick={() => handleDownloadPng('pixel-map-grid.png')} variant="outline" className="w-full justify-start">
                         <Download className="mr-2" />
                         Download Grid as PNG
                     </Button>

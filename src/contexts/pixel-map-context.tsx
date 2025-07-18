@@ -1267,7 +1267,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   }, [rasterMapConfig, activeBounds, toast]);
 
 
-  const value = {
+  const value: PixelMapState = {
     appState,
     gridRef,
     wiringDiagramRef,
