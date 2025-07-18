@@ -1143,7 +1143,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     const blob = new Blob([jsonString], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.download = "pixel-map-project.json";
+    link.download = "mapmyled-project.json";
     link.href = url;
     document.body.appendChild(link);
     link.click();
@@ -1152,7 +1152,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     
     toast({
       title: "Export Successful",
-      description: "Project saved to pixel-map-project.json",
+      description: "Project saved to mapmyled-project.json",
     });
   }, [
     dimensions, tiles, tileColor, tileColorTwo, borderWidth, borderColor, activeTool,
@@ -1243,7 +1243,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         console.error("Failed to parse project file:", error);
         toast({
           title: "Import Failed",
-          description: "The selected file is not a valid PixelMap project file.",
+          description: "The selected file is not a valid project file.",
           variant: "destructive",
         });
       }

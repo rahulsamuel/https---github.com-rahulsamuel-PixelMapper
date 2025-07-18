@@ -37,6 +37,7 @@ import {
 import { DownloadsControls } from "../pixel-mapper/downloads-controls";
 import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { Logo } from "../logo";
 
 
 export function PixelMapLayout() {
@@ -76,7 +77,6 @@ export function PixelMapLayout() {
       case 'grid':
       case 'wiring':
         contentWidth = dimensions.screenWidth * dimensions.tileWidth;
-        // Calculate the total height of the *entire* grid, not just the active area
         contentHeight = 0;
         for (let i = 0; i < effectiveScreenHeight; i++) {
             const isTopHalfRow = topHalfTile && i === 0;
@@ -168,8 +168,8 @@ export function PixelMapLayout() {
       <Sidebar>
         <SidebarHeader className="p-4">
           <Link href="/" className="flex items-center gap-2">
-            <LayoutGrid className="w-8 h-8 text-primary" />
-            <h1 className="text-2xl font-bold font-headline text-primary-foreground">PixelMap</h1>
+            <Logo className="w-8 h-8 text-primary" />
+            <h1 className="text-2xl font-bold font-headline text-primary-foreground">MapMyLED</h1>
           </Link>
         </SidebarHeader>
         <Separator />
