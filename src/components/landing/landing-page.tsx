@@ -43,11 +43,11 @@ export function LandingPage() {
                 </div>
               </div>
               <Image
-                src="https://firebasestorage.googleapis.com/v0/b/pixelmapper-3rrq2.firebasestorage.app/o/500x500.png?alt=media&token=ac870fb8-0ed1-4662-a3ed-52743577b02c"
+                src="https://firebasestorage.googleapis.com/v0/b/pixelmapper-3rrq2.firebasestorage.app/o/500x500-removebg.png?alt=media&token=3b30a277-02ad-4b81-b16c-989d830e61da"
                 width="500"
                 height="500"
                 alt="MapMyLED Screenshot"
-                className="mx-auto aspect-square overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
+                className="mx-auto aspect-square overflow-hidden rounded-xl object-contain sm:w-full lg:order-last"
                 data-ai-hint="led screen custom layout"
               />
             </div>
