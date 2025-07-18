@@ -106,36 +106,34 @@ function applyDataWiring(
         if (isFirstInGroup) {
             groupCounter++;
             
-            const effectiveGroupIndex = (groupCounter - 1) % 20; // Wraps around every 20 ports
-            
-            let mainUniverse: string;
-            let backupUniverse: string;
-            let universePortNumber: number;
-
-            if (processorType === 'Brompton') {
+            if (processorType === 'Novastar') {
+                currentTileInfo.dataLabel = String(groupCounter);
+                currentGroupInfo = null; // Novastar doesn't use backup labels in this context
+            } else { // Brompton is the default
+                const effectiveGroupIndex = (groupCounter - 1) % 20; // Wraps around every 20 ports
+                
+                let mainUniverse: string;
+                let backupUniverse: string;
+                let universePortNumber: number;
+                
                 if (effectiveGroupIndex < 10) {
-                    // Ports 1-10, 21-30, etc.
                     mainUniverse = 'A';
                     backupUniverse = 'B';
                     universePortNumber = (effectiveGroupIndex % 10) + 1;
                 } else {
-                    // Ports 11-20, 31-40, etc.
                     mainUniverse = 'C';
                     backupUniverse = 'D';
                     universePortNumber = (effectiveGroupIndex % 10) + 1;
                 }
-            } else { // Novastar (or other default)
-                mainUniverse = String.fromCharCode('A'.charCodeAt(0) + (groupCounter - 1));
-                backupUniverse = `Back ${mainUniverse}`;
-                universePortNumber = 1; // Novastar often just uses port number, but we'll stick to a simple label
+                
+                currentGroupInfo = {
+                    main: `${mainUniverse}${universePortNumber}`,
+                    backup: `${backupUniverse}${universePortNumber}`
+                };
+                
+                currentTileInfo.dataLabel = currentGroupInfo.main;
             }
-            
-            currentGroupInfo = {
-                main: `${mainUniverse}${universePortNumber}`,
-                backup: `${backupUniverse}${universePortNumber}`
-            };
-            
-            currentTileInfo.dataLabel = currentGroupInfo.main;
+
         } else {
             currentTileInfo.dataLabel = "";
         }
