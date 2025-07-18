@@ -39,7 +39,7 @@ interface RasterMapConfig {
 }
 
 export type WiringPattern = 'serpentine-horizontal' | 'serpentine-vertical' | 'serpentine-horizontal-reverse' | 'left-right' | 'top-bottom' | 'bottom-to-top';
-type ProcessorType = 'Brompton' | 'Novastar';
+type ProcessorType = 'Brompton' | 'Novastar' | 'Helios';
 
 export interface WiringInfo {
   x: number;
@@ -112,7 +112,7 @@ function applyDataWiring(
                 const portNumber = String(groupCounter);
                 currentTileInfo.dataLabel = portNumber;
                 currentNovastarGroup = { main: portNumber, backup: `${portNumber}B` };
-            } else { // Brompton is the default
+            } else { // Brompton and Helios (default)
                 const effectiveGroupIndex = (groupCounter - 1) % 20; // Wraps around every 20 ports
                 
                 let mainUniverse: string;
@@ -153,7 +153,7 @@ function applyDataWiring(
         
         const endOfChain = isEndOfGroup || isLastTileInPath;
 
-        if (processorType === 'Brompton' && currentGroupInfo && endOfChain) {
+        if ((processorType === 'Brompton' || processorType === 'Helios') && currentGroupInfo && endOfChain) {
             currentTileInfo.backupLabel = currentGroupInfo.backup;
             currentTileInfo.nextTile = null;
         } else if (processorType === 'Novastar' && currentNovastarGroup && endOfChain) {

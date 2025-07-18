@@ -32,7 +32,7 @@ type LabelFormat = 'none' | 'sequential' | 'row-col' | 'dmx-style' | 'row-letter
 type LabelPosition = 'top-left' | 'top-right' | 'center' | 'bottom-left' | 'bottom-right';
 type LabelColorMode = 'single' | 'auto';
 type ResolutionType = 'content' | 'hd' | '4k-uhd' | '4k-dci';
-type ProcessorType = 'Brompton' | 'Novastar';
+type ProcessorType = 'Brompton' | 'Novastar' | 'Helios';
 
 interface RasterSlice {
   key: string;
@@ -1382,5 +1382,3 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     </PixelMapContext.Provider>
   );
 }
-
-    

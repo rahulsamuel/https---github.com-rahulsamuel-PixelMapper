@@ -48,6 +48,7 @@ export function WiringControls() {
           <SelectContent>
             <SelectItem value="Brompton">Brompton Processor</SelectItem>
             <SelectItem value="Novastar">Novastar Processor</SelectItem>
+            <SelectItem value="Helios">Helios Processor</SelectItem>
           </SelectContent>
         </Select>
       </div>
