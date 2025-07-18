@@ -306,7 +306,7 @@ export function PixelMapLayout() {
       </Sidebar>
       <SidebarInset>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-screen w-full">
-          <div className="sticky top-0 flex-shrink-0 bg-background p-4 border-b flex items-center justify-between z-20">
+          <div className="flex-shrink-0 bg-background p-4 border-b flex items-center justify-between z-20">
             <div className="flex-1"></div>
             <div className="flex-1 flex justify-center">
               <TabsList>
