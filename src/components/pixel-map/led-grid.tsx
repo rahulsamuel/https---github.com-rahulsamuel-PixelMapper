@@ -60,8 +60,6 @@ export function LedGrid() {
     gridTemplateRows: `repeat(${effectiveScreenHeight}, auto)`,
     width: `${totalGridPixelWidth}px`,
     height: `${totalGridPixelHeight}px`,
-    borderWidth: '1px',
-    borderColor: 'hsl(var(--border))',
     transform: `scale(${zoom})`,
     transformOrigin: 'top left',
   };
@@ -110,6 +108,7 @@ export function LedGrid() {
               borderColor: borderColor,
               backgroundColor: bgColor,
               borderStyle: tile.deleted ? 'none' : 'solid',
+              boxSizing: 'border-box',
             };
 
             return (
