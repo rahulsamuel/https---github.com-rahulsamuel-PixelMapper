@@ -55,10 +55,18 @@ export function ContactForm() {
       }
     }
   }, [state, toast, form]);
+  
+  const onSubmit = (data: FormData) => {
+    const formData = new FormData();
+    formData.append('name', data.name);
+    formData.append('email', data.email);
+    formData.append('message', data.message);
+    formAction(formData);
+  };
 
   return (
     <Form {...form}>
-        <form action={formAction} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
                 control={form.control}
                 name="name"
@@ -98,7 +106,7 @@ export function ContactForm() {
                     </FormItem>
                 )}
             />
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
                 Send Message
             </Button>
         </form>
