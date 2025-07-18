@@ -1,7 +1,7 @@
 
 "use client";
 
-import { usePixelMapper } from "@/contexts/pixel-mapper-context";
+import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Cpu } from "lucide-react";
 
 export function WiringControls() {
   const {
@@ -32,10 +33,24 @@ export function WiringControls() {
     setDataLabelSize,
     showSliceOffsetLabels,
     setShowSliceOffsetLabels,
-  } = usePixelMapper();
+    processorType,
+    setProcessorType
+  } = usePixelMap();
 
   return (
     <div className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="processor-type" className="flex items-center gap-2"><Cpu className="size-4" /> Processor Type</Label>
+        <Select value={processorType} onValueChange={(v) => setProcessorType(v as any)}>
+          <SelectTrigger id="processor-type">
+            <SelectValue placeholder="Select processor" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Brompton">Brompton Processor</SelectItem>
+            <SelectItem value="Novastar">Novastar Processor</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       <div className="space-y-2">
         <Label htmlFor="wiring-pattern">Pattern</Label>
         <Select value={wiringPattern} onValueChange={(v) => setWiringPattern(v as any)}>

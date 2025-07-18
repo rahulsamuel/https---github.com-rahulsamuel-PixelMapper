@@ -1,7 +1,7 @@
 
 "use client";
 
-import { usePixelMapper } from "@/contexts/pixel-mapper-context";
+import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
 import { FileOutput, RotateCcw } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -20,7 +20,7 @@ export function MediaOutputControls() {
     calculateAndApplyOptimalOffset,
     showSliceOffsetLabels,
     setShowSliceOffsetLabels,
-  } = usePixelMapper();
+  } = usePixelMap();
   
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : dimensions.screenWidth * dimensions.tileWidth;
   const totalHeight = activeBounds ? (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight : dimensions.screenHeight * dimensions.tileHeight;

@@ -1,6 +1,7 @@
+
 "use client";
 
-import { usePixelMapper } from "@/contexts/pixel-mapper-context";
+import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -14,7 +15,7 @@ export function DownloadsControls() {
         rasterMapConfig,
         activeBounds,
         activeTab,
-    } = usePixelMapper();
+    } = usePixelMap();
 
     const isGridEmpty = !activeBounds;
     const isGridTab = activeTab === 'grid';

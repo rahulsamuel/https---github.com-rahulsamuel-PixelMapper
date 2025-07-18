@@ -1,14 +1,14 @@
 
 "use client";
 
-import { usePixelMapper } from "@/contexts/pixel-mapper-context";
+import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 
 export function DimensionControls() {
-  const { dimensions, setDimensions, topHalfTile, handleTopHalfTileChange, bottomHalfTile, handleBottomHalfTileChange } = usePixelMapper();
+  const { dimensions, setDimensions, topHalfTile, handleTopHalfTileChange, bottomHalfTile, handleBottomHalfTileChange } = usePixelMap();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setDimensions(prevDimensions => ({

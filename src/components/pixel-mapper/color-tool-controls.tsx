@@ -1,12 +1,12 @@
 
 "use client";
 
-import { usePixelMapper } from "@/contexts/pixel-mapper-context";
+import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
 export function ColorToolControls() {
-  const { brushColor, setBrushColor } = usePixelMapper();
+  const { brushColor, setBrushColor } = usePixelMap();
 
   return (
     <div className="space-y-2 rounded-lg border p-3 bg-muted/50">

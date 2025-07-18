@@ -1,13 +1,13 @@
 
 "use client";
 
-import { usePixelMapper } from "@/contexts/pixel-mapper-context";
+import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 
 export function AppearanceControls() {
-  const { tileColor, setTileColor, tileColorTwo, setTileColorTwo, borderWidth, setBorderWidth, borderColor, setBorderColor } = usePixelMapper();
+  const { tileColor, setTileColor, tileColorTwo, setTileColorTwo, borderWidth, setBorderWidth, borderColor, setBorderColor } = usePixelMap();
 
   return (
     <div className="space-y-4">
