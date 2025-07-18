@@ -1,0 +1,37 @@
+
+import { Logo } from "@/components/logo";
+import Link from "next/link";
+import type { ReactNode } from "react";
+
+export default function LegalLayout({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex flex-col min-h-screen bg-background">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-14 items-center">
+          <Link href="/" className="mr-6 flex items-center space-x-2">
+            <Logo className="h-6 w-6 text-primary" />
+            <span className="font-bold sm:inline-block">MapMyLED</span>
+          </Link>
+        </div>
+      </header>
+      <main className="flex-1 py-12">
+        <div className="container">
+            <article className="prose prose-invert max-w-4xl mx-auto">
+                {children}
+            </article>
+        </div>
+      </main>
+      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
+        <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} MapMyLED. All rights reserved.</p>
+        <nav className="sm:ml-auto flex gap-4 sm:gap-6">
+          <Link href="/legal/terms" className="text-xs hover:underline underline-offset-4">
+            Terms of Service
+          </Link>
+          <Link href="/legal/privacy" className="text-xs hover:underline underline-offset-4">
+            Privacy Policy
+          </Link>
+        </nav>
+      </footer>
+    </div>
+  );
+}
