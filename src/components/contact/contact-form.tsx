@@ -55,18 +55,10 @@ export function ContactForm() {
       }
     }
   }, [state, toast, form]);
-  
-  const onSubmit = (data: FormData) => {
-    const formData = new FormData();
-    formData.append('name', data.name);
-    formData.append('email', data.email);
-    formData.append('message', data.message);
-    formAction(formData);
-  };
 
   return (
     <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form action={formAction} className="space-y-6">
             <FormField
                 control={form.control}
                 name="name"
