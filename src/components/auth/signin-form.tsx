@@ -60,9 +60,13 @@ export function SignInForm() {
 
     } catch (error: any) {
       console.error('Sign in error:', error);
+      let description = 'An unexpected error occurred. Please try again.';
+      if (error.code === 'auth/invalid-credential') {
+        description = 'Invalid email or password. Please try again.';
+      }
       toast({
         title: 'Sign In Failed',
-        description: error.message || 'Invalid email or password. Please try again.',
+        description,
         variant: 'destructive',
       });
     } finally {
