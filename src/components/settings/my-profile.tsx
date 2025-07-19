@@ -54,8 +54,10 @@ export function MyProfile() {
   }
 
   const getInitials = (name?: string | null, email?: string | null) => {
-    const nameOrEmail = name || email || '';
-    return nameOrEmail?.[0]?.toUpperCase() ?? '?';
+    if (name) {
+        return name.split(' ').map(n => n[0]).join('').toUpperCase();
+    }
+    return email?.[0]?.toUpperCase() ?? '?';
   }
 
   return (

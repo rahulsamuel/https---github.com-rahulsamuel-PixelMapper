@@ -10,7 +10,7 @@ type SubscriptionStatus = 'loading' | 'trial' | 'pro' | 'free';
 
 interface AuthContextType {
   user: AuthenticatedUser | null;
-  firebaseUser: FirebaseUser | null; // For client-side auth checks
+  firebaseUser: FirebaseUser | null;
   subscriptionStatus: SubscriptionStatus;
   trialDaysRemaining: number;
   loading: boolean;
@@ -40,10 +40,10 @@ export const AuthProvider = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // This effect now primarily manages the subscription status based on the server-provided user
-    // and listens for client-side auth changes for things like password updates.
+    // Set user state based on server-provided data
     setUser(initialUser);
-    
+
+    // Determine subscription status from the initial user object
     if (initialUser) {
       if (initialUser.is_pro) {
         setSubscriptionStatus('pro');
@@ -68,13 +68,12 @@ export const AuthProvider = ({
       setTrialDaysRemaining(0);
     }
     
-    // The onAuthStateChanged listener is still useful for client-side operations
-    // that require an active Firebase user object (like password changes),
-    // but it no longer drives the main user state for the UI.
+    // The onAuthStateChanged listener is mainly for getting the firebaseUser object
+    // for client-side actions (like password changes), and for client-side navigation triggers.
+    // It should NOT be the primary source for the `user` state which includes firestore data.
     const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       setFirebaseUser(fbUser);
-      // Only set loading to false after the first check has run on the client.
-      setLoading(false);
+      setLoading(false); // Set loading to false once we have a definitive answer from Firebase client.
     });
 
     return () => unsubscribe();
