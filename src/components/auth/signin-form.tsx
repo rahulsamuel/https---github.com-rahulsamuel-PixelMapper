@@ -51,7 +51,7 @@ export function SignInForm() {
         body: JSON.stringify({ idToken }),
       });
       
-      router.push(`/${userCredential.user.uid}`);
+      router.push(`/app`);
       toast({
         title: 'Signed In',
         description: 'Welcome back!',

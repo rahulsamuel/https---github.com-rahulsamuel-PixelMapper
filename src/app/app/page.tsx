@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 export default async function AppRedirectPage() {
     const user = await getAuthenticatedUser();
     if (user) {
-        redirect(`/${user.uid}`);
+        redirect(`/app/${user.uid}`);
     } else {
         redirect('/auth/signin');
     }
