@@ -2,10 +2,14 @@
 
 import { auth } from "firebase-admin";
 import { cookies } from "next/headers";
-import { getFirebaseAdminApp, adminDb } from "./firebase-admin";
+import { getFirebaseAdminApp, getAdminDb } from "./firebase-admin";
 
 export async function getAuthenticatedUser() {
-  getFirebaseAdminApp();
+  const adminApp = getFirebaseAdminApp();
+  if (!adminApp) {
+    return null;
+  }
+  
   const sessionCookie = cookies().get("session")?.value;
 
   if (!sessionCookie) {
@@ -15,6 +19,12 @@ export async function getAuthenticatedUser() {
   try {
     const decodedIdToken = await auth().verifySessionCookie(sessionCookie, true);
     
+    const adminDb = getAdminDb();
+    if (!adminDb) {
+      // If DB is not available, return auth data only
+      return { ...decodedIdToken, name: decodedIdToken.email?.split('@')[0] };
+    }
+
     // Fetch user data from Firestore
     const userDocRef = adminDb.collection("users").doc(decodedIdToken.uid);
     const userDoc = await userDocRef.get();
