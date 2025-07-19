@@ -1,8 +1,17 @@
 
-import { PixelMapLayout } from "@/components/pixel-map/pixel-map-layout";
+'use server';
 
-export default async function AppPage() {
-  return (
-      <PixelMapLayout />
-  );
+import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { redirect } from "next/navigation";
+
+export default async function AppRedirectPage() {
+    const user = await getAuthenticatedUser();
+    
+    if (user) {
+        redirect(`/app/${user.uid}`);
+    } else {
+        redirect('/auth/signin');
+    }
+
+    return null;
 }

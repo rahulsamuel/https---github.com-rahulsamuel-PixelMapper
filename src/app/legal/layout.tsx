@@ -13,7 +13,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuth();
   
-  const isSettingsPage = pathname === '/app/settings';
+  const isSettingsPage = pathname.includes('/settings');
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -27,7 +27,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
             {isSettingsPage && user ? (
               <LogoutButton />
             ) : (
-               <Link href={user ? "/app" : "/auth/signin"}>
+               <Link href={user ? `/app/${user.uid}` : "/auth/signin"}>
                  <Button>{user ? "Launch App" : "Launch App"}</Button>
                </Link>
             )}
