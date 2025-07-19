@@ -201,13 +201,9 @@ export function PixelMapLayout() {
                       <p className="text-sm text-muted-foreground">Welcome back,</p>
                       <p className="font-semibold text-lg">{user?.name || user?.email}</p>
                     </div>
-                    <Button variant="outline" className="w-full justify-start" onClick={() => router.push('/app/subscription')}>
-                      <CreditCard className="mr-2"/>
-                      Manage Subscription
-                    </Button>
                     <Button variant="outline" className="w-full justify-start" onClick={() => router.push('/app/account')}>
                       <Settings className="mr-2"/>
-                      Account Settings
+                      Settings
                     </Button>
                     <form action={handleLogout} className="w-full">
                       <Button type="submit" variant="destructive" className="w-full justify-start">
