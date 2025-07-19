@@ -200,7 +200,7 @@ export function PixelMapLayout() {
                       <p className="font-semibold text-lg">{user?.name || user?.email}</p>
                     </div>
                     <Button variant="outline" className="w-full justify-start" asChild>
-                      <Link href="/settings">
+                      <Link href={`/${user?.uid}/settings`}>
                         <Settings className="mr-2"/>
                         Settings
                       </Link>
