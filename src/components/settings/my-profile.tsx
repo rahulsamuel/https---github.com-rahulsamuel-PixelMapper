@@ -48,9 +48,9 @@ export function MyProfile() {
     )
   }
 
-  const getInitials = (email: string) => {
-    const namePart = user?.name || email || '';
-    return namePart?.[0]?.toUpperCase() ?? '?';
+  const getInitials = (name?: string | null, email?: string | null) => {
+    const nameOrEmail = name || email || '';
+    return nameOrEmail?.[0]?.toUpperCase() ?? '?';
   }
 
   return (
@@ -63,7 +63,7 @@ export function MyProfile() {
         <div className="flex items-center gap-4">
            <Avatar className="h-20 w-20">
             {user.picture && <AvatarImage src={user.picture} alt={user.name || 'User'} />}
-            <AvatarFallback>{getInitials(user.email || '')}</AvatarFallback>
+            <AvatarFallback>{getInitials(user.name, user.email)}</AvatarFallback>
           </Avatar>
           <div>
             <h3 className="text-xl font-semibold">{user.name || "No name provided"}</h3>
