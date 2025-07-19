@@ -16,7 +16,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth";
-import { auth } from "@/lib/auth/firebase";
 
 const formSchema = z.object({
   currentPassword: z.string().min(1, { message: "Current password is required." }),
@@ -30,7 +29,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 function AccountSettings() {
-  const { user } = useAuth();
+  const { user, firebaseUser } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -44,10 +43,7 @@ function AccountSettings() {
   });
 
   const onSubmit = async (data: FormData) => {
-    // Use auth.currentUser which is more reliable on the client
-    const currentUser = auth.currentUser;
-
-    if (!currentUser || !currentUser.email) {
+    if (!firebaseUser || !firebaseUser.email) {
       toast({
         title: "Error",
         description: "You must be logged in to update your password.",
@@ -59,9 +55,9 @@ function AccountSettings() {
     setIsLoading(true);
 
     try {
-      const credential = EmailAuthProvider.credential(currentUser.email, data.currentPassword);
-      await reauthenticateWithCredential(currentUser, credential);
-      await updatePassword(currentUser, data.newPassword);
+      const credential = EmailAuthProvider.credential(firebaseUser.email, data.currentPassword);
+      await reauthenticateWithCredential(firebaseUser, credential);
+      await updatePassword(firebaseUser, data.newPassword);
       
       toast({
         title: "Success!",

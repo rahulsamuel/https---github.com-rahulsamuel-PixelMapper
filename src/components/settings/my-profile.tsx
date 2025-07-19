@@ -10,9 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function MyProfile() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   
-  if (!user) {
+  if (loading || !user) {
     return (
         <Card>
             <CardHeader>
@@ -38,7 +38,8 @@ export function MyProfile() {
   }
 
   const getInitials = (email: string) => {
-    return email?.[0]?.toUpperCase() ?? '?';
+    const namePart = user?.name || email || '';
+    return namePart?.[0]?.toUpperCase() ?? '?';
   }
 
   return (
@@ -50,7 +51,7 @@ export function MyProfile() {
       <CardContent className="space-y-6">
         <div className="flex items-center gap-4">
            <Avatar className="h-20 w-20">
-            <AvatarImage src={user.picture} alt={user.email || 'User'} />
+            {user.picture && <AvatarImage src={user.picture} alt={user.name || 'User'} />}
             <AvatarFallback>{getInitials(user.email || '')}</AvatarFallback>
           </Avatar>
           <div>

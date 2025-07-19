@@ -28,8 +28,6 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
     return null;
   }
   
-  getFirebaseAdminApp();
-  
   const sessionCookie = cookies().get("session")?.value;
 
   if (!sessionCookie) {
@@ -37,10 +35,12 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
   }
 
   try {
+    getFirebaseAdminApp();
     const decodedIdToken = await auth().verifySessionCookie(sessionCookie, true);
     
     const adminDb = getAdminDb();
     if (!adminDb) {
+      // This case should ideally not happen if env vars are set
       return { 
         uid: decodedIdToken.uid,
         email: decodedIdToken.email || null,
@@ -71,6 +71,8 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
     return userProfile;
   } catch (error) {
     console.error("Error verifying session cookie or fetching user data:", error);
+    // Clear the invalid cookie
+    cookies().delete("session");
     return null;
   }
 }
