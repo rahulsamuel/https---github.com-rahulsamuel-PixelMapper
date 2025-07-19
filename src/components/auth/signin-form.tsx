@@ -10,8 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { app } from '@/lib/auth/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '@/lib/auth/firebase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Separator } from '../ui/separator';
@@ -39,7 +39,6 @@ export function SignInForm() {
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
     try {
-      const auth = getAuth(app);
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
       
       const idToken = await userCredential.user.getIdToken();

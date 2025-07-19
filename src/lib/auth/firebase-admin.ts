@@ -1,5 +1,6 @@
 
 import { cert, getApp, getApps, initializeApp } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 import type { ServiceAccount } from "firebase-admin";
 
 const requiredEnvVars = [
@@ -40,3 +41,5 @@ export function getFirebaseAdminApp() {
     credential: cert(serviceAccount),
   });
 }
+
+export const adminDb = getFirestore(getFirebaseAdminApp());

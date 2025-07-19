@@ -10,8 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { app, db } from '@/lib/auth/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth, db } from '@/lib/auth/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -40,15 +40,16 @@ export function SignUpForm() {
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
     try {
-      const auth = getAuth(app);
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       
       const user = userCredential.user;
+      const nameFromEmail = data.email.split('@')[0];
 
       // Add user to Firestore
       await setDoc(doc(db, "users", user.uid), {
         uid: user.uid,
         email: user.email,
+        name: nameFromEmail,
         createdAt: new Date(),
       });
       
