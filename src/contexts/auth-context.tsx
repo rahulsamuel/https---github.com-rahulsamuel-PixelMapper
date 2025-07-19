@@ -73,6 +73,7 @@ export const AuthProvider = ({
     // but it no longer drives the main user state for the UI.
     const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       setFirebaseUser(fbUser);
+      // Only set loading to false after the first check has run on the client.
       setLoading(false);
     });
 
