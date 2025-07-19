@@ -1,7 +1,7 @@
 
 "use client";
 
-import { getAuthenticatedUser, AuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { AuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 type SubscriptionStatus = 'loading' | 'trial' | 'pro' | 'free';
@@ -22,49 +22,42 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<AuthenticatedUser | null>(null);
+export const AuthProvider = ({ 
+  children,
+  initialUser 
+}: { 
+  children: ReactNode,
+  initialUser: AuthenticatedUser | null 
+}) => {
+  const [user] = useState<AuthenticatedUser | null>(initialUser);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>('loading');
   const [trialDaysRemaining, setTrialDaysRemaining] = useState(0);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const currentUser = await getAuthenticatedUser();
-        setUser(currentUser);
-
-        if (currentUser) {
-          if (currentUser.is_pro) {
-            setSubscriptionStatus('pro');
-            setTrialDaysRemaining(0);
-          } else {
-            const creationTime = new Date(currentUser.auth_time * 1000);
-            const now = new Date();
-            const trialDuration = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-            const trialEndTime = creationTime.getTime() + trialDuration;
-            
-            if (now.getTime() < trialEndTime) {
-              setSubscriptionStatus('trial');
-              const remainingMs = trialEndTime - now.getTime();
-              setTrialDaysRemaining(Math.ceil(remainingMs / (1000 * 60 * 60 * 24)));
-            } else {
-              setSubscriptionStatus('free');
-              setTrialDaysRemaining(0);
-            }
-          }
+    if (user) {
+      if (user.is_pro) {
+        setSubscriptionStatus('pro');
+        setTrialDaysRemaining(0);
+      } else {
+        const creationTime = new Date(user.auth_time * 1000);
+        const now = new Date();
+        const trialDuration = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+        const trialEndTime = creationTime.getTime() + trialDuration;
+        
+        if (now.getTime() < trialEndTime) {
+          setSubscriptionStatus('trial');
+          const remainingMs = trialEndTime - now.getTime();
+          setTrialDaysRemaining(Math.ceil(remainingMs / (1000 * 60 * 60 * 24)));
         } else {
           setSubscriptionStatus('free');
           setTrialDaysRemaining(0);
         }
-      } catch (error) {
-        console.error("Error fetching user:", error);
-        setUser(null);
-        setSubscriptionStatus('free');
       }
-    };
-
-    fetchUser();
-  }, []);
+    } else {
+      setSubscriptionStatus('free');
+      setTrialDaysRemaining(0);
+    }
+  }, [user]);
 
   return (
     <AuthContext.Provider value={{ user, subscriptionStatus, trialDaysRemaining }}>
