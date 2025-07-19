@@ -40,7 +40,6 @@ import Link from "next/link";
 import { Logo } from "../logo";
 import { useAuth } from "@/contexts/auth-context";
 import { signOut } from "@/app/auth/actions";
-import { useRouter } from "next/navigation";
 
 
 export function PixelMapLayout() {
@@ -48,7 +47,6 @@ export function PixelMapLayout() {
   const [activeAccordion, setActiveAccordion] = useState("profile");
   const viewportRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
-  const router = useRouter();
 
 
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : 0;

@@ -28,7 +28,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
               <LogoutButton />
             ) : (
                <Link href={user ? `/app/${user.uid}` : "/auth/signin"}>
-                 <Button>{user ? "Launch App" : "Launch App"}</Button>
+                 <Button>{user ? "Launch App" : "Sign In"}</Button>
                </Link>
             )}
           </div>
