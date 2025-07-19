@@ -40,10 +40,8 @@ export const AuthProvider = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set user state based on server-provided data
     setUser(initialUser);
 
-    // Determine subscription status from the initial user object
     if (initialUser) {
       if (initialUser.is_pro) {
         setSubscriptionStatus('pro');
@@ -69,11 +67,12 @@ export const AuthProvider = ({
     }
     
     // The onAuthStateChanged listener is mainly for getting the firebaseUser object
-    // for client-side actions (like password changes), and for client-side navigation triggers.
-    // It should NOT be the primary source for the `user` state which includes firestore data.
+    // for client-side actions, and for client-side navigation triggers.
     const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       setFirebaseUser(fbUser);
-      setLoading(false); // Set loading to false once we have a definitive answer from Firebase client.
+      // Only after this client-side check is complete, we can be sure
+      // that the auth state is settled on the client.
+      setLoading(false);
     });
 
     return () => unsubscribe();
