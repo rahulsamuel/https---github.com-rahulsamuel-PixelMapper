@@ -16,19 +16,6 @@ export interface AuthenticatedUser {
 
 
 export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
-  const requiredEnvVars = [
-    'FIREBASE_PROJECT_ID',
-    'FIREBASE_CLIENT_EMAIL',
-    'FIREBASE_PRIVATE_KEY',
-  ];
-  const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
-
-  if (missingEnvVars.length > 0) {
-    // Silently fail if admin is not configured
-    // This allows the app to run without full auth setup for development.
-    return null;
-  }
-  
   const sessionCookie = cookies().get("session")?.value;
 
   if (!sessionCookie) {
@@ -36,42 +23,49 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
   }
 
   try {
+    // This will throw if the admin SDK is not configured, which we'll catch.
     getFirebaseAdminApp();
+    const adminDb = getAdminDb();
+
     const decodedIdToken = await auth().verifySessionCookie(sessionCookie, true);
     
-    const adminDb = getAdminDb();
-    if (!adminDb) {
-      // This case should ideally not happen if env vars are set
-      return { 
-        uid: decodedIdToken.uid,
-        email: decodedIdToken.email || null,
-        name: decodedIdToken.name || decodedIdToken.email?.split('@')[0] || null,
-        picture: decodedIdToken.picture || null,
-        is_pro: (decodedIdToken as any).is_pro === true,
-        auth_time: decodedIdToken.auth_time,
+    // If we have an admin DB, try to enrich the user data
+    if (adminDb) {
+      const userDocRef = adminDb.collection("users").doc(decodedIdToken.uid);
+      const userDoc = await userDocRef.get();
+      const firestoreData = userDoc.exists ? userDoc.data() : {};
+
+      const userProfile: AuthenticatedUser = {
+          uid: decodedIdToken.uid,
+          email: decodedIdToken.email || null,
+          name: firestoreData?.name || decodedIdToken.name || decodedIdToken.email?.split('@')[0] || null,
+          picture: firestoreData?.picture || decodedIdToken.picture || null,
+          is_pro: (decodedIdToken as any).is_pro === true || firestoreData?.is_pro === true,
+          auth_time: decodedIdToken.auth_time,
       };
+      
+      // To test the "pro" state, you can uncomment the following line:
+      // userProfile.is_pro = true;
+
+      return userProfile;
     }
 
-    const userDocRef = adminDb.collection("users").doc(decodedIdToken.uid);
-    const userDoc = await userDocRef.get();
-
-    const firestoreData = userDoc.exists ? userDoc.data() : {};
-
-    const userProfile: AuthenticatedUser = {
-        uid: decodedIdToken.uid,
-        email: decodedIdToken.email || null,
-        name: firestoreData?.name || decodedIdToken.name || decodedIdToken.email?.split('@')[0] || null,
-        picture: firestoreData?.picture || decodedIdToken.picture || null,
-        is_pro: (decodedIdToken as any).is_pro === true || firestoreData?.is_pro === true,
-        auth_time: decodedIdToken.auth_time,
+    // Fallback if adminDb is not available (e.g., config error) but cookie is valid
+    return { 
+      uid: decodedIdToken.uid,
+      email: decodedIdToken.email || null,
+      name: decodedIdToken.name || decodedIdToken.email?.split('@')[0] || null,
+      picture: decodedIdToken.picture || null,
+      is_pro: (decodedIdToken as any).is_pro === true,
+      auth_time: decodedIdToken.auth_time,
     };
-    
-    // To test the "pro" state, you can uncomment the following line:
-    // userProfile.is_pro = true;
 
-    return userProfile;
-  } catch (error) {
-    console.error("Error verifying session cookie or fetching user data:", error);
+  } catch (error: any) {
+    // This can happen if the admin SDK is not configured OR if the cookie is invalid.
+    // In either case, the user is not authenticated.
+    if (error.code !== 'auth/session-cookie-expired' && error.code !== 'auth/session-cookie-revoked') {
+      console.error("Error verifying session cookie or fetching user data:", error.message);
+    }
     // Clear the invalid cookie
     cookies().delete("session");
     return null;
