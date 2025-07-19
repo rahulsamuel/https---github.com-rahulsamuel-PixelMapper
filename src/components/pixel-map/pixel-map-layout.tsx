@@ -45,7 +45,7 @@ import { useRouter } from "next/navigation";
 
 export function PixelMapLayout() {
   const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, effectiveScreenHeight, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels } = usePixelMap();
-  const [activeAccordion, setActiveAccordion] = useState("grid-setup");
+  const [activeAccordion, setActiveAccordion] = useState("profile");
   const viewportRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const router = useRouter();
@@ -198,8 +198,8 @@ export function PixelMapLayout() {
                 <AccordionContent className="bg-background border rounded-b-lg -mt-2 p-4">
                   <div className="space-y-4">
                     <div className="text-center mb-4">
+                      <p className="text-sm text-muted-foreground">Welcome back,</p>
                       <p className="font-semibold text-lg">{user?.name || user?.email}</p>
-                      <p className="text-sm text-muted-foreground">Welcome back!</p>
                     </div>
                     <Button variant="outline" className="w-full justify-start" onClick={() => router.push('/app/subscription')}>
                       <CreditCard className="mr-2"/>
