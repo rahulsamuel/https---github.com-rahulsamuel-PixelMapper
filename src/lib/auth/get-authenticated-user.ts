@@ -1,3 +1,4 @@
+'use server';
 
 import { auth } from "firebase-admin";
 import { cookies } from "next/headers";
