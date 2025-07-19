@@ -3,6 +3,8 @@
 
 import { AuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { auth } from "@/lib/auth/firebase";
 
 type SubscriptionStatus = 'loading' | 'trial' | 'pro' | 'free';
 
@@ -29,7 +31,7 @@ export const AuthProvider = ({
   children: ReactNode,
   initialUser: AuthenticatedUser | null 
 }) => {
-  const [user] = useState<AuthenticatedUser | null>(initialUser);
+  const [user, setUser] = useState<AuthenticatedUser | null>(initialUser);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>('loading');
   const [trialDaysRemaining, setTrialDaysRemaining] = useState(0);
 
@@ -39,6 +41,7 @@ export const AuthProvider = ({
         setSubscriptionStatus('pro');
         setTrialDaysRemaining(0);
       } else {
+        // auth_time is in seconds, convert to milliseconds
         const creationTime = new Date(user.auth_time * 1000);
         const now = new Date();
         const trialDuration = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
