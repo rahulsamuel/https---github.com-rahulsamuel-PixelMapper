@@ -1,9 +1,20 @@
 
+'use client';
+
 import { Logo } from "@/components/logo";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { usePathname } from 'next/navigation';
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth-context";
+import { LogoutButton } from "@/components/auth/logout-button";
 
 export default function LegalLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const { user } = useAuth();
+  
+  const isSettingsPage = pathname === '/app/settings';
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -12,6 +23,15 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
             <Logo className="h-6 w-6 text-primary" />
             <span className="font-bold sm:inline-block">MapMyLED</span>
           </Link>
+           <div className="flex flex-1 items-center justify-end space-x-4">
+            {isSettingsPage && user ? (
+              <LogoutButton />
+            ) : (
+               <Link href={user ? "/app" : "/auth/signin"}>
+                 <Button>{user ? "Launch App" : "Launch App"}</Button>
+               </Link>
+            )}
+          </div>
         </div>
       </header>
       <main className="flex-1 py-12">
