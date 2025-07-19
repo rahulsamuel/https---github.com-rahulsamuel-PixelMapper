@@ -19,7 +19,7 @@ export async function LandingPage() {
             <span className="font-bold sm:inline-block">MapMyLED</span>
           </Link>
           <div className="flex flex-1 items-center justify-end space-x-4">
-            <Link href={user ? `/app/${user.uid}` : "/auth/signin"}>
+            <Link href={user ? `/` : "/auth/signin"}>
               <Button>Launch App</Button>
             </Link>
           </div>
@@ -40,7 +40,7 @@ export async function LandingPage() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                   <Link href={user ? `/app/${user.uid}` : "/auth/signup"}>
+                   <Link href={user ? `/` : "/auth/signup"}>
                     <Button size="lg">Get Started for Free</Button>
                   </Link>
                 </div>

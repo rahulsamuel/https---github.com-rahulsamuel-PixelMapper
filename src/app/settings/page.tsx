@@ -3,10 +3,10 @@ import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { redirect } from "next/navigation";
 
-export default async function SettingsPage({ params }: { params: { uid: string } }) {
+export default async function SettingsPage() {
   const user = await getAuthenticatedUser();
 
-  if (!user || user.uid !== params.uid) {
+  if (!user) {
     redirect('/auth/signin');
   }
 

@@ -43,7 +43,6 @@ export function SignInForm() {
       
       const idToken = await userCredential.user.getIdToken();
 
-      // Send the token to your API route to set the session cookie
       await fetch('/api/auth/session', {
         method: 'POST',
         headers: {
@@ -52,7 +51,7 @@ export function SignInForm() {
         body: JSON.stringify({ idToken }),
       });
       
-      router.push(`/app/${userCredential.user.uid}`);
+      router.push(`/`);
       toast({
         title: 'Signed In',
         description: 'Welcome back!',
