@@ -3,8 +3,6 @@
 
 import { AuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { auth } from "@/lib/auth/firebase";
 
 type SubscriptionStatus = 'loading' | 'trial' | 'pro' | 'free';
 
@@ -36,13 +34,15 @@ export const AuthProvider = ({
   const [trialDaysRemaining, setTrialDaysRemaining] = useState(0);
 
   useEffect(() => {
-    if (user) {
-      if (user.is_pro) {
+    // We now trust the initialUser from the server, so we just set the state based on that.
+    setUser(initialUser);
+    if (initialUser) {
+      if (initialUser.is_pro) {
         setSubscriptionStatus('pro');
         setTrialDaysRemaining(0);
       } else {
         // auth_time is in seconds, convert to milliseconds
-        const creationTime = new Date(user.auth_time * 1000);
+        const creationTime = new Date(initialUser.auth_time * 1000);
         const now = new Date();
         const trialDuration = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
         const trialEndTime = creationTime.getTime() + trialDuration;
@@ -60,7 +60,7 @@ export const AuthProvider = ({
       setSubscriptionStatus('free');
       setTrialDaysRemaining(0);
     }
-  }, [user]);
+  }, [initialUser]);
 
   return (
     <AuthContext.Provider value={{ user, subscriptionStatus, trialDaysRemaining }}>
