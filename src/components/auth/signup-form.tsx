@@ -63,7 +63,8 @@ export function SignUpForm() {
         body: JSON.stringify({ idToken }),
       });
       
-      router.push(`/app/${user.uid}`);
+      router.push(`/${user.uid}`);
+      router.refresh();
       toast({
         title: 'Account Created',
         description: "Welcome! You've been signed in successfully.",

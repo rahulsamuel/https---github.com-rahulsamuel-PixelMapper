@@ -43,7 +43,7 @@ export function SignInForm() {
       
       const idToken = await userCredential.user.getIdToken();
 
-      await fetch('/api/auth/session', {
+      const response = await fetch('/api/auth/session', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -51,7 +51,12 @@ export function SignInForm() {
         body: JSON.stringify({ idToken }),
       });
       
-      router.push(`/app/${userCredential.user.uid}`);
+      if (!response.ok) {
+        throw new Error('Failed to create session');
+      }
+      
+      router.push(`/${userCredential.user.uid}`);
+      router.refresh(); // This helps ensure the new cookie is read by the server on the next render.
       toast({
         title: 'Signed In',
         description: 'Welcome back!',

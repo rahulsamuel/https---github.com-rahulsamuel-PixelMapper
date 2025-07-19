@@ -19,7 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "../pixel-mapper/edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, CreditCard, Settings } from "lucide-react";
+import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home } from "lucide-react";
 import { LabelControls } from "../pixel-mapper/label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -199,8 +199,14 @@ export function PixelMapLayout() {
                       <p className="text-sm text-muted-foreground">Welcome back,</p>
                       <p className="font-semibold text-lg">{user?.name || user?.email}</p>
                     </div>
+                     <Button variant="outline" className="w-full justify-start" asChild>
+                      <Link href={`/${user?.uid}`}>
+                        <Home className="mr-2"/>
+                        Welcome Page
+                      </Link>
+                    </Button>
                     <Button variant="outline" className="w-full justify-start" asChild>
-                      <Link href={`/app/${user?.uid}/settings`}>
+                      <Link href={`/${user?.uid}/settings`}>
                         <Settings className="mr-2"/>
                         Settings
                       </Link>

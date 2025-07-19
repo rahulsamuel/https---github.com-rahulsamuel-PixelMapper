@@ -8,6 +8,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/auth/firebase";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { updateProfile } from "firebase/auth";
 
 function ProfileSkeleton() {
   return (
@@ -36,13 +41,16 @@ function ProfileSkeleton() {
 
 
 export function MyProfile() {
-  const { user, loading } = useAuth();
+  const { user, firebaseUser, loading } = useAuth();
+  const [displayName, setDisplayName] = useState(user?.name || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
   
   if (loading) {
     return <ProfileSkeleton />;
   }
 
-  if (!user) {
+  if (!user || !firebaseUser) {
     return (
         <Card>
              <CardHeader>
@@ -59,6 +67,33 @@ export function MyProfile() {
     }
     return email?.[0]?.toUpperCase() ?? '?';
   }
+
+  const handleUpdateProfile = async () => {
+    setIsSaving(true);
+    try {
+      // Update Firestore
+      const userDocRef = doc(db, "users", user.uid);
+      await setDoc(userDocRef, { name: displayName }, { merge: true });
+
+      // Update Firebase Auth profile
+      await updateProfile(firebaseUser, { displayName: displayName });
+
+      toast({
+        title: "Profile Updated",
+        description: "Your display name has been successfully updated.",
+      });
+
+    } catch (error) {
+       console.error("Error updating profile:", error);
+       toast({
+        title: "Update Failed",
+        description: "Could not update your profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <Card>
@@ -79,9 +114,15 @@ export function MyProfile() {
         </div>
         <div className="space-y-2">
             <Label htmlFor="displayName">Display Name</Label>
-            <Input id="displayName" defaultValue={user.name || ''} />
+            <Input 
+              id="displayName" 
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+            />
         </div>
-        <Button>Update Profile</Button>
+        <Button onClick={handleUpdateProfile} disabled={isSaving}>
+          {isSaving ? 'Saving...' : 'Update Profile'}
+        </Button>
       </CardContent>
     </Card>
   )

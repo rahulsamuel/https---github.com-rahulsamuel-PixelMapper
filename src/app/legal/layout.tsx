@@ -24,11 +24,16 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
             <span className="font-bold sm:inline-block">MapMyLED</span>
           </Link>
            <div className="flex flex-1 items-center justify-end space-x-4">
-            {isSettingsPage && user ? (
-              <LogoutButton />
+            {user ? (
+               <div className="flex items-center gap-4">
+                <Link href={`/${user.uid}/settings`}>
+                  <Button variant="ghost">Settings</Button>
+                </Link>
+                <LogoutButton />
+               </div>
             ) : (
-               <Link href={user ? `/app` : "/auth/signin"}>
-                 <Button>{user ? "Launch App" : "Sign In"}</Button>
+               <Link href="/auth/signin">
+                 <Button>Sign In</Button>
                </Link>
             )}
           </div>

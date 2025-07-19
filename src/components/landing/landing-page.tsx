@@ -1,4 +1,6 @@
 
+'use server';
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,8 +21,8 @@ export async function LandingPage() {
             <span className="font-bold sm:inline-block">MapMyLED</span>
           </Link>
           <div className="flex flex-1 items-center justify-end space-x-4">
-            <Link href={user ? `/app` : "/auth/signin"}>
-              <Button>Launch App</Button>
+            <Link href={user ? `/${user.uid}` : "/auth/signin"}>
+              <Button>{user ? 'Go to App' : 'Sign In'}</Button>
             </Link>
           </div>
         </div>
@@ -40,7 +42,7 @@ export async function LandingPage() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                   <Link href={user ? `/app` : "/auth/signup"}>
+                   <Link href={user ? `/${user.uid}` : "/auth/signup"}>
                     <Button size="lg">Get Started for Free</Button>
                   </Link>
                 </div>
