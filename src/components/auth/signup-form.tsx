@@ -11,7 +11,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { app } from '@/lib/auth/firebase';
+import { app, db } from '@/lib/auth/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Separator } from '../ui/separator';
@@ -42,7 +43,16 @@ export function SignUpForm() {
       const auth = getAuth(app);
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       
-      const idToken = await userCredential.user.getIdToken();
+      const user = userCredential.user;
+
+      // Add user to Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        email: user.email,
+        createdAt: new Date(),
+      });
+      
+      const idToken = await user.getIdToken();
 
       await fetch('/api/auth/session', {
         method: 'POST',
