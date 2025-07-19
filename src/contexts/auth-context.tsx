@@ -80,7 +80,7 @@ export const AuthProvider = ({
   }, [initialUser]);
 
   return (
-    <AuthContext.Provider value={{ user, firebaseUser, subscriptionStatus, trialDaysRemaining, loading: user === undefined && loading }}>
+    <AuthContext.Provider value={{ user, firebaseUser, subscriptionStatus, trialDaysRemaining, loading }}>
       {children}
     </AuthContext.Provider>
   );
