@@ -19,7 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "../pixel-mapper/edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User } from "lucide-react";
+import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, CreditCard, Settings } from "lucide-react";
 import { LabelControls } from "../pixel-mapper/label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -38,13 +38,18 @@ import { DownloadsControls } from "../pixel-mapper/downloads-controls";
 import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Logo } from "../logo";
-import { SubscriptionControls } from "../pixel-mapper/subscription-controls";
+import { useAuth } from "@/contexts/auth-context";
+import { signOut } from "@/app/auth/actions";
+import { useRouter } from "next/navigation";
 
 
 export function PixelMapLayout() {
   const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, effectiveScreenHeight, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels } = usePixelMap();
   const [activeAccordion, setActiveAccordion] = useState("grid-setup");
   const viewportRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
+  const router = useRouter();
+
 
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : 0;
   
@@ -164,6 +169,11 @@ export function PixelMapLayout() {
     return height;
   }, [effectiveScreenHeight, dimensions.tileHeight, topHalfTile, bottomHalfTile]);
 
+  const handleLogout = async () => {
+    await signOut();
+  };
+
+
   return (
     <SidebarProvider>
       <Sidebar>
@@ -185,8 +195,27 @@ export function PixelMapLayout() {
             >
               <AccordionItem value="profile" className="border-none">
                 <AccordionSectionTrigger icon={<User className="size-5" />} title="Profile" />
-                <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
-                  <SubscriptionControls />
+                <AccordionContent className="bg-background border rounded-b-lg -mt-2 p-4">
+                  <div className="space-y-4">
+                    <div className="text-center mb-4">
+                      <p className="font-semibold text-lg">{user?.name || user?.email}</p>
+                      <p className="text-sm text-muted-foreground">Welcome back!</p>
+                    </div>
+                    <Button variant="outline" className="w-full justify-start" onClick={() => router.push('/app/subscription')}>
+                      <CreditCard className="mr-2"/>
+                      Manage Subscription
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start" onClick={() => router.push('/app/account')}>
+                      <Settings className="mr-2"/>
+                      Account Settings
+                    </Button>
+                    <form action={handleLogout} className="w-full">
+                      <Button type="submit" variant="destructive" className="w-full justify-start">
+                        <LogOut className="mr-2" />
+                        Log Out
+                      </Button>
+                    </form>
+                  </div>
                 </AccordionContent>
               </AccordionItem>
 
@@ -395,5 +424,3 @@ export function PixelMapLayout() {
     </SidebarProvider>
   );
 }
-
-    
