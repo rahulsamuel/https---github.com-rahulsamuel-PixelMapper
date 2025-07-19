@@ -16,6 +16,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth";
+import { auth } from "@/lib/auth/firebase";
+
 
 const formSchema = z.object({
   currentPassword: z.string().min(1, { message: "Current password is required." }),
@@ -29,7 +31,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 function AccountSettings() {
-  const { user, firebaseUser } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -43,6 +45,7 @@ function AccountSettings() {
   });
 
   const onSubmit = async (data: FormData) => {
+    const firebaseUser = auth.currentUser;
     if (!firebaseUser || !firebaseUser.email) {
       toast({
         title: "Error",
@@ -69,7 +72,7 @@ function AccountSettings() {
       console.error("Password update error:", error);
       toast({
         title: "Update Failed",
-        description: error.code === 'auth/wrong-password' 
+        description: error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential'
           ? "The current password you entered is incorrect."
           : "An unexpected error occurred. Please try again.",
         variant: "destructive",

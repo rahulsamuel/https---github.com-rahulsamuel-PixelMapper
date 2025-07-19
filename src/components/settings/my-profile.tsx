@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function MyProfile() {
   const { user, loading } = useAuth();
   
-  if (loading || !user) {
+  if (loading) {
     return (
         <Card>
             <CardHeader>
@@ -35,6 +35,17 @@ export function MyProfile() {
             </CardContent>
         </Card>
     );
+  }
+
+  if (!user) {
+    return (
+        <Card>
+             <CardHeader>
+                <CardTitle>My Profile</CardTitle>
+                <CardDescription>Please sign in to view your profile.</CardDescription>
+            </CardHeader>
+        </Card>
+    )
   }
 
   const getInitials = (email: string) => {
