@@ -1,13 +1,13 @@
 
 "use client";
 
-import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
+import { getAuthenticatedUser, AuthenticatedUser } from "@/lib/auth/get-authenticated-user";
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 type SubscriptionStatus = 'loading' | 'trial' | 'pro' | 'free';
 
 interface AuthContextType {
-  user: Awaited<ReturnType<typeof getAuthenticatedUser>>;
+  user: AuthenticatedUser | null;
   subscriptionStatus: SubscriptionStatus;
   trialDaysRemaining: number;
 }
@@ -23,7 +23,7 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<Awaited<ReturnType<typeof getAuthenticatedUser>>>(null);
+  const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>('loading');
   const [trialDaysRemaining, setTrialDaysRemaining] = useState(0);
 
@@ -34,10 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(currentUser);
 
         if (currentUser) {
-          // In a real app, you'd fetch this from your database or custom claims
-          const isPro = currentUser.custom_claims?.is_pro === true;
-
-          if (isPro) {
+          if (currentUser.is_pro) {
             setSubscriptionStatus('pro');
             setTrialDaysRemaining(0);
           } else {

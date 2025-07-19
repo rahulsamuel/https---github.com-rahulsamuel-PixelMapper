@@ -4,7 +4,17 @@ import { auth } from "firebase-admin";
 import { cookies } from "next/headers";
 import { getFirebaseAdminApp, getAdminDb } from "./firebase-admin";
 
-export async function getAuthenticatedUser() {
+export interface AuthenticatedUser {
+    uid: string;
+    email: string | null;
+    name: string | null;
+    picture: string | null;
+    is_pro: boolean;
+    auth_time: number;
+}
+
+
+export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
   const adminApp = getFirebaseAdminApp();
   if (!adminApp) {
     return null;
@@ -21,34 +31,32 @@ export async function getAuthenticatedUser() {
     
     const adminDb = getAdminDb();
     if (!adminDb) {
-      // If DB is not available, return auth data only
-      return { ...decodedIdToken, name: decodedIdToken.email?.split('@')[0] };
+      return { 
+        uid: decodedIdToken.uid,
+        email: decodedIdToken.email || null,
+        name: decodedIdToken.name || decodedIdToken.email?.split('@')[0] || null,
+        picture: decodedIdToken.picture || null,
+        is_pro: (decodedIdToken as any).is_pro === true,
+        auth_time: decodedIdToken.auth_time,
+      };
     }
 
-    // Fetch user data from Firestore
     const userDocRef = adminDb.collection("users").doc(decodedIdToken.uid);
     const userDoc = await userDocRef.get();
 
-    if (!userDoc.exists) {
-        // This case might happen if the user was deleted from Firestore but not Auth
-        return { ...decodedIdToken, name: decodedIdToken.email?.split('@')[0] };
-    }
-    
-    const firestoreData = userDoc.data();
+    const firestoreData = userDoc.exists ? userDoc.data() : {};
 
-    // Combine Auth token data with Firestore data
-    const userProfile = {
-        ...decodedIdToken,
-        ...firestoreData,
+    const userProfile: AuthenticatedUser = {
+        uid: decodedIdToken.uid,
+        email: decodedIdToken.email || null,
+        name: firestoreData?.name || decodedIdToken.name || decodedIdToken.email?.split('@')[0] || null,
+        picture: firestoreData?.picture || decodedIdToken.picture || null,
+        is_pro: (decodedIdToken as any).is_pro === true || firestoreData?.is_pro === true,
+        auth_time: decodedIdToken.auth_time,
     };
     
-    // In a real app with paid subscriptions, you would fetch the user's
-    // subscription status from your database (e.g., Firestore) or check for
-    // custom claims set by a backend process. For this prototype, we'll
-    // add a mock custom claim to the decoded token to simulate a pro user.
-    //
     // To test the "pro" state, you can uncomment the following line:
-    // (userProfile as any).is_pro = true;
+    // userProfile.is_pro = true;
 
     return userProfile;
   } catch (error) {
