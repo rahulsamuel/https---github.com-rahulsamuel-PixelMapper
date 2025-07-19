@@ -183,6 +183,13 @@ export function PixelMapLayout() {
               onValueChange={setActiveAccordion}
               className="p-4 flex flex-col gap-2"
             >
+              <AccordionItem value="subscription" className="border-none">
+                <AccordionSectionTrigger icon={<Gem className="size-5" />} title="Subscription" />
+                <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
+                  <SubscriptionControls />
+                </AccordionContent>
+              </AccordionItem>
+
               <AccordionItem value="project" className="border-none">
                 <AccordionSectionTrigger icon={<Package className="size-5" />} title="Project" />
                 <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
@@ -204,13 +211,6 @@ export function PixelMapLayout() {
                 </AccordionContent>
               </AccordionItem>
               
-              <AccordionItem value="subscription" className="border-none">
-                <AccordionSectionTrigger icon={<Gem className="size-5" />} title="Subscription" />
-                <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
-                  <SubscriptionControls />
-                </AccordionContent>
-              </AccordionItem>
-
               {activeTab === 'grid' && (
                 <AccordionItem value="grid-setup" className="border-none">
                   <AccordionSectionTrigger icon={<LayoutGrid className="size-5" />} title="Grid Setup" />
