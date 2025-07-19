@@ -28,10 +28,7 @@ export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> 
     return null;
   }
   
-  const adminApp = getFirebaseAdminApp();
-  if (!adminApp) {
-    return null;
-  }
+  getFirebaseAdminApp();
   
   const sessionCookie = cookies().get("session")?.value;
 
