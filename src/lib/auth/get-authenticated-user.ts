@@ -15,6 +15,19 @@ export interface AuthenticatedUser {
 
 
 export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
+  const requiredEnvVars = [
+    'FIREBASE_PROJECT_ID',
+    'FIREBASE_CLIENT_EMAIL',
+    'FIREBASE_PRIVATE_KEY',
+  ];
+  const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+
+  if (missingEnvVars.length > 0) {
+    // Silently fail if admin is not configured
+    // This allows the app to run without full auth setup for development.
+    return null;
+  }
+  
   const adminApp = getFirebaseAdminApp();
   if (!adminApp) {
     return null;
