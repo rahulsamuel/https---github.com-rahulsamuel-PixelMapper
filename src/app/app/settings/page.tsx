@@ -8,48 +8,7 @@ import { ArrowLeft, User, CreditCard, Settings as SettingsIcon } from "lucide-re
 import Link from "next/link";
 import { AccountSettings } from "@/app/app/account/page";
 import { SubscriptionControls } from "@/components/pixel-mapper/subscription-controls";
-import { useAuth } from "@/contexts/auth-context";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-
-function MyProfile() {
-  const { user } = useAuth();
-  
-  if (!user) {
-    return null;
-  }
-
-  const getInitials = (email: string) => {
-    return email?.[0]?.toUpperCase() ?? '?';
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>My Profile</CardTitle>
-        <CardDescription>View and update your profile information.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center gap-4">
-           <Avatar className="h-20 w-20">
-            <AvatarImage src={user.picture} alt={user.email || 'User'} />
-            <AvatarFallback>{getInitials(user.email || '')}</AvatarFallback>
-          </Avatar>
-          <div>
-            <h3 className="text-xl font-semibold">{user.name || "No name provided"}</h3>
-            <p className="text-muted-foreground">{user.email}</p>
-          </div>
-        </div>
-        <div className="space-y-2">
-            <Label htmlFor="displayName">Display Name</Label>
-            <Input id="displayName" defaultValue={user.name || ''} />
-        </div>
-        <Button>Update Profile</Button>
-      </CardContent>
-    </Card>
-  )
-}
+import { MyProfile } from "@/components/settings/my-profile";
 
 export default function SettingsPage() {
   return (
