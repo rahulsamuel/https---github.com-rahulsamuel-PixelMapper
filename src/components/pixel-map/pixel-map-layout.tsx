@@ -19,7 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "../pixel-mapper/edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, Gem } from "lucide-react";
+import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User } from "lucide-react";
 import { LabelControls } from "../pixel-mapper/label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -183,8 +183,8 @@ export function PixelMapLayout() {
               onValueChange={setActiveAccordion}
               className="p-4 flex flex-col gap-2"
             >
-              <AccordionItem value="subscription" className="border-none">
-                <AccordionSectionTrigger icon={<Gem className="size-5" />} title="Subscription" />
+              <AccordionItem value="profile" className="border-none">
+                <AccordionSectionTrigger icon={<User className="size-5" />} title="Profile" />
                 <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
                   <SubscriptionControls />
                 </AccordionContent>
@@ -395,3 +395,5 @@ export function PixelMapLayout() {
     </SidebarProvider>
   );
 }
+
+    
