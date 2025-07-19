@@ -40,6 +40,8 @@ export const AuthProvider = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // This effect now primarily manages the subscription status based on the server-provided user
+    // and listens for client-side auth changes for things like password updates.
     setUser(initialUser);
     
     if (initialUser) {
@@ -66,6 +68,9 @@ export const AuthProvider = ({
       setTrialDaysRemaining(0);
     }
     
+    // The onAuthStateChanged listener is still useful for client-side operations
+    // that require an active Firebase user object (like password changes),
+    // but it no longer drives the main user state for the UI.
     const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       setFirebaseUser(fbUser);
       setLoading(false);
@@ -75,7 +80,7 @@ export const AuthProvider = ({
   }, [initialUser]);
 
   return (
-    <AuthContext.Provider value={{ user, firebaseUser, subscriptionStatus, trialDaysRemaining, loading }}>
+    <AuthContext.Provider value={{ user, firebaseUser, subscriptionStatus, trialDaysRemaining, loading: user === undefined && loading }}>
       {children}
     </AuthContext.Provider>
   );
