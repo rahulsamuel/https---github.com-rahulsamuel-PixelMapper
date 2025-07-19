@@ -6,6 +6,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback, Re
 import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 import { isColorDark } from "@/lib/utils";
+import { useAuth } from "./auth-context";
 
 interface Dimensions {
   tileWidth: number;
@@ -222,6 +223,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const rasterMapRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const nextTileId = useRef(0);
+  const { subscriptionStatus } = useAuth();
 
   const [dimensions, setDimensions] = useState<Dimensions>({
     tileWidth: 200,
@@ -604,6 +606,12 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         }
     })
       .then((dataUrl) => {
+        if (subscriptionStatus === 'trial') {
+            return addWatermark(dataUrl);
+        }
+        return dataUrl;
+      })
+      .then((dataUrl) => {
         const link = document.createElement("a");
         link.download = filename;
         link.href = dataUrl;
@@ -612,7 +620,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       .catch((err) => {
         console.error("Could not generate PNG.", err);
       });
-  }, [gridRef, activeBounds, dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
+  }, [gridRef, activeBounds, dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight, subscriptionStatus]);
 
   const regenerateRasterPreview = useCallback(() => {
     if (!activeBounds || !lastRasterArgs) {
@@ -899,6 +907,14 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
 
   const downloadRasterSlices = useCallback(() => {
+    if (subscriptionStatus !== 'pro') {
+      toast({
+        title: "Pro Feature",
+        description: "Please subscribe to download raster slices.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!rasterMapConfig) {
         console.error("No raster map configuration available to download.");
         return;
@@ -946,8 +962,42 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         
         downloadCanvas(outputCanvas, slice.filename);
     }
-  }, [rasterMapConfig, createFullRasterCanvas, rasterOffset]);
+  }, [rasterMapConfig, createFullRasterCanvas, rasterOffset, subscriptionStatus, toast]);
   
+  const addWatermark = (dataUrl: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                return reject(new Error('Could not get canvas context'));
+            }
+
+            ctx.drawImage(img, 0, 0);
+
+            // Add watermark
+            ctx.globalAlpha = 0.4;
+            ctx.font = `bold ${Math.max(30, canvas.width / 15)}px sans-serif`;
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate(-Math.PI / 4);
+            ctx.fillText('TRIAL', 0, 0);
+            ctx.restore();
+
+            resolve(canvas.toDataURL('image/png'));
+        };
+        img.onerror = reject;
+        img.src = dataUrl;
+    });
+  };
+
   const handleDownloadWiringDiagram = useCallback(() => {
     if (wiringDiagramRef.current === null || !activeBounds) {
       toast({
@@ -1022,6 +1072,12 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       }
     })
       .then((dataUrl) => {
+        if (subscriptionStatus === 'trial') {
+            return addWatermark(dataUrl);
+        }
+        return dataUrl;
+      })
+      .then((dataUrl) => {
         const link = document.createElement("a");
         link.download = `wiring-diagram${isWiringMirrored ? '-mirrored' : ''}.png`;
         link.href = dataUrl;
@@ -1050,9 +1106,17 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
             }
         });
       });
-  }, [wiringDiagramRef, isWiringMirrored, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
+  }, [wiringDiagramRef, isWiringMirrored, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight, subscriptionStatus]);
 
   const handleDownloadFullRaster = useCallback(() => {
+    if (subscriptionStatus !== 'pro') {
+      toast({
+        title: "Pro Feature",
+        description: "Please subscribe to download the full raster map.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (rasterMapRef.current === null || !rasterMapConfig) {
       toast({
         title: "Download Failed",
@@ -1093,7 +1157,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       })
       .finally(() => {
       });
-  }, [rasterMapRef, rasterMapConfig, toast]);
+  }, [rasterMapRef, rasterMapConfig, toast, subscriptionStatus]);
 
 
   const exportProject = useCallback(() => {

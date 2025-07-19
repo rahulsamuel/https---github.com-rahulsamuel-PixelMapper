@@ -19,7 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "../pixel-mapper/edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu } from "lucide-react";
+import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, Gem } from "lucide-react";
 import { LabelControls } from "../pixel-mapper/label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -38,6 +38,7 @@ import { DownloadsControls } from "../pixel-mapper/downloads-controls";
 import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Logo } from "../logo";
+import { SubscriptionControls } from "../pixel-mapper/subscription-controls";
 
 
 export function PixelMapLayout() {
@@ -203,6 +204,13 @@ export function PixelMapLayout() {
                 </AccordionContent>
               </AccordionItem>
               
+              <AccordionItem value="subscription" className="border-none">
+                <AccordionSectionTrigger icon={<Gem className="size-5" />} title="Subscription" />
+                <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
+                  <SubscriptionControls />
+                </AccordionContent>
+              </AccordionItem>
+
               {activeTab === 'grid' && (
                 <AccordionItem value="grid-setup" className="border-none">
                   <AccordionSectionTrigger icon={<LayoutGrid className="size-5" />} title="Grid Setup" />

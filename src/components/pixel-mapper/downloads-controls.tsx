@@ -3,8 +3,9 @@
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Gem } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAuth } from "@/contexts/auth-context";
 
 export function DownloadsControls() {
     const {
@@ -17,6 +18,9 @@ export function DownloadsControls() {
         activeTab,
     } = usePixelMap();
 
+    const { subscriptionStatus } = useAuth();
+    const isPro = subscriptionStatus === 'pro';
+
     const isGridEmpty = !activeBounds;
     const isGridTab = activeTab === 'grid';
     const isWiringTab = activeTab === 'wiring';
@@ -24,8 +28,8 @@ export function DownloadsControls() {
 
     const pngDownloadDisabled = isGridEmpty || !isGridTab;
     const wiringDownloadDisabled = isGridEmpty || !isWiringTab;
-    const slicesDownloadDisabled = !rasterMapConfig || rasterMapConfig.slices.length === 0;
-    const fullRasterDownloadDisabled = !rasterMapConfig || !isRasterTab;
+    const slicesDownloadDisabled = !isPro || !rasterMapConfig || rasterMapConfig.slices.length === 0;
+    const fullRasterDownloadDisabled = !isPro || !rasterMapConfig || !isRasterTab;
 
     let pngTooltip;
     if (isGridEmpty) {
@@ -42,11 +46,21 @@ export function DownloadsControls() {
     }
 
     let fullRasterTooltip;
-    if (!rasterMapConfig) {
+    if (!isPro) {
+        fullRasterTooltip = "This is a Pro feature. Please subscribe for full access.";
+    } else if (!rasterMapConfig) {
         fullRasterTooltip = "Generate a raster map first.";
     } else if (!isRasterTab) {
         fullRasterTooltip = "Switch to the Raster Map Preview tab to download.";
     }
+    
+    let slicesDownloadTooltip;
+    if (!isPro) {
+        slicesDownloadTooltip = "This is a Pro feature. Please subscribe for full access.";
+    } else if (!rasterMapConfig || rasterMapConfig.slices.length === 0) {
+        slicesDownloadTooltip = "Generate a raster map with slices first.";
+    }
+
 
     return (
         <TooltipProvider>
@@ -89,23 +103,31 @@ export function DownloadsControls() {
                     </Button>
                 )}
                 
-                <Button 
-                    size="sm" 
-                    onClick={downloadRasterSlices} 
-                    variant="outline" 
-                    className="w-full justify-start"
-                    disabled={slicesDownloadDisabled}
-                >
-                    <Download className="mr-2" />
-                    Download Raster Slices
-                </Button>
+                {slicesDownloadDisabled ? (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="w-full">
+                                <Button size="sm" variant="outline" className="w-full justify-start" disabled>
+                                    <Gem className="mr-2" />
+                                    Download Raster Slices
+                                </Button>
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent><p>{slicesDownloadTooltip}</p></TooltipContent>
+                    </Tooltip>
+                ) : (
+                    <Button size="sm" onClick={downloadRasterSlices} variant="outline" className="w-full justify-start">
+                        <Gem className="mr-2" />
+                        Download Raster Slices
+                    </Button>
+                )}
                 
                 {fullRasterDownloadDisabled ? (
                      <Tooltip>
                         <TooltipTrigger asChild>
                             <div className="w-full">
                                 <Button size="sm" variant="outline" className="w-full justify-start" disabled>
-                                    <Download className="mr-2" />
+                                    <Gem className="mr-2" />
                                     Download Full Raster Map
                                 </Button>
                             </div>
@@ -114,7 +136,7 @@ export function DownloadsControls() {
                     </Tooltip>
                 ) : (
                     <Button size="sm" onClick={handleDownloadFullRaster} variant="outline" className="w-full justify-start">
-                        <Download className="mr-2" />
+                        <Gem className="mr-2" />
                         Download Full Raster Map
                     </Button>
                 )}
