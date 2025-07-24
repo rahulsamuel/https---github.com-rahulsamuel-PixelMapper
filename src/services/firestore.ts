@@ -2,6 +2,8 @@
 'use server';
 
 import { db } from '@/lib/firebase/client';
+import { getFirebaseAdminApp } from '@/lib/auth/firebase-admin';
+import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { collection, addDoc, getDocs, serverTimestamp, query, orderBy } from 'firebase/firestore';
 
 export async function addData(collectionName: string, data: any) {
@@ -19,8 +21,10 @@ export async function addData(collectionName: string, data: any) {
 
 export async function getData(collectionName: string) {
     try {
-        const q = query(collection(db, collectionName), orderBy('timestamp', 'desc'));
-        const querySnapshot = await getDocs(q);
+        const adminApp = getFirebaseAdminApp();
+        const adminDb = getAdminFirestore(adminApp);
+        const q = adminDb.collection(collectionName).orderBy('timestamp', 'desc');
+        const querySnapshot = await q.get();
         const data = querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
