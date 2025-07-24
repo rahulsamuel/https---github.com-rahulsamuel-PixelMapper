@@ -10,6 +10,25 @@ async function AnalyticsPage() {
   const { data, error } = await getData('tracking_events');
 
   if (error) {
+    const errorMessage = (error as Error).message;
+    if (errorMessage.includes('Firebase Admin SDK environment variables are not set')) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Server Configuration Incomplete</CardTitle>
+                    <CardDescription>The analytics data could not be loaded due to a server configuration issue.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="p-4 rounded-lg bg-destructive/10 text-destructive border border-destructive/20">
+                        <p className="font-bold">Action Required</p>
+                        <p className="mt-2 text-sm">The Firebase Admin SDK environment variables are missing. Please ensure you have created a `.env` file at the root of your project and populated it with the credentials from your Firebase project's service account.</p>
+                        <p className="mt-2 text-sm">If you have already done this, you may need to **restart your development server** for the changes to take effect.</p>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
     return (
         <Card>
             <CardHeader>
