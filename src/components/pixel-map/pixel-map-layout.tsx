@@ -338,13 +338,8 @@ export function PixelMapLayout() {
                </div>
 
                <div className="flex items-center gap-2">
-                  <div className="flex items-center space-x-2">
-                   <Switch id="on-off-switch" checked={onOffMode} onCheckedChange={setOnOffMode} />
-                   <Label htmlFor="on-off-switch">ON/OFF</Label>
-                 </div>
                  {activeTab === 'wiring' && (
                    <div className="flex items-center space-x-2">
-                     <Separator orientation="vertical" className="h-6" />
                      <Switch id="mirror-switch" checked={isWiringMirrored} onCheckedChange={setIsWiringMirrored} />
                      <Label htmlFor="mirror-switch" className="flex items-center gap-2"><RefreshCw className="size-4" /> Mirror</Label>
                    </div>
