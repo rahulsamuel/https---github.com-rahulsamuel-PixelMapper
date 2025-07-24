@@ -52,26 +52,31 @@ export function SignInForm() {
       });
       
       if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 500 && errorData.error?.includes('Firebase Admin SDK not initialized')) {
+            throw new Error('Server configuration error: Firebase Admin SDK environment variables are missing. Please check your .env file.');
+        }
         throw new Error('Failed to create session');
       }
       
       router.push(`/${userCredential.user.uid}`);
-      router.refresh(); // This helps ensure the new cookie is read by the server on the next render.
-      toast({
-        title: 'Signed In',
-        description: 'Welcome back!',
-      });
+      router.refresh(); 
 
     } catch (error: any) {
       console.error('Sign in error:', error);
       let description = 'An unexpected error occurred. Please try again.';
+      
       if (error.code === 'auth/invalid-credential') {
         description = 'Invalid email or password. Please try again.';
+      } else if (error.message?.includes('Firebase Admin SDK')) {
+        description = error.message;
       }
+      
       toast({
         title: 'Sign In Failed',
         description,
         variant: 'destructive',
+        duration: 9000,
       });
     } finally {
         setIsLoading(false);

@@ -16,7 +16,10 @@ export async function POST(request: NextRequest) {
     getFirebaseAdminApp();
   } catch (error: any) {
     console.error("Firebase Admin SDK initialization failed:", error.message);
-    return NextResponse.json({ error: "Server configuration error." }, { status: 500 });
+    return NextResponse.json({ 
+      error: "Server configuration error. Firebase Admin SDK not initialized.",
+      details: error.message,
+    }, { status: 500 });
   }
 
   // Set session expiration to 5 days.
