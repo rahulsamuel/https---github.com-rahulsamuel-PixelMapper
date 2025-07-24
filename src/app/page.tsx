@@ -1,18 +1,13 @@
 
 'use server';
 
-import { LandingPage } from "@/components/landing/landing-page";
-import { getAuthenticatedUser } from "@/lib/auth/get-authenticated-user";
-import { redirect } from "next/navigation";
+import { PixelMapLayout } from "@/components/pixel-map/pixel-map-layout";
+import { PixelMapProvider } from "@/contexts/pixel-map-context";
 
 export default async function Home() {
-  const user = await getAuthenticatedUser();
-
-  if (user) {
-    redirect(`/${user.uid}`);
-  }
-
   return (
-    <LandingPage />
+    <PixelMapProvider>
+      <PixelMapLayout />
+    </PixelMapProvider>
   );
 }

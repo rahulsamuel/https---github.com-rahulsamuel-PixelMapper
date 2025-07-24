@@ -8,7 +8,7 @@ import { Gem, Star } from "lucide-react";
 import { Badge } from "../ui/badge";
 
 export function SubscriptionControls() {
-  const { user, subscriptionStatus, trialDaysRemaining } = useAuth();
+  const { subscriptionStatus } = useAuth();
 
   if (subscriptionStatus === 'loading') {
     return (
@@ -43,31 +43,25 @@ export function SubscriptionControls() {
             </CardDescription>
         </CardHeader>
         <CardContent>
-            {!user && (
-                 <div className="text-center space-y-4">
-                    <p className="font-semibold text-lg">Sign in to manage your subscription.</p>
-                </div>
-            )}
-            {user && subscriptionStatus === 'free' && (
+            {subscriptionStatus === 'free' && (
                 <div className="text-center space-y-4">
-                    <p className="font-semibold text-lg">Your trial has expired.</p>
                     <Button onClick={handleSubscribe} className="w-full">
                         <Gem className="mr-2" />
                         Subscribe Now
                     </Button>
                 </div>
             )}
-            {user && subscriptionStatus === 'trial' && (
+            {subscriptionStatus === 'trial' && (
                 <div className="text-center space-y-4">
-                    <p className="font-semibold text-lg">{trialDaysRemaining} days left in your trial.</p>
-                    <p className="text-sm text-muted-foreground">Subscribe now to continue enjoying Pro features after your trial ends.</p>
+                    <p className="font-semibold text-lg">Trial Mode</p>
+                    <p className="text-sm text-muted-foreground">Subscribe to unlock all features permanently.</p>
                     <Button onClick={handleSubscribe} className="w-full">
                         <Gem className="mr-2" />
                         Subscribe to Pro
                     </Button>
                 </div>
             )}
-            {user && subscriptionStatus === 'pro' && (
+            {subscriptionStatus === 'pro' && (
                 <div className="text-center space-y-4">
                     <p>Thank you for being a Pro member!</p>
                 </div>

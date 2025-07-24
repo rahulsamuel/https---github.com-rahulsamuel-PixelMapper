@@ -1,19 +1,13 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { AuthenticatedUser } from "@/lib/auth/get-authenticated-user";
-import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { auth } from "@/lib/auth/firebase";
+import React, { createContext, useContext, useState, ReactNode } from "react";
 
 type SubscriptionStatus = 'loading' | 'trial' | 'pro' | 'free';
 
 interface AuthContextType {
-  user: AuthenticatedUser | null;
-  firebaseUser: FirebaseUser | null;
+  user: null;
   subscriptionStatus: SubscriptionStatus;
-  trialDaysRemaining: number;
-  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,59 +21,15 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ 
-  children,
-  initialUser 
+  children
 }: { 
-  children: ReactNode,
-  initialUser: AuthenticatedUser | null 
+  children: ReactNode
 }) => {
-  const [user, setUser] = useState<AuthenticatedUser | null>(initialUser);
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>('loading');
-  const [trialDaysRemaining, setTrialDaysRemaining] = useState(0);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setUser(initialUser);
-
-    if (initialUser) {
-      if (initialUser.is_pro) {
-        setSubscriptionStatus('pro');
-        setTrialDaysRemaining(0);
-      } else {
-        const creationTime = new Date(initialUser.auth_time * 1000);
-        const now = new Date();
-        const trialDuration = 7 * 24 * 60 * 60 * 1000;
-        const trialEndTime = creationTime.getTime() + trialDuration;
-        
-        if (now.getTime() < trialEndTime) {
-          setSubscriptionStatus('trial');
-          const remainingMs = trialEndTime - now.getTime();
-          setTrialDaysRemaining(Math.ceil(remainingMs / (1000 * 60 * 60 * 24)));
-        } else {
-          setSubscriptionStatus('free');
-          setTrialDaysRemaining(0);
-        }
-      }
-    } else {
-      setSubscriptionStatus('free');
-      setTrialDaysRemaining(0);
-    }
-    
-    // The onAuthStateChanged listener is mainly for getting the firebaseUser object
-    // for client-side actions, and for client-side navigation triggers.
-    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
-      setFirebaseUser(fbUser);
-      // Only after this client-side check is complete, we can be sure
-      // that the auth state is settled on the client.
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [initialUser]);
+  // Mock subscription status. Change 'pro' to 'trial' or 'free' to test different states.
+  const [subscriptionStatus] = useState<SubscriptionStatus>('pro');
 
   return (
-    <AuthContext.Provider value={{ user, firebaseUser, subscriptionStatus, trialDaysRemaining, loading }}>
+    <AuthContext.Provider value={{ user: null, subscriptionStatus }}>
       {children}
     </AuthContext.Provider>
   );

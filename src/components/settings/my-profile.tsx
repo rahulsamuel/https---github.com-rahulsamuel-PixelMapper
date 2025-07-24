@@ -1,128 +1,18 @@
 
 'use client';
 
-import { useAuth } from "@/contexts/auth-context";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import { doc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/auth/firebase";
-import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { updateProfile } from "firebase/auth";
-
-function ProfileSkeleton() {
-  return (
-      <Card>
-          <CardHeader>
-              <CardTitle>My Profile</CardTitle>
-              <CardDescription>View and update your profile information.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-              <div className="flex items-center gap-4">
-                  <Skeleton className="h-20 w-20 rounded-full" />
-                  <div className="space-y-2">
-                      <Skeleton className="h-6 w-32" />
-                      <Skeleton className="h-4 w-48" />
-                  </div>
-              </div>
-              <div className="space-y-2">
-                  <Skeleton className="h-4 w-1/4" />
-                  <Skeleton className="h-10 w-full" />
-              </div>
-              <Skeleton className="h-10 w-32" />
-          </CardContent>
-      </Card>
-  );
-}
 
 
 export function MyProfile() {
-  const { user, firebaseUser, loading } = useAuth();
-  const [displayName, setDisplayName] = useState(user?.name || '');
-  const [isSaving, setIsSaving] = useState(false);
-  const { toast } = useToast();
-  
-  if (loading) {
-    return <ProfileSkeleton />;
-  }
-
-  if (!user || !firebaseUser) {
-    return (
-        <Card>
-             <CardHeader>
-                <CardTitle>My Profile</CardTitle>
-                <CardDescription>Please sign in to view your profile.</CardDescription>
-            </CardHeader>
-        </Card>
-    )
-  }
-
-  const getInitials = (name?: string | null, email?: string | null) => {
-    if (name) {
-        return name.split(' ').map(n => n[0]).join('').toUpperCase();
-    }
-    return email?.[0]?.toUpperCase() ?? '?';
-  }
-
-  const handleUpdateProfile = async () => {
-    setIsSaving(true);
-    try {
-      // Update Firestore
-      const userDocRef = doc(db, "users", user.uid);
-      await setDoc(userDocRef, { name: displayName }, { merge: true });
-
-      // Update Firebase Auth profile
-      await updateProfile(firebaseUser, { displayName: displayName });
-
-      toast({
-        title: "Profile Updated",
-        description: "Your display name has been successfully updated.",
-      });
-
-    } catch (error) {
-       console.error("Error updating profile:", error);
-       toast({
-        title: "Update Failed",
-        description: "Could not update your profile. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   return (
     <Card>
       <CardHeader>
         <CardTitle>My Profile</CardTitle>
-        <CardDescription>View and update your profile information.</CardDescription>
+        <CardDescription>This section is unavailable as authentication has been removed.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center gap-4">
-           <Avatar className="h-20 w-20">
-            {user.picture && <AvatarImage src={user.picture} alt={user.name || 'User'} />}
-            <AvatarFallback>{getInitials(user.name, user.email)}</AvatarFallback>
-          </Avatar>
-          <div>
-            <h3 className="text-xl font-semibold">{user.name || "No name provided"}</h3>
-            <p className="text-muted-foreground">{user.email}</p>
-          </div>
-        </div>
-        <div className="space-y-2">
-            <Label htmlFor="displayName">Display Name</Label>
-            <Input 
-              id="displayName" 
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-            />
-        </div>
-        <Button onClick={handleUpdateProfile} disabled={isSaving}>
-          {isSaving ? 'Saving...' : 'Update Profile'}
-        </Button>
+      <CardContent>
+        <p className="text-muted-foreground">To re-enable profile management, authentication must be added back to the application.</p>
       </CardContent>
     </Card>
   )

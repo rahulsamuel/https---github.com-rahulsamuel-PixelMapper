@@ -39,12 +39,11 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Logo } from "../logo";
 import { useAuth } from "@/contexts/auth-context";
-import { signOut } from "@/app/auth/actions";
 
 
 export function PixelMapLayout() {
   const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, effectiveScreenHeight, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels } = usePixelMap();
-  const [activeAccordion, setActiveAccordion] = useState("profile");
+  const [activeAccordion, setActiveAccordion] = useState("grid-setup");
   const viewportRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
 
@@ -167,11 +166,6 @@ export function PixelMapLayout() {
     return height;
   }, [effectiveScreenHeight, dimensions.tileHeight, topHalfTile, bottomHalfTile]);
 
-  const handleLogout = async () => {
-    await signOut();
-  };
-
-
   return (
     <SidebarProvider>
       <Sidebar>
@@ -191,36 +185,6 @@ export function PixelMapLayout() {
               onValueChange={setActiveAccordion}
               className="p-4 flex flex-col gap-2"
             >
-              <AccordionItem value="profile" className="border-none">
-                <AccordionSectionTrigger icon={<User className="size-5" />} title="Profile" />
-                <AccordionContent className="bg-background border rounded-b-lg -mt-2 p-4">
-                  <div className="space-y-4">
-                    <div className="text-center mb-4">
-                      <p className="text-sm text-muted-foreground">Welcome back,</p>
-                      <p className="font-semibold text-lg">{user?.name || user?.email}</p>
-                    </div>
-                     <Button variant="outline" className="w-full justify-start" asChild>
-                      <Link href={`/${user?.uid}`}>
-                        <Home className="mr-2"/>
-                        Welcome Page
-                      </Link>
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start" asChild>
-                      <Link href={`/${user?.uid}/settings`}>
-                        <Settings className="mr-2"/>
-                        Settings
-                      </Link>
-                    </Button>
-                    <form action={handleLogout} className="w-full">
-                      <Button type="submit" variant="destructive" className="w-full justify-start">
-                        <LogOut className="mr-2" />
-                        Log Out
-                      </Button>
-                    </form>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-
               <AccordionItem value="project" className="border-none">
                 <AccordionSectionTrigger icon={<Package className="size-5" />} title="Project" />
                 <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
