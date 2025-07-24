@@ -53,8 +53,8 @@ export function SignInForm() {
       
       if (!response.ok) {
         const errorData = await response.json();
-        if (response.status === 500 && errorData.error?.includes('Firebase Admin SDK not initialized')) {
-            throw new Error('Server configuration error: Firebase Admin SDK environment variables are missing. Please check your .env file.');
+        if (response.status === 500 && errorData.error?.includes('Firebase Admin SDK')) {
+             throw new Error('Server configuration error: Firebase Admin SDK environment variables are missing. Please check your .env file and RESTART the development server.');
         }
         throw new Error('Failed to create session');
       }
