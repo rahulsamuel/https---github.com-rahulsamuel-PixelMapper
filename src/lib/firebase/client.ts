@@ -4,12 +4,12 @@ import { getFirestore } from "firebase/firestore";
 
 // IMPORTANT: Replace this with your actual Firebase project configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCzjmFCbP-1n0TJsV6raYf7zXFSU-ufzU8",
+  authDomain: "pixelmapper-3rrq2.firebaseapp.com",
+  projectId: "pixelmapper-3rrq2",
+  storageBucket: "pixelmapper-3rrq2.firebasestorage.app",
+  messagingSenderId: "791582552511",
+  appId: "1:791582552511:web:61af5f856bd0925f25310a"
 };
 
 // Initialize Firebase
