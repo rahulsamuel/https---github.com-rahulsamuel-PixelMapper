@@ -28,8 +28,13 @@ export const AuthProvider = ({
   // Mock subscription status. Change 'pro' to 'trial' or 'free' to test different states.
   const [subscriptionStatus] = useState<SubscriptionStatus>('pro');
 
+  const value = {
+      user: null, // No user object when auth is removed
+      subscriptionStatus,
+  }
+
   return (
-    <AuthContext.Provider value={{ user: null, subscriptionStatus }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

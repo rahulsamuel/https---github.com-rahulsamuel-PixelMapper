@@ -6,7 +6,6 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback, Re
 import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 import { isColorDark } from "@/lib/utils";
-import { useAuth } from "./auth-context";
 
 interface Dimensions {
   tileWidth: number;
@@ -216,6 +215,22 @@ export const usePixelMap = () => {
   return context;
 };
 
+// Helper to track events
+const trackEvent = async (eventType: string, eventData: any) => {
+  try {
+    await fetch('/api/track', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ eventType, eventData }),
+    });
+  } catch (error) {
+    console.error('Failed to track event:', error);
+  }
+};
+
+
 export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [appState] = useState("ready");
   const gridRef = useRef<HTMLDivElement>(null);
@@ -223,7 +238,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const rasterMapRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const nextTileId = useRef(0);
-  const { subscriptionStatus } = useAuth();
+  const subscriptionStatus = 'pro'; // Simplified for now
 
   const [dimensions, setDimensions] = useState<Dimensions>({
     tileWidth: 200,
@@ -616,6 +631,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         link.download = filename;
         link.href = dataUrl;
         link.click();
+        trackEvent('download', { type: 'grid-png', filename });
       })
       .catch((err) => {
         console.error("Could not generate PNG.", err);
@@ -926,6 +942,9 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    trackEvent('download', { type: 'raster-slices', filenames: rasterMapConfig.slices.map(s => s.filename) });
+
+
     const downloadCanvas = (canvas: HTMLCanvasElement, downloadFilename: string) => {
         try {
             const dataUrl = canvas.toDataURL('image/png');
@@ -1078,8 +1097,9 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         return dataUrl;
       })
       .then((dataUrl) => {
+        const downloadFilename = `wiring-diagram${isWiringMirrored ? '-mirrored' : ''}.png`;
         const link = document.createElement("a");
-        link.download = `wiring-diagram${isWiringMirrored ? '-mirrored' : ''}.png`;
+        link.download = downloadFilename;
         link.href = dataUrl;
         link.click();
         
@@ -1087,6 +1107,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
           title: "Download Started",
           description: "Your wiring diagram is being downloaded.",
         });
+
+        trackEvent('download', { type: 'wiring-diagram', filename: downloadFilename });
       })
       .catch((err) => {
         console.error("Failed to generate wiring diagram image", err);
@@ -1128,6 +1150,9 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
     const node = rasterMapRef.current;
     const { totalWidth, totalHeight } = rasterMapConfig;
+    const downloadFilename = `full-raster-map.png`;
+
+    trackEvent('download', { type: 'full-raster-map', filename: downloadFilename });
 
     toPng(node, {
       cacheBust: true,
@@ -1138,7 +1163,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     })
       .then((dataUrl) => {
         const link = document.createElement("a");
-        link.download = `full-raster-map.png`;
+        link.download = downloadFilename;
         link.href = dataUrl;
         link.click();
         
@@ -1207,7 +1232,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     const blob = new Blob([jsonString], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.download = "mapmyled-project.json";
+    const filename = "mapmyled-project.json";
+    link.download = filename;
     link.href = url;
     document.body.appendChild(link);
     link.click();
@@ -1216,8 +1242,9 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     
     toast({
       title: "Export Successful",
-      description: "Project saved to mapmyled-project.json",
+      description: `Project saved to ${filename}`,
     });
+    trackEvent('download', { type: 'project-file', filename, projectData });
   }, [
     dimensions, tiles, tileColor, tileColorTwo, borderWidth, borderColor, activeTool,
     showLabels, labelFormat, labelFontSize, labelColor, labelPosition, onOffMode, zoomLevels, activeTab, rasterOffset,
