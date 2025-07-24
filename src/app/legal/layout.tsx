@@ -17,7 +17,7 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
             <span className="font-bold sm:inline-block">MapMyLED</span>
           </Link>
            <div className="flex flex-1 items-center justify-end space-x-4">
-             <Link href="/">
+             <Link href="/app">
                <Button>Launch App</Button>
              </Link>
           </div>
