@@ -1,12 +1,38 @@
 
 'use client';
 
+import { useEffect, useState, useMemo } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { getLedProducts, type LedProduct } from '@/app/calculator/actions';
 
 export function CalculatorForm() {
+  const [products, setProducts] = useState<LedProduct[]>([]);
+  const [selectedManufacturer, setSelectedManufacturer] = useState<string>('');
+
+  useEffect(() => {
+    async function fetchProducts() {
+      const { products, error } = await getLedProducts();
+      if (products) {
+        setProducts(products);
+      }
+      if (error) {
+        console.error("Failed to fetch LED products:", error);
+      }
+    }
+    fetchProducts();
+  }, []);
+
+  const manufacturers = useMemo(() => {
+    return [...new Set(products.map(p => p.manufacturer))];
+  }, [products]);
+
+  const availableProducts = useMemo(() => {
+    return products.filter(p => p.manufacturer === selectedManufacturer);
+  }, [products, selectedManufacturer]);
+
 
   return (
     <form className="space-y-6">
@@ -18,25 +44,27 @@ export function CalculatorForm() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="led-manufacturer">LED Manufacturer</Label>
-          <Select>
+          <Select onValueChange={setSelectedManufacturer} value={selectedManufacturer}>
             <SelectTrigger id="led-manufacturer">
               <SelectValue placeholder="Select manufacturer" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="roe">ROE</SelectItem>
-              <SelectItem value="absen">Absen</SelectItem>
-              <SelectItem value="unilumin">Unilumin</SelectItem>
+              {manufacturers.map(m => (
+                <SelectItem key={m} value={m}>{m}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-2">
           <Label htmlFor="led-product">LED Product</Label>
-          <Select>
+          <Select disabled={!selectedManufacturer}>
             <SelectTrigger id="led-product">
               <SelectValue placeholder="Select product" />
             </SelectTrigger>
             <SelectContent>
-               <SelectItem value="bp2v2">BP2V2</SelectItem>
+               {availableProducts.map(p => (
+                 <SelectItem key={p.id} value={p.id}>{p.productName}</SelectItem>
+               ))}
             </SelectContent>
           </Select>
         </div>

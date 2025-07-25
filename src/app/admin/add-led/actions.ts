@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-// import { addData } from '@/services/firestore'; // Removed database call
+import { addData } from '@/services/firestore';
 
 const formSchema = z.object({
   manufacturer: z.string().min(2, { message: "Manufacturer name must be at least 2 characters." }).transform(val => val.toUpperCase()),
@@ -50,16 +50,6 @@ export async function addProductAction(prevState: FormState, formData: FormData)
   }
   
   try {
-    // The database connection is currently broken.
-    // To make the app runnable, this function will log the data instead of saving it.
-    console.log("Form data submitted:", validatedFields.data);
-
-    // To re-enable database functionality, you must:
-    // 1. Ensure `src/lib/firebase/service-account.ts` contains your valid credentials.
-    // 2. Uncomment the `addData` call below and the import at the top of the file.
-    // 3. Restore the original content of `src/services/firestore.ts`.
-    
-    /*
     const { error } = await addData('led_products', validatedFields.data);
 
     if (error) {
@@ -68,17 +58,17 @@ export async function addProductAction(prevState: FormState, formData: FormData)
             message: `Database error: ${error}`,
         };
     }
-    */
 
     return {
       success: true,
-      message: 'Product has been added successfully! (Logged to console)',
+      message: 'Product has been added successfully!',
     };
   } catch (error) {
     console.error('Add product error:', error);
+    const message = error instanceof Error ? error.message : 'An unknown error occurred';
     return {
       success: false,
-      message: 'An unexpected error occurred. Please try again later.',
+      message: `An unexpected error occurred: ${message}`,
     };
   }
 }
