@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GitBranch, FileOutput, Download, Upload, Cpu, Shapes } from 'lucide-react';
 import Image from 'next/image';
 import { Logo } from '../logo';
+import { cn } from '@/lib/utils';
 
 export async function LandingPage() {
 
@@ -72,7 +73,7 @@ export async function LandingPage() {
               </div>
             </div>
             <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:gap-12 lg:grid-cols-3 pt-12">
-              <Card>
+              <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <CardHeader className="flex flex-row items-center gap-4">
                     <Shapes className="w-8 h-8 text-primary" />
                     <CardTitle>Custom & Half-Tiles</CardTitle>
@@ -83,7 +84,7 @@ export async function LandingPage() {
                     </p>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <CardHeader className="flex flex-row items-center gap-4">
                   <GitBranch className="w-8 h-8 text-primary" />
                   <CardTitle>Advanced Wiring</CardTitle>
@@ -94,7 +95,7 @@ export async function LandingPage() {
                   </p>
                 </CardContent>
               </Card>
-               <Card>
+               <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <CardHeader className="flex flex-row items-center gap-4">
                   <Cpu className="w-8 h-8 text-primary" />
                   <CardTitle>Processor Support</CardTitle>
@@ -105,7 +106,7 @@ export async function LandingPage() {
                   </p>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <CardHeader className="flex flex-row items-center gap-4">
                   <FileOutput className="w-8 h-8 text-primary" />
                   <CardTitle>Raster Map Generation</CardTitle>
@@ -116,7 +117,7 @@ export async function LandingPage() {
                   </p>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <CardHeader className="flex flex-row items-center gap-4">
                   <Download className="w-8 h-8 text-primary" />
                   <CardTitle>Comprehensive Downloads</CardTitle>
@@ -127,7 +128,7 @@ export async function LandingPage() {
                   </p>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <CardHeader className="flex flex-row items-center gap-4">
                   <Upload className="w-8 h-8 text-primary" />
                   <CardTitle>Project Import/Export</CardTitle>
@@ -146,13 +147,13 @@ export async function LandingPage() {
       <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
         <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} MapMyLED. All rights reserved.</p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
-          <Link href="/legal/terms" className="text-xs hover:underline underline-offset-4">
+          <Link href="/legal/terms" className="text-xs hover:text-primary hover:underline underline-offset-4 transition-colors">
             Terms of Service
           </Link>
-          <Link href="/legal/privacy" className="text-xs hover:underline underline-offset-4">
+          <Link href="/legal/privacy" className="text-xs hover:text-primary hover:underline underline-offset-4 transition-colors">
             Privacy Policy
           </Link>
-          <Link href="/contact" className="text-xs hover:underline underline-offset-4">
+          <Link href="/contact" className="text-xs hover:text-primary hover:underline underline-offset-4 transition-colors">
             Contact Us
           </Link>
         </nav>
