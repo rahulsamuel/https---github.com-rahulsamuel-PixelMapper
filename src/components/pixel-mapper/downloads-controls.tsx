@@ -11,11 +11,13 @@ export function DownloadsControls() {
     const {
         handleDownloadPng,
         handleDownloadWiringDiagram,
+        handleDownloadCompositeWiringDiagram,
         downloadRasterSlices,
         handleDownloadFullRaster,
         rasterMapConfig,
         activeBounds,
         activeTab,
+        screens,
     } = usePixelMap();
 
     const { subscriptionStatus } = useAuth();
@@ -25,9 +27,11 @@ export function DownloadsControls() {
     const isGridTab = activeTab === 'grid';
     const isWiringTab = activeTab === 'wiring';
     const isRasterTab = activeTab === 'raster';
+    const hasMultipleScreens = screens.length > 1;
 
     const pngDownloadDisabled = isGridEmpty || !isGridTab;
     const wiringDownloadDisabled = isGridEmpty || !isWiringTab;
+    const compositeWiringDownloadDisabled = !isPro || isGridEmpty || !rasterMapConfig || !hasMultipleScreens;
     const slicesDownloadDisabled = !isPro || !rasterMapConfig || rasterMapConfig.slices.length === 0;
     const fullRasterDownloadDisabled = !isPro || !rasterMapConfig || !isRasterTab;
 
@@ -44,6 +48,18 @@ export function DownloadsControls() {
     } else if (!isWiringTab) {
         wiringTooltip = "Switch to the Wiring Diagram tab to download.";
     }
+
+    let compositeWiringTooltip;
+    if (!isPro) {
+        compositeWiringTooltip = "This is a Pro feature. Please subscribe for full access.";
+    } else if (isGridEmpty) {
+        compositeWiringTooltip = "Cannot download an empty grid.";
+    } else if (!rasterMapConfig) {
+        compositeWiringTooltip = "Generate a raster map first to set screen positions.";
+    } else if (!hasMultipleScreens) {
+        compositeWiringTooltip = "This download is for projects with multiple screens.";
+    }
+
 
     let fullRasterTooltip;
     if (!isPro) {
@@ -100,6 +116,25 @@ export function DownloadsControls() {
                     <Button size="sm" onClick={handleDownloadWiringDiagram} variant="outline" className="w-full justify-start">
                         <Download className="mr-2" />
                         Download Wiring Diagram
+                    </Button>
+                )}
+                
+                {compositeWiringDownloadDisabled ? (
+                     <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className="w-full">
+                                <Button size="sm" variant="outline" className="w-full justify-start" disabled>
+                                    <Gem className="mr-2" />
+                                    Download Composite Wiring
+                                </Button>
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent><p>{compositeWiringTooltip}</p></TooltipContent>
+                    </Tooltip>
+                ) : (
+                    <Button size="sm" onClick={handleDownloadCompositeWiringDiagram} variant="outline" className="w-full justify-start">
+                        <Gem className="mr-2" />
+                        Download Composite Wiring
                     </Button>
                 )}
                 
