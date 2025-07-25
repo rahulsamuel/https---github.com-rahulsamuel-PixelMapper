@@ -1,14 +1,17 @@
 
 'use server';
 
-import { db } from '@/lib/firebase/client';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getFirebaseAdminApp } from '@/lib/auth/firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
 
 export async function addData(collectionName: string, data: any) {
   try {
-    const docRef = await addDoc(collection(db, collectionName), {
+    const adminApp = getFirebaseAdminApp();
+    const db = getFirestore(adminApp);
+    
+    const docRef = await db.collection(collectionName).add({
       ...data,
-      createdAt: serverTimestamp(),
+      createdAt: new Date(),
     });
     
     return { id: docRef.id, error: null };
