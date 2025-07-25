@@ -4,6 +4,9 @@
 import dynamic from 'next/dynamic';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { PlusCircle } from 'lucide-react';
 
 const CalculatorForm = dynamic(() => import('@/components/calculator/calculator-form').then(mod => mod.CalculatorForm), {
   ssr: false,
@@ -32,6 +35,14 @@ export default function CalculatorPage() {
               <CalculatorForm />
             </CardContent>
           </Card>
+           <div className="mt-4">
+              <Link href="/admin/add-led">
+                  <Button variant="outline" className="w-full">
+                      <PlusCircle className="mr-2" />
+                      Add New LED Product
+                  </Button>
+              </Link>
+          </div>
         </div>
         <div>
           <ResultsDisplay />
