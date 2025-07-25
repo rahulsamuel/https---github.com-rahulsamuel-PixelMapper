@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { toPng } from "html-to-image";
@@ -1286,7 +1287,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
           const migratedScreens = data.screens.map((s: any) => {
             const newScreen = createNewScreen(""); // Create a default screen
             // Merge the loaded data into the default screen to ensure all properties exist
-            return { ...newScreen, ...s };
+            return { ...newScreen, ...s, processorType: s.processorType || 'Brompton' };
           });
           setScreens(migratedScreens);
           setCurrentScreenId(data.currentScreenId);
