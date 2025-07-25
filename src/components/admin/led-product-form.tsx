@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { addProductAction, type FormState } from '@/app/admin/add-led/actions';
+import { Checkbox } from '../ui/checkbox';
 
 const formSchema = z.object({
   manufacturer: z.string().min(2, { message: "Manufacturer name must be at least 2 characters." }),
@@ -29,6 +30,15 @@ const formSchema = z.object({
   // Power
   maxPowerConsumption: z.coerce.number().min(1, { message: "Must be positive." }),
   avgPowerConsumption: z.coerce.number().min(1, { message: "Must be positive." }),
+
+  // Display
+  maxBrightness: z.coerce.number().min(1, { message: "Must be positive." }),
+  refreshRate: z.coerce.number().min(1, { message: "Must be positive." }),
+
+  // Application
+  applicationIndoor: z.boolean().default(false),
+  applicationOutdoor: z.boolean().default(false),
+  applicationFloor: z.boolean().default(false),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -75,6 +85,11 @@ export function LedProductForm() {
       tileWeightKg: 8.5,
       maxPowerConsumption: 180,
       avgPowerConsumption: 60,
+      maxBrightness: 1200,
+      refreshRate: 3840,
+      applicationIndoor: false,
+      applicationOutdoor: false,
+      applicationFloor: false,
     },
   });
 
@@ -164,6 +179,69 @@ export function LedProductForm() {
                     )} />
                 </div>
             </FormSection>
+            
+            <Separator />
+            
+            <FormSection title="Display Properties">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="maxBrightness" render={({ field }) => (
+                        <FormItem><FormLabel>Max Brightness (nits)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField control={form.control} name="refreshRate" render={({ field }) => (
+                        <FormItem><FormLabel>Refresh Rate (Hz)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                </div>
+            </FormSection>
+
+            <Separator />
+
+            <FormSection title="Application Type" description="Select all that apply.">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="applicationIndoor"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                <FormControl>
+                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                </FormControl>
+                                <div className="space-y-1 leading-none">
+                                    <FormLabel>Indoor</FormLabel>
+                                </div>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="applicationOutdoor"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                <FormControl>
+                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                </FormControl>
+                                <div className="space-y-1 leading-none">
+                                    <FormLabel>Outdoor</FormLabel>
+                                </div>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="applicationFloor"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                <FormControl>
+                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                </FormControl>
+                                <div className="space-y-1 leading-none">
+                                    <FormLabel>Floor</FormLabel>
+                                </div>
+                            </FormItem>
+                        )}
+                    />
+                </div>
+            </FormSection>
+
 
             <SubmitButton />
         </form>

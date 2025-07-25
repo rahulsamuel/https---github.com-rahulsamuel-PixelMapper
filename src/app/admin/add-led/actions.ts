@@ -17,6 +17,13 @@ const formSchema = z.object({
 
   maxPowerConsumption: z.coerce.number().min(1, { message: "Must be positive." }),
   avgPowerConsumption: z.coerce.number().min(1, { message: "Must be positive." }),
+
+  maxBrightness: z.coerce.number().min(1, { message: "Must be positive." }),
+  refreshRate: z.coerce.number().min(1, { message: "Must be positive." }),
+
+  applicationIndoor: z.coerce.boolean().default(false),
+  applicationOutdoor: z.coerce.boolean().default(false),
+  applicationFloor: z.coerce.boolean().default(false),
 });
 
 export type FormState = {
@@ -27,7 +34,12 @@ export type FormState = {
 
 export async function addProductAction(prevState: FormState, formData: FormData): Promise<FormState> {
     
-  const validatedFields = formSchema.safeParse(Object.fromEntries(formData.entries()));
+  const validatedFields = formSchema.safeParse({
+    ...Object.fromEntries(formData.entries()),
+    applicationIndoor: formData.has('applicationIndoor'),
+    applicationOutdoor: formData.has('applicationOutdoor'),
+    applicationFloor: formData.has('applicationFloor'),
+  });
 
   if (!validatedFields.success) {
     return {
