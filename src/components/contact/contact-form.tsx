@@ -85,14 +85,6 @@ export function ContactForm() {
             ref={formRef}
             action={formAction} 
             className="space-y-6"
-            onSubmit={(evt) => {
-                form.trigger().then((isValid) => {
-                    if (isValid) {
-                        formAction(new FormData(formRef.current!));
-                    }
-                });
-                evt.preventDefault();
-            }}
         >
             <FormField
                 control={form.control}
