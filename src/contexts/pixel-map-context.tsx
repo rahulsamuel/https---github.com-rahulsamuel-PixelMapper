@@ -492,15 +492,18 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     const newLabels = Array(totalTiles).fill('');
     const activeTileIndices = currentScreen.tiles.map((_, i) => i).filter(i => !currentScreen.tiles[i].deleted);
     const pathOrder = getPathOrder(activeTileIndices, currentScreen.wiringPattern, screenWidth, effectiveScreenHeight);
+    
+    const startNumber = currentScreen.labelStartNumber || 1;
 
     if (currentScreen.labelFormat === 'sequential' || currentScreen.labelFormat === 'dmx-style') {
       pathOrder.forEach((originalIndex, pathIndex) => {
         if (currentScreen.labelFormat === 'sequential') {
-          newLabels[originalIndex] = String(pathIndex + currentScreen.labelStartNumber);
+          newLabels[originalIndex] = String(pathIndex + startNumber);
         } else { // dmx-style
           const universeSize = 170;
-          const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(pathIndex / universeSize));
-          const address = (pathIndex % universeSize) + 1;
+          const dmxIndex = pathIndex + startNumber - 1;
+          const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(dmxIndex / universeSize));
+          const address = (dmxIndex % universeSize) + 1;
           newLabels[originalIndex] = `${universe}${address}`;
         }
       });
@@ -512,10 +515,10 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
           
           switch (currentScreen.labelFormat) {
             case 'row-col':
-              newLabels[i] = `${y + 1}-${x + 1}`;
+              newLabels[i] = `${y + startNumber}-${x + 1}`;
               break;
             case 'row-letter-col-number':
-              const rowLetter = String.fromCharCode('A'.charCodeAt(0) + y);
+              const rowLetter = String.fromCharCode('A'.charCodeAt(0) + y + startNumber - 1);
               const colNumber = x + 1;
               newLabels[i] = `${rowLetter}${colNumber}`;
               break;
@@ -695,14 +698,17 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         const screenEffectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
         
         const pathOrder = getPathOrder(activeTileIndices, screen.wiringPattern, screenWidth, screenEffectiveHeight);
+        const startNumber = screen.labelStartNumber || 1;
 
         if (screen.labelFormat === 'sequential' || screen.labelFormat === 'dmx-style') {
           pathOrder.forEach((originalIndex, pathIndex) => {
-            if (screen.labelFormat === 'sequential') newLabels[originalIndex] = String(pathIndex + screen.labelStartNumber);
-            else {
+            if (screen.labelFormat === 'sequential') {
+              newLabels[originalIndex] = String(pathIndex + startNumber);
+            } else { // dmx-style
               const universeSize = 170;
-              const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(pathIndex / universeSize));
-              const address = (pathIndex % universeSize) + 1;
+              const dmxIndex = pathIndex + startNumber - 1;
+              const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(dmxIndex / universeSize));
+              const address = (dmxIndex % universeSize) + 1;
               newLabels[originalIndex] = `${universe}${address}`;
             }
           });
@@ -711,8 +717,12 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
                 if (screen.tiles[i] && !screen.tiles[i].deleted) {
                     const x = i % screenWidth;
                     const y = Math.floor(i / screenWidth);
-                    if (screen.labelFormat === 'row-col') newLabels[i] = `${y + 1}-${x + 1}`;
-                    else if (screen.labelFormat === 'row-letter-col-number') newLabels[i] = `${String.fromCharCode('A'.charCodeAt(0) + y)}${x + 1}`;
+                    if (screen.labelFormat === 'row-col') {
+                      newLabels[i] = `${y + startNumber}-${x + 1}`;
+                    } else if (screen.labelFormat === 'row-letter-col-number') {
+                      const rowLetter = String.fromCharCode('A'.charCodeAt(0) + y + startNumber - 1);
+                      newLabels[i] = `${rowLetter}${x + 1}`;
+                    }
                 }
             }
         }
@@ -1346,15 +1356,17 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         const newLabels = Array(totalTiles).fill('');
         const activeTileIndices = screen.tiles.map((_, i) => i).filter(i => !screen.tiles[i].deleted);
         const pathOrder = getPathOrder(activeTileIndices, screen.wiringPattern, screenWidth, screenEffectiveHeight);
+        const startNumber = screen.labelStartNumber || 1;
 
         if (screen.labelFormat === 'sequential' || screen.labelFormat === 'dmx-style') {
           pathOrder.forEach((originalIndex, pathIndex) => {
             if (screen.labelFormat === 'sequential') {
-              newLabels[originalIndex] = String(pathIndex + screen.labelStartNumber);
-            } else {
+              newLabels[originalIndex] = String(pathIndex + startNumber);
+            } else { // dmx-style
               const universeSize = 170;
-              const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(pathIndex / universeSize));
-              const address = (pathIndex % universeSize) + 1;
+              const dmxIndex = pathIndex + startNumber - 1;
+              const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(dmxIndex / universeSize));
+              const address = (dmxIndex % universeSize) + 1;
               newLabels[originalIndex] = `${universe}${address}`;
             }
           });
@@ -1364,9 +1376,9 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
               const x = i % screenWidth;
               const y = Math.floor(i / screenWidth);
               if (screen.labelFormat === 'row-col') {
-                newLabels[i] = `${y + 1}-${x + 1}`;
+                newLabels[i] = `${y + startNumber}-${x + 1}`;
               } else if (screen.labelFormat === 'row-letter-col-number') {
-                const rowLetter = String.fromCharCode('A'.charCodeAt(0) + y);
+                const rowLetter = String.fromCharCode('A'.charCodeAt(0) + y + startNumber - 1);
                 newLabels[i] = `${rowLetter}${x + 1}`;
               }
             }

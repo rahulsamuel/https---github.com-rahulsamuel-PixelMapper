@@ -65,7 +65,7 @@ export function LabelControls() {
           </Select>
         </div>
 
-        {labelFormat === 'sequential' && (
+        {(labelFormat === 'sequential' || labelFormat === 'row-col' || labelFormat === 'row-letter-col-number') && (
           <div className="space-y-2">
             <Label htmlFor="label-start-number">Label Start Number</Label>
             <Input
