@@ -50,6 +50,8 @@ export function RasterMapPreview() {
             return 'border-chart-2'; // Green
         case '4k-dci':
             return 'border-chart-4'; // Purple
+        case 'custom':
+            return 'border-chart-3'; // Yellow
         case 'content':
         default:
             return 'border-primary';
