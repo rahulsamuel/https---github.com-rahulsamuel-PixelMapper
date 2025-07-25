@@ -1,4 +1,6 @@
 
+'use server';
+
 import * as admin from 'firebase-admin';
 
 // The key is to use these specific names for the environment variables, as the
