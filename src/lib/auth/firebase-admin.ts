@@ -1,6 +1,6 @@
 
 import * as admin from 'firebase-admin';
-import { serviceAccount } from '@/lib/firebase/service-account';
+import { serviceAccount as rawServiceAccount } from '@/lib/firebase/service-account';
 
 /**
  * Returns the Firebase Admin app instance, initializing it if necessary.
@@ -11,6 +11,11 @@ import { serviceAccount } from '@/lib/firebase/service-account';
  * @throws {Error} If the Firebase Admin SDK environment variables are not set.
  */
 export function getFirebaseAdminApp(): admin.app.App {
+  const serviceAccount = {
+    ...rawServiceAccount,
+    privateKey: rawServiceAccount.privateKey.replace(/\\n/g, '\n'),
+  };
+  
   // Check if the required environment variables are set.
   if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
     throw new Error('Firebase service account credentials are not set in src/lib/firebase/service-account.ts');
