@@ -1,10 +1,12 @@
 
 'use client';
 
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
+import { useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import type { FormState } from '@/app/contact/actions';
 import { submitContactForm } from '@/app/contact/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,14 +22,24 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-const initialState = {
+const initialState: FormState = {
   message: '',
   success: false,
 };
 
+function SubmitButton() {
+    const { pending } = useFormStatus();
+    return (
+        <Button type="submit" className="w-full" disabled={pending}>
+            {pending ? 'Sending...' : 'Send Message'}
+        </Button>
+    )
+}
+
 export function ContactForm() {
   const [state, formAction] = useActionState(submitContactForm, initialState);
   const { toast } = useToast();
+  const formRef = useRef<HTMLFormElement>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -46,6 +58,7 @@ export function ContactForm() {
           description: state.message,
         });
         form.reset();
+        formRef.current?.reset();
       } else {
         toast({
           title: 'Error',
@@ -54,11 +67,33 @@ export function ContactForm() {
         });
       }
     }
+    
+    if (state.errors) {
+        for (const [key, value] of Object.entries(state.errors)) {
+          form.setError(key as keyof FormData, {
+            type: 'manual',
+            message: value?.[0] ?? "Invalid input",
+          });
+        }
+    }
+
   }, [state, toast, form]);
 
   return (
     <Form {...form}>
-        <form action={formAction} className="space-y-6">
+        <form 
+            ref={formRef}
+            action={formAction} 
+            className="space-y-6"
+            onSubmit={(evt) => {
+                form.trigger().then((isValid) => {
+                    if (isValid) {
+                        formAction(new FormData(formRef.current!));
+                    }
+                });
+                evt.preventDefault();
+            }}
+        >
             <FormField
                 control={form.control}
                 name="name"
@@ -98,9 +133,7 @@ export function ContactForm() {
                     </FormItem>
                 )}
             />
-            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                Send Message
-            </Button>
+            <SubmitButton />
         </form>
     </Form>
   );
