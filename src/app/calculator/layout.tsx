@@ -16,14 +16,6 @@ export default function CalculatorLayout({ children }: { children: ReactNode }) 
             <Logo className="h-6 w-6 text-primary" />
             <span className="font-bold sm:inline-block">MapMyLED</span>
           </Link>
-           <div className="flex flex-1 items-center justify-end space-x-2">
-            <Link href="/app">
-              <Button variant="outline">Pixel Map</Button>
-            </Link>
-            <Link href={"/calculator"}>
-              <Button>LED Calculator</Button>
-            </Link>
-          </div>
         </div>
       </header>
       <main className="flex-1">
