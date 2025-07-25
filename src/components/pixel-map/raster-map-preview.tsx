@@ -9,11 +9,6 @@ export function RasterMapPreview() {
   const { 
     rasterMapConfig,
     zoom,
-    rasterOffset,
-    sliceOffsetLabels,
-    dimensions,
-    activeBounds,
-    showSliceOffsetLabels,
     rasterMapRef,
   } = usePixelMap();
 
@@ -40,7 +35,7 @@ export function RasterMapPreview() {
     );
   }
 
-  const { totalWidth, totalHeight, previewImage, slices, resolutionType, contentWidth, contentHeight } = rasterMapConfig;
+  const { totalWidth, totalHeight, previewImage, slices, resolutionType, contentWidth, contentHeight, rasterOffset, screenArrangement } = rasterMapConfig;
   
   const getSliceBorderColor = () => {
     switch(resolutionType) {
@@ -87,34 +82,6 @@ export function RasterMapPreview() {
                       }}
                   />
               )}
-
-              {/* Offset labels */}
-              {showSliceOffsetLabels && activeBounds && sliceOffsetLabels.map((label, index) => {
-                if (!label) return null;
-
-                const tileX = index % dimensions.screenWidth;
-                const tileY = Math.floor(index / dimensions.screenWidth);
-
-                if (tileX < activeBounds.minX || tileX > activeBounds.maxX || tileY < activeBounds.minY || tileY > activeBounds.maxY) {
-                  return null;
-                }
-                
-                const labelPosX = rasterOffset.x + (tileX - activeBounds.minX) * dimensions.tileWidth;
-                const labelPosY = rasterOffset.y + (tileY - activeBounds.minY) * dimensions.tileHeight;
-
-                return (
-                  <div
-                    key={`raster-offset-label-${index}`}
-                    className="absolute bg-black/60 text-white text-xs font-mono px-1 py-0.5 rounded z-20 pointer-events-none"
-                    style={{
-                      left: labelPosX + 4,
-                      top: labelPosY + 4,
-                    }}
-                  >
-                    {label}
-                  </div>
-                );
-              })}
               
               {/* Slices visualization */}
               {slices && slices.map(slice => (
@@ -143,6 +110,21 @@ export function RasterMapPreview() {
                           <p className="font-mono text-xs whitespace-nowrap">Size: {slice.width}x{slice.height}</p>
                       </div>
                   </div>
+              ))}
+
+              {/* Screen Arrangement borders */}
+              {screenArrangement.map(screen => (
+                 <div
+                    key={screen.screenId}
+                    className="absolute border border-destructive pointer-events-none"
+                    style={{
+                        left: screen.x + rasterOffset.x,
+                        top: screen.y + rasterOffset.y,
+                        width: screen.width,
+                        height: screen.height,
+                        boxSizing: 'border-box'
+                    }}
+                 />
               ))}
           </div>
       </div>

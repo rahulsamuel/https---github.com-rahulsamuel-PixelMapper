@@ -43,6 +43,15 @@ interface RasterSlice {
   height: number;
 }
 
+interface ScreenArrangement {
+  screenId: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  activeBounds: ActiveBounds;
+}
+
 interface RasterMapConfig {
   slices: RasterSlice[];
   totalWidth: number;
@@ -54,6 +63,7 @@ interface RasterMapConfig {
   previewImage?: string;
   rasterOffset: { x: number; y: number; };
   resolutionType: ResolutionType;
+  screenArrangement: ScreenArrangement[];
 }
 
 interface RasterArgs {
@@ -668,35 +678,163 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       });
   }, [gridRef, activeBounds, dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight, subscriptionStatus]);
 
+  const createScreenContentCanvas = useCallback((screen: Screen, screenActiveBounds: ActiveBounds | null) => {
+    if (!screenActiveBounds) return null;
+
+    const screenLabels = (() => {
+        const { screenWidth } = screen.dimensions;
+        const totalTiles = screen.tiles.length;
+        if (totalTiles <= 0) return [];
+        const newLabels = Array(totalTiles).fill('');
+        const activeTileIndices = screen.tiles.map((_, i) => i).filter(i => !screen.tiles[i].deleted);
+        
+        const screenEffectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+        
+        const pathOrder = getPathOrder(activeTileIndices, screen.wiringPattern, screenWidth, screenEffectiveHeight);
+
+        if (screen.labelFormat === 'sequential' || screen.labelFormat === 'dmx-style') {
+          pathOrder.forEach((originalIndex, pathIndex) => {
+            if (screen.labelFormat === 'sequential') newLabels[originalIndex] = String(pathIndex + 1);
+            else {
+              const universeSize = 170;
+              const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(pathIndex / universeSize));
+              const address = (pathIndex % universeSize) + 1;
+              newLabels[originalIndex] = `${universe}${address}`;
+            }
+          });
+        } else if (screen.labelFormat !== 'none') {
+            for (let i = 0; i < totalTiles; i++) {
+                if (screen.tiles[i] && !screen.tiles[i].deleted) {
+                    const x = i % screenWidth;
+                    const y = Math.floor(i / screenWidth);
+                    if (screen.labelFormat === 'row-col') newLabels[i] = `${y + 1}-${x + 1}`;
+                    else if (screen.labelFormat === 'row-letter-col-number') newLabels[i] = `${String.fromCharCode('A'.charCodeAt(0) + y)}${x + 1}`;
+                }
+            }
+        }
+        return newLabels;
+    })();
+
+    const { tileWidth, tileHeight, screenWidth } = screen.dimensions;
+
+    const screenEffectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+    
+    const contentPixelHeight = (() => {
+        let height = 0;
+        for (let y = screenActiveBounds.minY; y <= screenActiveBounds.maxY; y++) {
+            const isTopHalf = screen.topHalfTile && y === 0;
+            const isBottomHalf = screen.bottomHalfTile && y === (screenEffectiveHeight - 1);
+            height += (isTopHalf || isBottomHalf) ? tileHeight / 2 : tileHeight;
+        }
+        return height;
+    })();
+
+    const contentWidth = (screenActiveBounds.maxX - screenActiveBounds.minX + 1) * tileWidth;
+    const contentHeight = contentPixelHeight;
+
+    const masterCanvas = document.createElement('canvas');
+    masterCanvas.width = contentWidth;
+    masterCanvas.height = contentHeight;
+    const masterCtx = masterCanvas.getContext('2d');
+    if (!masterCtx) return null;
+
+    masterCtx.fillStyle = 'black';
+    masterCtx.fillRect(0, 0, masterCanvas.width, masterCanvas.height);
+
+    let currentDrawY = 0;
+    for (let y = screenActiveBounds.minY; y <= screenActiveBounds.maxY; y++) {
+        const isTopHalfRow = screen.topHalfTile && y === 0;
+        const isBottomHalfRow = screen.bottomHalfTile && y === (screenEffectiveHeight - 1);
+        const rowPixelHeight = (isTopHalfRow || isBottomHalfRow) ? tileHeight / 2 : tileHeight;
+
+        for (let x = screenActiveBounds.minX; x <= screenActiveBounds.maxX; x++) {
+            const index = y * screenWidth + x;
+            const tile = screen.tiles[index];
+            if (tile && !tile.deleted) {
+                const tileXPos = (x - screenActiveBounds.minX) * tileWidth;
+                let bgColor = (x + y) % 2 === 0 ? screen.tileColor : screen.tileColorTwo;
+                if (screen.onOffMode) bgColor = '#FFFFFF';
+                else if (tile.color) bgColor = tile.color;
+
+                masterCtx.fillStyle = bgColor;
+                masterCtx.fillRect(tileXPos, currentDrawY, tileWidth, rowPixelHeight);
+
+                if (screen.borderWidth > 0) {
+                    masterCtx.strokeStyle = screen.borderColor;
+                    masterCtx.lineWidth = screen.borderWidth;
+                    masterCtx.strokeRect(tileXPos + screen.borderWidth / 2, currentDrawY + screen.borderWidth / 2, tileWidth - screen.borderWidth, rowPixelHeight - screen.borderWidth);
+                }
+
+                if (screen.showLabels && screenLabels[index]) {
+                    const currentLabelColor = screen.labelColorMode === 'auto' ? (isColorDark(bgColor) ? '#FFFFFF' : '#000000') : screen.labelColor;
+                    masterCtx.fillStyle = currentLabelColor;
+                    masterCtx.font = `bold ${screen.labelFontSize}px sans-serif`;
+                    masterCtx.textAlign = 'center';
+                    masterCtx.textBaseline = 'middle';
+                    masterCtx.fillText(screenLabels[index], tileXPos + tileWidth / 2, currentDrawY + rowPixelHeight / 2);
+                }
+            }
+        }
+        currentDrawY += rowPixelHeight;
+    }
+    return masterCanvas;
+  }, []);
+
   const regenerateRasterPreview = useCallback(() => {
-    if (!activeBounds || !currentScreen.lastRasterArgs) {
+    if (!currentScreen.lastRasterArgs) {
         setRasterMapConfig(null);
         return;
     }
     const { filename, outputWidth, outputHeight } = currentScreen.lastRasterArgs;
-    const { screenWidth, tileWidth, tileHeight } = currentScreen.dimensions;
+    const PADDING = 20;
 
-    const contentPixelHeight = (() => {
-        if (!activeBounds) return 0;
-        let height = 0;
-        for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
-          const isTopHalf = topHalfTile && y === 0;
-          const isBottomHalf = bottomHalfTile && y === (effectiveScreenHeight - 1);
-          height += (isTopHalf || isBottomHalf) ? tileHeight / 2 : tileHeight;
+    const screenArrangement: ScreenArrangement[] = [];
+    let totalContentWidth = 0;
+    let maxContentHeight = 0;
+
+    for (const screen of screens) {
+        const activeTiles = screen.tiles.map((t, i) => ({...t, index: i})).filter(t => !t.deleted);
+        if (activeTiles.length === 0) continue;
+
+        let minX = screen.dimensions.screenWidth, minY = Infinity, maxX = -1, maxY = -1;
+        activeTiles.forEach(tile => {
+            const x = tile.index % screen.dimensions.screenWidth;
+            const y = Math.floor(tile.index / screen.dimensions.screenWidth);
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+        });
+
+        const screenActiveBounds = { minX, minY, maxX, maxY };
+        const screenEffectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+
+        const contentWidth = (maxX - minX + 1) * screen.dimensions.tileWidth;
+        const contentHeight = Array.from({ length: maxY - minY + 1 }, (_, i) => {
+            const y = minY + i;
+            const isTopHalf = screen.topHalfTile && y === 0;
+            const isBottomHalf = screen.bottomHalfTile && y === (screenEffectiveHeight - 1);
+            return (isTopHalf || isBottomHalf) ? screen.dimensions.tileHeight / 2 : screen.dimensions.tileHeight;
+        }).reduce((a, b) => a + b, 0);
+
+        screenArrangement.push({
+            screenId: screen.id,
+            x: totalContentWidth,
+            y: 0,
+            width: contentWidth,
+            height: contentHeight,
+            activeBounds: screenActiveBounds,
+        });
+
+        totalContentWidth += contentWidth + PADDING;
+        if (contentHeight > maxContentHeight) {
+            maxContentHeight = contentHeight;
         }
-        return height;
-      })();
-      
-    const contentWidth = (activeBounds.maxX - activeBounds.minX + 1) * tileWidth;
-    const contentHeight = contentPixelHeight;
-
-    if (contentWidth <= 0 || contentHeight <= 0) {
-      setRasterMapConfig(null);
-      return;
     }
+    totalContentWidth -= PADDING; // remove last padding
 
-    const finalOutputWidth = outputWidth || contentWidth;
-    const finalOutputHeight = outputHeight || contentHeight;
+    const finalOutputWidth = outputWidth || totalContentWidth;
+    const finalOutputHeight = outputHeight || maxContentHeight;
     
     let resolutionType: ResolutionType = 'content';
     if (outputWidth === 1920 && outputHeight === 1080) resolutionType = 'hd';
@@ -704,34 +842,41 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     else if (outputWidth === 4096 && outputHeight === 2160) resolutionType = '4k-dci';
     else if(outputWidth && outputHeight) resolutionType = 'custom';
 
-    // Calculate slices
     const slices: RasterSlice[] = [];
     const baseFilename = filename.replace('.png', '');
-    const numCols = Math.ceil((contentWidth + currentScreen.rasterOffset.x) / finalOutputWidth);
-    const numRows = Math.ceil((contentHeight + currentScreen.rasterOffset.y) / finalOutputHeight);
+    const numCols = Math.ceil((totalContentWidth + currentScreen.rasterOffset.x) / finalOutputWidth);
+    const numRows = Math.ceil((maxContentHeight + currentScreen.rasterOffset.y) / finalOutputHeight);
 
     const totalPreviewWidth = numCols * finalOutputWidth;
     const totalPreviewHeight = numRows * finalOutputHeight;
+
+    const fullContentCanvas = document.createElement('canvas');
+    fullContentCanvas.width = totalContentWidth;
+    fullContentCanvas.height = maxContentHeight;
+    const masterCtx = fullContentCanvas.getContext('2d');
+    if (!masterCtx) return;
+
+    masterCtx.fillStyle = 'black';
+    masterCtx.fillRect(0, 0, totalContentWidth, maxContentHeight);
+
+    for (const arrangement of screenArrangement) {
+        const screen = screens.find(s => s.id === arrangement.screenId);
+        if (!screen) continue;
+        
+        const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds);
+        if (screenCanvas) {
+            masterCtx.drawImage(screenCanvas, arrangement.x, arrangement.y);
+        }
+    }
+
+    const previewImage = fullContentCanvas.toDataURL('image/png');
 
     for (let row = 0; row < numRows; row++) {
         for (let col = 0; col < numCols; col++) {
             const sliceX = col * finalOutputWidth;
             const sliceY = row * finalOutputHeight;
             
-            const contentRect = { x: currentScreen.rasterOffset.x, y: currentScreen.rasterOffset.y, width: contentWidth, height: contentHeight };
-            const sliceRect = { x: sliceX, y: sliceY, width: finalOutputWidth, height: finalOutputHeight };
-
-            const intersects = (contentRect.x < sliceRect.x + sliceRect.width &&
-                                contentRect.x + contentRect.width > sliceRect.x &&
-                                contentRect.y < sliceRect.y + sliceRect.height &&
-                                contentRect.y + contentRect.height > sliceRect.y);
-            
-            if (!intersects) continue;
-
-            const sliceFilename = (numCols > 1 || numRows > 1)
-              ? `${baseFilename}-R${row + 1}-C${col + 1}.png`
-              : `${baseFilename}.png`;
-
+            const sliceFilename = (numCols > 1 || numRows > 1) ? `${baseFilename}-R${row + 1}-C${col + 1}.png` : `${baseFilename}.png`;
             slices.push({
                 key: `${row}-${col}`,
                 filename: sliceFilename,
@@ -743,90 +888,27 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         }
     }
 
-    const fullContentCanvas = document.createElement('canvas');
-    fullContentCanvas.width = contentWidth;
-    fullContentCanvas.height = contentHeight;
-    const masterCtx = fullContentCanvas.getContext('2d');
-
-    if (!masterCtx) {
-      setRasterMapConfig(null);
-      return;
-    }
-
-    masterCtx.fillStyle = 'black';
-    masterCtx.fillRect(0, 0, fullContentCanvas.width, fullContentCanvas.height);
-
-    let currentDrawY = 0;
-    for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
-      const isTopHalfRow = topHalfTile && y === 0;
-      const isBottomHalfRow = bottomHalfTile && y === (effectiveScreenHeight - 1);
-      const rowPixelHeight = (isTopHalfRow || isBottomHalfRow) ? tileHeight / 2 : tileHeight;
-
-      for (let x = activeBounds.minX; x <= activeBounds.maxX; x++) {
-        const index = y * screenWidth + x;
-        const tile = tiles[index];
-        if (tile && !tile.deleted) {
-          const tileXPos = (x - activeBounds.minX) * tileWidth;
-          let bgColor;
-          if (currentScreen.onOffMode) {
-            bgColor = '#FFFFFF';
-          } else if (tile.color) {
-            bgColor = tile.color;
-          } else {
-            bgColor = (x + y) % 2 === 0 ? currentScreen.tileColor : currentScreen.tileColorTwo;
-          }
-
-          masterCtx.fillStyle = bgColor;
-          masterCtx.fillRect(tileXPos, currentDrawY, tileWidth, rowPixelHeight);
-
-          if (currentScreen.borderWidth > 0) {
-              masterCtx.strokeStyle = currentScreen.borderColor;
-              masterCtx.lineWidth = currentScreen.borderWidth;
-              masterCtx.strokeRect(
-                  tileXPos + currentScreen.borderWidth / 2, 
-                  currentDrawY + currentScreen.borderWidth / 2, 
-                  tileWidth - currentScreen.borderWidth, 
-                  rowPixelHeight - currentScreen.borderWidth
-              );
-          }
-
-          if (currentScreen.showLabels && labels[index]) {
-            const currentLabelColor = currentScreen.labelColorMode === 'auto'
-              ? isColorDark(bgColor) ? '#FFFFFF' : '#000000'
-              : currentScreen.labelColor;
-            masterCtx.fillStyle = currentLabelColor;
-            masterCtx.font = `bold ${currentScreen.labelFontSize}px sans-serif`;
-            masterCtx.textAlign = 'center';
-            masterCtx.textBaseline = 'middle';
-            masterCtx.fillText(labels[index], tileXPos + tileWidth / 2, currentDrawY + rowPixelHeight / 2);
-          }
-        }
-      }
-      currentDrawY += rowPixelHeight;
-    }
-    
-    const previewImage = fullContentCanvas.toDataURL('image/png');
-
     setRasterMapConfig({
         slices,
         totalWidth: totalPreviewWidth,
         totalHeight: totalPreviewHeight,
-        contentWidth,
-        contentHeight,
+        contentWidth: totalContentWidth,
+        contentHeight: maxContentHeight,
         outputWidth: finalOutputWidth,
         outputHeight: finalOutputHeight,
         previewImage,
         rasterOffset: currentScreen.rasterOffset,
         resolutionType,
+        screenArrangement,
     });
-  }, [activeBounds, currentScreen, effectiveScreenHeight, labels, tiles, topHalfTile, bottomHalfTile]);
+  }, [screens, currentScreen.lastRasterArgs, currentScreen.rasterOffset, createScreenContentCanvas]);
 
 
   useEffect(() => {
     if (currentScreen.lastRasterArgs) {
       regenerateRasterPreview();
     }
-  }, [regenerateRasterPreview, currentScreen.lastRasterArgs]);
+  }, [regenerateRasterPreview, currentScreen.lastRasterArgs, screens]);
   
   const generateRasterMap = useCallback((filename: string, outputWidth?: number, outputHeight?: number) => {
     setLastRasterArgs({ filename, outputWidth, outputHeight });
@@ -840,23 +922,9 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   }, [generateRasterMap, activeBounds, currentScreen.lastRasterArgs]);
 
   const createFullRasterCanvas = useCallback(() => {
-    if (!activeBounds) return null;
+    if (!rasterMapConfig) return null;
 
-    const { screenWidth, tileWidth, tileHeight } = currentScreen.dimensions;
-
-    const contentPixelHeight = (() => {
-        if (!activeBounds) return 0;
-        let height = 0;
-        for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
-          const isTopHalf = topHalfTile && y === 0;
-          const isBottomHalf = bottomHalfTile && y === (effectiveScreenHeight - 1);
-          height += (isTopHalf || isBottomHalf) ? tileHeight / 2 : tileHeight;
-        }
-        return height;
-    })();
-
-    const contentWidth = (activeBounds.maxX - activeBounds.minX + 1) * tileWidth;
-    const contentHeight = contentPixelHeight;
+    const { contentWidth, contentHeight, screenArrangement } = rasterMapConfig;
 
     const masterCanvas = document.createElement('canvas');
     masterCanvas.width = contentWidth;
@@ -867,85 +935,18 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     masterCtx.fillStyle = 'black';
     masterCtx.fillRect(0, 0, masterCanvas.width, masterCanvas.height);
 
-    let currentDrawY = 0;
-    for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
-        const isTopHalfRow = topHalfTile && y === 0;
-        const isBottomHalfRow = bottomHalfTile && y === (effectiveScreenHeight - 1);
-        const rowPixelHeight = (isTopHalfRow || isBottomHalfRow) ? tileHeight / 2 : tileHeight;
-
-      for (let x = activeBounds.minX; x <= activeBounds.maxX; x++) {
-        const index = y * screenWidth + x;
-        const tile = tiles[index];
-        if (tile && !tile.deleted) {
-          const tileXPos = (x - activeBounds.minX) * tileWidth;
-          
-          let bgColor;
-          if (currentScreen.onOffMode) {
-            bgColor = '#FFFFFF';
-          } else if (tile.color) {
-            bgColor = tile.color;
-          } else {
-            bgColor = (x + y) % 2 === 0 ? currentScreen.tileColor : currentScreen.tileColorTwo;
-          }
-
-          masterCtx.fillStyle = bgColor;
-          masterCtx.fillRect(tileXPos, currentDrawY, tileWidth, rowPixelHeight);
-
-          if (currentScreen.borderWidth > 0) {
-            masterCtx.strokeStyle = currentScreen.borderColor;
-            masterCtx.lineWidth = currentScreen.borderWidth;
-            masterCtx.strokeRect(tileXPos + currentScreen.borderWidth / 2, currentDrawY + currentScreen.borderWidth / 2, tileWidth - currentScreen.borderWidth, rowPixelHeight - currentScreen.borderWidth);
-          }
-
-
-          if (currentScreen.showLabels && labels[index]) {
-            const currentLabelColor = currentScreen.labelColorMode === 'auto'
-              ? isColorDark(bgColor) ? '#FFFFFF' : '#000000'
-              : currentScreen.labelColor;
-            masterCtx.fillStyle = currentLabelColor;
-            masterCtx.font = `bold ${currentScreen.labelFontSize}px sans-serif`;
-            masterCtx.textAlign = 'center';
-            masterCtx.textBaseline = 'middle';
-            masterCtx.fillText(labels[index], tileXPos + tileWidth / 2, currentDrawY + rowPixelHeight / 2);
-          }
-          
-          if (currentScreen.showSliceOffsetLabels && sliceOffsetLabels[index]) {
-            const labelText = sliceOffsetLabels[index];
-            const FONT_SIZE = 12;
-            const PADDING_X = 4;
-            const PADDING_Y = 2;
-            const OFFSET_X = 4;
-            const OFFSET_Y = 4;
-            
-            masterCtx.font = `${FONT_SIZE}px monospace`;
-            masterCtx.textBaseline = 'top';
-            masterCtx.textAlign = 'left';
-
-            const textMetrics = masterCtx.measureText(labelText);
-            const textWidth = textMetrics.width;
-            
-            masterCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-            masterCtx.fillRect(
-                tileXPos + OFFSET_X,
-                currentDrawY + OFFSET_Y, 
-                textWidth + PADDING_X * 2, 
-                FONT_SIZE + PADDING_Y * 2
-            );
-            
-            masterCtx.fillStyle = 'white';
-            masterCtx.fillText(
-                labelText, 
-                tileXPos + OFFSET_X + PADDING_X, 
-                currentDrawY + OFFSET_Y + PADDING_Y
-            );
-          }
+    for (const arrangement of screenArrangement) {
+        const screen = screens.find(s => s.id === arrangement.screenId);
+        if (!screen) continue;
+        
+        const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds);
+        if (screenCanvas) {
+            masterCtx.drawImage(screenCanvas, arrangement.x, arrangement.y);
         }
-      }
-      currentDrawY += rowPixelHeight;
     }
 
     return masterCanvas;
-  }, [activeBounds, currentScreen, tiles, labels, effectiveScreenHeight, topHalfTile, bottomHalfTile, sliceOffsetLabels]);
+  }, [rasterMapConfig, screens, createScreenContentCanvas]);
 
 
   const downloadRasterSlices = useCallback(() => {
