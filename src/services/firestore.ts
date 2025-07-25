@@ -1,13 +1,32 @@
 
 'use server';
 
-import { getFirebaseAdminApp } from '@/lib/auth/firebase-admin';
-import { getFirestore } from 'firebase-admin/firestore';
+import * as admin from 'firebase-admin';
+import { serviceAccount as rawServiceAccount } from '@/lib/firebase/service-account';
+
+function getFirebaseAdminApp(): admin.app.App {
+  if (admin.apps.length > 0 && admin.apps[0]) {
+    return admin.apps[0];
+  }
+
+  const serviceAccount = {
+    ...rawServiceAccount,
+    privateKey: rawServiceAccount.privateKey.replace(/\\n/g, '\n'),
+  };
+
+  if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
+    throw new Error('Firebase service account credentials are not set correctly in src/lib/firebase/service-account.ts');
+  }
+
+  return admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+  });
+}
 
 export async function addData(collectionName: string, data: any) {
   try {
     const adminApp = getFirebaseAdminApp();
-    const db = getFirestore(adminApp);
+    const db = admin.firestore(adminApp);
     
     const docRef = await db.collection(collectionName).add({
       ...data,

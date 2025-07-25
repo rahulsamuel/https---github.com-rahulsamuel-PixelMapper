@@ -55,7 +55,7 @@ export async function addProductAction(prevState: FormState, formData: FormData)
     if (error) {
         return {
             success: false,
-            message: typeof error === 'string' ? error : 'An unexpected error occurred while adding the product.',
+            message: `Database error: ${error}`,
         };
     }
 
