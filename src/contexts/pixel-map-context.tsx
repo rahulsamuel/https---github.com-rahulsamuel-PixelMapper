@@ -818,7 +818,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         rasterOffset: currentScreen.rasterOffset,
         resolutionType,
     });
-  }, [activeBounds, currentScreen, effectiveScreenHeight, labels, tiles, topHalfTile, bottomHalfTile, regenerateRasterPreview]);
+  }, [activeBounds, currentScreen, effectiveScreenHeight, labels, tiles, topHalfTile, bottomHalfTile]);
 
 
   useEffect(() => {
