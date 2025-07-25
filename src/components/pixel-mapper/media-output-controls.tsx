@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 export function MediaOutputControls() {
   const { 
@@ -20,6 +20,7 @@ export function MediaOutputControls() {
     calculateAndApplyOptimalOffset,
     showSliceOffsetLabels,
     setShowSliceOffsetLabels,
+    currentScreen,
   } = usePixelMap();
 
   const [customWidth, setCustomWidth] = useState("1920");
@@ -45,6 +46,21 @@ export function MediaOutputControls() {
   const anyTileTooBig = (width: number, height: number) => {
     return screens.some(s => s.dimensions.tileWidth > width || s.dimensions.tileHeight > height);
   }
+  
+  // Local state for input fields to avoid lag
+  const [localOffsetX, setLocalOffsetX] = useState(rasterOffset.x);
+  const [localOffsetY, setLocalOffsetY] = useState(rasterOffset.y);
+
+  // Update local state when the current screen (and its offset) changes
+  useEffect(() => {
+    setLocalOffsetX(currentScreen.rasterOffset.x);
+    setLocalOffsetY(currentScreen.rasterOffset.y);
+  }, [currentScreen.rasterOffset]);
+
+  const handleOffsetBlur = () => {
+      setRasterOffset({x: localOffsetX, y: localOffsetY});
+  };
+
 
   return (
     <div className="space-y-4">
@@ -104,16 +120,18 @@ export function MediaOutputControls() {
           </Button>
       </div>
        <div className="space-y-2">
-          <Label className="font-semibold">Raster Offset</Label>
-          <p className="text-sm text-muted-foreground pb-2">Position the content within the raster map output.</p>
+          <Label className="font-semibold">Screen Offset (&quot;{currentScreen.name}&quot;)</Label>
+          <p className="text-sm text-muted-foreground pb-2">Position the current screen within the raster map.</p>
           <div className="flex items-center gap-2">
               <div className="grid w-full gap-1.5">
                   <Label htmlFor="offset-x">Offset X</Label>
                   <Input 
                       id="offset-x" 
                       type="number" 
-                      value={rasterOffset.x} 
-                      onChange={(e) => setRasterOffset(prev => ({ ...prev, x: Number(e.target.value) || 0 }))} 
+                      value={localOffsetX} 
+                      onChange={(e) => setLocalOffsetX(Number(e.target.value) || 0)} 
+                      onBlur={handleOffsetBlur}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                   />
               </div>
               <div className="grid w-full gap-1.5">
@@ -121,8 +139,10 @@ export function MediaOutputControls() {
                   <Input 
                       id="offset-y" 
                       type="number" 
-                      value={rasterOffset.y} 
-                      onChange={(e) => setRasterOffset(prev => ({ ...prev, y: Number(e.target.value) || 0 }))} 
+                      value={localOffsetY} 
+                      onChange={(e) => setLocalOffsetY(Number(e.target.value) || 0)}
+                      onBlur={handleOffsetBlur}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                   />
               </div>
           </div>
@@ -134,7 +154,7 @@ export function MediaOutputControls() {
                 disabled={!rasterMapConfig}
             >
                 <RotateCcw className="mr-2 size-4" />
-                Reset the Offset
+                Reset Screen Offset
             </Button>
           </div>
       </div>

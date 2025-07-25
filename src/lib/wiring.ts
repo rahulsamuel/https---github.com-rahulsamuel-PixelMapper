@@ -28,6 +28,15 @@ interface RasterSlice {
   height: number;
 }
 
+interface ScreenArrangement {
+  screenId: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  activeBounds: ActiveBounds;
+}
+
 interface RasterMapConfig {
   slices: RasterSlice[];
   totalWidth: number; 
@@ -35,7 +44,7 @@ interface RasterMapConfig {
   outputWidth: number;
   outputHeight: number;
   previewImage?: string;
-  rasterOffset: { x: number; y: number; };
+  screenArrangement: ScreenArrangement[];
 }
 
 export type WiringPattern = 'serpentine-horizontal' | 'serpentine-vertical' | 'serpentine-horizontal-reverse' | 'left-right' | 'top-bottom' | 'bottom-to-top';
@@ -208,8 +217,6 @@ interface GetWiringDataArgs {
     powerWiringPattern: WiringPattern;
     processorType: ProcessorType;
     rasterMapConfig?: RasterMapConfig | null;
-    activeBounds?: ActiveBounds | null;
-    rasterOffset?: { x: number; y: number; };
     topHalfTile: boolean;
     bottomHalfTile: boolean;
 }
@@ -223,8 +230,6 @@ export function getWiringData({
   powerWiringPattern,
   processorType,
   rasterMapConfig,
-  activeBounds,
-  rasterOffset,
   topHalfTile,
   bottomHalfTile,
 }: GetWiringDataArgs): WiringInfo[] {
@@ -247,75 +252,17 @@ export function getWiringData({
 
   const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
 
-  if (rasterMapConfig && activeBounds && rasterMapConfig.slices.length > 0 && rasterMapConfig.outputWidth > 0 && rasterMapConfig.outputHeight > 0 && rasterOffset) {
-    const { outputWidth: sliceWidth, outputHeight: sliceHeight } = rasterMapConfig;
+  if (rasterMapConfig && rasterMapConfig.slices.length > 0 && rasterMapConfig.outputWidth > 0 && rasterMapConfig.outputHeight > 0 && rasterMapConfig.screenArrangement.length > 0) {
     
-    const tilesBySlice = new Map<string, number[]>();
-    activeTileIndices.forEach(index => {
-      const x = index % screenWidth;
-      const y = Math.floor(index / screenWidth);
-      if (x < activeBounds.minX || x > activeBounds.maxX || y < activeBounds.minY || y > activeBounds.maxY) return;
-      
-      let tileContentY = 0;
-      for (let i = activeBounds.minY; i < y; i++) {
-        const isTopHalf = topHalfTile && i === 0;
-        const isBottomHalf = bottomHalfTile && i === screenHeight -1;
-        tileContentY += (isTopHalf || isBottomHalf) ? tileHeight / 2 : tileHeight;
-      }
-      const tileContentX = (x - activeBounds.minX) * tileWidth;
-
-      const absoluteContentX = tileContentX + rasterOffset.x;
-      const absoluteContentY = tileContentY + rasterOffset.y;
-
-      const sliceCol = Math.floor(absoluteContentX / sliceWidth);
-      const sliceRow = Math.floor(absoluteContentY / sliceHeight);
-      const sliceKey = `${sliceRow}-${sliceCol}`;
-      
-      if (!tilesBySlice.has(sliceKey)) tilesBySlice.set(sliceKey, []);
-      tilesBySlice.get(sliceKey)!.push(index);
-    });
-
-    const sortedSliceKeys = Array.from(tilesBySlice.keys()).sort((a, b) => {
-        const [rowA, colA] = a.split('-').map(Number);
-        const [rowB, colB] = b.split('-').map(Number);
-        if (rowA !== rowB) return rowA - rowB;
-        return colA - colB;
-    });
+    // This part is complex because wiring now depends on the full arrangement of all screens
+    // For now, let's process wiring based on the local screen's wiring pattern only
+    // Advanced multi-screen wiring would be a much bigger feature.
     
-    for (const sliceKey of sortedSliceKeys) {
-        const sliceIndices = tilesBySlice.get(sliceKey)!;
-        
-        const dataPathOrder = getPathOrder(sliceIndices, wiringPattern, screenWidth, screenHeight);
-        const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
-        applyDataWiring(dataTilesPath, wiringPortConfig, processorType);
-        
-        const currentSlice = rasterMapConfig.slices.find(s => s.key === sliceKey);
-        if (currentSlice && dataPathOrder.length > 0) {
-            const firstTileIndex = dataPathOrder[0];
-            
-            const x = firstTileIndex % screenWidth;
-            const y = Math.floor(firstTileIndex / screenWidth);
+    const dataPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
+    const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
+    applyDataWiring(dataTilesPath, wiringPortConfig, processorType);
 
-            const tileContentX = (x - activeBounds.minX) * tileWidth;
-            
-            let tileContentY = 0;
-            for (let i = activeBounds.minY; i < y; i++) {
-                const isTopHalf = topHalfTile && i === 0;
-                const isBottomHalf = bottomHalfTile && i === screenHeight -1;
-                tileContentY += (isTopHalf || isBottomHalf) ? tileHeight / 2 : tileHeight;
-            }
 
-            if (rasterOffset) {
-              const absoluteContentX = tileContentX + rasterOffset.x;
-              const absoluteContentY = tileContentY + rasterOffset.y;
-              
-              const offsetXInSlice = absoluteContentX - currentSlice.x;
-              const offsetYInSlice = absoluteContentY - currentSlice.y;
-
-              allTilesData[firstTileIndex].sliceOffsetLabel = `(${offsetXInSlice},${offsetYInSlice})`;
-            }
-        }
-    }
   } else {
     const dataPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
     const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));

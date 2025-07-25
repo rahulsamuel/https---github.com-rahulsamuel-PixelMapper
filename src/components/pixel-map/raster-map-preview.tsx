@@ -35,7 +35,7 @@ export function RasterMapPreview() {
     );
   }
 
-  const { totalWidth, totalHeight, previewImage, slices, resolutionType, contentWidth, contentHeight, rasterOffset, screenArrangement } = rasterMapConfig;
+  const { totalWidth, totalHeight, previewImage, slices, resolutionType, contentWidth, contentHeight, screenArrangement } = rasterMapConfig;
   
   const getSliceBorderColor = () => {
     switch(resolutionType) {
@@ -73,10 +73,8 @@ export function RasterMapPreview() {
                   <img 
                       src={previewImage} 
                       alt="LED Grid Preview"
-                      className="absolute"
+                      className="absolute top-0 left-0"
                       style={{
-                          left: rasterOffset.x,
-                          top: rasterOffset.y,
                           width: contentWidth,
                           height: contentHeight,
                       }}
@@ -118,8 +116,8 @@ export function RasterMapPreview() {
                     key={screen.screenId}
                     className="absolute border border-destructive pointer-events-none"
                     style={{
-                        left: screen.x + rasterOffset.x,
-                        top: screen.y + rasterOffset.y,
+                        left: screen.x,
+                        top: screen.y,
                         width: screen.width,
                         height: screen.height,
                         boxSizing: 'border-box'

@@ -61,7 +61,6 @@ interface RasterMapConfig {
   outputWidth: number;
   outputHeight: number;
   previewImage?: string;
-  rasterOffset: { x: number; y: number; };
   resolutionType: ResolutionType;
   screenArrangement: ScreenArrangement[];
 }
@@ -381,7 +380,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       rasterMapConfig, 
       activeBounds: null, // This needs to be calculated per screen
       tilesPerPowerString: currentScreen.tilesPerPowerString, 
-      rasterOffset: currentScreen.rasterOffset,
       topHalfTile: currentScreen.topHalfTile,
       bottomHalfTile: currentScreen.bottomHalfTile,
       processorType: currentScreen.processorType,
@@ -790,7 +788,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
     const screenArrangement: ScreenArrangement[] = [];
     let totalContentWidth = 0;
-    let maxContentHeight = 0;
+    let totalContentHeight = 0;
 
     for (const screen of screens) {
         const activeTiles = screen.tiles.map((t, i) => ({...t, index: i})).filter(t => !t.deleted);
@@ -819,22 +817,23 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
         screenArrangement.push({
             screenId: screen.id,
-            x: totalContentWidth,
-            y: 0,
+            x: screen.rasterOffset.x,
+            y: screen.rasterOffset.y,
             width: contentWidth,
             height: contentHeight,
             activeBounds: screenActiveBounds,
         });
 
-        totalContentWidth += contentWidth + PADDING;
-        if (contentHeight > maxContentHeight) {
-            maxContentHeight = contentHeight;
+        if (screen.rasterOffset.x + contentWidth > totalContentWidth) {
+          totalContentWidth = screen.rasterOffset.x + contentWidth;
+        }
+        if (screen.rasterOffset.y + contentHeight > totalContentHeight) {
+          totalContentHeight = screen.rasterOffset.y + contentHeight;
         }
     }
-    totalContentWidth -= PADDING; // remove last padding
 
     const finalOutputWidth = outputWidth || totalContentWidth;
-    const finalOutputHeight = outputHeight || maxContentHeight;
+    const finalOutputHeight = outputHeight || totalContentHeight;
     
     let resolutionType: ResolutionType = 'content';
     if (outputWidth === 1920 && outputHeight === 1080) resolutionType = 'hd';
@@ -844,20 +843,24 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
     const slices: RasterSlice[] = [];
     const baseFilename = filename.replace('.png', '');
-    const numCols = Math.ceil((totalContentWidth + currentScreen.rasterOffset.x) / finalOutputWidth);
-    const numRows = Math.ceil((maxContentHeight + currentScreen.rasterOffset.y) / finalOutputHeight);
+
+    const effectiveTotalContentWidth = screenArrangement.reduce((max, s) => Math.max(max, s.x + s.width), 0);
+    const effectiveTotalContentHeight = screenArrangement.reduce((max, s) => Math.max(max, s.y + s.height), 0);
+    
+    const numCols = Math.ceil(effectiveTotalContentWidth / finalOutputWidth);
+    const numRows = Math.ceil(effectiveTotalContentHeight / finalOutputHeight);
 
     const totalPreviewWidth = numCols * finalOutputWidth;
     const totalPreviewHeight = numRows * finalOutputHeight;
 
     const fullContentCanvas = document.createElement('canvas');
-    fullContentCanvas.width = totalContentWidth;
-    fullContentCanvas.height = maxContentHeight;
+    fullContentCanvas.width = effectiveTotalContentWidth;
+    fullContentCanvas.height = effectiveTotalContentHeight;
     const masterCtx = fullContentCanvas.getContext('2d');
     if (!masterCtx) return;
 
     masterCtx.fillStyle = 'black';
-    masterCtx.fillRect(0, 0, totalContentWidth, maxContentHeight);
+    masterCtx.fillRect(0, 0, fullContentCanvas.width, fullContentCanvas.height);
 
     for (const arrangement of screenArrangement) {
         const screen = screens.find(s => s.id === arrangement.screenId);
@@ -892,28 +895,27 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         slices,
         totalWidth: totalPreviewWidth,
         totalHeight: totalPreviewHeight,
-        contentWidth: totalContentWidth,
-        contentHeight: maxContentHeight,
+        contentWidth: effectiveTotalContentWidth,
+        contentHeight: effectiveTotalContentHeight,
         outputWidth: finalOutputWidth,
         outputHeight: finalOutputHeight,
         previewImage,
-        rasterOffset: currentScreen.rasterOffset,
         resolutionType,
         screenArrangement,
     });
-  }, [screens, currentScreen.lastRasterArgs, currentScreen.rasterOffset, createScreenContentCanvas]);
+  }, [screens, currentScreen.lastRasterArgs, createScreenContentCanvas]);
 
 
   useEffect(() => {
     if (currentScreen.lastRasterArgs) {
       regenerateRasterPreview();
     }
-  }, [regenerateRasterPreview, currentScreen.lastRasterArgs, screens]);
+  }, [regenerateRasterPreview, screens]); // Removed currentScreen.lastRasterArgs from here as it caused loops. Now relies on screen state.
   
   const generateRasterMap = useCallback((filename: string, outputWidth?: number, outputHeight?: number) => {
     setLastRasterArgs({ filename, outputWidth, outputHeight });
-    setRasterOffset({ x: 0, y: 0 });
-  }, [setLastRasterArgs, setRasterOffset]);
+    // Don't reset offset here, it is now per-screen
+  }, [setLastRasterArgs]);
 
   useEffect(() => {
     if (activeBounds && !currentScreen.lastRasterArgs) {
@@ -994,18 +996,15 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         outputCtx.fillStyle = 'black';
         outputCtx.fillRect(0,0, outputCanvas.width, outputCanvas.height);
         
-        const destX = currentScreen.rasterOffset.x - slice.x;
-        const destY = currentScreen.rasterOffset.y - slice.y;
-
         outputCtx.drawImage(
             masterContentCanvas,
-            destX, 
-            destY
+            -slice.x, 
+            -slice.y
         );
         
         downloadCanvas(outputCanvas, slice.filename);
     }
-  }, [rasterMapConfig, createFullRasterCanvas, currentScreen.rasterOffset, subscriptionStatus, toast]);
+  }, [rasterMapConfig, createFullRasterCanvas, subscriptionStatus, toast]);
   
   const addWatermark = (dataUrl: string): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -1293,21 +1292,23 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   const calculateAndApplyOptimalOffset = useCallback(() => {
-    if (!rasterMapConfig || !activeBounds) {
+    if (!rasterMapConfig) {
       toast({
           title: "Cannot Reset Offset",
-          description: "Raster map and active grid are required.",
+          description: "A raster map must be generated first.",
           variant: "destructive",
       });
       return;
     }
     
+    // Resetting just the current screen's offset to 0,0
     setRasterOffset({ x: 0, y: 0 });
+
     toast({
       title: "Offset Reset",
-      description: "Raster offset has been reset to (0, 0).",
+      description: `Offset for "${currentScreen.name}" has been reset to (0, 0).`,
     });
-  }, [rasterMapConfig, activeBounds, toast, setRasterOffset]);
+  }, [rasterMapConfig, toast, setRasterOffset, currentScreen.name]);
 
   const value: PixelMapState = {
     appState,
