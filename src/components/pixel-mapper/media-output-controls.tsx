@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { useState } from "react";
 
 export function MediaOutputControls() {
   const { 
@@ -21,6 +22,9 @@ export function MediaOutputControls() {
     showSliceOffsetLabels,
     setShowSliceOffsetLabels,
   } = usePixelMap();
+
+  const [customWidth, setCustomWidth] = useState("1920");
+  const [customHeight, setCustomHeight] = useState("1080");
   
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : dimensions.screenWidth * dimensions.tileWidth;
   const totalHeight = activeBounds ? (activeBounds.maxY - activeBounds.minY + 1) * dimensions.tileHeight : dimensions.screenHeight * dimensions.tileHeight;
@@ -31,7 +35,7 @@ export function MediaOutputControls() {
     <div className="space-y-4">
       <div>
         <Label className="font-semibold">Raster Map Generation</Label>
-        <p className="text-sm text-muted-foreground pb-2">Create raster maps for media servers.</p>
+        <p className="text-sm text-muted-foreground pb-2">Create raster maps for media servers from presets.</p>
         <div className="space-y-2">
           <Button onClick={() => generateRasterMap(`raster-map-content.png`)} className="w-full">
               <FileOutput className="mr-2 size-4" />
@@ -47,6 +51,42 @@ export function MediaOutputControls() {
               4K DCI (4096x2160)
           </Button>
         </div>
+      </div>
+      <Separator />
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">Or create a custom sized raster map.</p>
+        <div className="flex items-center gap-2">
+              <div className="grid w-full gap-1.5">
+                  <Label htmlFor="custom-width">Custom Width</Label>
+                  <Input 
+                      id="custom-width" 
+                      type="number" 
+                      value={customWidth}
+                      onChange={(e) => setCustomWidth(e.target.value)}
+                      placeholder="e.g. 1920"
+                      min="1"
+                  />
+              </div>
+              <div className="grid w-full gap-1.5">
+                  <Label htmlFor="custom-height">Custom Height</Label>
+                  <Input 
+                      id="custom-height" 
+                      type="number" 
+                      value={customHeight}
+                      onChange={(e) => setCustomHeight(e.target.value)}
+                      placeholder="e.g. 1080"
+                      min="1"
+                  />
+              </div>
+          </div>
+          <Button 
+            onClick={() => generateRasterMap('raster-map-custom.png', parseInt(customWidth), parseInt(customHeight))} 
+            variant="outline" 
+            className="w-full"
+            disabled={!customWidth || !customHeight || tileWidth > parseInt(customWidth) || tileHeight > parseInt(customHeight)}
+          >
+              Generate Custom Map
+          </Button>
       </div>
        <div className="space-y-2">
           <Label className="font-semibold">Raster Offset</Label>

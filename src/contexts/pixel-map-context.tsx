@@ -31,7 +31,7 @@ type ActiveTool = 'delete' | 'label' | 'color';
 type LabelFormat = 'none' | 'sequential' | 'row-col' | 'dmx-style' | 'row-letter-col-number';
 type LabelPosition = 'top-left' | 'top-right' | 'center' | 'bottom-left' | 'bottom-right';
 type LabelColorMode = 'single' | 'auto';
-type ResolutionType = 'content' | 'hd' | '4k-uhd' | '4k-dci';
+type ResolutionType = 'content' | 'hd' | '4k-uhd' | '4k-dci' | 'custom';
 type ProcessorType = 'Brompton' | 'Novastar' | 'Helios';
 
 interface RasterSlice {
@@ -702,6 +702,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     if (outputWidth === 1920 && outputHeight === 1080) resolutionType = 'hd';
     else if (outputWidth === 3840 && outputHeight === 2160) resolutionType = '4k-uhd';
     else if (outputWidth === 4096 && outputHeight === 2160) resolutionType = '4k-dci';
+    else if(outputWidth && outputHeight) resolutionType = 'custom';
 
     // Calculate slices
     const slices: RasterSlice[] = [];
@@ -1238,33 +1239,33 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         const result = event.target?.result;
         if (typeof result !== 'string') throw new Error("Could not read file");
         
-        const data: ProjectData = JSON.parse(result);
+        const data: ProjectData | any = JSON.parse(result);
 
-        if (!data.version || !data.screens || !data.currentScreenId) {
+        if (!data.version || (!data.screens && !data.dimensions)) {
           throw new Error("Invalid project file format.");
         }
         
-        // Handle legacy project import
-        if (!data.screens && (data as any).dimensions) {
-          const legacyData = data as any;
+        // Handle legacy project import (pre-multiple screens)
+        if (data.dimensions) {
           const screen = createNewScreen("Imported Screen");
           
           Object.assign(screen, {
-            ...legacyData,
-            zoomLevels: legacyData.zoomLevels || { grid: legacyData.zoom || 1, wiring: legacyData.zoom || 1, raster: legacyData.zoom || 1 }
+            ...data,
+            id: crypto.randomUUID(), // ensure it has a unique ID
+            name: "Imported Screen",
+            zoomLevels: data.zoomLevels || { grid: data.zoom || 1, wiring: data.zoom || 1, raster: data.zoom || 1 }
           });
           
           setScreens([screen]);
           setCurrentScreenId(screen.id);
-          setActiveTab(legacyData.activeTab || 'grid');
+          setActiveTab(data.activeTab || 'grid');
         } else {
-          setScreens(data.screens);
+           // Make sure all screens have all properties from the latest `Screen` interface
+          const migratedScreens = data.screens.map((s: any) => ({ ...createNewScreen(""), ...s }));
+          setScreens(migratedScreens);
           setCurrentScreenId(data.currentScreenId);
           setActiveTab(data.activeTab);
         }
-
-        // Make sure all screens have all properties
-        setScreens(currentScreens => currentScreens.map(s => ({ ...createNewScreen(""), ...s })));
         
         toast({
           title: "Import Successful",
