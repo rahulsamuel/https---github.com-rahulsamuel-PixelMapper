@@ -17,12 +17,12 @@ export default function LegalLayout({ children }: { children: ReactNode }) {
             <span className="font-bold sm:inline-block">MapMyLED</span>
           </Link>
            <div className="flex flex-1 items-center justify-end space-x-2">
+            <Link href="/app">
+              <Button>Pixel Map</Button>
+            </Link>
             <Link href={"/calculator"}>
               <Button variant="outline">LED Calculator</Button>
             </Link>
-             <Link href="/app">
-               <Button>Pixel Map</Button>
-             </Link>
           </div>
         </div>
       </header>

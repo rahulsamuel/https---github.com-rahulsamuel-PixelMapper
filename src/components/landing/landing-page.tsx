@@ -19,11 +19,11 @@ export async function LandingPage() {
             <span className="font-bold sm:inline-block">MapMyLED</span>
           </Link>
           <div className="flex flex-1 items-center justify-end space-x-2">
-            <Link href={"/calculator"}>
-              <Button variant="outline">LED Calculator</Button>
-            </Link>
             <Link href={"/app"}>
               <Button>Pixel Map</Button>
+            </Link>
+            <Link href={"/calculator"}>
+              <Button variant="outline">LED Calculator</Button>
             </Link>
           </div>
         </div>
