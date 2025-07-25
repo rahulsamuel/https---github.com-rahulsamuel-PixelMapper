@@ -8,10 +8,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, DraftingCompass, Calculator } from 'lucide-react';
+import { ChevronDown, DraftingCompass, Calculator, Home } from 'lucide-react';
 
 export function AppHeader() {
   const pathname = usePathname();
@@ -44,6 +45,13 @@ export function AppHeader() {
                         <DropdownMenuItem>
                             <Calculator className="mr-2 h-4 w-4" />
                             <span>LED Calculator</span>
+                        </DropdownMenuItem>
+                    </Link>
+                    <DropdownMenuSeparator />
+                    <Link href="/">
+                        <DropdownMenuItem>
+                            <Home className="mr-2 h-4 w-4" />
+                            <span>Homepage</span>
                         </DropdownMenuItem>
                     </Link>
                 </DropdownMenuContent>
