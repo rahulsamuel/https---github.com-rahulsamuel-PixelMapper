@@ -91,6 +91,16 @@ export function LedProductForm() {
       applicationOutdoor: false,
       applicationFloor: false,
     },
+    errors: state?.errors?.reduce(
+      (acc, error) => {
+        acc[error.path[0] as keyof FormData] = {
+          type: 'manual',
+          message: error.message,
+        };
+        return acc;
+      },
+      {} as any,
+    ),
   });
 
   useEffect(() => {
@@ -102,24 +112,20 @@ export function LedProductForm() {
         });
         form.reset();
         formRef.current?.reset();
+      } else if (state.errors) {
+         toast({
+          title: 'Error',
+          description: state.message,
+          variant: 'destructive',
+        });
       } else {
-        toast({
+         toast({
           title: 'Error',
           description: state.message,
           variant: 'destructive',
         });
       }
     }
-    
-    if (state.errors) {
-        for (const [key, value] of Object.entries(state.errors)) {
-          form.setError(key as keyof FormData, {
-            type: 'manual',
-            message: value?.[0] ?? "Invalid input",
-          });
-        }
-    }
-
   }, [state, toast, form]);
 
   return (

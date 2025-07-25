@@ -36,15 +36,15 @@ export async function addProductAction(prevState: FormState, formData: FormData)
     
   const validatedFields = formSchema.safeParse({
     ...Object.fromEntries(formData.entries()),
-    applicationIndoor: formData.has('applicationIndoor'),
-    applicationOutdoor: formData.has('applicationOutdoor'),
-    applicationFloor: formData.has('applicationFloor'),
+    applicationIndoor: formData.get('applicationIndoor') === 'on',
+    applicationOutdoor: formData.get('applicationOutdoor') === 'on',
+    applicationFloor: formData.get('applicationFloor') === 'on',
   });
 
   if (!validatedFields.success) {
     return {
       success: false,
-      errors: validatedFields.error.flatten().fieldErrors as any,
+      errors: validatedFields.error.issues,
       message: 'Please correct the errors in the form.',
     };
   }
