@@ -556,7 +556,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
       const sliceCol = Math.floor(absoluteContentX / outputWidth);
       const sliceRow = Math.floor(absoluteContentY / outputHeight);
-      const sliceKey = `${sliceRow}-${sliceCol}`;
+      const sliceKey = `${sliceRow}-${col}`;
       
       if (!tilesBySlice.has(sliceKey)) tilesBySlice.set(sliceKey, []);
       tilesBySlice.get(sliceKey)!.push(index);
@@ -1329,6 +1329,42 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         bottomHalfTile: screen.bottomHalfTile,
     });
     
+    const screenLabels = (() => {
+        const { screenWidth } = screen.dimensions;
+        const totalTiles = screen.tiles.length;
+        if (totalTiles <= 0) return [];
+        const newLabels = Array(totalTiles).fill('');
+        const activeTileIndices = screen.tiles.map((_, i) => i).filter(i => !screen.tiles[i].deleted);
+        const pathOrder = getPathOrder(activeTileIndices, screen.wiringPattern, screenWidth, screenEffectiveHeight);
+
+        if (screen.labelFormat === 'sequential' || screen.labelFormat === 'dmx-style') {
+          pathOrder.forEach((originalIndex, pathIndex) => {
+            if (screen.labelFormat === 'sequential') {
+              newLabels[originalIndex] = String(pathIndex + 1);
+            } else {
+              const universeSize = 170;
+              const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(pathIndex / universeSize));
+              const address = (pathIndex % universeSize) + 1;
+              newLabels[originalIndex] = `${universe}${address}`;
+            }
+          });
+        } else if (screen.labelFormat !== 'none') {
+          for (let i = 0; i < totalTiles; i++) {
+            if (screen.tiles[i] && !screen.tiles[i].deleted) {
+              const x = i % screenWidth;
+              const y = Math.floor(i / screenWidth);
+              if (screen.labelFormat === 'row-col') {
+                newLabels[i] = `${y + 1}-${x + 1}`;
+              } else if (screen.labelFormat === 'row-letter-col-number') {
+                const rowLetter = String.fromCharCode('A'.charCodeAt(0) + y);
+                newLabels[i] = `${rowLetter}${x + 1}`;
+              }
+            }
+          }
+        }
+        return newLabels;
+    })();
+
     const { tileWidth, tileHeight, screenWidth } = screen.dimensions;
     const contentWidth = (screenActiveBounds.maxX - screenActiveBounds.minX + 1) * tileWidth;
     const contentHeight = Array.from({ length: screenActiveBounds.maxY - screenActiveBounds.minY + 1 }, (_, i) => {
@@ -1344,7 +1380,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
-    ctx.fillStyle = computedStyle.getPropertyValue('--background').trim();
+    ctx.fillStyle = computedStyle.getPropertyValue('--background').trim() || '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const rowData = [];
@@ -1385,6 +1421,48 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
               ctx.strokeStyle = screen.borderColor;
               ctx.lineWidth = screen.borderWidth;
               ctx.strokeRect(tileXPos(x), tileYPos, tileWidth, rowPixelHeight);
+            }
+             if (screen.showLabels && screenLabels[index]) {
+                const currentLabelColor = screen.labelColorMode === 'auto' ? (isColorDark(bgColor) ? '#FFFFFF' : '#000000') : screen.labelColor;
+                ctx.fillStyle = currentLabelColor;
+                ctx.font = `bold ${screen.labelFontSize}px sans-serif`;
+                
+                let textX = 0;
+                let textY = tileYPos + rowPixelHeight / 2;
+
+                switch (screen.labelPosition) {
+                    case 'top-left':
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'top';
+                        textX = tileXPos(x) + 8;
+                        textY = tileYPos + 4;
+                        break;
+                    case 'top-right':
+                        ctx.textAlign = 'right';
+                        ctx.textBaseline = 'top';
+                        textX = tileXPos(x) + tileWidth - 8;
+                        textY = tileYPos + 4;
+                        break;
+                    case 'bottom-left':
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'bottom';
+                        textX = tileXPos(x) + 8;
+                        textY = tileYPos + rowPixelHeight - 4;
+                        break;
+                    case 'bottom-right':
+                        ctx.textAlign = 'right';
+                        ctx.textBaseline = 'bottom';
+                        textX = tileXPos(x) + tileWidth - 8;
+                        textY = tileYPos + rowPixelHeight - 4;
+                        break;
+                    case 'center':
+                    default:
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        textX = tileXPos(x) + tileWidth / 2;
+                        break;
+                }
+                ctx.fillText(screenLabels[index], textX, textY);
             }
         }
     }
@@ -1429,7 +1507,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
     // Draw Data Arrows
     if (screen.showDataLabels) {
-      const dataColor = computedStyle.getPropertyValue('--data-wiring').trim();
+      const dataColor = `hsl(${computedStyle.getPropertyValue('--data-wiring').trim()})`;
       screenWiringData.forEach(({ x, y, nextTile, isDeleted }) => {
         if (isDeleted || !nextTile) return;
         if (x < screenActiveBounds.minX || x > screenActiveBounds.maxX || y < screenActiveBounds.minY || y > screenActiveBounds.maxY) return;
@@ -1445,7 +1523,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     
     // Draw Power Arrows
     if (screen.showPowerLabels) {
-        const powerColor = computedStyle.getPropertyValue('--power-wiring').trim();
+        const powerColor = `hsl(${computedStyle.getPropertyValue('--power-wiring').trim()})`;
         screenWiringData.forEach(({ x, y, nextPowerTile, isDeleted }) => {
             if (isDeleted || !nextPowerTile) return;
             if (x < screenActiveBounds.minX || x > screenActiveBounds.maxX || y < screenActiveBounds.minY || y > screenActiveBounds.maxY) return;
@@ -1475,24 +1553,24 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
            labelsToDraw.push({
                label: backupLabel || dataLabel,
                size: screen.dataLabelSize,
-               bgColor: backupLabel ? computedStyle.getPropertyValue('--destructive').trim() : computedStyle.getPropertyValue('--data-wiring').trim(),
-               fgColor: backupLabel ? computedStyle.getPropertyValue('--destructive-foreground').trim() : computedStyle.getPropertyValue('--data-wiring-foreground').trim(),
+               bgColor: backupLabel ? `hsl(${computedStyle.getPropertyValue('--destructive').trim()})` : `hsl(${computedStyle.getPropertyValue('--data-wiring').trim()})`,
+               fgColor: backupLabel ? `hsl(${computedStyle.getPropertyValue('--destructive-foreground').trim()})` : `hsl(${computedStyle.getPropertyValue('--data-wiring-foreground').trim()})`,
            });
         }
         if(screen.showPowerLabels && powerPortLabel) {
            labelsToDraw.push({
                label: powerPortLabel,
                size: screen.powerLabelSize,
-               bgColor: computedStyle.getPropertyValue('--power-wiring').trim(),
-               fgColor: computedStyle.getPropertyValue('--power-wiring-foreground').trim(),
+               bgColor: `hsl(${computedStyle.getPropertyValue('--power-wiring').trim()})`,
+               fgColor: `hsl(${computedStyle.getPropertyValue('--power-wiring-foreground').trim()})`,
            });
         }
 
-        const totalHeight = labelsToDraw.reduce((acc, l) => acc + l.size, 0) + (labelsToDraw.length - 1) * 5;
-        let startY = tileYPos - totalHeight / 2;
+        const totalHeightOfLabels = labelsToDraw.reduce((acc, l) => acc + l.size, 0) + (labelsToDraw.length - 1) * 5;
+        let startDrawY = tileYPos - totalHeightOfLabels / 2;
 
         labelsToDraw.forEach(item => {
-            const yPos = startY + item.size / 2;
+            const yPos = startDrawY + item.size / 2;
             ctx.fillStyle = item.bgColor;
             ctx.beginPath();
             ctx.arc(tileXPos, yPos, item.size / 2, 0, 2 * Math.PI);
@@ -1502,7 +1580,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
             ctx.font = `bold ${Math.max(8, item.size * 0.4)}px sans-serif`;
             ctx.fillText(item.label, tileXPos, yPos);
             
-            startY += item.size + 5;
+            startDrawY += item.size + 5;
         });
     });
     
