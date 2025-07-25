@@ -1,4 +1,6 @@
 
+'use server';
+
 import * as admin from 'firebase-admin';
 import { serviceAccount } from '@/lib/firebase/service-account';
 
@@ -9,12 +11,13 @@ function initializeAdminApp() {
     return admin.apps[0]!;
   }
 
-  // The service account private key needs to have its newlines correctly formatted.
+  // Re-format the private key to ensure it's correctly parsed.
   const privateKey = serviceAccount.privateKey.replace(/\\n/g, '\n');
   
-  const credentials = {
-    ...serviceAccount,
-    privateKey,
+  const credentials: admin.ServiceAccount = {
+    projectId: serviceAccount.projectId,
+    clientEmail: serviceAccount.clientEmail,
+    privateKey: privateKey,
   };
 
   try {
@@ -22,8 +25,8 @@ function initializeAdminApp() {
       credential: admin.credential.cert(credentials),
     });
     return app;
-  } catch (error) {
-    console.error("Firebase Admin initialization error:", error);
+  } catch (error: any) {
+    console.error("Firebase Admin initialization error:", error.message);
     throw new Error("Failed to initialize Firebase Admin SDK. Please check your service account credentials.");
   }
 }
@@ -32,6 +35,7 @@ function initializeAdminApp() {
 export async function addData(collection: string, data: any) {
   try {
     const app = initializeAdminApp();
+    if (!app) throw new Error("Admin app initialization failed.");
     const db = admin.firestore(app);
     await db.collection(collection).add(data);
     return { error: null };
@@ -45,6 +49,7 @@ export async function addData(collection: string, data: any) {
 export async function getData(collection: string) {
   try {
     const app = initializeAdminApp();
+    if (!app) throw new Error("Admin app initialization failed.");
     const db = admin.firestore(app);
     const snapshot = await db.collection(collection).get();
     
