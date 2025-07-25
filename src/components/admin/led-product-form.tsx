@@ -91,16 +91,6 @@ export function LedProductForm() {
       applicationOutdoor: false,
       applicationFloor: false,
     },
-    errors: state?.errors?.reduce(
-      (acc, error) => {
-        acc[error.path[0] as keyof FormData] = {
-          type: 'manual',
-          message: error.message,
-        };
-        return acc;
-      },
-      {} as any,
-    ),
   });
 
   useEffect(() => {
@@ -113,11 +103,17 @@ export function LedProductForm() {
         form.reset();
         formRef.current?.reset();
       } else if (state.errors) {
-         toast({
+        toast({
           title: 'Error',
           description: state.message,
           variant: 'destructive',
         });
+        for (const error of state.errors) {
+            form.setError(error.path[0] as keyof FormData, {
+                type: 'manual',
+                message: error.message,
+            });
+        }
       } else {
          toast({
           title: 'Error',
