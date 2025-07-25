@@ -212,7 +212,7 @@ export function PixelMapLayout() {
       <Sidebar>
         <SidebarHeader className="p-4">
           <Link href="/" className="flex items-center gap-2">
-            <Logo className="w-8 h-8 text-primary" />
+            <Logo className="h-6 w-6 text-primary" />
             <h1 className="text-2xl font-bold font-headline text-primary-foreground">MapMyLED</h1>
           </Link>
         </SidebarHeader>
