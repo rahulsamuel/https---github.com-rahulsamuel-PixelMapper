@@ -53,7 +53,10 @@ export async function addProductAction(prevState: FormState, formData: FormData)
     const { error } = await addData('led_products', validatedFields.data);
 
     if (error) {
-      throw error;
+        return {
+            success: false,
+            message: typeof error === 'string' ? error : 'An unexpected error occurred while adding the product.',
+        };
     }
 
     return {
