@@ -118,6 +118,7 @@ interface ProjectData {
   screens: Screen[];
   currentScreenId: string;
   activeTab: string;
+  lastRasterArgs?: RasterArgs | null; // For backward compatibility
 }
 
 // Omit functions and refs from the state, pass them separately
@@ -556,7 +557,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
       const sliceCol = Math.floor(absoluteContentX / outputWidth);
       const sliceRow = Math.floor(absoluteContentY / outputHeight);
-      const sliceKey = `${sliceRow}-${col}`;
+      const sliceKey = `${sliceRow}-${sliceCol}`;
       
       if (!tilesBySlice.has(sliceKey)) tilesBySlice.set(sliceKey, []);
       tilesBySlice.get(sliceKey)!.push(index);
@@ -1254,7 +1255,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
             ...data,
             id: crypto.randomUUID(), // ensure it has a unique ID
             name: "Imported Screen",
-            zoomLevels: data.zoomLevels || { grid: data.zoom || 1, wiring: data.zoom || 1, raster: data.zoom || 1 }
+            zoomLevels: data.zoomLevels || { grid: data.zoom || 1, wiring: data.zoom || 1, raster: data.zoom || 1 },
+            lastRasterArgs: data.lastRasterArgs || null,
           });
           
           setScreens([screen]);
@@ -1262,7 +1264,11 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
           setActiveTab(data.activeTab || 'grid');
         } else {
            // Make sure all screens have all properties from the latest `Screen` interface
-          const migratedScreens = data.screens.map((s: any) => ({ ...createNewScreen(""), ...s }));
+          const migratedScreens = data.screens.map((s: any) => {
+            const newScreen = createNewScreen(""); // Create a default screen
+            // Merge the loaded data into the default screen to ensure all properties exist
+            return { ...newScreen, ...s };
+          });
           setScreens(migratedScreens);
           setCurrentScreenId(data.currentScreenId);
           setActiveTab(data.activeTab);
@@ -1578,7 +1584,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
             
             ctx.fillStyle = item.fgColor;
             ctx.font = `bold ${Math.max(8, item.size * 0.4)}px sans-serif`;
-            ctx.fillText(item.label, tileXPos, yPos);
+            ctx.fillText(String(item.label), tileXPos, yPos);
             
             startDrawY += item.size + 5;
         });
