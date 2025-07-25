@@ -18,9 +18,12 @@ export async function LandingPage() {
             <Logo className="h-6 w-6 text-primary" />
             <span className="font-bold sm:inline-block">MapMyLED</span>
           </Link>
-          <div className="flex flex-1 items-center justify-end space-x-4">
+          <div className="flex flex-1 items-center justify-end space-x-2">
+            <Link href={"/calculator"}>
+              <Button variant="outline">LED Calculator</Button>
+            </Link>
             <Link href={"/app"}>
-              <Button>Launch App</Button>
+              <Button>Pixel Map</Button>
             </Link>
           </div>
         </div>
