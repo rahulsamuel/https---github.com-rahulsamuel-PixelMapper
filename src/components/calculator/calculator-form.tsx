@@ -6,24 +6,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { getLedProducts, type LedProduct } from '@/app/calculator/actions';
+
+// Note: The actions file to fetch products has been removed to prevent crashes.
+// This component will need to be updated to fetch data when the database connection is restored.
+// For now, it will use mock data.
+interface LedProduct {
+    id: string;
+    manufacturer: string;
+    productName: string;
+}
+
+const mockProducts: LedProduct[] = [
+    { id: '1', manufacturer: 'ROE', productName: 'Black Pearl 2.8' },
+    { id: '2', manufacturer: 'ROE', productName: 'Ruby 2.3' },
+    { id: '3', manufacturer: 'Absen', productName: 'Polaris 2.5' },
+];
 
 export function CalculatorForm() {
-  const [products, setProducts] = useState<LedProduct[]>([]);
+  const [products] = useState<LedProduct[]>(mockProducts);
   const [selectedManufacturer, setSelectedManufacturer] = useState<string>('');
-
-  useEffect(() => {
-    async function fetchProducts() {
-      const { products, error } = await getLedProducts();
-      if (products) {
-        setProducts(products);
-      }
-      if (error) {
-        console.error("Failed to fetch LED products:", error);
-      }
-    }
-    fetchProducts();
-  }, []);
 
   const manufacturers = useMemo(() => {
     return [...new Set(products.map(p => p.manufacturer))];

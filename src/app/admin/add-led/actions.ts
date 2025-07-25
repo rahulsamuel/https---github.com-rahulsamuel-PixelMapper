@@ -2,7 +2,6 @@
 'use server';
 
 import { z } from 'zod';
-import { addData } from '@/services/firestore';
 
 const formSchema = z.object({
   manufacturer: z.string().min(2, { message: "Manufacturer name must be at least 2 characters." }).transform(val => val.toUpperCase()),
@@ -50,18 +49,13 @@ export async function addProductAction(prevState: FormState, formData: FormData)
   }
   
   try {
-    const { error } = await addData('led_products', validatedFields.data);
-
-    if (error) {
-        return {
-            success: false,
-            message: `Database error: ${error}`,
-        };
-    }
+    // This is a temporary measure to prevent app crashes.
+    // To connect to a database, this needs to be re-implemented.
+    console.log("Product data:", validatedFields.data);
 
     return {
       success: true,
-      message: 'Product has been added successfully!',
+      message: 'Product has been logged to console successfully!',
     };
   } catch (error) {
     console.error('Add product error:', error);
