@@ -60,6 +60,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Logo } from "../logo";
 import { useAuth } from "@/contexts/auth-context";
+import { AppHeader } from "../app/app-header";
 
 
 export function PixelMapLayout() {
@@ -210,11 +211,8 @@ export function PixelMapLayout() {
   return (
     <SidebarProvider>
       <Sidebar>
-        <SidebarHeader className="p-4">
-          <Link href="/" className="flex items-center gap-2">
-            <Logo className="h-6 w-6 text-primary" />
-            <h1 className="text-2xl font-bold font-headline text-primary-foreground">MapMyLED</h1>
-          </Link>
+        <SidebarHeader className="p-0">
+           <AppHeader />
         </SidebarHeader>
         <Separator />
         <SidebarContent asChild>
