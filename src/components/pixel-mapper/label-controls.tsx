@@ -31,6 +31,8 @@ export function LabelControls() {
     setLabelColorMode,
     showSliceOffsetLabels,
     setShowSliceOffsetLabels,
+    labelStartNumber,
+    setLabelStartNumber,
   } = usePixelMap();
 
   return (
@@ -62,6 +64,19 @@ export function LabelControls() {
             </SelectContent>
           </Select>
         </div>
+
+        {labelFormat === 'sequential' && (
+          <div className="space-y-2">
+            <Label htmlFor="label-start-number">Label Start Number</Label>
+            <Input
+              id="label-start-number"
+              type="number"
+              value={labelStartNumber}
+              onChange={(e) => setLabelStartNumber(Number(e.target.value) || 1)}
+              min="1"
+            />
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="label-position">Label Position</Label>

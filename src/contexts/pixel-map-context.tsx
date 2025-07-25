@@ -87,6 +87,7 @@ interface Screen {
   labelColor: string;
   labelPosition: LabelPosition;
   labelColorMode: LabelColorMode;
+  labelStartNumber: number;
   onOffMode: boolean;
   zoomLevels: { grid: number; wiring: number; raster: number; };
   rasterOffset: { x: number; y: number; };
@@ -160,6 +161,7 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'> {
   setLabelColor: Dispatch<SetStateAction<string>>;
   setLabelPosition: Dispatch<SetStateAction<LabelPosition>>;
   setLabelColorMode: Dispatch<SetStateAction<LabelColorMode>>;
+  setLabelStartNumber: Dispatch<SetStateAction<number>>;
   setOnOffMode: Dispatch<SetStateAction<boolean>>;
   zoom: number;
   setZoom: (value: number | ((prev: number) => number), applyToAllTabs?: boolean) => void;
@@ -238,6 +240,7 @@ const createNewScreen = (name: string): Screen => {
     labelColor: "#ffffff",
     labelPosition: 'center',
     labelColorMode: 'auto',
+    labelStartNumber: 1,
     onOffMode: false,
     zoomLevels: { grid: 1, wiring: 1, raster: 1 },
     rasterOffset: { x: 0, y: 0 },
@@ -315,6 +318,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, labelColor: typeof updater === 'function' ? updater(s.labelColor) : updater }));
   const setLabelPosition = (updater: SetStateAction<LabelPosition>) => updateCurrentScreen(s => ({ ...s, labelPosition: typeof updater === 'function' ? updater(s.labelPosition) : updater }));
   const setLabelColorMode = (updater: SetStateAction<LabelColorMode>) => updateCurrentScreen(s => ({ ...s, labelColorMode: typeof updater === 'function' ? updater(s.labelColorMode) : updater }));
+  const setLabelStartNumber = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, labelStartNumber: typeof updater === 'function' ? updater(s.labelStartNumber) : updater }));
   const setOnOffMode = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, onOffMode: typeof updater === 'function' ? updater(s.onOffMode) : updater }));
   const setRasterOffset = (updater: SetStateAction<{x: number, y: number}>) => updateCurrentScreen(s => ({ ...s, rasterOffset: typeof updater === 'function' ? updater(s.rasterOffset) : updater }));
   const setLastRasterArgs = (updater: SetStateAction<RasterArgs | null>) => updateCurrentScreen(s => ({ ...s, lastRasterArgs: typeof updater === 'function' ? updater(s.lastRasterArgs) : updater }));
@@ -492,7 +496,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     if (currentScreen.labelFormat === 'sequential' || currentScreen.labelFormat === 'dmx-style') {
       pathOrder.forEach((originalIndex, pathIndex) => {
         if (currentScreen.labelFormat === 'sequential') {
-          newLabels[originalIndex] = String(pathIndex + 1);
+          newLabels[originalIndex] = String(pathIndex + currentScreen.labelStartNumber);
         } else { // dmx-style
           const universeSize = 170;
           const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(pathIndex / universeSize));
@@ -521,7 +525,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     }
     
     return newLabels;
-  }, [currentScreen.dimensions, currentScreen.labelFormat, currentScreen.tiles, currentScreen.wiringPattern, effectiveScreenHeight]);
+  }, [currentScreen, effectiveScreenHeight]);
 
   // Effect to calculate slice offset labels
   const sliceOffsetLabels = useMemo(() => {
@@ -694,7 +698,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
         if (screen.labelFormat === 'sequential' || screen.labelFormat === 'dmx-style') {
           pathOrder.forEach((originalIndex, pathIndex) => {
-            if (screen.labelFormat === 'sequential') newLabels[originalIndex] = String(pathIndex + 1);
+            if (screen.labelFormat === 'sequential') newLabels[originalIndex] = String(pathIndex + screen.labelStartNumber);
             else {
               const universeSize = 170;
               const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(pathIndex / universeSize));
@@ -1346,7 +1350,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         if (screen.labelFormat === 'sequential' || screen.labelFormat === 'dmx-style') {
           pathOrder.forEach((originalIndex, pathIndex) => {
             if (screen.labelFormat === 'sequential') {
-              newLabels[originalIndex] = String(pathIndex + 1);
+              newLabels[originalIndex] = String(pathIndex + screen.labelStartNumber);
             } else {
               const universeSize = 170;
               const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(pathIndex / universeSize));
@@ -1683,6 +1687,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     setLabelPosition,
     labelColorMode: currentScreen.labelColorMode,
     setLabelColorMode,
+    labelStartNumber: currentScreen.labelStartNumber,
+    setLabelStartNumber,
     onOffMode: currentScreen.onOffMode,
     setOnOffMode,
     zoom,
