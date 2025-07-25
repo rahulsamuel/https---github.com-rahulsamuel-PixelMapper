@@ -5,8 +5,8 @@ import { z } from 'zod';
 import { addData } from '@/services/firestore';
 
 const formSchema = z.object({
-  manufacturer: z.string().min(2, { message: "Manufacturer name must be at least 2 characters." }),
-  productName: z.string().min(2, { message: "Product name must be at least 2 characters." }),
+  manufacturer: z.string().min(2, { message: "Manufacturer name must be at least 2 characters." }).transform(val => val.toUpperCase()),
+  productName: z.string().min(2, { message: "Product name must be at least 2 characters." }).transform(val => val.toUpperCase()),
   
   tileWidthPx: z.coerce.number().min(1, { message: "Must be at least 1." }),
   tileHeightPx: z.coerce.number().min(1, { message: "Must be at least 1." }),
