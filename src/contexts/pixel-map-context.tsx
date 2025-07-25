@@ -62,8 +62,9 @@ interface RasterArgs {
   outputHeight?: number;
 }
 
-interface ProjectData {
-  version: string;
+interface Screen {
+  id: string;
+  name: string;
   dimensions: Dimensions;
   tiles: Tile[];
   tileColor: string;
@@ -78,9 +79,7 @@ interface ProjectData {
   labelPosition: LabelPosition;
   labelColorMode: LabelColorMode;
   onOffMode: boolean;
-  zoom?: number; // For backwards compatibility
   zoomLevels: { grid: number; wiring: number; raster: number; };
-  activeTab: string;
   rasterOffset: { x: number; y: number; };
   lastRasterArgs: RasterArgs | null;
   wiringPortConfig: string;
@@ -97,22 +96,35 @@ interface ProjectData {
   brushColor: string;
   tilesPerPowerString: string;
   isWiringMirrored: boolean;
-  dataLabelSize?: number;
-  powerLabelSize?: number;
+  dataLabelSize: number;
+  powerLabelSize: number;
   showSliceOffsetLabels: boolean;
   topHalfTile: boolean;
   bottomHalfTile: boolean;
   processorType: ProcessorType;
 }
 
-interface PixelMapState {
+interface ProjectData {
+  version: string;
+  screens: Screen[];
+  currentScreenId: string;
+  activeTab: string;
+}
+
+// Omit functions and refs from the state, pass them separately
+interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'> {
+  screens: Screen[];
+  currentScreen: Screen;
+  currentScreenId: string;
+  setCurrentScreenId: (id: string) => void;
+  addNewScreen: () => void;
+  renameScreen: (id: string, newName: string) => void;
+  deleteScreen: (id: string) => void;
   appState: string;
   gridRef: React.RefObject<HTMLDivElement>;
   wiringDiagramRef: React.RefObject<HTMLDivElement>;
   rasterMapRef: React.RefObject<HTMLDivElement>;
-  dimensions: Dimensions;
   setDimensions: Dispatch<SetStateAction<Dimensions>>;
-  tiles: Tile[];
   labels: string[];
   sliceOffsetLabels: string[];
   wiringData: WiringInfo[];
@@ -121,34 +133,22 @@ interface PixelMapState {
   resetAllColors: () => void;
   deletedCount: number;
   coloredCount: number;
-  tileColor: string;
   setTileColor: Dispatch<SetStateAction<string>>;
-  tileColorTwo: string;
   setTileColorTwo: Dispatch<SetStateAction<string>>;
-  borderWidth: number;
   setBorderWidth: Dispatch<SetStateAction<number>>;
-  borderColor: string;
   setBorderColor: Dispatch<SetStateAction<string>>;
   handleDownloadPng: (filename: string) => void;
   handleDownloadWiringDiagram: () => void;
   handleDownloadFullRaster: () => void;
   generateRasterMap: (filename: string, outputWidth?: number, outputHeight?: number) => void;
   downloadRasterSlices: () => void;
-  activeTool: ActiveTool;
   setActiveTool: Dispatch<SetStateAction<ActiveTool>>;
-  showLabels: boolean;
   setShowLabels: Dispatch<SetStateAction<boolean>>;
-  labelFormat: LabelFormat;
   setLabelFormat: Dispatch<SetStateAction<LabelFormat>>;
-  labelFontSize: number;
   setLabelFontSize: Dispatch<SetStateAction<number>>;
-  labelColor: string;
   setLabelColor: Dispatch<SetStateAction<string>>;
-  labelPosition: LabelPosition;
   setLabelPosition: Dispatch<SetStateAction<LabelPosition>>;
-  labelColorMode: LabelColorMode;
   setLabelColorMode: Dispatch<SetStateAction<LabelColorMode>>;
-  onOffMode: boolean;
   setOnOffMode: Dispatch<SetStateAction<boolean>>;
   zoom: number;
   setZoom: (value: number | ((prev: number) => number), applyToAllTabs?: boolean) => void;
@@ -157,51 +157,30 @@ interface PixelMapState {
   activeBounds: ActiveBounds | null;
   rasterMapConfig: RasterMapConfig | null;
   setRasterMapConfig: Dispatch<SetStateAction<RasterMapConfig | null>>;
-  rasterOffset: { x: number; y: number; };
   setRasterOffset: Dispatch<SetStateAction<{ x: number; y: number; }>>;
-  wiringPortConfig: string;
   setWiringPortConfig: Dispatch<SetStateAction<string>>;
-  showDataLabels: boolean;
   setShowDataLabels: (value: boolean) => void;
-  showPowerLabels: boolean;
   setShowPowerLabels: (value: boolean) => void;
-  wiringPattern: WiringPattern;
   setWiringPattern: Dispatch<SetStateAction<WiringPattern>>;
-  powerWiringPattern: WiringPattern;
   setPowerWiringPattern: Dispatch<SetStateAction<WiringPattern>>;
-  arrowheadSize: number;
   setArrowheadSize: Dispatch<SetStateAction<number>>;
-  arrowheadLength: number;
   setArrowheadLength: Dispatch<SetStateAction<number>>;
-  arrowGap: number;
   setArrowGap: Dispatch<SetStateAction<number>>;
-  powerArrowheadSize: number;
   setPowerArrowheadSize: Dispatch<SetStateAction<number>>;
-  powerArrowheadLength: number;
   setPowerArrowheadLength: Dispatch<SetStateAction<number>>;
-  powerArrowGap: number;
   setPowerArrowGap: Dispatch<SetStateAction<number>>;
   exportProject: () => void;
   importProject: (file: File) => void;
-  brushColor: string;
   setBrushColor: Dispatch<SetStateAction<string>>;
-  isWiringMirrored: boolean;
   setIsWiringMirrored: Dispatch<SetStateAction<boolean>>;
-  tilesPerPowerString: string;
   setTilesPerPowerString: Dispatch<SetStateAction<string>>;
-  dataLabelSize: number;
   setDataLabelSize: Dispatch<SetStateAction<number>>;
-  powerLabelSize: number;
   setPowerLabelSize: Dispatch<SetStateAction<number>>;
   calculateAndApplyOptimalOffset: () => void;
-  showSliceOffsetLabels: boolean;
   setShowSliceOffsetLabels: Dispatch<SetStateAction<boolean>>;
-  topHalfTile: boolean;
   handleTopHalfTileChange: (add: boolean) => void;
-  bottomHalfTile: boolean;
   handleBottomHalfTileChange: (add: boolean) => void;
   effectiveScreenHeight: number;
-  processorType: ProcessorType;
   setProcessorType: Dispatch<SetStateAction<ProcessorType>>;
 }
 
@@ -230,6 +209,50 @@ const trackEvent = async (eventType: string, eventData: any) => {
   }
 };
 
+const createNewScreen = (name: string): Screen => {
+  const screenId = crypto.randomUUID();
+  return {
+    id: screenId,
+    name,
+    dimensions: { tileWidth: 200, tileHeight: 200, screenWidth: 5, screenHeight: 3 },
+    tiles: Array.from({ length: 5 * 3 }, (_, i) => ({ id: i, deleted: false })),
+    tileColor: "#273a5e",
+    tileColorTwo: "#d1d9e6",
+    borderWidth: 1,
+    borderColor: "#ffffff",
+    activeTool: 'delete',
+    showLabels: true,
+    labelFormat: 'row-col',
+    labelFontSize: 30,
+    labelColor: "#ffffff",
+    labelPosition: 'center',
+    labelColorMode: 'auto',
+    onOffMode: false,
+    zoomLevels: { grid: 1, wiring: 1, raster: 1 },
+    rasterOffset: { x: 0, y: 0 },
+    lastRasterArgs: null,
+    wiringPortConfig: "4",
+    tilesPerPowerString: "20",
+    showDataLabels: true,
+    showPowerLabels: false,
+    wiringPattern: 'serpentine-horizontal',
+    powerWiringPattern: 'left-right',
+    arrowheadSize: 20,
+    arrowheadLength: 30,
+    arrowGap: 50,
+    powerArrowheadSize: 20,
+    powerArrowheadLength: 30,
+    powerArrowGap: 50,
+    brushColor: "#e11d48",
+    isWiringMirrored: false,
+    dataLabelSize: 100,
+    powerLabelSize: 100,
+    showSliceOffsetLabels: true,
+    topHalfTile: false,
+    bottomHalfTile: false,
+    processorType: 'Brompton',
+  };
+};
 
 export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [appState] = useState("ready");
@@ -238,68 +261,97 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const rasterMapRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const nextTileId = useRef(0);
-  const subscriptionStatus = 'pro'; // Simplified for now
+  const subscriptionStatus = 'pro';
 
-  const [dimensions, setDimensions] = useState<Dimensions>({
-    tileWidth: 200,
-    tileHeight: 200,
-    screenWidth: 5,
-    screenHeight: 3,
-  });
-  const [tiles, setTiles] = useState<Tile[]>([]);
-  const [deletedCount, setDeletedCount] = useState(0);
-  const [coloredCount, setColoredCount] = useState(0);
-
-  const [tileColor, setTileColor] = useState("#273a5e");
-  const [tileColorTwo, setTileColorTwo] = useState("#d1d9e6");
-  const [borderWidth, setBorderWidth] = useState(1);
-  const [borderColor, setBorderColor] = useState("#ffffff");
-  const [activeTool, setActiveTool] = useState<ActiveTool>("delete");
-  
-  // Labeling state
-  const [showLabels, setShowLabels] = useState(true);
-  const [labelFormat, setLabelFormat] = useState<LabelFormat>('row-col');
-  const [labelFontSize, setLabelFontSize] = useState(30);
-  const [labelColor, setLabelColor] = useState("#ffffff");
-  const [labelPosition, setLabelPosition] = useState<LabelPosition>('center');
-  const [labelColorMode, setLabelColorMode] = useState<LabelColorMode>('auto');
-  const [labels, setLabels] = useState<string[]>([]);
-  const [sliceOffsetLabels, setSliceOffsetLabels] = useState<string[]>([]);
-  
-  const [zoomLevels, setZoomLevels] = useState({ grid: 1, wiring: 1, raster: 1 });
+  const [screens, setScreens] = useState<Screen[]>(() => [createNewScreen("Default Screen")]);
+  const [currentScreenId, setCurrentScreenId] = useState<string>(screens[0].id);
   const [activeTab, setActiveTab] = useState('grid');
-  
-  const [onOffMode, setOnOffMode] = useState(false);
-  const [activeBounds, setActiveBounds] = useState<ActiveBounds | null>(null);
-  const [brushColor, setBrushColor] = useState<string>("#e11d48");
-  
-  // Raster Map State
   const [rasterMapConfig, setRasterMapConfig] = useState<RasterMapConfig | null>(null);
-  const [rasterOffset, setRasterOffset] = useState({ x: 0, y: 0 });
-  const [lastRasterArgs, setLastRasterArgs] = useState<RasterArgs | null>(null);
 
-  // Wiring state
-  const [processorType, setProcessorType] = useState<ProcessorType>('Brompton');
-  const [wiringPortConfig, setWiringPortConfig] = useState("4");
-  const [tilesPerPowerString, setTilesPerPowerString] = useState("20");
-  const [showDataLabels, setShowDataLabelsState] = useState(true);
-  const [showPowerLabels, setShowPowerLabelsState] = useState(false);
-  const [showSliceOffsetLabels, setShowSliceOffsetLabels] = useState(true);
-  const [wiringPattern, setWiringPattern] = useState<WiringPattern>('serpentine-horizontal');
-  const [powerWiringPattern, setPowerWiringPattern] = useState<WiringPattern>('left-right');
-  const [arrowheadSize, setArrowheadSize] = useState(20);
-  const [arrowheadLength, setArrowheadLength] = useState(30);
-  const [arrowGap, setArrowGap] = useState(50);
-  const [powerArrowheadSize, setPowerArrowheadSize] = useState(20);
-  const [powerArrowheadLength, setPowerArrowheadLength] = useState(30);
-  const [powerArrowGap, setPowerArrowGap] = useState(50);
-  const [isWiringMirrored, setIsWiringMirrored] = useState(false);
-  const [dataLabelSize, setDataLabelSize] = useState(100);
-  const [powerLabelSize, setPowerLabelSize] = useState(100);
+  const currentScreen = useMemo(() => screens.find(s => s.id === currentScreenId) || screens[0], [screens, currentScreenId]);
+  
+  const updateCurrentScreen = useCallback((updater: (screen: Screen) => Screen) => {
+    setScreens(prevScreens => prevScreens.map(s => s.id === currentScreenId ? updater(s) : s));
+  }, [currentScreenId]);
 
-  // Half-tile state
-  const [topHalfTile, setTopHalfTile] = useState(false);
-  const [bottomHalfTile, setBottomHalfTile] = useState(false);
+  const setDimensions = (updater: SetStateAction<Dimensions>) => {
+    updateCurrentScreen(screen => {
+      const newDimensions = typeof updater === 'function' ? updater(screen.dimensions) : updater;
+      const totalTiles = newDimensions.screenWidth * newDimensions.screenHeight;
+      const newTiles = (totalTiles > 0 && totalTiles <= 4096)
+        ? Array.from({ length: totalTiles }, (_, i) => ({ id: i, deleted: false }))
+        : [];
+      nextTileId.current = newTiles.length;
+      return { ...screen, dimensions: newDimensions, tiles: newTiles, topHalfTile: false, bottomHalfTile: false };
+    });
+  };
+  
+  const setTiles = (updater: SetStateAction<Tile[]>) => {
+    updateCurrentScreen(screen => ({
+      ...screen,
+      tiles: typeof updater === 'function' ? updater(screen.tiles) : updater,
+    }));
+  };
+
+  const setTileColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, tileColor: typeof updater === 'function' ? updater(s.tileColor) : updater }));
+  const setTileColorTwo = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, tileColorTwo: typeof updater === 'function' ? updater(s.tileColorTwo) : updater }));
+  const setBorderWidth = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, borderWidth: typeof updater === 'function' ? updater(s.borderWidth) : updater }));
+  const setBorderColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, borderColor: typeof updater === 'function' ? updater(s.borderColor) : updater }));
+  const setActiveTool = (updater: SetStateAction<ActiveTool>) => updateCurrentScreen(s => ({ ...s, activeTool: typeof updater === 'function' ? updater(s.activeTool) : updater }));
+  const setShowLabels = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showLabels: typeof updater === 'function' ? updater(s.showLabels) : updater }));
+  const setLabelFormat = (updater: SetStateAction<LabelFormat>) => updateCurrentScreen(s => ({ ...s, labelFormat: typeof updater === 'function' ? updater(s.labelFormat) : updater }));
+  const setLabelFontSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, labelFontSize: typeof updater === 'function' ? updater(s.labelFontSize) : updater }));
+  const setLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, labelColor: typeof updater === 'function' ? updater(s.labelColor) : updater }));
+  const setLabelPosition = (updater: SetStateAction<LabelPosition>) => updateCurrentScreen(s => ({ ...s, labelPosition: typeof updater === 'function' ? updater(s.labelPosition) : updater }));
+  const setLabelColorMode = (updater: SetStateAction<LabelColorMode>) => updateCurrentScreen(s => ({ ...s, labelColorMode: typeof updater === 'function' ? updater(s.labelColorMode) : updater }));
+  const setOnOffMode = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, onOffMode: typeof updater === 'function' ? updater(s.onOffMode) : updater }));
+  const setRasterOffset = (updater: SetStateAction<{x: number, y: number}>) => updateCurrentScreen(s => ({ ...s, rasterOffset: typeof updater === 'function' ? updater(s.rasterOffset) : updater }));
+  const setLastRasterArgs = (updater: SetStateAction<RasterArgs | null>) => updateCurrentScreen(s => ({ ...s, lastRasterArgs: typeof updater === 'function' ? updater(s.lastRasterArgs) : updater }));
+  const setWiringPortConfig = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, wiringPortConfig: typeof updater === 'function' ? updater(s.wiringPortConfig) : updater }));
+  const setTilesPerPowerString = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, tilesPerPowerString: typeof updater === 'function' ? updater(s.tilesPerPowerString) : updater }));
+  const setShowDataLabelsState = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showDataLabels: typeof updater === 'function' ? updater(s.showDataLabels) : updater }));
+  const setShowPowerLabelsState = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showPowerLabels: typeof updater === 'function' ? updater(s.showPowerLabels) : updater }));
+  const setWiringPattern = (updater: SetStateAction<WiringPattern>) => updateCurrentScreen(s => ({ ...s, wiringPattern: typeof updater === 'function' ? updater(s.wiringPattern) : updater }));
+  const setPowerWiringPattern = (updater: SetStateAction<WiringPattern>) => updateCurrentScreen(s => ({ ...s, powerWiringPattern: typeof updater === 'function' ? updater(s.powerWiringPattern) : updater }));
+  const setArrowheadSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, arrowheadSize: typeof updater === 'function' ? updater(s.arrowheadSize) : updater }));
+  const setArrowheadLength = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, arrowheadLength: typeof updater === 'function' ? updater(s.arrowheadLength) : updater }));
+  const setArrowGap = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, arrowGap: typeof updater === 'function' ? updater(s.arrowGap) : updater }));
+  const setPowerArrowheadSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, powerArrowheadSize: typeof updater === 'function' ? updater(s.powerArrowheadSize) : updater }));
+  const setPowerArrowheadLength = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, powerArrowheadLength: typeof updater === 'function' ? updater(s.powerArrowheadLength) : updater }));
+  const setPowerArrowGap = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, powerArrowGap: typeof updater === 'function' ? updater(s.powerArrowGap) : updater }));
+  const setBrushColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, brushColor: typeof updater === 'function' ? updater(s.brushColor) : updater }));
+  const setIsWiringMirrored = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, isWiringMirrored: typeof updater === 'function' ? updater(s.isWiringMirrored) : updater }));
+  const setDataLabelSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, dataLabelSize: typeof updater === 'function' ? updater(s.dataLabelSize) : updater }));
+  const setPowerLabelSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, powerLabelSize: typeof updater === 'function' ? updater(s.powerLabelSize) : updater }));
+  const setShowSliceOffsetLabels = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showSliceOffsetLabels: typeof updater === 'function' ? updater(s.showSliceOffsetLabels) : updater }));
+  const setProcessorType = (updater: SetStateAction<ProcessorType>) => updateCurrentScreen(s => ({ ...s, processorType: typeof updater === 'function' ? updater(s.processorType) : updater }));
+
+
+  const addNewScreen = () => {
+    const newScreen = createNewScreen(`Screen ${screens.length + 1}`);
+    setScreens(prev => [...prev, newScreen]);
+    setCurrentScreenId(newScreen.id);
+  };
+
+  const renameScreen = (id: string, newName: string) => {
+    setScreens(prev => prev.map(s => s.id === id ? { ...s, name: newName } : s));
+  };
+
+  const deleteScreen = (id: string) => {
+    setScreens(prev => {
+      if (prev.length <= 1) {
+        toast({ title: "Cannot delete the last screen", variant: "destructive" });
+        return prev;
+      }
+      const newScreens = prev.filter(s => s.id !== id);
+      if (currentScreenId === id) {
+        setCurrentScreenId(newScreens[0].id);
+      }
+      return newScreens;
+    });
+  };
+
+  const { dimensions, tiles, topHalfTile, bottomHalfTile } = currentScreen;
 
   const effectiveScreenHeight = useMemo(() => {
     let height = dimensions.screenHeight;
@@ -308,46 +360,40 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     return height;
   }, [dimensions.screenHeight, topHalfTile, bottomHalfTile]);
 
-  const wiringData = useMemo(() => getWiringData({ 
-    dimensions: { ...dimensions, screenHeight: effectiveScreenHeight }, 
-    tiles, 
-    wiringPortConfig, 
-    wiringPattern, 
-    powerWiringPattern, 
-    rasterMapConfig, 
-    activeBounds, 
-    tilesPerPowerString, 
-    rasterOffset,
-    topHalfTile,
-    bottomHalfTile,
-    processorType,
-  }), [
-    dimensions, effectiveScreenHeight, tiles, wiringPortConfig, wiringPattern,
-    powerWiringPattern, rasterMapConfig, activeBounds, tilesPerPowerString,
-    rasterOffset, topHalfTile, bottomHalfTile, processorType
-  ]);
+  const wiringData = useMemo(() => {
+    if (!currentScreen) return [];
+    return getWiringData({
+      dimensions: { ...currentScreen.dimensions, screenHeight: effectiveScreenHeight }, 
+      tiles: currentScreen.tiles, 
+      wiringPortConfig: currentScreen.wiringPortConfig, 
+      wiringPattern: currentScreen.wiringPattern, 
+      powerWiringPattern: currentScreen.powerWiringPattern, 
+      rasterMapConfig, 
+      activeBounds: null, // This needs to be calculated per screen
+      tilesPerPowerString: currentScreen.tilesPerPowerString, 
+      rasterOffset: currentScreen.rasterOffset,
+      topHalfTile: currentScreen.topHalfTile,
+      bottomHalfTile: currentScreen.bottomHalfTile,
+      processorType: currentScreen.processorType,
+    })
+  }, [currentScreen, effectiveScreenHeight, rasterMapConfig]);
 
 
-  const zoom = zoomLevels[activeTab as keyof typeof zoomLevels] || 1;
+  const zoom = currentScreen.zoomLevels[activeTab as keyof typeof currentScreen.zoomLevels] || 1;
   
   const setZoom = (value: number | ((prevZoom: number) => number), applyToAllTabs = false) => {
-    setZoomLevels(prevLevels => {
-      const currentTabKey = activeTab as keyof typeof prevLevels;
-      const currentZoom = prevLevels[currentTabKey];
+    updateCurrentScreen(screen => {
+      const newZoomLevels = { ...screen.zoomLevels };
+      const currentTabKey = activeTab as keyof typeof newZoomLevels;
+      const currentZoom = newZoomLevels[currentTabKey];
       const newZoom = typeof value === 'function' ? value(currentZoom) : value;
 
       if (applyToAllTabs) {
-        return {
-          grid: newZoom,
-          wiring: newZoom,
-          raster: newZoom,
-        };
+        return { ...screen, zoomLevels: { grid: newZoom, wiring: newZoom, raster: newZoom } };
       }
-
-      return {
-        ...prevLevels,
-        [currentTabKey]: newZoom,
-      };
+      
+      newZoomLevels[currentTabKey] = newZoom;
+      return { ...screen, zoomLevels: newZoomLevels };
     });
   };
 
@@ -365,49 +411,39 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  useEffect(() => {
-    const { screenWidth, screenHeight } = dimensions;
-    const totalTiles = screenWidth * screenHeight;
-    nextTileId.current = 0;
-    setTopHalfTile(false);
-    setBottomHalfTile(false);
-
-    if (totalTiles > 0 && totalTiles <= 4096) { // Safety limit
-      setTiles(
-        Array.from({ length: totalTiles }, () => ({ id: nextTileId.current++, deleted: false }))
-      );
-    } else {
-      setTiles([]);
-    }
-  }, [dimensions]);
-
   const handleTopHalfTileChange = (add: boolean) => {
-    setTopHalfTile(add);
-    setTiles(currentTiles => {
-        if (add) {
-            const newRow = Array.from({ length: dimensions.screenWidth }, () => ({ id: nextTileId.current++, deleted: false }));
-            return [...newRow, ...currentTiles];
-        } else {
-            return currentTiles.slice(dimensions.screenWidth);
-        }
+    updateCurrentScreen(screen => {
+      const { screenWidth } = screen.dimensions;
+      let newTiles;
+      if (add) {
+          const newRow = Array.from({ length: screenWidth }, () => ({ id: nextTileId.current++, deleted: false }));
+          newTiles = [...newRow, ...screen.tiles];
+      } else {
+          newTiles = screen.tiles.slice(screenWidth);
+      }
+      return { ...screen, topHalfTile: add, tiles: newTiles };
     });
   };
   
   const handleBottomHalfTileChange = (add: boolean) => {
-    setBottomHalfTile(add);
-    setTiles(currentTiles => {
-        if (add) {
-            const newRow = Array.from({ length: dimensions.screenWidth }, () => ({ id: nextTileId.current++, deleted: false }));
-            return [...currentTiles, ...newRow];
-        } else {
-            return currentTiles.slice(0, currentTiles.length - dimensions.screenWidth);
-        }
+    updateCurrentScreen(screen => {
+      const { screenWidth } = screen.dimensions;
+      let newTiles;
+      if (add) {
+          const newRow = Array.from({ length: screenWidth }, () => ({ id: nextTileId.current++, deleted: false }));
+          newTiles = [...screen.tiles, ...newRow];
+      } else {
+          newTiles = screen.tiles.slice(0, screen.tiles.length - screenWidth);
+      }
+      return { ...screen, bottomHalfTile: add, tiles: newTiles };
     });
   };
+  
+  const [activeBounds, setActiveBounds] = useState<ActiveBounds | null>(null);
 
   useEffect(() => {
-    const { screenWidth } = dimensions;
-    const activeTiles = tiles.map((t, i) => ({...t, index: i})).filter(t => !t.deleted);
+    const { screenWidth } = currentScreen.dimensions;
+    const activeTiles = currentScreen.tiles.map((t, i) => ({...t, index: i})).filter(t => !t.deleted);
 
     if (activeTiles.length === 0) {
         setActiveBounds(null);
@@ -429,28 +465,23 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     });
     
     setActiveBounds({ minX, minY, maxX, maxY });
-  }, [tiles, dimensions]);
+  }, [currentScreen.tiles, currentScreen.dimensions]);
 
-  useEffect(() => {
-    setDeletedCount(tiles.filter((tile) => tile.deleted).length);
-    setColoredCount(tiles.filter((tile) => !!tile.color && !tile.deleted).length);
-  }, [tiles]);
+  const deletedCount = useMemo(() => currentScreen.tiles.filter((tile) => tile.deleted).length, [currentScreen.tiles]);
+  const coloredCount = useMemo(() => currentScreen.tiles.filter((tile) => !!tile.color && !tile.deleted).length, [currentScreen.tiles]);
 
-  useEffect(() => {
-    const { screenWidth } = dimensions;
-    const totalTiles = tiles.length;
-    if (totalTiles <= 0) {
-        setLabels([]);
-        return;
-    }
+  const labels = useMemo(() => {
+    const { screenWidth } = currentScreen.dimensions;
+    const totalTiles = currentScreen.tiles.length;
+    if (totalTiles <= 0) return [];
 
     const newLabels = Array(totalTiles).fill('');
-    const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
-    const pathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, effectiveScreenHeight);
+    const activeTileIndices = currentScreen.tiles.map((_, i) => i).filter(i => !currentScreen.tiles[i].deleted);
+    const pathOrder = getPathOrder(activeTileIndices, currentScreen.wiringPattern, screenWidth, effectiveScreenHeight);
 
-    if (labelFormat === 'sequential' || labelFormat === 'dmx-style') {
+    if (currentScreen.labelFormat === 'sequential' || currentScreen.labelFormat === 'dmx-style') {
       pathOrder.forEach((originalIndex, pathIndex) => {
-        if (labelFormat === 'sequential') {
+        if (currentScreen.labelFormat === 'sequential') {
           newLabels[originalIndex] = String(pathIndex + 1);
         } else { // dmx-style
           const universeSize = 170;
@@ -459,13 +490,13 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
           newLabels[originalIndex] = `${universe}${address}`;
         }
       });
-    } else if (labelFormat !== 'none') {
+    } else if (currentScreen.labelFormat !== 'none') {
       for (let i = 0; i < totalTiles; i++) {
-        if (tiles[i] && !tiles[i].deleted) {
+        if (currentScreen.tiles[i] && !currentScreen.tiles[i].deleted) {
           const x = i % screenWidth;
           const y = Math.floor(i / screenWidth);
           
-          switch (labelFormat) {
+          switch (currentScreen.labelFormat) {
             case 'row-col':
               newLabels[i] = `${y + 1}-${x + 1}`;
               break;
@@ -479,21 +510,20 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    setLabels(newLabels);
-  }, [dimensions, labelFormat, tiles, wiringPattern, effectiveScreenHeight]);
+    return newLabels;
+  }, [currentScreen.dimensions, currentScreen.labelFormat, currentScreen.tiles, currentScreen.wiringPattern, effectiveScreenHeight]);
 
   // Effect to calculate slice offset labels
-  useEffect(() => {
-    if (!rasterMapConfig || !activeBounds || !rasterMapConfig.slices.length || !rasterOffset || !wiringPattern) {
-      setSliceOffsetLabels([]);
-      return;
+  const sliceOffsetLabels = useMemo(() => {
+    if (!rasterMapConfig || !activeBounds || !rasterMapConfig.slices.length || !currentScreen.rasterOffset || !currentScreen.wiringPattern) {
+      return [];
     }
 
-    const { screenWidth, tileHeight } = dimensions;
+    const { screenWidth, tileHeight, tileWidth } = currentScreen.dimensions;
     const { slices, outputWidth, outputHeight } = rasterMapConfig;
     
     const newLabels = Array(screenWidth * effectiveScreenHeight).fill('');
-    const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
+    const activeTileIndices = currentScreen.tiles.map((_, i) => i).filter(i => !currentScreen.tiles[i].deleted);
 
     const tilesBySlice = new Map<string, number[]>();
     activeTileIndices.forEach(index => {
@@ -511,9 +541,9 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         tileContentY += (isTopRow || isBottomRow) ? tileHeight / 2 : tileHeight;
       }
 
-      const tileContentX = (x - activeBounds.minX) * dimensions.tileWidth;
-      const absoluteContentX = tileContentX + rasterOffset.x;
-      const absoluteContentY = tileContentY + rasterOffset.y;
+      const tileContentX = (x - activeBounds.minX) * tileWidth;
+      const absoluteContentX = tileContentX + currentScreen.rasterOffset.x;
+      const absoluteContentY = tileContentY + currentScreen.rasterOffset.y;
 
       const sliceCol = Math.floor(absoluteContentX / outputWidth);
       const sliceRow = Math.floor(absoluteContentY / outputHeight);
@@ -524,7 +554,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     });
 
     tilesBySlice.forEach((sliceIndices, sliceKey) => {
-      const pathOrder = getPathOrder(sliceIndices, wiringPattern, screenWidth, effectiveScreenHeight);
+      const pathOrder = getPathOrder(sliceIndices, currentScreen.wiringPattern, screenWidth, effectiveScreenHeight);
       const currentSlice = slices.find(s => s.key === sliceKey);
       
       if (currentSlice && pathOrder.length > 0) {
@@ -540,9 +570,9 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
             tileContentY += (isTopRow || isBottomRow) ? tileHeight / 2 : tileHeight;
         }
 
-        const tileContentX = (x - activeBounds.minX) * dimensions.tileWidth;
-        const absoluteContentX = tileContentX + rasterOffset.x;
-        const absoluteContentY = tileContentY + rasterOffset.y;
+        const tileContentX = (x - activeBounds.minX) * tileWidth;
+        const absoluteContentX = tileContentX + currentScreen.rasterOffset.x;
+        const absoluteContentY = tileContentY + currentScreen.rasterOffset.y;
 
         const offsetXInSlice = absoluteContentX - currentSlice.x;
         const offsetYInSlice = absoluteContentY - currentSlice.y;
@@ -551,12 +581,12 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    setSliceOffsetLabels(newLabels);
-  }, [tiles, dimensions, rasterMapConfig, activeBounds, rasterOffset, wiringPattern, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
+    return newLabels;
+  }, [currentScreen, rasterMapConfig, activeBounds, effectiveScreenHeight, topHalfTile, bottomHalfTile]);
 
 
   const handleTileClick = useCallback((tileId: number) => {
-    switch (activeTool) {
+    switch (currentScreen.activeTool) {
       case 'delete':
         setTiles(prev =>
           prev.map(tile => (tile.id === tileId ? { ...tile, deleted: !tile.deleted } : tile))
@@ -564,13 +594,13 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         break;
       case 'color':
         setTiles(prev =>
-          prev.map(tile => (tile.id === tileId ? { ...tile, color: brushColor, deleted: false } : tile))
+          prev.map(tile => (tile.id === tileId ? { ...tile, color: currentScreen.brushColor, deleted: false } : tile))
         );
         break;
       default:
         break;
     }
-  }, [activeTool, brushColor]);
+  }, [currentScreen.activeTool, currentScreen.brushColor]);
 
 
   const restoreDeletedTiles = useCallback(() => {
@@ -639,12 +669,12 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   }, [gridRef, activeBounds, dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight, subscriptionStatus]);
 
   const regenerateRasterPreview = useCallback(() => {
-    if (!activeBounds || !lastRasterArgs) {
+    if (!activeBounds || !currentScreen.lastRasterArgs) {
         setRasterMapConfig(null);
         return;
     }
-    const { filename, outputWidth, outputHeight } = lastRasterArgs;
-    const { screenWidth, tileWidth, tileHeight } = dimensions;
+    const { filename, outputWidth, outputHeight } = currentScreen.lastRasterArgs;
+    const { screenWidth, tileWidth, tileHeight } = currentScreen.dimensions;
 
     const contentPixelHeight = (() => {
         if (!activeBounds) return 0;
@@ -676,8 +706,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     // Calculate slices
     const slices: RasterSlice[] = [];
     const baseFilename = filename.replace('.png', '');
-    const numCols = Math.ceil((contentWidth + rasterOffset.x) / finalOutputWidth);
-    const numRows = Math.ceil((contentHeight + rasterOffset.y) / finalOutputHeight);
+    const numCols = Math.ceil((contentWidth + currentScreen.rasterOffset.x) / finalOutputWidth);
+    const numRows = Math.ceil((contentHeight + currentScreen.rasterOffset.y) / finalOutputHeight);
 
     const totalPreviewWidth = numCols * finalOutputWidth;
     const totalPreviewHeight = numRows * finalOutputHeight;
@@ -687,8 +717,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
             const sliceX = col * finalOutputWidth;
             const sliceY = row * finalOutputHeight;
             
-            // Check if this slice actually contains any part of the content
-            const contentRect = { x: rasterOffset.x, y: rasterOffset.y, width: contentWidth, height: contentHeight };
+            const contentRect = { x: currentScreen.rasterOffset.x, y: currentScreen.rasterOffset.y, width: contentWidth, height: contentHeight };
             const sliceRect = { x: sliceX, y: sliceY, width: finalOutputWidth, height: finalOutputHeight };
 
             const intersects = (contentRect.x < sliceRect.x + sliceRect.width &&
@@ -707,13 +736,12 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
                 filename: sliceFilename,
                 x: sliceX,
                 y: sliceY,
-                width: finalOutputWidth, // The output file is always the full size
+                width: finalOutputWidth,
                 height: finalOutputHeight
             });
         }
     }
 
-    // Generate the FULL content preview image
     const fullContentCanvas = document.createElement('canvas');
     fullContentCanvas.width = contentWidth;
     fullContentCanvas.height = contentHeight;
@@ -739,34 +767,34 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         if (tile && !tile.deleted) {
           const tileXPos = (x - activeBounds.minX) * tileWidth;
           let bgColor;
-          if (onOffMode) {
+          if (currentScreen.onOffMode) {
             bgColor = '#FFFFFF';
           } else if (tile.color) {
             bgColor = tile.color;
           } else {
-            bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
+            bgColor = (x + y) % 2 === 0 ? currentScreen.tileColor : currentScreen.tileColorTwo;
           }
 
           masterCtx.fillStyle = bgColor;
           masterCtx.fillRect(tileXPos, currentDrawY, tileWidth, rowPixelHeight);
 
-          if (borderWidth > 0) {
-              masterCtx.strokeStyle = borderColor;
-              masterCtx.lineWidth = borderWidth;
+          if (currentScreen.borderWidth > 0) {
+              masterCtx.strokeStyle = currentScreen.borderColor;
+              masterCtx.lineWidth = currentScreen.borderWidth;
               masterCtx.strokeRect(
-                  tileXPos + borderWidth / 2, 
-                  currentDrawY + borderWidth / 2, 
-                  tileWidth - borderWidth, 
-                  rowPixelHeight - borderWidth
+                  tileXPos + currentScreen.borderWidth / 2, 
+                  currentDrawY + currentScreen.borderWidth / 2, 
+                  tileWidth - currentScreen.borderWidth, 
+                  rowPixelHeight - currentScreen.borderWidth
               );
           }
 
-          if (showLabels && labels[index]) {
-            const currentLabelColor = labelColorMode === 'auto'
+          if (currentScreen.showLabels && labels[index]) {
+            const currentLabelColor = currentScreen.labelColorMode === 'auto'
               ? isColorDark(bgColor) ? '#FFFFFF' : '#000000'
-              : labelColor;
+              : currentScreen.labelColor;
             masterCtx.fillStyle = currentLabelColor;
-            masterCtx.font = `bold ${labelFontSize}px sans-serif`;
+            masterCtx.font = `bold ${currentScreen.labelFontSize}px sans-serif`;
             masterCtx.textAlign = 'center';
             masterCtx.textBaseline = 'middle';
             masterCtx.fillText(labels[index], tileXPos + tileWidth / 2, currentDrawY + rowPixelHeight / 2);
@@ -787,34 +815,33 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         outputWidth: finalOutputWidth,
         outputHeight: finalOutputHeight,
         previewImage,
-        rasterOffset,
+        rasterOffset: currentScreen.rasterOffset,
         resolutionType,
     });
-  }, [activeBounds, lastRasterArgs, dimensions, tiles, onOffMode, tileColor, tileColorTwo, showLabels, labels, labelColor, labelFontSize, rasterOffset, borderWidth, borderColor, labelColorMode, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
+  }, [activeBounds, currentScreen, effectiveScreenHeight, labels, tiles, topHalfTile, bottomHalfTile, regenerateRasterPreview]);
 
 
   useEffect(() => {
-    if (lastRasterArgs) {
+    if (currentScreen.lastRasterArgs) {
       regenerateRasterPreview();
     }
-  }, [regenerateRasterPreview, lastRasterArgs]);
+  }, [regenerateRasterPreview, currentScreen.lastRasterArgs]);
   
   const generateRasterMap = useCallback((filename: string, outputWidth?: number, outputHeight?: number) => {
     setLastRasterArgs({ filename, outputWidth, outputHeight });
-    setRasterOffset({ x: 0, y: 0 }); // Reset offset when generating a new map type
-  }, []);
+    setRasterOffset({ x: 0, y: 0 });
+  }, [setLastRasterArgs, setRasterOffset]);
 
   useEffect(() => {
-    // Set default raster map on initial load
-    if (activeBounds && !lastRasterArgs) {
+    if (activeBounds && !currentScreen.lastRasterArgs) {
         generateRasterMap('raster-map-content.png');
     }
-  }, [generateRasterMap, activeBounds, lastRasterArgs]);
+  }, [generateRasterMap, activeBounds, currentScreen.lastRasterArgs]);
 
   const createFullRasterCanvas = useCallback(() => {
     if (!activeBounds) return null;
 
-    const { screenWidth, tileWidth, tileHeight } = dimensions;
+    const { screenWidth, tileWidth, tileHeight } = currentScreen.dimensions;
 
     const contentPixelHeight = (() => {
         if (!activeBounds) return 0;
@@ -852,36 +879,36 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
           const tileXPos = (x - activeBounds.minX) * tileWidth;
           
           let bgColor;
-          if (onOffMode) {
+          if (currentScreen.onOffMode) {
             bgColor = '#FFFFFF';
           } else if (tile.color) {
             bgColor = tile.color;
           } else {
-            bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
+            bgColor = (x + y) % 2 === 0 ? currentScreen.tileColor : currentScreen.tileColorTwo;
           }
 
           masterCtx.fillStyle = bgColor;
           masterCtx.fillRect(tileXPos, currentDrawY, tileWidth, rowPixelHeight);
 
-          if (borderWidth > 0) {
-            masterCtx.strokeStyle = borderColor;
-            masterCtx.lineWidth = borderWidth;
-            masterCtx.strokeRect(tileXPos + borderWidth / 2, currentDrawY + borderWidth / 2, tileWidth - borderWidth, rowPixelHeight - borderWidth);
+          if (currentScreen.borderWidth > 0) {
+            masterCtx.strokeStyle = currentScreen.borderColor;
+            masterCtx.lineWidth = currentScreen.borderWidth;
+            masterCtx.strokeRect(tileXPos + currentScreen.borderWidth / 2, currentDrawY + currentScreen.borderWidth / 2, tileWidth - currentScreen.borderWidth, rowPixelHeight - currentScreen.borderWidth);
           }
 
 
-          if (showLabels && labels[index]) {
-            const currentLabelColor = labelColorMode === 'auto'
+          if (currentScreen.showLabels && labels[index]) {
+            const currentLabelColor = currentScreen.labelColorMode === 'auto'
               ? isColorDark(bgColor) ? '#FFFFFF' : '#000000'
-              : labelColor;
+              : currentScreen.labelColor;
             masterCtx.fillStyle = currentLabelColor;
-            masterCtx.font = `bold ${labelFontSize}px sans-serif`;
+            masterCtx.font = `bold ${currentScreen.labelFontSize}px sans-serif`;
             masterCtx.textAlign = 'center';
             masterCtx.textBaseline = 'middle';
             masterCtx.fillText(labels[index], tileXPos + tileWidth / 2, currentDrawY + rowPixelHeight / 2);
           }
           
-          if (showSliceOffsetLabels && sliceOffsetLabels[index]) {
+          if (currentScreen.showSliceOffsetLabels && sliceOffsetLabels[index]) {
             const labelText = sliceOffsetLabels[index];
             const FONT_SIZE = 12;
             const PADDING_X = 4;
@@ -896,7 +923,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
             const textMetrics = masterCtx.measureText(labelText);
             const textWidth = textMetrics.width;
             
-            // Background
             masterCtx.fillStyle = 'rgba(0, 0, 0, 0.6)';
             masterCtx.fillRect(
                 tileXPos + OFFSET_X,
@@ -905,7 +931,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
                 FONT_SIZE + PADDING_Y * 2
             );
             
-            // Text
             masterCtx.fillStyle = 'white';
             masterCtx.fillText(
                 labelText, 
@@ -919,7 +944,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     }
 
     return masterCanvas;
-  }, [activeBounds, dimensions, tiles, labels, showLabels, onOffMode, tileColor, tileColorTwo, labelColor, labelFontSize, borderWidth, borderColor, labelColorMode, topHalfTile, bottomHalfTile, effectiveScreenHeight, showSliceOffsetLabels, sliceOffsetLabels]);
+  }, [activeBounds, currentScreen, tiles, labels, effectiveScreenHeight, topHalfTile, bottomHalfTile, sliceOffsetLabels]);
 
 
   const downloadRasterSlices = useCallback(() => {
@@ -967,12 +992,9 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         outputCtx.fillStyle = 'black';
         outputCtx.fillRect(0,0, outputCanvas.width, outputCanvas.height);
         
-        // Calculate the destination coordinates for the full content canvas
-        // relative to the current slice's origin.
-        const destX = rasterOffset.x - slice.x;
-        const destY = rasterOffset.y - slice.y;
+        const destX = currentScreen.rasterOffset.x - slice.x;
+        const destY = currentScreen.rasterOffset.y - slice.y;
 
-        // Draw the entire content canvas. The destination canvas acts as a viewport/clipper.
         outputCtx.drawImage(
             masterContentCanvas,
             destX, 
@@ -981,7 +1003,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         
         downloadCanvas(outputCanvas, slice.filename);
     }
-  }, [rasterMapConfig, createFullRasterCanvas, rasterOffset, subscriptionStatus, toast]);
+  }, [rasterMapConfig, createFullRasterCanvas, currentScreen.rasterOffset, subscriptionStatus, toast]);
   
   const addWatermark = (dataUrl: string): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -997,7 +1019,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
             ctx.drawImage(img, 0, 0);
 
-            // Add watermark
             ctx.globalAlpha = 0.4;
             ctx.font = `bold ${Math.max(30, canvas.width / 15)}px sans-serif`;
             ctx.fillStyle = 'white';
@@ -1048,12 +1069,11 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     
     const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
     const cropHeight = contentPixelHeight;
-    const sx = isWiringMirrored 
+    const sx = currentScreen.isWiringMirrored 
         ? (dimensions.screenWidth - 1 - activeBounds.maxX) * dimensions.tileWidth
         : activeBounds.minX * dimensions.tileWidth;
     const sy = yPosOfMinY;
 
-    // Manually set colors before capturing
     const computedStyle = getComputedStyle(document.documentElement);
     const dataWiringColor = `hsl(${computedStyle.getPropertyValue('--data-wiring').trim()})`;
     const powerWiringColor = `hsl(${computedStyle.getPropertyValue('--power-wiring').trim()})`;
@@ -1097,7 +1117,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         return dataUrl;
       })
       .then((dataUrl) => {
-        const downloadFilename = `wiring-diagram${isWiringMirrored ? '-mirrored' : ''}.png`;
+        const downloadFilename = `wiring-diagram${currentScreen.isWiringMirrored ? '-mirrored' : ''}.png`;
         const link = document.createElement("a");
         link.download = downloadFilename;
         link.href = dataUrl;
@@ -1119,7 +1139,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         });
       })
       .finally(() => {
-        // Revert DOM changes
         modifications.forEach(({ el, attr, originalValue }) => {
             if (originalValue) {
                 el.setAttribute(attr, originalValue);
@@ -1128,7 +1147,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
             }
         });
       });
-  }, [wiringDiagramRef, isWiringMirrored, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight, subscriptionStatus]);
+  }, [wiringDiagramRef, currentScreen.isWiringMirrored, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight, subscriptionStatus]);
 
   const handleDownloadFullRaster = useCallback(() => {
     if (subscriptionStatus !== 'pro') {
@@ -1187,45 +1206,10 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
   const exportProject = useCallback(() => {
     const projectData: ProjectData = {
-      version: "1.2.0",
-      dimensions,
-      tiles,
-      tileColor,
-      tileColorTwo,
-      borderWidth,
-      borderColor,
-      activeTool,
-      showLabels,
-      labelFormat,
-      labelFontSize,
-      labelColor,
-      labelPosition,
-      labelColorMode,
-      onOffMode,
-      zoomLevels,
+      version: "1.3.0",
+      screens,
+      currentScreenId,
       activeTab,
-      rasterOffset,
-      lastRasterArgs,
-      wiringPortConfig,
-      showDataLabels,
-      showPowerLabels,
-      wiringPattern,
-      powerWiringPattern,
-      arrowheadSize,
-      arrowheadLength,
-      arrowGap,
-      powerArrowheadSize,
-      powerArrowheadLength,
-      powerArrowGap,
-      brushColor,
-      tilesPerPowerString,
-      isWiringMirrored,
-      dataLabelSize,
-      powerLabelSize,
-      showSliceOffsetLabels,
-      topHalfTile,
-      bottomHalfTile,
-      processorType,
     };
 
     const jsonString = JSON.stringify(projectData, null, 2);
@@ -1244,86 +1228,43 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       title: "Export Successful",
       description: `Project saved to ${filename}`,
     });
-    trackEvent('download', { type: 'project-file', filename, projectData });
-  }, [
-    dimensions, tiles, tileColor, tileColorTwo, borderWidth, borderColor, activeTool,
-    showLabels, labelFormat, labelFontSize, labelColor, labelPosition, onOffMode, zoomLevels, activeTab, rasterOffset,
-    lastRasterArgs, wiringPortConfig, showDataLabels, showPowerLabels, wiringPattern,
-    powerWiringPattern, arrowheadSize, arrowheadLength, arrowGap,
-    powerArrowheadSize, powerArrowheadLength, powerArrowGap, brushColor, 
-    tilesPerPowerString, isWiringMirrored, dataLabelSize, powerLabelSize, toast, labelColorMode, showSliceOffsetLabels,
-    topHalfTile, bottomHalfTile, processorType
-  ]);
+    trackEvent('download', { type: 'project-file', filename, projectData: { screensCount: screens.length } });
+  }, [screens, currentScreenId, activeTab, toast]);
   
   const importProject = useCallback((file: File) => {
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
         const result = event.target?.result;
-        if (typeof result !== 'string') {
-          toast({
-            title: "Import Failed",
-            description: "Could not read the selected file.",
-            variant: "destructive",
-          });
-          return;
-        }
+        if (typeof result !== 'string') throw new Error("Could not read file");
+        
         const data: ProjectData = JSON.parse(result);
 
-        // Basic validation
-        if (!data.version || !data.dimensions || !data.tiles) {
+        if (!data.version || !data.screens || !data.currentScreenId) {
           throw new Error("Invalid project file format.");
         }
         
-        const maxId = data.tiles.reduce((max, tile) => Math.max(max, tile.id), -1);
-        nextTileId.current = maxId + 1;
-
-        // Apply state
-        setDimensions(data.dimensions);
-        setTiles(data.tiles); 
-        setTileColor(data.tileColor);
-        setTileColorTwo(data.tileColorTwo);
-        setBorderWidth(data.borderWidth);
-        setBorderColor(data.borderColor);
-        setActiveTool(data.activeTool);
-        setShowLabels(data.showLabels);
-        setLabelFormat(data.labelFormat);
-        setLabelFontSize(data.labelFontSize);
-        setLabelColor(data.labelColor);
-        setLabelPosition(data.labelPosition || 'center');
-        setLabelColorMode(data.labelColorMode || 'auto');
-        setOnOffMode(data.onOffMode);
-        
-        if (data.zoomLevels) {
-          setZoomLevels(data.zoomLevels);
-        } else if (data.zoom) {
-          const legacyZoom = data.zoom;
-          setZoomLevels({ grid: legacyZoom, wiring: legacyZoom, raster: legacyZoom });
+        // Handle legacy project import
+        if (!data.screens && (data as any).dimensions) {
+          const legacyData = data as any;
+          const screen = createNewScreen("Imported Screen");
+          
+          Object.assign(screen, {
+            ...legacyData,
+            zoomLevels: legacyData.zoomLevels || { grid: legacyData.zoom || 1, wiring: legacyData.zoom || 1, raster: legacyData.zoom || 1 }
+          });
+          
+          setScreens([screen]);
+          setCurrentScreenId(screen.id);
+          setActiveTab(legacyData.activeTab || 'grid');
+        } else {
+          setScreens(data.screens);
+          setCurrentScreenId(data.currentScreenId);
+          setActiveTab(data.activeTab);
         }
-        
-        setActiveTab(data.activeTab || 'grid');
-        setRasterOffset(data.rasterOffset);
-        setLastRasterArgs(data.lastRasterArgs);
-        setWiringPortConfig(data.wiringPortConfig);
-        setShowDataLabelsState(data.showDataLabels);
-        setShowPowerLabelsState(data.showPowerLabels);
-        setWiringPattern(data.wiringPattern);
-        setPowerWiringPattern(data.powerWiringPattern || 'left-right');
-        setArrowheadSize(data.arrowheadSize || 20);
-        setArrowheadLength(data.arrowheadLength || 30);
-        setArrowGap(data.arrowGap || 50);
-        setPowerArrowheadSize(data.powerArrowheadSize || 20);
-        setPowerArrowheadLength(data.powerArrowheadLength || 30);
-        setPowerArrowGap(data.powerArrowGap || 50);
-        setBrushColor(data.brushColor || "#e11d48");
-        setTilesPerPowerString(data.tilesPerPowerString || "20");
-        setIsWiringMirrored(data.isWiringMirrored || false);
-        setDataLabelSize(data.dataLabelSize || 100);
-        setPowerLabelSize(data.powerLabelSize || 100);
-        setShowSliceOffsetLabels(data.showSliceOffsetLabels ?? true);
-        setTopHalfTile(data.topHalfTile ?? false);
-        setBottomHalfTile(data.bottomHalfTile ?? false);
-        setProcessorType(data.processorType || 'Brompton');
+
+        // Make sure all screens have all properties
+        setScreens(currentScreens => currentScreens.map(s => ({ ...createNewScreen(""), ...s })));
         
         toast({
           title: "Import Successful",
@@ -1364,17 +1305,23 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       title: "Offset Reset",
       description: "Raster offset has been reset to (0, 0).",
     });
-  }, [rasterMapConfig, activeBounds, toast]);
-
+  }, [rasterMapConfig, activeBounds, toast, setRasterOffset]);
 
   const value: PixelMapState = {
     appState,
     gridRef,
     wiringDiagramRef,
     rasterMapRef,
-    dimensions,
+    screens,
+    currentScreen,
+    currentScreenId,
+    setCurrentScreenId,
+    addNewScreen,
+    renameScreen,
+    deleteScreen,
+    dimensions: currentScreen.dimensions,
     setDimensions,
-    tiles,
+    tiles: currentScreen.tiles,
     labels,
     sliceOffsetLabels,
     wiringData,
@@ -1383,34 +1330,34 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     resetAllColors,
     deletedCount,
     coloredCount,
-    tileColor,
+    tileColor: currentScreen.tileColor,
     setTileColor,
-    tileColorTwo,
+    tileColorTwo: currentScreen.tileColorTwo,
     setTileColorTwo,
-    borderWidth,
+    borderWidth: currentScreen.borderWidth,
     setBorderWidth,
-    borderColor,
+    borderColor: currentScreen.borderColor,
     setBorderColor,
     handleDownloadPng,
     handleDownloadWiringDiagram,
     handleDownloadFullRaster,
     generateRasterMap,
     downloadRasterSlices,
-    activeTool,
+    activeTool: currentScreen.activeTool,
     setActiveTool,
-    showLabels,
+    showLabels: currentScreen.showLabels,
     setShowLabels,
-    labelFormat,
+    labelFormat: currentScreen.labelFormat,
     setLabelFormat,
-    labelFontSize,
+    labelFontSize: currentScreen.labelFontSize,
     setLabelFontSize,
-    labelColor,
+    labelColor: currentScreen.labelColor,
     setLabelColor,
-    labelPosition,
+    labelPosition: currentScreen.labelPosition,
     setLabelPosition,
-    labelColorMode,
+    labelColorMode: currentScreen.labelColorMode,
     setLabelColorMode,
-    onOffMode,
+    onOffMode: currentScreen.onOffMode,
     setOnOffMode,
     zoom,
     setZoom,
@@ -1419,51 +1366,51 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     activeBounds,
     rasterMapConfig,
     setRasterMapConfig,
-    rasterOffset,
+    rasterOffset: currentScreen.rasterOffset,
     setRasterOffset,
-    wiringPortConfig,
+    wiringPortConfig: currentScreen.wiringPortConfig,
     setWiringPortConfig,
-    tilesPerPowerString,
+    tilesPerPowerString: currentScreen.tilesPerPowerString,
     setTilesPerPowerString,
-    showDataLabels,
+    showDataLabels: currentScreen.showDataLabels,
     setShowDataLabels,
-    showPowerLabels,
+    showPowerLabels: currentScreen.showPowerLabels,
     setShowPowerLabels,
-    wiringPattern,
+    wiringPattern: currentScreen.wiringPattern,
     setWiringPattern,
-    powerWiringPattern,
+    powerWiringPattern: currentScreen.powerWiringPattern,
     setPowerWiringPattern,
-    arrowheadSize,
+    arrowheadSize: currentScreen.arrowheadSize,
     setArrowheadSize,
-    arrowheadLength,
+    arrowheadLength: currentScreen.arrowheadLength,
     setArrowheadLength,
-    arrowGap,
+    arrowGap: currentScreen.arrowGap,
     setArrowGap,
-    powerArrowheadSize,
+    powerArrowheadSize: currentScreen.powerArrowheadSize,
     setPowerArrowheadSize,
-    powerArrowheadLength,
+    powerArrowheadLength: currentScreen.powerArrowheadLength,
     setPowerArrowheadLength,
-    powerArrowGap,
+    powerArrowGap: currentScreen.powerArrowGap,
     setPowerArrowGap,
     exportProject,
     importProject,
-    brushColor,
+    brushColor: currentScreen.brushColor,
     setBrushColor,
-    isWiringMirrored,
+    isWiringMirrored: currentScreen.isWiringMirrored,
     setIsWiringMirrored,
-    dataLabelSize,
+    dataLabelSize: currentScreen.dataLabelSize,
     setDataLabelSize,
-    powerLabelSize,
+    powerLabelSize: currentScreen.powerLabelSize,
     setPowerLabelSize,
     calculateAndApplyOptimalOffset,
-    showSliceOffsetLabels,
+    showSliceOffsetLabels: currentScreen.showSliceOffsetLabels,
     setShowSliceOffsetLabels,
-    topHalfTile,
+    topHalfTile: currentScreen.topHalfTile,
     handleTopHalfTileChange,
-    bottomHalfTile,
+    bottomHalfTile: currentScreen.bottomHalfTile,
     handleBottomHalfTileChange,
     effectiveScreenHeight,
-    processorType,
+    processorType: currentScreen.processorType,
     setProcessorType,
   };
 

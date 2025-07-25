@@ -19,7 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "../pixel-mapper/edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home } from "lucide-react";
+import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home, ScreenShare, Plus, MoreHorizontal, Pencil, Trash } from "lucide-react";
 import { LabelControls } from "../pixel-mapper/label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -34,6 +34,26 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Input } from "@/components/ui/input";
 import { DownloadsControls } from "../pixel-mapper/downloads-controls";
 import { useState, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
@@ -42,26 +62,45 @@ import { useAuth } from "@/contexts/auth-context";
 
 
 export function PixelMapLayout() {
-  const { dimensions, zoom, setZoom, onOffMode, setOnOffMode, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, effectiveScreenHeight, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels } = usePixelMap();
-  const [activeAccordion, setActiveAccordion] = useState("grid-setup");
+  const { 
+    screens,
+    currentScreen,
+    currentScreenId,
+    setCurrentScreenId,
+    addNewScreen,
+    renameScreen,
+    deleteScreen,
+    zoom, setZoom, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, effectiveScreenHeight, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels } = usePixelMap();
+  const [activeAccordion, setActiveAccordion] = useState("screens");
   const viewportRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
+  const [renameValue, setRenameValue] = useState("");
+  const [isRenaming, setIsRenaming] = useState<string | null>(null);
 
+  const dimensions = currentScreen.dimensions;
+  
+  const handleRename = (screenId: string) => {
+    if (renameValue.trim()) {
+      renameScreen(screenId, renameValue.trim());
+      setIsRenaming(null);
+      setRenameValue("");
+    }
+  }
 
   const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : 0;
   
   const totalHeight = useMemo(() => {
-    if (!activeBounds) return 0;
+    if (!activeBounds || !currentScreen) return 0;
     
     let height = 0;
     for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
-      const isTopHalfRow = topHalfTile && y === 0;
-      const isBottomHalfRow = bottomHalfTile && y === effectiveScreenHeight - 1;
+      const isTopHalfRow = currentScreen.topHalfTile && y === 0;
+      const isBottomHalfRow = currentScreen.bottomHalfTile && y === effectiveScreenHeight - 1;
       height += (isTopHalfRow || isBottomHalfRow) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
     }
 
     return height;
-  }, [activeBounds, dimensions.tileHeight, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
+  }, [activeBounds, dimensions.tileHeight, effectiveScreenHeight, currentScreen]);
 
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev * 1.2, 5));
@@ -153,10 +192,11 @@ export function PixelMapLayout() {
   }
   
   const fullGridHeight = useMemo(() => {
+    if (!currentScreen) return 0;
     let height = 0;
     for (let i = 0; i < effectiveScreenHeight; i++) {
-        const isTopHalfRow = topHalfTile && i === 0;
-        const isBottomHalfRow = bottomHalfTile && i === effectiveScreenHeight - 1;
+        const isTopHalfRow = currentScreen.topHalfTile && i === 0;
+        const isBottomHalfRow = currentScreen.bottomHalfTile && i === effectiveScreenHeight - 1;
         let rowHeight = dimensions.tileHeight;
         if (isTopHalfRow || isBottomHalfRow) {
             rowHeight /= 2;
@@ -164,7 +204,7 @@ export function PixelMapLayout() {
         height += rowHeight;
     }
     return height;
-  }, [effectiveScreenHeight, dimensions.tileHeight, topHalfTile, bottomHalfTile]);
+  }, [effectiveScreenHeight, dimensions.tileHeight, currentScreen]);
 
   return (
     <SidebarProvider>
@@ -203,6 +243,73 @@ export function PixelMapLayout() {
                     </div>
                     <DownloadsControls />
                   </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="screens" className="border-none">
+                <AccordionSectionTrigger icon={<ScreenShare className="size-5" />} title="Screens" />
+                <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
+                  <div className="space-y-2">
+                    {screens.map(screen => (
+                      <div key={screen.id} className="flex items-center justify-between rounded-md border p-2 bg-muted/20">
+                        {isRenaming === screen.id ? (
+                          <Input
+                            autoFocus
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onBlur={() => handleRename(screen.id)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleRename(screen.id)}
+                            className="h-8"
+                          />
+                        ) : (
+                          <Button
+                            variant={screen.id === currentScreenId ? 'secondary' : 'ghost'}
+                            size="sm"
+                            className="flex-grow justify-start"
+                            onClick={() => setCurrentScreenId(screen.id)}
+                          >
+                            {screen.name}
+                          </Button>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem onClick={() => { setIsRenaming(screen.id); setRenameValue(screen.name); }}>
+                              <Pencil className="mr-2" /> Rename
+                            </DropdownMenuItem>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                                  <Trash className="mr-2" /> Delete
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete the screen "{screen.name}".
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deleteScreen(screen.id)}>Continue</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    ))}
+                  </div>
+                  <Button onClick={addNewScreen} variant="outline" className="w-full">
+                    <Plus className="mr-2" />
+                    Add New Screen
+                  </Button>
                 </AccordionContent>
               </AccordionItem>
               
