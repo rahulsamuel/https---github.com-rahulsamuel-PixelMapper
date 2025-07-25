@@ -21,6 +21,8 @@ export function WiringControls() {
     setWiringPattern,
     wiringPortConfig,
     setWiringPortConfig,
+    dataPortStartNumber,
+    setDataPortStartNumber,
     showDataLabels,
     setShowDataLabels,
     arrowheadSize,
@@ -76,6 +78,16 @@ export function WiringControls() {
             value={wiringPortConfig}
             onChange={(e) => setWiringPortConfig(e.target.value)}
             placeholder="e.g., 4"
+            min="1"
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="data-port-start-number">Data Port Start Number</Label>
+        <Input
+            id="data-port-start-number"
+            type="number"
+            value={dataPortStartNumber}
+            onChange={(e) => setDataPortStartNumber(Number(e.target.value) || 1)}
             min="1"
         />
       </div>

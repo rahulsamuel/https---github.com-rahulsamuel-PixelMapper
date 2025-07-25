@@ -100,12 +100,13 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
 function applyDataWiring(
     activeTilesPath: { tile: WiringInfo; index: number; }[],
     wiringPortConfig: string,
+    dataPortStartNumber: number,
     processorType: ProcessorType
 ) {
     if (activeTilesPath.length === 0) return;
     
     const subgroupSize = parseInt(wiringPortConfig.trim(), 10) || 4;
-    let groupCounter = 0;
+    let groupCounter = dataPortStartNumber - 1;
 
     let currentGroupInfo: { main: string, backup: string } | null = null;
 
@@ -212,6 +213,7 @@ interface GetWiringDataArgs {
     dimensions: Dimensions;
     tiles: Tile[];
     wiringPortConfig: string;
+    dataPortStartNumber: number;
     tilesPerPowerString: string;
     wiringPattern: WiringPattern;
     powerWiringPattern: WiringPattern;
@@ -225,6 +227,7 @@ export function getWiringData({
   dimensions,
   tiles,
   wiringPortConfig,
+  dataPortStartNumber,
   tilesPerPowerString,
   wiringPattern,
   powerWiringPattern,
@@ -260,13 +263,13 @@ export function getWiringData({
     
     const dataPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
     const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
-    applyDataWiring(dataTilesPath, wiringPortConfig, processorType);
+    applyDataWiring(dataTilesPath, wiringPortConfig, dataPortStartNumber, processorType);
 
 
   } else {
     const dataPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
     const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
-    applyDataWiring(dataTilesPath, wiringPortConfig, processorType);
+    applyDataWiring(dataTilesPath, wiringPortConfig, dataPortStartNumber, processorType);
   }
   
   const powerPathOrder = getPathOrder(activeTileIndices, powerWiringPattern, screenWidth, screenHeight);

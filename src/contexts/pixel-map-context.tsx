@@ -93,6 +93,7 @@ interface Screen {
   rasterOffset: { x: number; y: number; };
   lastRasterArgs: RasterArgs | null;
   wiringPortConfig: string;
+  dataPortStartNumber: number;
   showDataLabels: boolean;
   showPowerLabels: boolean;
   wiringPattern: WiringPattern;
@@ -172,6 +173,7 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'> {
   setRasterMapConfig: Dispatch<SetStateAction<RasterMapConfig | null>>;
   setRasterOffset: Dispatch<SetStateAction<{ x: number; y: number; }>>;
   setWiringPortConfig: Dispatch<SetStateAction<string>>;
+  setDataPortStartNumber: Dispatch<SetStateAction<number>>;
   setShowDataLabels: (value: boolean) => void;
   setShowPowerLabels: (value: boolean) => void;
   setWiringPattern: Dispatch<SetStateAction<WiringPattern>>;
@@ -246,6 +248,7 @@ const createNewScreen = (name: string): Screen => {
     rasterOffset: { x: 0, y: 0 },
     lastRasterArgs: null,
     wiringPortConfig: "4",
+    dataPortStartNumber: 1,
     tilesPerPowerString: "20",
     showDataLabels: true,
     showPowerLabels: false,
@@ -323,6 +326,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setRasterOffset = (updater: SetStateAction<{x: number, y: number}>) => updateCurrentScreen(s => ({ ...s, rasterOffset: typeof updater === 'function' ? updater(s.rasterOffset) : updater }));
   const setLastRasterArgs = (updater: SetStateAction<RasterArgs | null>) => updateCurrentScreen(s => ({ ...s, lastRasterArgs: typeof updater === 'function' ? updater(s.lastRasterArgs) : updater }));
   const setWiringPortConfig = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, wiringPortConfig: typeof updater === 'function' ? updater(s.wiringPortConfig) : updater }));
+  const setDataPortStartNumber = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, dataPortStartNumber: typeof updater === 'function' ? updater(s.dataPortStartNumber) : updater }));
   const setTilesPerPowerString = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, tilesPerPowerString: typeof updater === 'function' ? updater(s.tilesPerPowerString) : updater }));
   const setShowDataLabelsState = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showDataLabels: typeof updater === 'function' ? updater(s.showDataLabels) : updater }));
   const setShowPowerLabelsState = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showPowerLabels: typeof updater === 'function' ? updater(s.showPowerLabels) : updater }));
@@ -381,6 +385,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       dimensions: { ...currentScreen.dimensions, screenHeight: effectiveScreenHeight }, 
       tiles: currentScreen.tiles, 
       wiringPortConfig: currentScreen.wiringPortConfig, 
+      dataPortStartNumber: currentScreen.dataPortStartNumber,
       wiringPattern: currentScreen.wiringPattern, 
       powerWiringPattern: currentScreen.powerWiringPattern, 
       rasterMapConfig, 
@@ -1341,6 +1346,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         dimensions: { ...screen.dimensions, screenHeight: screenEffectiveHeight },
         tiles: screen.tiles,
         wiringPortConfig: screen.wiringPortConfig,
+        dataPortStartNumber: screen.dataPortStartNumber,
         tilesPerPowerString: screen.tilesPerPowerString,
         wiringPattern: screen.wiringPattern,
         powerWiringPattern: screen.powerWiringPattern,
@@ -1714,6 +1720,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     setRasterOffset,
     wiringPortConfig: currentScreen.wiringPortConfig,
     setWiringPortConfig,
+    dataPortStartNumber: currentScreen.dataPortStartNumber,
+    setDataPortStartNumber,
     tilesPerPowerString: currentScreen.tilesPerPowerString,
     setTilesPerPowerString,
     showDataLabels: currentScreen.showDataLabels,
