@@ -1314,6 +1314,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const createScreenWiringCanvas = useCallback((screen: Screen, screenActiveBounds: ActiveBounds | null) => {
     if (!screenActiveBounds) return null;
     
+    const computedStyle = getComputedStyle(document.documentElement);
+
     const screenEffectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
     const screenWiringData = getWiringData({
         dimensions: { ...screen.dimensions, screenHeight: screenEffectiveHeight },
@@ -1342,7 +1344,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--background').trim();
+    ctx.fillStyle = computedStyle.getPropertyValue('--background').trim();
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const rowData = [];
@@ -1355,10 +1357,19 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         rowData.push({ yPos: currentY, height: rowHeight });
         currentY += rowHeight;
     }
+    
+    const getTileVisualY = (y: number) => {
+      let totalY = 0;
+      for (let i = screenActiveBounds.minY; i < y; i++) {
+        totalY += rowData[i]?.height || tileHeight;
+      }
+      return totalY;
+    }
 
-    let currentDrawY = 0;
+    // Draw Tiles
     for (let y = screenActiveBounds.minY; y <= screenActiveBounds.maxY; y++) {
         const tileXPos = (x: number) => (x - screenActiveBounds.minX) * tileWidth;
+        const tileYPos = getTileVisualY(y);
         const rowPixelHeight = rowData[y].height;
 
         for (let x = screenActiveBounds.minX; x <= screenActiveBounds.maxX; x++) {
@@ -1368,12 +1379,132 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
             const bgColor = (x + y) % 2 === 0 ? screen.tileColor : screen.tileColorTwo;
             ctx.fillStyle = bgColor;
-            ctx.fillRect(tileXPos(x), currentDrawY, tileWidth, rowPixelHeight);
+            ctx.fillRect(tileXPos(x), tileYPos, tileWidth, rowPixelHeight);
+
+            if (screen.borderWidth > 0) {
+              ctx.strokeStyle = screen.borderColor;
+              ctx.lineWidth = screen.borderWidth;
+              ctx.strokeRect(tileXPos(x), tileYPos, tileWidth, rowPixelHeight);
+            }
         }
-        currentDrawY += rowPixelHeight;
+    }
+
+    const drawArrow = (fromX: number, fromY: number, toX: number, toY: number, color: string, gap: number, ahSize: number, ahLength: number) => {
+        const dx = toX - fromX;
+        const dy = toY - fromY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance <= gap * 2) return;
+
+        const nx = dx / distance;
+        const ny = dy / distance;
+        const x1 = fromX + nx * gap;
+        const y1 = fromY + ny * gap;
+        const x2 = toX - nx * gap;
+        const y2 = toY - ny * gap;
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        const tipX = x2;
+        const tipY = y2;
+        const baseCenterX = tipX - nx * ahLength;
+        const baseCenterY = tipY - ny * ahLength;
+        const p2x = baseCenterX - ny * (ahSize / 2);
+        const p2y = baseCenterY + nx * (ahSize / 2);
+        const p3x = baseCenterX + ny * (ahSize / 2);
+        const p3y = baseCenterY - nx * (ahSize / 2);
+        
+        ctx.beginPath();
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(p2x, p2y);
+        ctx.lineTo(p3x, p3y);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+    };
+
+    // Draw Data Arrows
+    if (screen.showDataLabels) {
+      const dataColor = computedStyle.getPropertyValue('--data-wiring').trim();
+      screenWiringData.forEach(({ x, y, nextTile, isDeleted }) => {
+        if (isDeleted || !nextTile) return;
+        if (x < screenActiveBounds.minX || x > screenActiveBounds.maxX || y < screenActiveBounds.minY || y > screenActiveBounds.maxY) return;
+        if (nextTile.x < screenActiveBounds.minX || nextTile.x > screenActiveBounds.maxX || nextTile.y < screenActiveBounds.minY || nextTile.y > screenActiveBounds.maxY) return;
+
+        const startX = (x - screenActiveBounds.minX) * tileWidth + tileWidth / 2;
+        const startY = getTileVisualY(y) + rowData[y].height / 2;
+        const endX = (nextTile.x - screenActiveBounds.minX) * tileWidth + tileWidth / 2;
+        const endY = getTileVisualY(nextTile.y) + rowData[nextTile.y].height / 2;
+        drawArrow(startX, startY, endX, endY, dataColor, screen.arrowGap, screen.arrowheadSize, screen.arrowheadLength);
+      });
     }
     
-    // Simplified drawing for labels and arrows - for a full implementation, this would be much more complex
+    // Draw Power Arrows
+    if (screen.showPowerLabels) {
+        const powerColor = computedStyle.getPropertyValue('--power-wiring').trim();
+        screenWiringData.forEach(({ x, y, nextPowerTile, isDeleted }) => {
+            if (isDeleted || !nextPowerTile) return;
+            if (x < screenActiveBounds.minX || x > screenActiveBounds.maxX || y < screenActiveBounds.minY || y > screenActiveBounds.maxY) return;
+            if (nextPowerTile.x < screenActiveBounds.minX || nextPowerTile.x > screenActiveBounds.maxX || nextPowerTile.y < screenActiveBounds.minY || nextPowerTile.y > screenActiveBounds.maxY) return;
+
+            const startX = (x - screenActiveBounds.minX) * tileWidth + tileWidth / 2;
+            const startY = getTileVisualY(y) + rowData[y].height / 2;
+            const endX = (nextPowerTile.x - screenActiveBounds.minX) * tileWidth + tileWidth / 2;
+            const endY = getTileVisualY(nextPowerTile.y) + rowData[nextPowerTile.y].height / 2;
+            drawArrow(startX, startY, endX, endY, powerColor, screen.powerArrowGap, screen.powerArrowheadSize, screen.powerArrowheadLength);
+        });
+    }
+
+    // Draw Labels
+    screenWiringData.forEach(({ x, y, isDeleted, dataLabel, backupLabel, powerPortLabel }) => {
+        if (isDeleted) return;
+        if (x < screenActiveBounds.minX || x > screenActiveBounds.maxX || y < screenActiveBounds.minY || y > screenActiveBounds.maxY) return;
+        
+        const tileXPos = (x - screenActiveBounds.minX) * tileWidth + tileWidth / 2;
+        const tileYPos = getTileVisualY(y) + rowData[y].height / 2;
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        const labelsToDraw = [];
+        if(screen.showDataLabels && (dataLabel || backupLabel)) {
+           labelsToDraw.push({
+               label: backupLabel || dataLabel,
+               size: screen.dataLabelSize,
+               bgColor: backupLabel ? computedStyle.getPropertyValue('--destructive').trim() : computedStyle.getPropertyValue('--data-wiring').trim(),
+               fgColor: backupLabel ? computedStyle.getPropertyValue('--destructive-foreground').trim() : computedStyle.getPropertyValue('--data-wiring-foreground').trim(),
+           });
+        }
+        if(screen.showPowerLabels && powerPortLabel) {
+           labelsToDraw.push({
+               label: powerPortLabel,
+               size: screen.powerLabelSize,
+               bgColor: computedStyle.getPropertyValue('--power-wiring').trim(),
+               fgColor: computedStyle.getPropertyValue('--power-wiring-foreground').trim(),
+           });
+        }
+
+        const totalHeight = labelsToDraw.reduce((acc, l) => acc + l.size, 0) + (labelsToDraw.length - 1) * 5;
+        let startY = tileYPos - totalHeight / 2;
+
+        labelsToDraw.forEach(item => {
+            const yPos = startY + item.size / 2;
+            ctx.fillStyle = item.bgColor;
+            ctx.beginPath();
+            ctx.arc(tileXPos, yPos, item.size / 2, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.fillStyle = item.fgColor;
+            ctx.font = `bold ${Math.max(8, item.size * 0.4)}px sans-serif`;
+            ctx.fillText(item.label, tileXPos, yPos);
+            
+            startY += item.size + 5;
+        });
+    });
     
     return canvas;
 
