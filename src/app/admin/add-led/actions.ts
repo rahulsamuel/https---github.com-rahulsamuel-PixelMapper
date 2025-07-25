@@ -21,9 +21,9 @@ const formSchema = z.object({
   maxBrightness: z.coerce.number().min(1, { message: "Must be positive." }),
   refreshRate: z.coerce.number().min(1, { message: "Must be positive." }),
 
-  applicationIndoor: z.coerce.boolean().default(false),
-  applicationOutdoor: z.coerce.boolean().default(false),
-  applicationFloor: z.coerce.boolean().default(false),
+  applicationIndoor: z.boolean().default(false),
+  applicationOutdoor: z.boolean().default(false),
+  applicationFloor: z.boolean().default(false),
 });
 
 export type FormState = {
