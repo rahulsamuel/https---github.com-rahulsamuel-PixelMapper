@@ -19,6 +19,11 @@ export async function POST(req: NextRequest) {
       data: eventData,
     };
 
+    // To prevent storing very large images in firestore, we'll cap the thumbnail size.
+    if (eventData.thumbnail && eventData.thumbnail.length > 1_000_000) {
+      docData.data.thumbnail = 'Image too large to store.';
+    }
+
     const { error } = await addData('tracking_events', docData);
 
     if (error) {

@@ -684,7 +684,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         link.download = filename;
         link.href = dataUrl;
         link.click();
-        trackEvent('download', { type: 'grid-png', filename });
+        trackEvent('download', { type: 'grid-png', filename, thumbnail: dataUrl });
       })
       .catch((err) => {
         console.error("Could not generate PNG.", err);
@@ -993,9 +993,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    trackEvent('download', { type: 'raster-slices', filenames: rasterMapConfig.slices.map(s => s.filename) });
-
-
     const downloadCanvas = (canvas: HTMLCanvasElement, downloadFilename: string) => {
         try {
             const dataUrl = canvas.toDataURL('image/png');
@@ -1003,6 +1000,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
             link.download = downloadFilename;
             link.href = dataUrl;
             link.click();
+            trackEvent('download', { type: 'raster-slice', filename: downloadFilename, thumbnail: dataUrl });
         } catch (err) {
             console.error("Could not generate raster map file.", err);
         }
@@ -1151,7 +1149,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
           description: "Your wiring diagram is being downloaded.",
         });
 
-        trackEvent('download', { type: 'wiring-diagram', filename: downloadFilename });
+        trackEvent('download', { type: 'wiring-diagram', filename: downloadFilename, thumbnail: dataUrl });
       })
       .catch((err) => {
         console.error("Failed to generate wiring diagram image", err);
@@ -1194,8 +1192,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     const { totalWidth, totalHeight } = rasterMapConfig;
     const downloadFilename = `full-raster-map.png`;
 
-    trackEvent('download', { type: 'full-raster-map', filename: downloadFilename });
-
     toPng(node, {
       cacheBust: true,
       backgroundColor: '#ffffff',
@@ -1213,6 +1209,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
           title: "Download Started",
           description: "Your full raster map is being downloaded.",
         });
+        trackEvent('download', { type: 'full-raster-map', filename: downloadFilename, thumbnail: dataUrl });
       })
       .catch((err) => {
         console.error("Failed to generate full raster map image", err);
@@ -1650,7 +1647,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     link.click();
 
     toast({ title: "Download Started", description: "Your composite wiring diagram is downloading." });
-    trackEvent('download', { type: 'composite-wiring-diagram' });
+    trackEvent('download', { type: 'composite-wiring-diagram', thumbnail: dataUrl });
 
   }, [rasterMapConfig, screens, createScreenWiringCanvas, subscriptionStatus, toast]);
 

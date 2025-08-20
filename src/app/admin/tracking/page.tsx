@@ -5,6 +5,7 @@ import { Terminal } from "lucide-react";
 import { getData } from "@/services/firestore";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
 
 export default async function TrackingPage() {
     const { data: events, error } = await getData('tracking_events');
@@ -61,6 +62,7 @@ export default async function TrackingPage() {
                                     <TableHead>Event Type</TableHead>
                                     <TableHead>IP Address</TableHead>
                                     <TableHead>Details</TableHead>
+                                    <TableHead>Thumbnail</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -74,7 +76,18 @@ export default async function TrackingPage() {
                                         </TableCell>
                                         <TableCell className="font-mono">{event.ip}</TableCell>
                                         <TableCell>
-                                            <pre className="text-xs bg-muted p-2 rounded-md font-mono">{JSON.stringify(event.data, null, 2)}</pre>
+                                            <pre className="text-xs bg-muted p-2 rounded-md font-mono">{JSON.stringify(event.data, (key, value) => key === 'thumbnail' ? '...' : value, 2)}</pre>
+                                        </TableCell>
+                                        <TableCell>
+                                            {event.data.thumbnail && event.data.thumbnail.startsWith('data:image') ? (
+                                                <Image 
+                                                    src={event.data.thumbnail} 
+                                                    alt="Download thumbnail" 
+                                                    width={100} 
+                                                    height={100}
+                                                    className="object-contain border rounded-md bg-white"
+                                                />
+                                            ) : null}
                                         </TableCell>
                                     </TableRow>
                                 ))}
