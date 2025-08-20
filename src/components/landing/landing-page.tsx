@@ -158,6 +158,9 @@ export async function LandingPage() {
           <Link href="/contact" className="text-xs hover:text-primary hover:underline underline-offset-4 transition-colors">
             Contact Us
           </Link>
+          <Link href="/admin/tracking" className="text-xs hover:text-primary hover:underline underline-offset-4 transition-colors">
+            Admin
+          </Link>
         </nav>
       </footer>
     </div>
