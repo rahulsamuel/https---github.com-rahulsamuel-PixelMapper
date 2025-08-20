@@ -12,15 +12,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, DraftingCompass, Calculator, Home, LineChart } from 'lucide-react';
+import { ChevronDown, DraftingCompass, Calculator, Home, LineChart, LogIn, LogOut } from 'lucide-react';
+import { useAuth } from "@/contexts/auth-context";
 
 export function AppHeader() {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
 
   const getPageTitle = () => {
     if (pathname.startsWith('/app')) return 'Pixel Map';
     if (pathname.startsWith('/calculator')) return 'LED Calculator';
     if (pathname.startsWith('/admin')) return 'Admin';
+    if (pathname.startsWith('/login')) return 'Login';
     return 'MapMyLED';
   }
   
@@ -64,6 +67,21 @@ export function AppHeader() {
                     </Link>
                 </DropdownMenuContent>
             </DropdownMenu>
+            <div className="flex-1 flex justify-end">
+              {user ? (
+                <Button variant="ghost" onClick={logout}>
+                  <LogOut className="mr-2" />
+                  Logout
+                </Button>
+              ) : (
+                <Link href="/login">
+                  <Button variant="ghost">
+                    <LogIn className="mr-2" />
+                    Login
+                  </Button>
+                </Link>
+              )}
+            </div>
         </div>
     </header>
   );

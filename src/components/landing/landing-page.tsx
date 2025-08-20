@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { GitBranch, FileOutput, Download, Upload, Cpu, Shapes } from 'lucide-react';
+import { GitBranch, FileOutput, Download, Upload, Cpu, Shapes, LineChart } from 'lucide-react';
 import Image from 'next/image';
 import { Logo } from '../logo';
 import { cn } from '@/lib/utils';
@@ -117,14 +117,14 @@ export async function LandingPage() {
                   </p>
                 </CardContent>
               </Card>
-              <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+               <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <CardHeader className="flex flex-row items-center gap-4">
-                  <Download className="w-8 h-8 text-primary" />
-                  <CardTitle>Comprehensive Downloads</CardTitle>
+                  <LineChart className="w-8 h-8 text-primary" />
+                  <CardTitle>Admin & Tracking</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">
-                    Download your grid layout as a PNG, get a detailed wiring diagram, and export your raster map slices for easy integration.
+                    Log in to a protected admin area to track visitor events and downloads from your site.
                   </p>
                 </CardContent>
               </Card>
