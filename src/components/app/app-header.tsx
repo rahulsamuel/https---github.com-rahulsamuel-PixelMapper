@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, DraftingCompass, Calculator, Home } from 'lucide-react';
+import { ChevronDown, DraftingCompass, Calculator, Home, LineChart } from 'lucide-react';
 
 export function AppHeader() {
   const pathname = usePathname();
@@ -20,6 +20,7 @@ export function AppHeader() {
   const getPageTitle = () => {
     if (pathname.startsWith('/app')) return 'Pixel Map';
     if (pathname.startsWith('/calculator')) return 'LED Calculator';
+    if (pathname.startsWith('/admin')) return 'Admin';
     return 'MapMyLED';
   }
   
@@ -45,6 +46,13 @@ export function AppHeader() {
                         <DropdownMenuItem>
                             <Calculator className="mr-2 h-4 w-4" />
                             <span>LED Calculator</span>
+                        </DropdownMenuItem>
+                    </Link>
+                    <DropdownMenuSeparator />
+                     <Link href="/admin/tracking">
+                        <DropdownMenuItem>
+                            <LineChart className="mr-2 h-4 w-4" />
+                            <span>Tracking</span>
                         </DropdownMenuItem>
                     </Link>
                     <DropdownMenuSeparator />
