@@ -118,15 +118,17 @@ export async function LandingPage() {
                 </CardContent>
               </Card>
                <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <CardHeader className="flex flex-row items-center gap-4">
-                  <LineChart className="w-8 h-8 text-primary" />
-                  <CardTitle>Admin & Tracking</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Log in to a protected admin area to track visitor events and downloads from your site.
-                  </p>
-                </CardContent>
+                <Link href="/login">
+                  <CardHeader className="flex flex-row items-center gap-4">
+                    <LineChart className="w-8 h-8 text-primary" />
+                    <CardTitle>Admin & Tracking</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Log in to a protected admin area to track visitor events and downloads from your site.
+                    </p>
+                  </CardContent>
+                </Link>
               </Card>
               <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <CardHeader className="flex flex-row items-center gap-4">
