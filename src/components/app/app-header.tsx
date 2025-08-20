@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, DraftingCompass, Calculator, Home, LineChart, LogIn, LogOut } from 'lucide-react';
+import { ChevronDown, DraftingCompass, Calculator, Home, LineChart, LogOut } from 'lucide-react';
 import { useAuth } from "@/contexts/auth-context";
 
 export function AppHeader() {
@@ -68,18 +68,11 @@ export function AppHeader() {
                 </DropdownMenuContent>
             </DropdownMenu>
             <div className="flex-1 flex justify-end">
-              {user ? (
+              {user && (
                 <Button variant="ghost" onClick={logout}>
                   <LogOut className="mr-2" />
                   Logout
                 </Button>
-              ) : (
-                <Link href="/login">
-                  <Button variant="ghost">
-                    <LogIn className="mr-2" />
-                    Login
-                  </Button>
-                </Link>
               )}
             </div>
         </div>
