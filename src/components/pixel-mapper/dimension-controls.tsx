@@ -31,8 +31,9 @@ export function DimensionControls() {
   };
 
   const manufacturers = useMemo(() => {
-    if (!products) return [];
-    return [...new Set(products.map(p => p.manufacturer))];
+    if (!products) return ["Custom"];
+    const dbManufacturers = [...new Set(products.map(p => p.manufacturer))];
+    return ["Custom", ...dbManufacturers];
   }, [products]);
   
   const selectedProduct = useMemo(() => {
@@ -40,20 +41,28 @@ export function DimensionControls() {
   }, [products, selectedProductId]);
 
   const selectedManufacturer = useMemo(() => {
+    if (selectedProductId === 'custom') return 'Custom';
     return selectedProduct?.manufacturer ?? '';
-  }, [selectedProduct]);
+  }, [selectedProduct, selectedProductId]);
 
   const availableProducts = useMemo(() => {
+    if (selectedManufacturer === 'Custom') return [{ id: 'custom', productName: 'Custom' }];
     if (!products) return [];
     return products.filter(p => p.manufacturer === selectedManufacturer);
   }, [products, selectedManufacturer]);
 
   const handleManufacturerChange = (value: string) => {
-    const firstProductOfNewManufacturer = products.find(p => p.manufacturer === value);
-    if (firstProductOfNewManufacturer) {
-        setSelectedProductId(firstProductOfNewManufacturer.id);
+    if (value === 'Custom') {
+      setSelectedProductId('custom');
+    } else {
+      const firstProductOfNewManufacturer = products.find(p => p.manufacturer === value);
+      if (firstProductOfNewManufacturer) {
+          setSelectedProductId(firstProductOfNewManufacturer.id);
+      }
     }
   };
+  
+  const isCustom = selectedProductId === 'custom';
 
   return (
     <div className="space-y-4">
@@ -99,7 +108,7 @@ export function DimensionControls() {
                     value={dimensions.tileWidth}
                     onChange={handleChange}
                     min="1"
-                    disabled={!!selectedProduct}
+                    disabled={!isCustom}
                 />
             </div>
             <div className="space-y-2">
@@ -111,7 +120,7 @@ export function DimensionControls() {
                     value={dimensions.tileHeight}
                     onChange={handleChange}
                     min="1"
-                    disabled={!!selectedProduct}
+                    disabled={!isCustom}
                 />
             </div>
         </div>

@@ -282,7 +282,7 @@ const createNewScreen = (name: string): Screen => {
     topHalfTile: false,
     bottomHalfTile: false,
     processorType: 'Brompton',
-    selectedProductId: null,
+    selectedProductId: 'custom',
   };
 };
 
@@ -326,8 +326,11 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setDimensions = (updater: SetStateAction<Dimensions>) => {
       updateCurrentScreen(screen => {
           const newDimensions = typeof updater === 'function' ? updater(screen.dimensions) : updater;
-          // When manually setting dimensions, clear the selected product
-          const updatedScreen = { ...screen, dimensions: newDimensions, selectedProductId: null };
+          // When manually setting dimensions, clear the selected product if it's not custom
+          const updatedScreen = { ...screen, dimensions: newDimensions };
+          if (screen.selectedProductId !== 'custom') {
+            updatedScreen.selectedProductId = 'custom';
+          }
           
           const totalTiles = newDimensions.screenWidth * newDimensions.screenHeight;
           const newTiles = (totalTiles > 0 && totalTiles <= 4096)
@@ -342,6 +345,9 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setSelectedProductId = (updater: SetStateAction<string | null>) => {
     updateCurrentScreen(screen => {
         const newId = typeof updater === 'function' ? updater(screen.selectedProductId) : updater;
+        if (newId === 'custom') {
+          return { ...screen, selectedProductId: 'custom' };
+        }
         const product = products.find(p => p.id === newId);
         if (product) {
             return {
@@ -624,7 +630,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
       const sliceCol = Math.floor(absoluteContentX / outputWidth);
       const sliceRow = Math.floor(absoluteContentY / outputHeight);
-      const sliceKey = `${sliceRow}-${sliceCol}`;
+      const sliceKey = `${sliceRow}-${col}`;
       
       if (!tilesBySlice.has(sliceKey)) tilesBySlice.set(sliceKey, []);
       tilesBySlice.get(sliceKey)!.push(index);
