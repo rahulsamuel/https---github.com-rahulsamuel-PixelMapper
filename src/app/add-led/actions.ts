@@ -1,6 +1,7 @@
 
 'use server';
 
+import { addData } from '@/services/firestore';
 import { z } from 'zod';
 
 const formSchema = z.object({
@@ -49,13 +50,15 @@ export async function addProductAction(prevState: FormState, formData: FormData)
   }
   
   try {
-    // This is a temporary measure to prevent app crashes.
-    // To connect to a database, this needs to be re-implemented.
-    console.log("Product data:", validatedFields.data);
+    const { error } = await addData('led_products', validatedFields.data);
+
+    if (error) {
+      throw new Error(error);
+    }
 
     return {
       success: true,
-      message: 'Product has been logged to console successfully!',
+      message: 'Product has been added to the database successfully!',
     };
   } catch (error) {
     console.error('Add product error:', error);
