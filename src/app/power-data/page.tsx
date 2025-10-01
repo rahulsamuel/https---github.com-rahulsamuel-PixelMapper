@@ -22,10 +22,12 @@ interface LedProduct {
 type ProcessorType = 'Brompton' | 'Novastar' | 'Helios';
 
 const PROCESSOR_CAPACITIES: Record<ProcessorType, number> = {
-    'Brompton': 525000, // 4K processor has 4 ports, each supports 525k pixels
+    'Brompton': 525000, // 4K processor has 4 ports, each supports 525k pixels at 60Hz
     'Novastar': 650000, // Standard port for many Novastar processors
     'Helios': 524288,   // 8 ports each with this capacity
 };
+
+const REFRESH_RATES = ['60', '72', '75', '90', '100', '120', '144'];
 
 
 export default function PowerDataPage() {
@@ -35,6 +37,7 @@ export default function PowerDataPage() {
     const [circuitAmperage, setCircuitAmperage] = useState('20');
     const [safetyMargin, setSafetyMargin] = useState('80');
     const [processor, setProcessor] = useState<ProcessorType>('Brompton');
+    const [refreshRate, setRefreshRate] = useState('60');
 
     useEffect(() => {
         async function fetchProducts() {
@@ -88,12 +91,19 @@ export default function PowerDataPage() {
 
         // Data Calculation
         const pixelsPerTile = (selectedProduct.tileWidthPx || 0) * (selectedProduct.tileHeightPx || 0);
-        const portCapacity = PROCESSOR_CAPACITIES[processor];
+        let portCapacity = PROCESSOR_CAPACITIES[processor];
+        const rateHz = parseInt(refreshRate);
+
+        // Brompton capacity is affected by refresh rate
+        if (processor === 'Brompton' && rateHz > 60) {
+            portCapacity = portCapacity / (rateHz / 60);
+        }
+
         const maxTilesPerDataPort = pixelsPerTile > 0 ? Math.floor(portCapacity / pixelsPerTile) : 0;
         
         return { maxTilesPerPowerCircuit, maxTilesPerDataPort };
 
-    }, [selectedProduct, circuitVoltage, circuitAmperage, safetyMargin, processor]);
+    }, [selectedProduct, circuitVoltage, circuitAmperage, safetyMargin, processor, refreshRate]);
 
 
     return (
@@ -165,16 +175,29 @@ export default function PowerDataPage() {
                         
                         <div>
                             <h3 className="font-semibold text-lg mb-2">Data Port</h3>
-                            <div className="space-y-2">
-                                <Label htmlFor="processor-type">Processor Type</Label>
-                                <Select value={processor} onValueChange={(v) => setProcessor(v as ProcessorType)}>
-                                    <SelectTrigger id="processor-type"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Brompton">Brompton</SelectItem>
-                                        <SelectItem value="Novastar">Novastar</SelectItem>
-                                        <SelectItem value="Helios">Helios</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="processor-type">Processor Type</Label>
+                                    <Select value={processor} onValueChange={(v) => setProcessor(v as ProcessorType)}>
+                                        <SelectTrigger id="processor-type"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Brompton">Brompton</SelectItem>
+                                            <SelectItem value="Novastar">Novastar</SelectItem>
+                                            <SelectItem value="Helios">Helios</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="refresh-rate">Refresh Rate (Hz)</Label>
+                                    <Select value={refreshRate} onValueChange={setRefreshRate}>
+                                        <SelectTrigger id="refresh-rate"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {REFRESH_RATES.map(rate => (
+                                                <SelectItem key={rate} value={rate}>{rate} Hz</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
 
@@ -199,7 +222,7 @@ export default function PowerDataPage() {
                             <CardContent>
                                 <p className="text-6xl font-bold">{maxTilesPerDataPort}</p>
                                 <p className="text-sm text-muted-foreground">
-                                    Based on a {processor} processor port.
+                                    Based on a {processor} processor port at {refreshRate}Hz.
                                 </p>
                             </CardContent>
                         </Card>
