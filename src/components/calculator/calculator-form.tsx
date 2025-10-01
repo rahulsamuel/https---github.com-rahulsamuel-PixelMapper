@@ -12,12 +12,15 @@ interface LedProduct {
     id: string;
     manufacturer: string;
     productName: string;
+    tileWidthPx: number;
+    tileHeightPx: number;
     [key: string]: any;
 }
 
 export function CalculatorForm() {
   const [products, setProducts] = useState<LedProduct[]>([]);
   const [selectedManufacturer, setSelectedManufacturer] = useState<string>('');
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
 
   useEffect(() => {
     async function fetchProducts() {
@@ -42,6 +45,16 @@ export function CalculatorForm() {
     return products.filter(p => p.manufacturer === selectedManufacturer);
   }, [products, selectedManufacturer]);
 
+  const selectedProduct = useMemo(() => {
+    if (!selectedProductId) return null;
+    return products.find(p => p.id === selectedProductId);
+  }, [products, selectedProductId]);
+
+  const handleManufacturerChange = (value: string) => {
+    setSelectedManufacturer(value);
+    setSelectedProductId('');
+  };
+
 
   return (
     <form className="space-y-6">
@@ -53,7 +66,7 @@ export function CalculatorForm() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="led-manufacturer">LED Manufacturer</Label>
-          <Select onValueChange={setSelectedManufacturer} value={selectedManufacturer}>
+          <Select onValueChange={handleManufacturerChange} value={selectedManufacturer}>
             <SelectTrigger id="led-manufacturer">
               <SelectValue placeholder="Select manufacturer" />
             </SelectTrigger>
@@ -66,7 +79,7 @@ export function CalculatorForm() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="led-product">LED Product</Label>
-          <Select disabled={!selectedManufacturer}>
+          <Select onValueChange={setSelectedProductId} value={selectedProductId} disabled={!selectedManufacturer}>
             <SelectTrigger id="led-product">
               <SelectValue placeholder="Select product" />
             </SelectTrigger>
@@ -78,6 +91,12 @@ export function CalculatorForm() {
           </Select>
         </div>
       </div>
+      
+      {selectedProduct && (
+        <div className="p-3 rounded-md bg-muted/50 border text-sm text-center text-muted-foreground">
+          Tile Resolution: <span className="font-semibold text-foreground">{selectedProduct.tileWidthPx}px</span> x <span className="font-semibold text-foreground">{selectedProduct.tileHeightPx}px</span>
+        </div>
+      )}
 
       <div className="space-y-3">
         <Label>Operating Voltage</Label>
