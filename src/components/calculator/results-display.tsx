@@ -6,6 +6,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Copy, FileDown } from "lucide-react";
 
+interface FormState {
+    projectName: string;
+    selectedProductId: string | null;
+    voltage: '110v' | '208v' | '230v';
+    phase: 'single-phase' | 'three-phase';
+    screenWidthTiles: number;
+    screenHeightTiles: number;
+}
+
+interface CalculatedResults {
+    resolution: { width: number; height: number };
+    totalPixels: number;
+    aspectRatio: string;
+    dimensionsMm: { width: number; height: number };
+    dimensionsIn: { width: number; height: number };
+    dimensionsFt: { width: number; height: number };
+    totalWeightKg: number;
+    totalWeightLbs: number;
+    powerPerM2: { max: number; avg: number };
+    totalPower: { max: number; avg: number };
+    currentDraw: { max: number; avg: number; label: string };
+    totalTiles: number;
+}
+
 const ResultRow = ({ label, value }: { label: string; value: React.ReactNode }) => (
   <div className="flex justify-between items-center">
     <p className="text-muted-foreground">{label}</p>
@@ -22,7 +46,14 @@ const ResultBlock = ({ title, children }: { title: string; children: React.React
     </div>
 );
 
-export function ResultsDisplay() {
+export function ResultsDisplay({ results, formState }: { results: CalculatedResults; formState: FormState }) {
+  
+  const formatNumber = (num: number, digits = 2) => {
+    return num.toLocaleString(undefined, {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    });
+  }
   
   return (
     <div className="space-y-6">
@@ -46,16 +77,16 @@ export function ResultsDisplay() {
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
             <ResultBlock title="Resolution">
-                <p className="font-bold text-2xl">1408 x 880 <span className="text-sm text-muted-foreground font-normal">pixels</span></p>
+                <p className="font-bold text-2xl">{formatNumber(results.resolution.width, 0)} x {formatNumber(results.resolution.height, 0)} <span className="text-sm text-muted-foreground font-normal">pixels</span></p>
             </ResultBlock>
             <ResultBlock title="Tile Configuration">
-                <p className="font-bold text-2xl">8 x 5 <span className="text-sm text-muted-foreground font-normal">(40 total)</span></p>
+                <p className="font-bold text-2xl">{formState.screenWidthTiles} x {formState.screenHeightTiles} <span className="text-sm text-muted-foreground font-normal">({results.totalTiles} total)</span></p>
             </ResultBlock>
             <ResultBlock title="Total Pixels">
-                <p className="font-bold text-2xl">1,239,040</p>
+                <p className="font-bold text-2xl">{formatNumber(results.totalPixels, 0)}</p>
             </ResultBlock>
             <ResultBlock title="Aspect Ratio">
-                <p className="font-bold text-2xl">8:5 <span className="text-sm text-muted-foreground font-normal">(1.60:1)</span></p>
+                <p className="font-bold text-2xl">{results.aspectRatio}</p>
             </ResultBlock>
         </CardContent>
       </Card>
@@ -67,12 +98,12 @@ export function ResultsDisplay() {
         <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
                 <ResultBlock title="Metric">
-                     <ResultRow label="Millimeters" value="4000.0 x 2500.0 mm" />
-                     <ResultRow label="Meters" value="4.00 x 2.50 m" />
+                     <ResultRow label="Millimeters" value={`${formatNumber(results.dimensionsMm.width, 1)} x ${formatNumber(results.dimensionsMm.height, 1)} mm`} />
+                     <ResultRow label="Meters" value={`${formatNumber(results.dimensionsMm.width / 1000, 2)} x ${formatNumber(results.dimensionsMm.height / 1000, 2)} m`} />
                 </ResultBlock>
                 <ResultBlock title="Imperial">
-                    <ResultRow label="Inches" value={`157.5 x 98.4"`} />
-                    <ResultRow label="Feet" value={`13.12 x 8.20'`} />
+                    <ResultRow label="Inches" value={`${formatNumber(results.dimensionsIn.width, 1)}" x ${formatNumber(results.dimensionsIn.height, 1)}"`} />
+                    <ResultRow label="Feet" value={`${formatNumber(results.dimensionsFt.width, 2)}' x ${formatNumber(results.dimensionsFt.height, 2)}'`} />
                 </ResultBlock>
             </div>
         </CardContent>
@@ -84,10 +115,10 @@ export function ResultsDisplay() {
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
             <ResultBlock title="Metric">
-                <p className="font-bold text-2xl">374.0 <span className="text-sm text-muted-foreground font-normal">kg</span></p>
+                <p className="font-bold text-2xl">{formatNumber(results.totalWeightKg, 1)} <span className="text-sm text-muted-foreground font-normal">kg</span></p>
             </ResultBlock>
             <ResultBlock title="Imperial">
-                <p className="font-bold text-2xl">824.5 <span className="text-sm text-muted-foreground font-normal">lbs</span></p>
+                <p className="font-bold text-2xl">{formatNumber(results.totalWeightLbs, 1)} <span className="text-sm text-muted-foreground font-normal">lbs</span></p>
             </ResultBlock>
         </CardContent>
       </Card>
@@ -99,22 +130,22 @@ export function ResultsDisplay() {
         <CardContent className="space-y-4">
             <ResultBlock title="Per Square Meter">
                 <div className="grid grid-cols-2 gap-4">
-                    <ResultRow label="Maximum" value="760 W/m²" />
-                    <ResultRow label="Average" value="380 W/m²" />
+                    <ResultRow label="Maximum" value={`${formatNumber(results.powerPerM2.max, 0)} W/m²`} />
+                    <ResultRow label="Average" value={`${formatNumber(results.powerPerM2.avg, 0)} W/m²`} />
                 </div>
             </ResultBlock>
             <Separator />
             <ResultBlock title="Total Power">
                 <div className="grid grid-cols-2 gap-4">
-                    <ResultRow label="Maximum" value="7600.00 W" />
-                    <ResultRow label="Average" value="3800.00 W" />
+                    <ResultRow label="Maximum" value={`${formatNumber(results.totalPower.max, 2)} W`} />
+                    <ResultRow label="Average" value={`${formatNumber(results.totalPower.avg, 2)} W`} />
                 </div>
             </ResultBlock>
              <Separator />
-            <ResultBlock title="Current Draw @ 208V (Three Phase)">
+            <ResultBlock title={results.currentDraw.label}>
                 <div className="grid grid-cols-2 gap-4">
-                    <ResultRow label="Maximum" value="26.37 A" />
-                    <ResultRow label="Average" value="13.18 A" />
+                    <ResultRow label="Maximum" value={`${formatNumber(results.currentDraw.max, 2)} A`} />
+                    <ResultRow label="Average" value={`${formatNumber(results.currentDraw.avg, 2)} A`} />
                 </div>
             </ResultBlock>
         </CardContent>
@@ -122,3 +153,5 @@ export function ResultsDisplay() {
     </div>
   )
 }
+
+    

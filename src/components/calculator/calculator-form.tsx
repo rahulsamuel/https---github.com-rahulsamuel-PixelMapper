@@ -1,12 +1,11 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { getProducts } from '@/app/calculator/actions';
 
 interface LedProduct {
     id: string;
@@ -17,50 +16,55 @@ interface LedProduct {
     [key: string]: any;
 }
 
-export function CalculatorForm() {
-  const [products, setProducts] = useState<LedProduct[]>([]);
-  const [selectedManufacturer, setSelectedManufacturer] = useState<string>('');
-  const [selectedProductId, setSelectedProductId] = useState<string>('');
+interface FormState {
+    projectName: string;
+    selectedProductId: string | null;
+    voltage: '110v' | '208v' | '230v';
+    phase: 'single-phase' | 'three-phase';
+    screenWidthTiles: number;
+    screenHeightTiles: number;
+}
 
-  useEffect(() => {
-    async function fetchProducts() {
-      const { data, error } = await getProducts();
-      if (data) {
-        setProducts(data as LedProduct[]);
-      }
-      if (error) {
-        console.error("Failed to fetch LED products:", error);
-      }
-    }
-    fetchProducts();
-  }, []);
+interface CalculatorFormProps {
+    products: LedProduct[];
+    formState: FormState;
+    onFormChange: (field: keyof FormState, value: any) => void;
+    selectedProduct: LedProduct | null;
+}
 
+export function CalculatorForm({ products, formState, onFormChange, selectedProduct }: CalculatorFormProps) {
+  
   const manufacturers = useMemo(() => {
     if (!products) return [];
     return [...new Set(products.map(p => p.manufacturer))];
   }, [products]);
+
+  const selectedManufacturer = useMemo(() => {
+    return selectedProduct?.manufacturer ?? '';
+  }, [selectedProduct]);
 
   const availableProducts = useMemo(() => {
     if (!products) return [];
     return products.filter(p => p.manufacturer === selectedManufacturer);
   }, [products, selectedManufacturer]);
 
-  const selectedProduct = useMemo(() => {
-    if (!selectedProductId) return null;
-    return products.find(p => p.id === selectedProductId);
-  }, [products, selectedProductId]);
-
   const handleManufacturerChange = (value: string) => {
-    setSelectedManufacturer(value);
-    setSelectedProductId('');
+    const firstProductOfNewManufacturer = products.find(p => p.manufacturer === value);
+    if (firstProductOfNewManufacturer) {
+        onFormChange('selectedProductId', firstProductOfNewManufacturer.id);
+    }
   };
 
 
   return (
-    <form className="space-y-6">
+    <div className="space-y-6">
       <div className="space-y-2">
         <Label htmlFor="project-name">Project Name</Label>
-        <Input id="project-name" placeholder="My LED Project" />
+        <Input 
+          id="project-name" 
+          value={formState.projectName}
+          onChange={(e) => onFormChange('projectName', e.target.value)}
+        />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -79,7 +83,11 @@ export function CalculatorForm() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="led-product">LED Product</Label>
-          <Select onValueChange={setSelectedProductId} value={selectedProductId} disabled={!selectedManufacturer}>
+          <Select 
+            onValueChange={(value) => onFormChange('selectedProductId', value)} 
+            value={formState.selectedProductId ?? ''}
+            disabled={!selectedManufacturer}
+          >
             <SelectTrigger id="led-product">
               <SelectValue placeholder="Select product" />
             </SelectTrigger>
@@ -100,7 +108,11 @@ export function CalculatorForm() {
 
       <div className="space-y-3">
         <Label>Operating Voltage</Label>
-        <RadioGroup defaultValue="208v" className="grid grid-cols-3 gap-2">
+        <RadioGroup 
+          value={formState.voltage} 
+          onValueChange={(v) => onFormChange('voltage', v)} 
+          className="grid grid-cols-3 gap-2"
+        >
             <div>
                 <RadioGroupItem value="110v" id="110v" className="peer sr-only" />
                 <Label htmlFor="110v" className="flex items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
@@ -124,7 +136,11 @@ export function CalculatorForm() {
       
       <div className="space-y-3">
         <Label>Phase Configuration</Label>
-        <RadioGroup defaultValue="three-phase" className="grid grid-cols-2 gap-2">
+        <RadioGroup 
+          value={formState.phase}
+          onValueChange={(v) => onFormChange('phase', v)}
+          className="grid grid-cols-2 gap-2"
+        >
             <div>
                 <RadioGroupItem value="single-phase" id="single-phase" className="peer sr-only" />
                 <Label htmlFor="single-phase" className="flex items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
@@ -139,31 +155,31 @@ export function CalculatorForm() {
             </div>
         </RadioGroup>
       </div>
-
-       <div className="space-y-3">
-        <Label>Screen Size Units</Label>
-        <RadioGroup defaultValue="tiles" className="grid grid-cols-3 gap-2">
-            {['Pixels', 'Tiles', 'Feet', 'Inches', 'Meters', 'Millimeters'].map(unit => (
-                <div key={unit}>
-                    <RadioGroupItem value={unit.toLowerCase()} id={unit.toLowerCase()} className="peer sr-only" />
-                    <Label htmlFor={unit.toLowerCase()} className="flex items-center justify-center rounded-md border-2 border-muted bg-popover px-4 py-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer">
-                        {unit}
-                    </Label>
-                </div>
-            ))}
-        </RadioGroup>
-      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="screen-width">Screen Width (tiles)</Label>
-          <Input id="screen-width" type="number" defaultValue="8" />
+          <Input 
+            id="screen-width" 
+            type="number" 
+            value={formState.screenWidthTiles}
+            onChange={(e) => onFormChange('screenWidthTiles', Number(e.target.value))}
+            min="1"
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="screen-height">Screen Height (tiles)</Label>
-          <Input id="screen-height" type="number" defaultValue="5" />
+          <Input 
+            id="screen-height" 
+            type="number" 
+            value={formState.screenHeightTiles}
+            onChange={(e) => onFormChange('screenHeightTiles', Number(e.target.value))}
+            min="1"
+          />
         </div>
       </div>
-    </form>
+    </div>
   )
 }
+
+    
