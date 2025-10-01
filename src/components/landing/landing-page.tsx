@@ -4,7 +4,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { GitBranch, FileOutput, Download, Upload, Cpu, Shapes, LineChart } from 'lucide-react';
+import { GitBranch, FileOutput, Download, Upload, Cpu, Shapes, LineChart, Bolt } from 'lucide-react';
 import Image from 'next/image';
 import { Logo } from '../logo';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,9 @@ export async function LandingPage() {
             </Link>
             <Link href={"/calculator"}>
               <Button variant="outline">LED Calculator</Button>
+            </Link>
+            <Link href={"/power-data"}>
+              <Button variant="outline">Power & Data</Button>
             </Link>
           </div>
         </div>
