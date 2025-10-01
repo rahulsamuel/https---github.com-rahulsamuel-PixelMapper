@@ -27,7 +27,7 @@ const PROCESSOR_CAPACITIES: Record<ProcessorType, number> = {
     'Helios': 524288,   // 8 ports each with this capacity
 };
 
-const REFRESH_RATES = ['24', '25', '30', '48', '50', '59.94', '60', '72', '75', '90', '100', '120', '144'];
+const REFRESH_RATES = ['23.98', '24', '25', '29.97', '30', '48', '50', '59.94', '60', '72', '75', '90', '100', '120', '144'];
 
 
 export default function PowerDataPage() {
