@@ -65,3 +65,16 @@ export async function getData(collection: string, orderBy?: string) {
         return { data: [], error };
     }
 }
+
+export async function deleteData(collection: string, docId: string) {
+    try {
+        const app = getFirebaseAdminApp();
+        const db = admin.firestore(app);
+        await db.collection(collection).doc(docId).delete();
+        return { success: true };
+    } catch (e) {
+        const error = e instanceof Error ? e.message : "An unknown error occurred during Firestore operation.";
+        console.error(`Firestore 'deleteData' Error in collection '${collection}':`, error);
+        return { success: false, error };
+    }
+}

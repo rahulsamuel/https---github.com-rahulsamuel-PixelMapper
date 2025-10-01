@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, DraftingCompass, Calculator, Home, LineChart, LogOut } from 'lucide-react';
+import { ChevronDown, DraftingCompass, Calculator, Home, LineChart, LogOut, Package } from 'lucide-react';
 import { useAuth } from "@/contexts/auth-context";
 
 export function AppHeader() {
@@ -56,6 +56,12 @@ export function AppHeader() {
                         <DropdownMenuItem>
                             <LineChart className="mr-2 h-4 w-4" />
                             <span>Tracking</span>
+                        </DropdownMenuItem>
+                    </Link>
+                     <Link href="/admin/products">
+                        <DropdownMenuItem>
+                            <Package className="mr-2 h-4 w-4" />
+                            <span>Products</span>
                         </DropdownMenuItem>
                     </Link>
                     <DropdownMenuSeparator />

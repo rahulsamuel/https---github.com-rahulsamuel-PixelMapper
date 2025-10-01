@@ -1,6 +1,9 @@
 
 import { LedProductForm } from "@/components/admin/led-product-form";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 
 export default function AddLedPage() {
     return (
@@ -17,6 +20,14 @@ export default function AddLedPage() {
                     <LedProductForm />
                 </CardContent>
             </Card>
+            <div className="mt-4">
+              <Link href="/calculator">
+                  <Button variant="outline" className="w-full">
+                      <ArrowLeft className="mr-2" />
+                      Back to LED Calculator
+                  </Button>
+              </Link>
+          </div>
         </div>
     );
 }
