@@ -66,6 +66,39 @@ export async function getData(collection: string, orderBy?: string) {
     }
 }
 
+export async function getDataById(collection: string, docId: string) {
+  try {
+    const app = getFirebaseAdminApp();
+    const db = admin.firestore(app);
+    const docRef = db.collection(collection).doc(docId);
+    const docSnap = await docRef.get();
+
+    if (!docSnap.exists) {
+      return { data: null, error: 'Document not found.' };
+    }
+
+    return { data: { id: docSnap.id, ...docSnap.data() }, error: null };
+  } catch (e) {
+    const error = e instanceof Error ? e.message : "An unknown error occurred.";
+    console.error(`Firestore 'getDataById' Error in collection '${collection}':`, error);
+    return { data: null, error };
+  }
+}
+
+export async function updateData(collection: string, docId: string, data: Record<string, any>) {
+  try {
+    const app = getFirebaseAdminApp();
+    const db = admin.firestore(app);
+    await db.collection(collection).doc(docId).update(data);
+    return { success: true };
+  } catch (e) {
+    const error = e instanceof Error ? e.message : "An unknown error occurred.";
+    console.error(`Firestore 'updateData' Error in collection '${collection}':`, error);
+    return { success: false, error };
+  }
+}
+
+
 export async function deleteData(collection: string, docId: string) {
     try {
         const app = getFirebaseAdminApp();

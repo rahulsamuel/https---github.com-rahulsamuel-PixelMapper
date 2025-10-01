@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import Link from "next/link";
 
 export default async function ProductsPage() {
     const { data: products, error } = await getData('led_products');
@@ -83,9 +84,11 @@ export default async function ProductsPage() {
                                     <TableCell>{`${product.tileWidthMm}x${product.tileHeightMm}`}</TableCell>
                                     <TableCell>{product.tileWeightKg}</TableCell>
                                     <TableCell className="flex gap-2">
-                                        <Button variant="ghost" size="icon" disabled>
-                                            <Pencil />
-                                        </Button>
+                                        <Link href={`/admin/products/${product.id}/edit`}>
+                                            <Button variant="ghost" size="icon">
+                                                <Pencil />
+                                            </Button>
+                                        </Link>
                                         <DeleteButton productId={product.id} />
                                     </TableCell>
                                 </TableRow>
