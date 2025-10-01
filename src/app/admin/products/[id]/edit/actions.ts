@@ -51,7 +51,12 @@ export async function updateProductAction(productId: string, prevState: FormStat
   }
   
   try {
-    const { error } = await updateData('led_products', productId, validatedFields.data);
+    const productData = {
+        ...validatedFields.data,
+        updatedAt: new Date().toISOString(),
+    };
+
+    const { error } = await updateData('led_products', productId, productData);
 
     if (error) {
       throw new Error(error);

@@ -50,7 +50,13 @@ export async function addProductAction(prevState: FormState, formData: FormData)
   }
   
   try {
-    const { error } = await addData('led_products', validatedFields.data);
+    const productData = {
+      ...validatedFields.data,
+      createdAt: new Date().toISOString(),
+      createdBy: 'anonymous', // Placeholder until auth is re-enabled
+    };
+
+    const { error } = await addData('led_products', productData);
 
     if (error) {
       throw new Error(error);
