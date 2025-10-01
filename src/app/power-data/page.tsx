@@ -27,7 +27,7 @@ const PROCESSOR_CAPACITIES: Record<ProcessorType, number> = {
     'Helios': 524288,   // 8 ports each with this capacity
 };
 
-const REFRESH_RATES = ['60', '72', '75', '90', '100', '120', '144'];
+const REFRESH_RATES = ['24', '25', '30', '48', '50', '59.94', '60', '72', '75', '90', '100', '120', '144'];
 
 
 export default function PowerDataPage() {
@@ -92,7 +92,7 @@ export default function PowerDataPage() {
         // Data Calculation
         const pixelsPerTile = (selectedProduct.tileWidthPx || 0) * (selectedProduct.tileHeightPx || 0);
         let portCapacity = PROCESSOR_CAPACITIES[processor];
-        const rateHz = parseInt(refreshRate);
+        const rateHz = parseFloat(refreshRate);
 
         // Brompton capacity is affected by refresh rate
         if (processor === 'Brompton' && rateHz > 60) {
