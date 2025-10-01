@@ -117,20 +117,10 @@ export function EditProductForm({ product }: { product: any }) {
     }
   }, [state, toast, form]);
 
-  const onFormSubmit = (data: FormData) => {
-    const formData = new FormData();
-    for (const key in data) {
-        // @ts-ignore
-        formData.append(key, String(data[key]));
-    }
-    formAction(formData);
-  };
-
   return (
     <Form {...form}>
         <form 
             action={formAction}
-            onSubmit={form.handleSubmit(onFormSubmit)}
             className="space-y-8"
         >
             <FormSection title="Basic Information">
@@ -207,7 +197,7 @@ export function EditProductForm({ product }: { product: any }) {
                         render={({ field }) => (
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                                 <FormControl>
-                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} name={field.name} />
                                 </FormControl>
                                 <div className="space-y-1 leading-none">
                                     <FormLabel>Indoor</FormLabel>
@@ -221,7 +211,7 @@ export function EditProductForm({ product }: { product: any }) {
                         render={({ field }) => (
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                                 <FormControl>
-                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} name={field.name} />
                                 </FormControl>
                                 <div className="space-y-1 leading-none">
                                     <FormLabel>Outdoor</FormLabel>
@@ -235,7 +225,7 @@ export function EditProductForm({ product }: { product: any }) {
                         render={({ field }) => (
                             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                                 <FormControl>
-                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                    <Checkbox checked={field.value} onCheckedChange={field.onChange} name={field.name} />
                                 </FormControl>
                                 <div className="space-y-1 leading-none">
                                     <FormLabel>Floor</FormLabel>

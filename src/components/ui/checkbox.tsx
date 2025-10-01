@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -23,6 +24,13 @@ const Checkbox = React.forwardRef<
     >
       <Check className="h-4 w-4" />
     </CheckboxPrimitive.Indicator>
+     {/* Hidden input to ensure value is submitted in forms */}
+    <input
+        type="hidden"
+        name={props.name}
+        value={props.checked ? "true" : "false"}
+        disabled={props.disabled}
+    />
   </CheckboxPrimitive.Root>
 ))
 Checkbox.displayName = CheckboxPrimitive.Root.displayName
