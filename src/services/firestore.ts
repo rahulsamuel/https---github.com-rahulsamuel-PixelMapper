@@ -39,11 +39,18 @@ export async function addData(collection: string, data: Record<string, any>) {
   }
 }
 
-export async function getData(collection: string) {
+export async function getData(collection: string, orderBy?: string) {
     try {
         const app = getFirebaseAdminApp();
         const db = admin.firestore(app);
-        const snapshot = await db.collection(collection).orderBy('timestamp', 'desc').get();
+        
+        let query: admin.firestore.Query<admin.firestore.DocumentData> = db.collection(collection);
+
+        if (orderBy) {
+            query = query.orderBy(orderBy);
+        }
+
+        const snapshot = await query.get();
         
         if (snapshot.empty) {
             return { data: [], error: null };
