@@ -79,7 +79,7 @@ export async function LandingPage() {
               <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <CardHeader className="flex flex-row items-center gap-4">
                     <Shapes className="w-8 h-8 text-primary" />
-                    <CardTitle>Custom & Half-Tiles</CardTitle>
+                    <CardTitle>Custom &amp; Half-Tiles</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <p className="text-sm text-muted-foreground">
@@ -121,18 +121,16 @@ export async function LandingPage() {
                 </CardContent>
               </Card>
                <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-                <Link href="/login">
-                  <CardHeader className="flex flex-row items-center gap-4">
-                    <LineChart className="w-8 h-8 text-primary" />
-                    <CardTitle>Admin & Tracking</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                      Log in to a protected admin area to track visitor events and downloads from your site.
-                    </p>
-                  </CardContent>
-                </Link>
-              </Card>
+                 <CardHeader className="flex flex-row items-center gap-4">
+                   <Bolt className="w-8 h-8 text-primary" />
+                   <CardTitle>Power &amp; Data Calculator</CardTitle>
+                 </CardHeader>
+                 <CardContent>
+                   <p className="text-sm text-muted-foreground">
+                     Quickly calculate the maximum number of LED tiles a single power circuit or data port can support before being overloaded.
+                   </p>
+                 </CardContent>
+               </Card>
               <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
                 <CardHeader className="flex flex-row items-center gap-4">
                   <Upload className="w-8 h-8 text-primary" />
