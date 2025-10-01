@@ -36,7 +36,7 @@ export default function CalculatorPage() {
             </CardContent>
           </Card>
            <div className="mt-4">
-              <Link href="/admin/add-led">
+              <Link href="/add-led">
                   <Button variant="outline" className="w-full">
                       <PlusCircle className="mr-2" />
                       Add New LED Product

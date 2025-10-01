@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
-import { addProductAction, type FormState } from '@/app/admin/add-led/actions';
+import { addProductAction, type FormState } from '@/app/add-led/actions';
 import { Checkbox } from '../ui/checkbox';
 
 const formSchema = z.object({
