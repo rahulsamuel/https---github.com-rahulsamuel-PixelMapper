@@ -7,6 +7,16 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback, Re
 import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 import { isColorDark } from "@/lib/utils";
+import { getProducts } from "@/app/calculator/actions";
+
+interface LedProduct {
+    id: string;
+    manufacturer: string;
+    productName: string;
+    tileWidthPx: number;
+    tileHeightPx: number;
+    [key: string]: any;
+}
 
 interface Dimensions {
   tileWidth: number;
@@ -114,6 +124,7 @@ interface Screen {
   topHalfTile: boolean;
   bottomHalfTile: boolean;
   processorType: ProcessorType;
+  selectedProductId: string | null;
 }
 
 interface ProjectData {
@@ -127,6 +138,7 @@ interface ProjectData {
 // Omit functions and refs from the state, pass them separately
 interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'> {
   screens: Screen[];
+  products: LedProduct[];
   currentScreen: Screen;
   currentScreenId: string;
   setCurrentScreenId: (id: string) => void;
@@ -198,6 +210,7 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'> {
   handleBottomHalfTileChange: (add: boolean) => void;
   effectiveScreenHeight: number;
   setProcessorType: Dispatch<SetStateAction<ProcessorType>>;
+  setSelectedProductId: Dispatch<SetStateAction<string | null>>;
 }
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
@@ -269,6 +282,7 @@ const createNewScreen = (name: string): Screen => {
     topHalfTile: false,
     bottomHalfTile: false,
     processorType: 'Brompton',
+    selectedProductId: null,
   };
 };
 
@@ -285,22 +299,62 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [currentScreenId, setCurrentScreenId] = useState<string>(screens[0].id);
   const [activeTab, setActiveTab] = useState('grid');
   const [rasterMapConfig, setRasterMapConfig] = useState<RasterMapConfig | null>(null);
+  const [products, setProducts] = useState<LedProduct[]>([]);
+
+  useEffect(() => {
+      async function fetchProducts() {
+          const { data, error } = await getProducts();
+          if (data) {
+              setProducts(data as LedProduct[]);
+              if (data.length > 0 && !currentScreen.selectedProductId) {
+                  // Don't auto-select here to avoid race conditions, let user select.
+              }
+          }
+          if (error) {
+              console.error("Failed to fetch LED products:", error);
+          }
+      }
+      fetchProducts();
+  }, []);
 
   const currentScreen = useMemo(() => screens.find(s => s.id === currentScreenId) || screens[0], [screens, currentScreenId]);
   
   const updateCurrentScreen = useCallback((updater: (screen: Screen) => Screen) => {
     setScreens(prevScreens => prevScreens.map(s => s.id === currentScreenId ? updater(s) : s));
   }, [currentScreenId]);
-
+  
   const setDimensions = (updater: SetStateAction<Dimensions>) => {
+      updateCurrentScreen(screen => {
+          const newDimensions = typeof updater === 'function' ? updater(screen.dimensions) : updater;
+          // When manually setting dimensions, clear the selected product
+          const updatedScreen = { ...screen, dimensions: newDimensions, selectedProductId: null };
+          
+          const totalTiles = newDimensions.screenWidth * newDimensions.screenHeight;
+          const newTiles = (totalTiles > 0 && totalTiles <= 4096)
+              ? Array.from({ length: totalTiles }, (_, i) => ({ id: i, deleted: false }))
+              : [];
+          nextTileId.current = newTiles.length;
+
+          return { ...updatedScreen, tiles: newTiles, topHalfTile: false, bottomHalfTile: false };
+      });
+  };
+
+  const setSelectedProductId = (updater: SetStateAction<string | null>) => {
     updateCurrentScreen(screen => {
-      const newDimensions = typeof updater === 'function' ? updater(screen.dimensions) : updater;
-      const totalTiles = newDimensions.screenWidth * newDimensions.screenHeight;
-      const newTiles = (totalTiles > 0 && totalTiles <= 4096)
-        ? Array.from({ length: totalTiles }, (_, i) => ({ id: i, deleted: false }))
-        : [];
-      nextTileId.current = newTiles.length;
-      return { ...screen, dimensions: newDimensions, tiles: newTiles, topHalfTile: false, bottomHalfTile: false };
+        const newId = typeof updater === 'function' ? updater(screen.selectedProductId) : updater;
+        const product = products.find(p => p.id === newId);
+        if (product) {
+            return {
+                ...screen,
+                selectedProductId: newId,
+                dimensions: {
+                    ...screen.dimensions,
+                    tileWidth: product.tileWidthPx,
+                    tileHeight: product.tileHeightPx,
+                }
+            };
+        }
+        return { ...screen, selectedProductId: newId };
     });
   };
   
@@ -1658,6 +1712,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     wiringDiagramRef,
     rasterMapRef,
     screens,
+    products,
     currentScreen,
     currentScreenId,
     setCurrentScreenId,
@@ -1762,6 +1817,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     effectiveScreenHeight,
     processorType: currentScreen.processorType,
     setProcessorType,
+    selectedProductId: currentScreen.selectedProductId,
+    setSelectedProductId,
   };
 
   return (
