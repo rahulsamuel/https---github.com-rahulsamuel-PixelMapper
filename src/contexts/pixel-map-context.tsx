@@ -630,7 +630,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
       const sliceCol = Math.floor(absoluteContentX / outputWidth);
       const sliceRow = Math.floor(absoluteContentY / outputHeight);
-      const sliceKey = `${sliceRow}-${col}`;
+      const sliceKey = `${sliceRow}-${sliceCol}`;
       
       if (!tilesBySlice.has(sliceKey)) tilesBySlice.set(sliceKey, []);
       tilesBySlice.get(sliceKey)!.push(index);
