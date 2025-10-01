@@ -117,10 +117,20 @@ export function EditProductForm({ product }: { product: any }) {
     }
   }, [state, toast, form]);
 
+  const onFormSubmit = (data: FormData) => {
+    const formData = new FormData();
+    for (const key in data) {
+        // @ts-ignore
+        formData.append(key, String(data[key]));
+    }
+    formAction(formData);
+  };
+
   return (
     <Form {...form}>
         <form 
-            action={formAction} 
+            action={formAction}
+            onSubmit={form.handleSubmit(onFormSubmit)}
             className="space-y-8"
         >
             <FormSection title="Basic Information">

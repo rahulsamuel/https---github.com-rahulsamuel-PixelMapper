@@ -101,7 +101,7 @@ export function LedProductForm() {
           description: state.message,
         });
         form.reset();
-        formRef.current?.reset();
+        // formRef.current?.reset(); // This is not needed with react-hook-form and server actions
       } else if (state.errors) {
         toast({
           title: 'Error',
@@ -124,11 +124,21 @@ export function LedProductForm() {
     }
   }, [state, toast, form]);
 
+  const onFormSubmit = (data: FormData) => {
+    const formData = new FormData();
+    for (const key in data) {
+        // @ts-ignore
+        formData.append(key, String(data[key]));
+    }
+    formAction(formData);
+  };
+
   return (
     <Form {...form}>
         <form 
             ref={formRef}
-            action={formAction} 
+            action={formAction}
+            onSubmit={form.handleSubmit(onFormSubmit)}
             className="space-y-8"
         >
             <FormSection title="Basic Information">

@@ -37,9 +37,9 @@ export async function updateProductAction(productId: string, prevState: FormStat
     
   const validatedFields = formSchema.safeParse({
     ...Object.fromEntries(formData.entries()),
-    applicationIndoor: formData.get('applicationIndoor') === 'on',
-    applicationOutdoor: formData.get('applicationOutdoor') === 'on',
-    applicationFloor: formData.get('applicationFloor') === 'on',
+    applicationIndoor: formData.get('applicationIndoor') === 'true',
+    applicationOutdoor: formData.get('applicationOutdoor') === 'true',
+    applicationFloor: formData.get('applicationFloor') === 'true',
   });
 
   if (!validatedFields.success) {
