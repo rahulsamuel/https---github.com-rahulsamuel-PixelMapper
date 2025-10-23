@@ -85,14 +85,23 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
         if (a.x !== b.x) return a.x - b.x;
         return a.x % 2 === 0 ? a.y - b.y : b.y - a.y;
       case 'serpentine-vertical-reverse':
-        if (a.x !== b.x) return b.x - a.x;
+         if (a.x !== b.x) return b.x - a.x;
+        // The column index from the right edge is (screenWidth - 1 - a.x)
         return (screenWidth - 1 - a.x) % 2 === 0 ? b.y - a.y : a.y - b.y;
       case 'serpentine-vertical-bottom-start':
         if (a.x !== b.x) return a.x - b.x;
         return a.x % 2 === 0 ? b.y - a.y : a.y - b.y;
       case 'serpentine-vertical-bottom-main':
-         if (a.x !== b.x) return a.x - b.x;
-         return a.x % 2 === 0 ? b.y - a.y : a.y - b.y;
+        const columnPairA = Math.floor(a.x / 2);
+        const columnPairB = Math.floor(b.x / 2);
+        if (columnPairA !== columnPairB) {
+            return columnPairA - columnPairB;
+        }
+        // Within the same pair of columns, sort by column then row
+        if (a.x !== b.x) return a.x - b.x;
+        // If it's the left column of the pair (even), go up.
+        // If it's the right column of the pair (odd), go down.
+        return a.x % 2 === 0 ? b.y - a.y : a.y - b.y;
       case 'serpentine-vertical-reverse-bottom-start':
         if (a.x !== b.x) return b.x - a.x;
         return (screenWidth - 1 - a.x) % 2 === 0 ? b.y - a.y : a.y - b.y;
