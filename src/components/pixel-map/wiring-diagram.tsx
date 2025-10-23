@@ -38,8 +38,6 @@ export function WiringDiagram() {
     bottomHalfTile,
     effectiveScreenHeight,
     wiringData,
-    rasterMapConfig,
-    currentScreen
   } = usePixelMap();
 
   const [isClient, setIsClient] = useState(false);
@@ -68,18 +66,6 @@ export function WiringDiagram() {
 
   const totalGridPixelHeight = rowData.reduce((acc, curr) => acc + curr.height, 0);
   const totalGridPixelWidth = dimensions.screenWidth * dimensions.tileWidth;
-
-  const getSliceBorderColor = () => {
-    if (!rasterMapConfig) return '';
-    switch(rasterMapConfig.resolutionType) {
-        case 'hd': return 'border-chart-1';
-        case '4k-uhd': return 'border-chart-2';
-        case '4k-dci': return 'border-chart-4';
-        case 'custom': return 'border-chart-3';
-        case 'content':
-        default: return 'border-primary';
-    }
-  }
 
   if (tiles.length === 0) {
     return (
@@ -300,64 +286,7 @@ export function WiringDiagram() {
               })}
             </svg>
         </div>
-        {/* Raster Slice Borders - rendered outside the ref so they don't get downloaded */}
-        {rasterMapConfig && rasterMapConfig.slices && (
-          <div 
-            className="absolute top-0 left-0 w-full h-full pointer-events-none z-30"
-            style={{ 
-              width: totalGridPixelWidth, 
-              height: totalGridPixelHeight,
-              transform: `scale(${zoom})`,
-              transformOrigin: 'top left',
-            }}
-          >
-            {rasterMapConfig.screenArrangement.map(arrangement => {
-              if (arrangement.screenId !== currentScreen.id) return null;
-
-              return rasterMapConfig.slices.map(slice => {
-                  // Check if the slice overlaps with the current screen arrangement
-                  const overlap = (
-                      arrangement.x < slice.x + slice.width &&
-                      arrangement.x + arrangement.width > slice.x &&
-                      arrangement.y < slice.y + slice.height &&
-                      arrangement.y + arrangement.height > slice.y
-                  );
-                  if (!overlap) return null;
-
-                  return (
-                      <div 
-                          key={slice.key} 
-                          className={cn(
-                              "absolute border-2 border-dashed flex items-center justify-center",
-                              getSliceBorderColor()
-                          )}
-                          style={{
-                              left: slice.x - arrangement.x,
-                              top: slice.y - arrangement.y,
-                              width: slice.width,
-                              height: slice.height,
-                              boxSizing: 'border-box'
-                          }}
-                      >
-                         <div 
-                            className="text-center p-2 rounded-md bg-background/80"
-                            style={{
-                                transform: `scale(${Math.min(2, Math.max(0.5, 1 / zoom))})`, // Adjust label size based on zoom
-                                transformOrigin: 'center center',
-                            }}
-                          >
-                              <p className="font-bold whitespace-nowrap">{slice.filename.split('/').pop()?.replace('.png','').replace('raster-map-','')}</p>
-                              <p className="font-mono text-xs whitespace-nowrap">Size: {slice.width}x{slice.height}</p>
-                          </div>
-                      </div>
-                  )
-              });
-            })}
-          </div>
-        )}
       </div>
     </div>
   );
 }
-
-    
