@@ -49,7 +49,7 @@ interface RasterMapConfig {
   screenArrangement: ScreenArrangement[];
 }
 
-export type WiringPattern = 'serpentine-horizontal' | 'serpentine-vertical' | 'serpentine-horizontal-reverse' | 'serpentine-vertical-reverse' | 'left-right' | 'top-bottom' | 'bottom-to-top' | 'serpentine-vertical-bottom-start' | 'serpentine-vertical-reverse-bottom-start';
+export type WiringPattern = 'serpentine-horizontal' | 'serpentine-vertical' | 'serpentine-horizontal-reverse' | 'serpentine-vertical-reverse' | 'left-right' | 'top-bottom' | 'bottom-to-top' | 'serpentine-vertical-bottom-start' | 'serpentine-vertical-reverse-bottom-start' | 'serpentine-vertical-bottom-main';
 type ProcessorType = 'Brompton' | 'Novastar' | 'Helios';
 
 export interface WiringInfo {
@@ -86,9 +86,11 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
         return a.x % 2 === 0 ? a.y - b.y : b.y - a.y;
       case 'serpentine-vertical-reverse':
         if (a.x !== b.x) return b.x - a.x;
-        const colFromRight = (screenWidth - 1) - a.x;
-        return colFromRight % 2 === 0 ? a.y - b.y : b.y - a.y;
+        return (screenWidth - 1 - a.x) % 2 === 0 ? a.y - b.y : b.y - a.y;
       case 'serpentine-vertical-bottom-start':
+        if (a.x !== b.x) return a.x - b.x;
+        return a.x % 2 === 0 ? b.y - a.y : a.y - b.y;
+      case 'serpentine-vertical-bottom-main':
         if (a.x !== b.x) return a.x - b.x;
         return a.x % 2 === 0 ? b.y - a.y : a.y - b.y;
       case 'serpentine-vertical-reverse-bottom-start':

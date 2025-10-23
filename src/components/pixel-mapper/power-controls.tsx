@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
@@ -46,6 +47,7 @@ export function PowerControls() {
             <SelectItem value="serpentine-vertical">Serpentine (Vertical)</SelectItem>
             <SelectItem value="serpentine-vertical-reverse">Serpentine (Vertical Reverse)</SelectItem>
             <SelectItem value="serpentine-vertical-bottom-start">Serpentine Vertical (Bottom Start)</SelectItem>
+            <SelectItem value="serpentine-vertical-bottom-main">Serpentine Vertical (Bottom Main)</SelectItem>
             <SelectItem value="serpentine-vertical-reverse-bottom-start">Serpentine Vertical (Reverse Bottom Start)</SelectItem>
             <SelectItem value="left-right">Left to Right</SelectItem>
             <SelectItem value="top-bottom">Top to Bottom</SelectItem>
