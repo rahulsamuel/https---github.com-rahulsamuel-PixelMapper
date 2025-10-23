@@ -1,6 +1,5 @@
 
 
-
 interface Dimensions {
   tileWidth: number;
   tileHeight: number;
