@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, DraftingCompass, Calculator, Home, LineChart, LogOut, Package, Bolt } from 'lucide-react';
+import { ChevronDown, DraftingCompass, Calculator, Home, LineChart, LogOut, Package, Bolt, Server } from 'lucide-react';
 import { useAuth } from "@/contexts/auth-context";
 
 export function AppHeader() {
@@ -23,6 +23,7 @@ export function AppHeader() {
     if (pathname.startsWith('/app')) return 'Pixel Map';
     if (pathname.startsWith('/calculator')) return 'LED Calculator';
     if (pathname.startsWith('/power-data')) return 'Power & Data';
+    if (pathname.startsWith('/rack-drawing')) return 'Rack Drawing';
     if (pathname.startsWith('/admin')) return 'Admin';
     if (pathname.startsWith('/login')) return 'Login';
     return 'MapMyLED';
@@ -56,6 +57,12 @@ export function AppHeader() {
                         <DropdownMenuItem>
                             <Bolt className="mr-2 h-4 w-4" />
                             <span>Power & Data</span>
+                        </DropdownMenuItem>
+                    </Link>
+                    <Link href="/rack-drawing">
+                        <DropdownMenuItem>
+                            <Server className="mr-2 h-4 w-4" />
+                            <span>Rack Drawing</span>
                         </DropdownMenuItem>
                     </Link>
                     <DropdownMenuSeparator />
