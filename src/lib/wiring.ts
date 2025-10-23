@@ -1,5 +1,6 @@
 
 
+
 interface Dimensions {
   tileWidth: number;
   tileHeight: number;
@@ -41,13 +42,15 @@ interface RasterMapConfig {
   slices: RasterSlice[];
   totalWidth: number; 
   totalHeight: number;
+  contentWidth: number;
+  contentHeight: number;
   outputWidth: number;
   outputHeight: number;
   previewImage?: string;
   screenArrangement: ScreenArrangement[];
 }
 
-export type WiringPattern = 'serpentine-horizontal' | 'serpentine-vertical' | 'serpentine-horizontal-reverse' | 'serpentine-vertical-reverse' | 'left-right' | 'top-bottom' | 'bottom-to-top';
+export type WiringPattern = 'serpentine-horizontal' | 'serpentine-vertical' | 'serpentine-horizontal-reverse' | 'serpentine-vertical-reverse' | 'left-right' | 'top-bottom' | 'bottom-to-top' | 'serpentine-vertical-bottom-start' | 'serpentine-vertical-reverse-bottom-start';
 type ProcessorType = 'Brompton' | 'Novastar' | 'Helios';
 
 export interface WiringInfo {
@@ -83,7 +86,13 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
         if (a.x !== b.x) return a.x - b.x;
         return a.x % 2 === 0 ? a.y - b.y : b.y - a.y;
       case 'serpentine-vertical-reverse':
+        if (a.x !== b.x) return b.x - a.x;
+        return a.x % 2 === 0 ? a.y - b.y : b.y - a.y;
+      case 'serpentine-vertical-bottom-start':
         if (a.x !== b.x) return a.x - b.x;
+        return a.x % 2 === 0 ? b.y - a.y : a.y - b.y;
+      case 'serpentine-vertical-reverse-bottom-start':
+        if (a.x !== b.x) return b.x - a.x;
         return a.x % 2 === 0 ? b.y - a.y : a.y - b.y;
       case 'left-right':
         if (a.y !== b.y) return a.y - b.y;
@@ -104,12 +113,13 @@ function applyDataWiring(
     activeTilesPath: { tile: WiringInfo; index: number; }[],
     wiringPortConfig: string,
     dataPortStartNumber: number,
-    processorType: ProcessorType
-) {
-    if (activeTilesPath.length === 0) return;
+    processorType: ProcessorType,
+    groupStartCounter: number,
+): number {
+    if (activeTilesPath.length === 0) return groupStartCounter;
     
     const subgroupSize = parseInt(wiringPortConfig.trim(), 10) || 4;
-    let groupCounter = dataPortStartNumber - 1;
+    let groupCounter = groupStartCounter;
 
     let currentGroupInfo: { main: string, backup: string } | null = null;
 
@@ -176,6 +186,8 @@ function applyDataWiring(
             currentTileInfo.nextTile = null;
         }
     });
+
+    return groupCounter;
 }
 
 
@@ -224,6 +236,7 @@ interface GetWiringDataArgs {
     rasterMapConfig?: RasterMapConfig | null;
     topHalfTile: boolean;
     bottomHalfTile: boolean;
+    screenId: string;
 }
 
 export function getWiringData({
@@ -238,6 +251,7 @@ export function getWiringData({
   rasterMapConfig,
   topHalfTile,
   bottomHalfTile,
+  screenId
 }: GetWiringDataArgs): WiringInfo[] {
   const { screenWidth, screenHeight, tileWidth, tileHeight } = dimensions;
   if (!tiles || tiles.length === 0) {
@@ -258,21 +272,50 @@ export function getWiringData({
 
   const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
 
-  if (rasterMapConfig && rasterMapConfig.slices.length > 0 && rasterMapConfig.outputWidth > 0 && rasterMapConfig.outputHeight > 0 && rasterMapConfig.screenArrangement.length > 0) {
-    
-    // This part is complex because wiring now depends on the full arrangement of all screens
-    // For now, let's process wiring based on the local screen's wiring pattern only
-    // Advanced multi-screen wiring would be a much bigger feature.
-    
-    const dataPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
-    const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
-    applyDataWiring(dataTilesPath, wiringPortConfig, dataPortStartNumber, processorType);
+  if (rasterMapConfig && rasterMapConfig.slices.length > 0 && rasterMapConfig.outputWidth > 0 && rasterMapConfig.outputHeight > 0) {
+    const currentScreenArrangement = rasterMapConfig.screenArrangement.find(s => s.screenId === screenId);
+    if (currentScreenArrangement) {
+        let groupCounter = dataPortStartNumber - 1;
+        rasterMapConfig.slices.forEach(slice => {
+            const sliceTiles: number[] = [];
+            
+            activeTileIndices.forEach(index => {
+                const x = index % screenWidth;
+                const y = Math.floor(index / screenWidth);
 
+                const {minX, minY} = currentScreenArrangement.activeBounds;
+                let tileContentY = 0;
+                for (let i = minY; i < y; i++) {
+                    const isTopRow = topHalfTile && i === 0;
+                    const isBottomRow = bottomHalfTile && i === screenHeight - 1;
+                    tileContentY += (isTopRow || isBottomRow) ? tileHeight / 2 : tileHeight;
+                }
+                const tileContentX = (x - minX) * tileWidth;
 
+                const absoluteContentX = tileContentX + currentScreenArrangement.x;
+                const absoluteContentY = tileContentY + currentScreenArrangement.y;
+                
+                if (
+                    absoluteContentX >= slice.x &&
+                    absoluteContentX < slice.x + slice.width &&
+                    absoluteContentY >= slice.y &&
+                    absoluteContentY < slice.y + slice.height
+                ) {
+                    sliceTiles.push(index);
+                }
+            });
+
+            if (sliceTiles.length > 0) {
+                const pathOrder = getPathOrder(sliceTiles, wiringPattern, screenWidth, screenHeight);
+                const tilesPath = pathOrder.map(index => ({ tile: allTilesData[index], index }));
+                groupCounter = applyDataWiring(tilesPath, wiringPortConfig, dataPortStartNumber, processorType, groupCounter);
+            }
+        });
+    }
   } else {
     const dataPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
     const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
-    applyDataWiring(dataTilesPath, wiringPortConfig, dataPortStartNumber, processorType);
+    applyDataWiring(dataTilesPath, wiringPortConfig, dataPortStartNumber, processorType, dataPortStartNumber - 1);
   }
   
   const powerPathOrder = getPathOrder(activeTileIndices, powerWiringPattern, screenWidth, screenHeight);

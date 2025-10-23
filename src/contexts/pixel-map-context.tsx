@@ -450,11 +450,11 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       wiringPattern: currentScreen.wiringPattern, 
       powerWiringPattern: currentScreen.powerWiringPattern, 
       rasterMapConfig, 
-      activeBounds: null, // This needs to be calculated per screen
       tilesPerPowerString: currentScreen.tilesPerPowerString, 
       topHalfTile: currentScreen.topHalfTile,
       bottomHalfTile: currentScreen.bottomHalfTile,
       processorType: currentScreen.processorType,
+      screenId: currentScreen.id
     })
   }, [currentScreen, effectiveScreenHeight, rasterMapConfig]);
 
@@ -1411,6 +1411,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         processorType: screen.processorType,
         topHalfTile: screen.topHalfTile,
         bottomHalfTile: screen.bottomHalfTile,
+        screenId: screen.id,
     });
     
     const screenLabels = (() => {
