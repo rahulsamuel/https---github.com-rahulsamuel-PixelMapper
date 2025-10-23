@@ -7,7 +7,8 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Rack } from './rack';
 import { EquipmentSidebar } from './equipment-sidebar';
 import type { EquipmentItem, RackItem } from '@/lib/rack-data';
-import { Button }simport { Plus, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Plus, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
