@@ -76,8 +76,8 @@ export function RackBuilder() {
           const otherItems = rack.items.filter(i => i.instanceId !== item.instanceId);
 
           // Check if there is enough space
-          if (newRu + item.equipment.ru - 1 > rack.ru) {
-              return rack; // Not enough space
+          if (newRu < 1 || newRu + item.equipment.ru - 1 > rack.ru) {
+              return rack; // Not enough space or out of bounds
           }
            // Check for conflicts
           for (let i = 0; i < item.equipment.ru; i++) {
