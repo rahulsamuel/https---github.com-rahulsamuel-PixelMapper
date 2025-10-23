@@ -86,13 +86,13 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
         return a.x % 2 === 0 ? a.y - b.y : b.y - a.y;
       case 'serpentine-vertical-reverse':
         if (a.x !== b.x) return b.x - a.x;
-        return (screenWidth - 1 - a.x) % 2 === 0 ? a.y - b.y : b.y - a.y;
+        return (screenWidth - 1 - a.x) % 2 === 0 ? b.y - a.y : a.y - b.y;
       case 'serpentine-vertical-bottom-start':
         if (a.x !== b.x) return a.x - b.x;
         return a.x % 2 === 0 ? b.y - a.y : a.y - b.y;
       case 'serpentine-vertical-bottom-main':
-        if (a.x !== b.x) return a.x - b.x;
-        return a.x % 2 === 0 ? b.y - a.y : a.y - b.y;
+         if (a.x !== b.x) return a.x - b.x;
+         return a.x % 2 === 0 ? b.y - a.y : a.y - b.y;
       case 'serpentine-vertical-reverse-bottom-start':
         if (a.x !== b.x) return b.x - a.x;
         return (screenWidth - 1 - a.x) % 2 === 0 ? b.y - a.y : a.y - b.y;
