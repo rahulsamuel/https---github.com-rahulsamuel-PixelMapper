@@ -38,7 +38,8 @@ export function WiringDiagram() {
     bottomHalfTile,
     effectiveScreenHeight,
     wiringData,
-    rasterMapConfig
+    rasterMapConfig,
+    currentScreen
   } = usePixelMap();
 
   const [isClient, setIsClient] = useState(false);
@@ -358,3 +359,5 @@ export function WiringDiagram() {
     </div>
   );
 }
+
+    
