@@ -691,7 +691,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
                         currentScreen.tiles,
                         tileId,
                         numTiles,
-                        currentScreen.wiringPattern,
+                        currentScreen.wiringPattern, // Use data wiring pattern to define the sequence
                         currentScreen.dimensions.screenWidth,
                         effectiveScreenHeight
                     );
@@ -714,11 +714,11 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
   const restoreDeletedTiles = useCallback(() => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, deleted: false })));
-  }, []);
+  }, [setTiles]);
   
   const resetAllColors = useCallback(() => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, color: undefined })));
-  }, []);
+  }, [setTiles]);
 
   const handleDownloadPng = useCallback((filename: string) => {
     if (gridRef.current === null || !activeBounds) {

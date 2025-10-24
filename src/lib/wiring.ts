@@ -1,6 +1,7 @@
 
 
 
+
 interface Dimensions {
   tileWidth: number;
   tileHeight: number;
@@ -88,8 +89,7 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
         return a.x % 2 === 0 ? a.y - b.y : b.y - a.y;
       case 'serpentine-vertical-reverse':
          if (a.x !== b.x) return b.x - a.x;
-        // The column index from the right edge is (screenWidth - 1 - a.x)
-        return (screenWidth - 1 - a.x) % 2 === 0 ? a.y - b.y : b.y - a.y;
+        return (screenWidth - 1 - a.x) % 2 === 0 ? b.y - a.y : a.y - b.y;
       case 'serpentine-vertical-bottom-start':
         if (a.x !== b.x) return a.x - b.x;
         return a.x % 2 === 0 ? b.y - a.y : a.y - b.y;
@@ -240,17 +240,16 @@ export function applyManualPowerWiring(
     tiles: Tile[],
     startTileId: number,
     numTiles: number,
-    wiringPattern: WiringPattern,
+    powerPattern: WiringPattern,
     screenWidth: number,
     screenHeight: number
 ): Tile[] {
     const activeTileIndices = tiles.map((t, i) => i).filter(i => !tiles[i].deleted);
-    const pathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
+    const pathOrder = getPathOrder(activeTileIndices, powerPattern, screenWidth, screenHeight);
     
     const startPathIndex = pathOrder.findIndex(index => tiles[index].id === startTileId);
     if (startPathIndex === -1) {
-        // The clicked tile is not in the active path (e.g., deleted)
-        return tiles;
+        return tiles; // Clicked tile is not active
     }
 
     const newTiles = tiles.map(t => ({ ...t }));
@@ -267,16 +266,26 @@ export function applyManualPowerWiring(
     });
     const newPortLabel = `P${maxPortNum + 1}`;
 
-    // Apply the new power circuit
+    const circuitTilesIndices = [];
     for (let i = 0; i < numTiles; i++) {
         const currentPathIndex = startPathIndex + i;
         if (currentPathIndex < pathOrder.length) {
             const tileIndex = pathOrder[currentPathIndex];
-            if (newTiles[tileIndex]) {
-                newTiles[tileIndex].powerPortLabel = i === 0 ? newPortLabel : '';
+             // Before adding, clear any old power port label from this tile
+             if (newTiles[tileIndex]) {
+                newTiles[tileIndex].powerPortLabel = '';
             }
+            circuitTilesIndices.push(tileIndex);
         }
     }
+    
+    // Now assign the new power circuit labels
+    circuitTilesIndices.forEach((tileIndex, i) => {
+        if (newTiles[tileIndex]) {
+            newTiles[tileIndex].powerPortLabel = i === 0 ? newPortLabel : '';
+        }
+    });
+    
     return newTiles;
 }
 
@@ -382,26 +391,29 @@ export function getWiringData({
     applyPowerWiring(powerTilesPath, tilesPerPowerString, powerCounters);
   } else {
      // Logic for manual power wiring connections
-      const powerPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
+      const powerPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight); // Follow data path for sequence
       const powerTilesPath = powerPathOrder.map(index => allTilesData[index]);
 
       let currentCircuitTiles: WiringInfo[] = [];
+      const labeledPorts = new Set<string>();
 
-      for (const tile of powerTilesPath) {
-          if (tile.powerPortLabel) {
-              if (currentCircuitTiles.length > 0) {
+      powerTilesPath.forEach(tile => {
+          if (tile.powerPortLabel && !labeledPorts.has(tile.powerPortLabel)) {
+              if (currentCircuitTiles.length > 1) {
                   // Connect up the previous circuit
                   for (let i = 0; i < currentCircuitTiles.length - 1; i++) {
                       currentCircuitTiles[i].nextPowerTile = { x: currentCircuitTiles[i+1].x, y: currentCircuitTiles[i+1].y };
                   }
               }
+              labeledPorts.add(tile.powerPortLabel);
               currentCircuitTiles = [tile];
-          } else {
+          } else if (currentCircuitTiles.length > 0) {
               currentCircuitTiles.push(tile);
           }
-      }
+      });
+
       // Connect the last circuit
-      if (currentCircuitTiles.length > 0) {
+      if (currentCircuitTiles.length > 1) {
           for (let i = 0; i < currentCircuitTiles.length - 1; i++) {
               currentCircuitTiles[i].nextPowerTile = { x: currentCircuitTiles[i+1].x, y: currentCircuitTiles[i+1].y };
           }
