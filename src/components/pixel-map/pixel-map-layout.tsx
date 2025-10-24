@@ -366,7 +366,7 @@ export function PixelMapLayout() {
                 </AccordionItem>
               )}
               
-              {activeTab === 'grid' && (
+              {(activeTab === 'grid' || activeTab === 'wiring') && (
                 <AccordionItem value="editing" className="border-none">
                   <AccordionSectionTrigger icon={<Wand2 className="size-5" />} title="Editing Tools" />
                   <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">

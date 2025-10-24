@@ -38,6 +38,7 @@ export function WiringDiagram() {
     bottomHalfTile,
     effectiveScreenHeight,
     wiringData,
+    handleTileClick,
   } = usePixelMap();
 
   const [isClient, setIsClient] = useState(false);
@@ -123,10 +124,12 @@ export function WiringDiagram() {
               : labelColor;
 
             return (
-              <div
+              <button
                 key={`wiring-tile-${tile.id}`}
-                className="absolute overflow-visible"
+                onClick={() => handleTileClick(tile.id)}
+                className="absolute overflow-visible focus:outline-none focus:ring-2 focus:ring-accent focus:z-10"
                 style={tileStyle}
+                aria-label={`Tile ${labels[originalIndex] || tile.id}`}
               >
                 {!isDeleted && (
                   <>
@@ -188,7 +191,7 @@ export function WiringDiagram() {
                     </div>
                   </>
                 )}
-              </div>
+              </button>
             );
           })}
            <svg
