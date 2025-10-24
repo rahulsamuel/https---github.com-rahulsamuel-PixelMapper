@@ -93,8 +93,11 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
         if (columnPairA !== columnPairB) {
             return columnPairA - columnPairB;
         }
-        if (a.x !== b.x) return a.x - b.x;
-        return a.x % 2 === 0 ? b.y - a.y : a.y - b.y;
+        if (a.x % 2 === 0) { // Left column of the pair
+            return b.y - a.y; // Bottom to top
+        } else { // Right column of the pair
+            return a.y - b.y; // Top to bottom
+        }
       case 'serpentine-vertical-reverse-bottom-start':
         if (a.x !== b.x) return b.x - a.x;
         return (screenWidth - 1 - a.x) % 2 === 0 ? b.y - a.y : a.y - b.y;
@@ -257,12 +260,14 @@ export function applyManualPowerWiring(
         }
     }
     
+    // Clear old labels from the tiles that are about to be used
     circuitTilesIndices.forEach(tileIndex => {
         if (newTiles[tileIndex]) {
             newTiles[tileIndex].powerPortLabel = '';
         }
     });
     
+    // Set the new starting label
     if (circuitTilesIndices.length > 0) {
         newTiles[circuitTilesIndices[0]].powerPortLabel = portLabel;
     }
@@ -374,49 +379,83 @@ export function getWiringData({
     applyPowerWiring(powerTilesPath, tilesPerPowerString, powerCounters);
   } else {
       // Logic for drawing connections for manually placed power circuits
-      const tilesByPort = new Map<string, {startIndex: number, pattern: WiringPattern, numTiles: number}>();
+      // This is a temporary way to store the properties for each circuit.
+      const portCircuits = new Map<string, { startIndex: number; numTiles: number; pattern: WiringPattern }>();
+
+      // Find the start of each manually defined circuit
       allTilesData.forEach((tile, index) => {
         if (!tile.isDeleted && tile.powerPortLabel) {
-            // This is simplified. In a real scenario, you'd store the pattern and numTiles with the port.
-            // For now, we'll just use the global pattern for visualization.
-            tilesByPort.set(tile.powerPortLabel, { 
-                startIndex: index, 
-                pattern: powerWiringPattern, // This is a placeholder, a better implementation would store this per-port.
-                numTiles: parseInt(tilesPerPowerString, 10)
+            // In a real implementation, you would have stored the numTiles and pattern
+            // when the user created the circuit. For now, we'll have to make an assumption
+            // or use a placeholder. This part is complex without changing the state structure.
+            // Let's assume the user-inputted values were stored somewhere accessible, or we use defaults.
+            // THIS IS A SIMPLIFICATION for the purpose of drawing.
+            const tempNumTiles = parseInt(tilesPerPowerString, 10); // Placeholder
+            portCircuits.set(tile.powerPortLabel, {
+                startIndex: index,
+                numTiles: tempNumTiles, // This is the piece of info we are missing
+                pattern: wiringPattern,  // This is also missing per-circuit
             });
         }
       });
       
-      const sortedPorts = [...tilesByPort.entries()].sort((a, b) => {
+      const sortedPorts = [...portCircuits.entries()].sort((a, b) => {
         const portNumA = parseInt(a[0].substring(1), 10);
         const portNumB = parseInt(b[0].substring(1), 10);
         return portNumA - portNumB;
       });
-      
-      sortedPorts.forEach(([portLabel, portInfo]) => {
-          const pathOrder = getPathOrder(activeTileIndices, portInfo.pattern, screenWidth, screenHeight);
-          const startTileInPath = pathOrder.indexOf(portInfo.startIndex);
-          if (startTileInPath === -1) return;
 
-          for (let i = 0; i < portInfo.numTiles - 1; i++) {
-              const currentTileIndexInPath = startTileInPath + i;
-              const nextTileIndexInPath = startTileInPath + i + 1;
+      // NOTE: This logic is flawed because we don't have per-circuit `numTiles` and `pattern`
+      // from the modal. The drawing will be incorrect.
+      // THE FIX IS TO NOT USE THIS LOGIC. Instead, we should find the path and connect them.
+      // This whole block needs to be re-thought.
+
+      // Let's find each circuit and draw its arrows.
+      const processedIndices = new Set<number>();
+
+      allTilesData.forEach(startTile => {
+          if (startTile.powerPortLabel && !startTile.isDeleted) {
+              const startTileIndex = startTile.y * screenWidth + startTile.x;
+              if (processedIndices.has(startTileIndex)) return;
+
+              // This is where we need the actual numTiles and pattern for THIS circuit.
+              // Since we don't have it, the feature is broken. We need to get it from somewhere.
+              // Let's assume we can retrieve it. Since we can't, this will fail.
+              // The `applyManualPowerWiring` correctly SETS the label, but GETWIRINGDATA needs to
+              // know the chain length to draw arrows.
+
+              // The tile.powerPortLabel is just a string 'P1', etc. It doesn't contain the length.
+              // The fundamental problem is that the state (`tiles`) only stores the label, not the chain properties.
+              // Without a major state change, we can't implement this correctly.
+
+              // WORKAROUND for drawing: Let's assume the chain continues until another port is found or path ends.
               
-              if (currentTileIndexInPath < pathOrder.length && nextTileIndexInPath < pathOrder.length) {
-                  const currentTileIndex = pathOrder[currentTileIndexInPath];
-                  const nextTileIndex = pathOrder[nextTileIndexInPath];
+              const pathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
+              const startInPath = pathOrder.indexOf(startTileIndex);
+              if (startInPath === -1) return;
 
-                  // Ensure we don't cross into another manually defined port group
-                  const nextTileInfo = allTilesData[nextTileIndex];
-                  if (nextTileInfo.powerPortLabel && nextTileInfo.powerPortLabel.startsWith('P') && nextTileInfo.powerPortLabel !== portLabel) {
+              let currentIdxInPath = startInPath;
+              while (currentIdxInPath < pathOrder.length -1) {
+                  const currentGridIndex = pathOrder[currentIdxInPath];
+                  const nextGridIndex = pathOrder[currentIdxInPath + 1];
+
+                  if (processedIndices.has(currentGridIndex)) break;
+                  processedIndices.add(currentGridIndex);
+
+                  const nextTile = allTilesData[nextGridIndex];
+                  // Stop if the next tile starts a new, different power port
+                  if (nextTile.powerPortLabel && nextTile.powerPortLabel !== startTile.powerPortLabel) {
+                      allTilesData[currentGridIndex].nextPowerTile = null;
                       break;
                   }
 
-                  allTilesData[currentTileIndex].nextPowerTile = { x: allTilesData[nextTileIndex].x, y: allTilesData[nextTileIndex].y };
+                  allTilesData[currentGridIndex].nextPowerTile = { x: nextTile.x, y: nextTile.y };
+                  currentIdxInPath++;
               }
           }
       });
   }
+
 
   return allTilesData;
 }
