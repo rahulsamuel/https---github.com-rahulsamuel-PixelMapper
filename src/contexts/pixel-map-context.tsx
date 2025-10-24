@@ -29,6 +29,11 @@ export interface Tile {
   deleted: boolean;
   color?: string;
   powerPortLabel?: string;
+  powerCircuit?: {
+    label: string;
+    tileCount: number;
+    pattern: WiringPattern;
+  };
 }
 
 interface ActiveBounds {
@@ -705,10 +710,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
 
   const applyManualPowerWiring = useCallback((args: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; }) => {
-    if (!args) {
-      console.error("applyManualPowerWiring called with undefined arguments");
-      return;
-    }
     const { startTileId, label, numTiles, pattern } = args;
     updateCurrentScreen(screen => {
       const { tiles, dimensions } = screen;
