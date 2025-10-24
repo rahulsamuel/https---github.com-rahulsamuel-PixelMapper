@@ -4,7 +4,7 @@
 
 import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction, useMemo } from "react";
-import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo } from "@/lib/wiring";
+import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo, applyManualPowerWiring } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 import { isColorDark } from "@/lib/utils";
 import { getProducts } from "@/app/calculator/actions";
@@ -29,6 +29,7 @@ interface Tile {
   id: number;
   deleted: boolean;
   color?: string;
+  powerPortLabel?: string;
 }
 
 interface ActiveBounds {
@@ -681,13 +682,34 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         );
         break;
       case 'power':
-        // TODO: Implement manual power circuit creation
-        console.log("Power tool clicked on tile", tileId);
+        if (currentScreen.powerWiringPattern === 'manual') {
+            const numTilesStr = window.prompt("Enter number of tiles for this power circuit:", "8");
+            if (numTilesStr) {
+                const numTiles = parseInt(numTilesStr, 10);
+                if (!isNaN(numTiles) && numTiles > 0) {
+                    const newTiles = applyManualPowerWiring(
+                        currentScreen.tiles,
+                        tileId,
+                        numTiles,
+                        currentScreen.wiringPattern,
+                        currentScreen.dimensions.screenWidth,
+                        effectiveScreenHeight
+                    );
+                    setTiles(newTiles);
+                }
+            }
+        } else {
+            toast({
+                title: "Manual Mode Required",
+                description: "Switch to the 'Manual' power wiring pattern to assign circuits by clicking.",
+                variant: "destructive",
+            });
+        }
         break;
       default:
         break;
     }
-  }, [currentScreen.activeTool, currentScreen.brushColor]);
+  }, [currentScreen, effectiveScreenHeight, toast, setTiles]);
 
 
   const restoreDeletedTiles = useCallback(() => {

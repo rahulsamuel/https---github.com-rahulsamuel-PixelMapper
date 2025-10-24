@@ -1,5 +1,6 @@
 
 
+
 interface Dimensions {
   tileWidth: number;
   tileHeight: number;
@@ -10,6 +11,7 @@ interface Dimensions {
 interface Tile {
   id: number;
   deleted: boolean;
+  powerPortLabel?: string;
 }
 
 interface ActiveBounds {
@@ -49,7 +51,7 @@ interface RasterMapConfig {
   screenArrangement: ScreenArrangement[];
 }
 
-export type WiringPattern = 'serpentine-horizontal' | 'serpentine-vertical' | 'serpentine-horizontal-reverse' | 'serpentine-vertical-reverse' | 'left-right' | 'top-bottom' | 'bottom-to-top' | 'serpentine-vertical-bottom-start' | 'serpentine-vertical-reverse-bottom-start' | 'serpentine-vertical-bottom-main';
+export type WiringPattern = 'serpentine-horizontal' | 'serpentine-vertical' | 'serpentine-horizontal-reverse' | 'serpentine-vertical-reverse' | 'left-right' | 'top-bottom' | 'bottom-to-top' | 'serpentine-vertical-bottom-start' | 'serpentine-vertical-reverse-bottom-start' | 'serpentine-vertical-bottom-main' | 'manual';
 type ProcessorType = 'Brompton' | 'Novastar' | 'Helios';
 
 export interface WiringInfo {
@@ -87,7 +89,7 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
       case 'serpentine-vertical-reverse':
          if (a.x !== b.x) return b.x - a.x;
         // The column index from the right edge is (screenWidth - 1 - a.x)
-        return (screenWidth - 1 - a.x) % 2 === 0 ? b.y - a.y : a.y - b.y;
+        return (screenWidth - 1 - a.x) % 2 === 0 ? a.y - b.y : b.y - a.y;
       case 'serpentine-vertical-bottom-start':
         if (a.x !== b.x) return a.x - b.x;
         return a.x % 2 === 0 ? b.y - a.y : a.y - b.y;
@@ -234,6 +236,50 @@ function applyPowerWiring(
     });
 }
 
+export function applyManualPowerWiring(
+    tiles: Tile[],
+    startTileId: number,
+    numTiles: number,
+    wiringPattern: WiringPattern,
+    screenWidth: number,
+    screenHeight: number
+): Tile[] {
+    const activeTileIndices = tiles.map((t, i) => i).filter(i => !tiles[i].deleted);
+    const pathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
+    
+    const startPathIndex = pathOrder.findIndex(index => tiles[index].id === startTileId);
+    if (startPathIndex === -1) {
+        // The clicked tile is not in the active path (e.g., deleted)
+        return tiles;
+    }
+
+    const newTiles = tiles.map(t => ({ ...t }));
+
+    // Find the next available power port number
+    let maxPortNum = 0;
+    newTiles.forEach(t => {
+        if (t.powerPortLabel && t.powerPortLabel.startsWith('P')) {
+            const portNum = parseInt(t.powerPortLabel.substring(1), 10);
+            if (!isNaN(portNum) && portNum > maxPortNum) {
+                maxPortNum = portNum;
+            }
+        }
+    });
+    const newPortLabel = `P${maxPortNum + 1}`;
+
+    // Apply the new power circuit
+    for (let i = 0; i < numTiles; i++) {
+        const currentPathIndex = startPathIndex + i;
+        if (currentPathIndex < pathOrder.length) {
+            const tileIndex = pathOrder[currentPathIndex];
+            if (newTiles[tileIndex]) {
+                newTiles[tileIndex].powerPortLabel = i === 0 ? newPortLabel : '';
+            }
+        }
+    }
+    return newTiles;
+}
+
 
 interface GetWiringDataArgs {
     dimensions: Dimensions;
@@ -273,7 +319,7 @@ export function getWiringData({
     x: index % screenWidth,
     y: Math.floor(index / screenWidth),
     dataLabel: "",
-    powerPortLabel: "",
+    powerPortLabel: tile.powerPortLabel || "", // Preserve manual labels
     backupLabel: "",
     isDeleted: tile.deleted,
     nextTile: null,
@@ -329,10 +375,38 @@ export function getWiringData({
     applyDataWiring(dataTilesPath, wiringPortConfig, dataPortStartNumber, processorType, dataPortStartNumber - 1);
   }
   
-  const powerPathOrder = getPathOrder(activeTileIndices, powerWiringPattern, screenWidth, screenHeight);
-  const powerTilesPath = powerPathOrder.map(index => ({ tile: allTilesData[index], index }));
-  const powerCounters = { powerCounter: 1, powerGroupCounter: 0 };
-  applyPowerWiring(powerTilesPath, tilesPerPowerString, powerCounters);
+  if (powerWiringPattern !== 'manual') {
+    const powerPathOrder = getPathOrder(activeTileIndices, powerWiringPattern, screenWidth, screenHeight);
+    const powerTilesPath = powerPathOrder.map(index => ({ tile: allTilesData[index], index }));
+    const powerCounters = { powerCounter: 1, powerGroupCounter: 0 };
+    applyPowerWiring(powerTilesPath, tilesPerPowerString, powerCounters);
+  } else {
+     // Logic for manual power wiring connections
+      const powerPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
+      const powerTilesPath = powerPathOrder.map(index => allTilesData[index]);
+
+      let currentCircuitTiles: WiringInfo[] = [];
+
+      for (const tile of powerTilesPath) {
+          if (tile.powerPortLabel) {
+              if (currentCircuitTiles.length > 0) {
+                  // Connect up the previous circuit
+                  for (let i = 0; i < currentCircuitTiles.length - 1; i++) {
+                      currentCircuitTiles[i].nextPowerTile = { x: currentCircuitTiles[i+1].x, y: currentCircuitTiles[i+1].y };
+                  }
+              }
+              currentCircuitTiles = [tile];
+          } else {
+              currentCircuitTiles.push(tile);
+          }
+      }
+      // Connect the last circuit
+      if (currentCircuitTiles.length > 0) {
+          for (let i = 0; i < currentCircuitTiles.length - 1; i++) {
+              currentCircuitTiles[i].nextPowerTile = { x: currentCircuitTiles[i+1].x, y: currentCircuitTiles[i+1].y };
+          }
+      }
+  }
 
   return allTilesData;
 }
