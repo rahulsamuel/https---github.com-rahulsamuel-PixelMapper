@@ -683,7 +683,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         break;
       case 'power':
         if (currentScreen.powerWiringPattern === 'manual') {
-            const numTilesStr = window.prompt("Enter number of tiles for this power circuit:", "8");
+            const numTilesStr = window.prompt("Enter number of tiles for this power circuit:", currentScreen.tilesPerPowerString);
             if (numTilesStr) {
                 const numTiles = parseInt(numTilesStr, 10);
                 if (!isNaN(numTiles) && numTiles > 0) {
@@ -691,7 +691,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
                         currentScreen.tiles,
                         tileId,
                         numTiles,
-                        currentScreen.wiringPattern, // Use data wiring pattern to define the sequence
+                        currentScreen.wiringPattern, // Use data pattern for sequence
                         currentScreen.dimensions.screenWidth,
                         effectiveScreenHeight
                     );

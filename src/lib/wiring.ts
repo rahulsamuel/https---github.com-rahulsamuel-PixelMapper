@@ -2,6 +2,7 @@
 
 
 
+
 interface Dimensions {
   tileWidth: number;
   tileHeight: number;
@@ -85,11 +86,12 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
         if (a.y !== b.y) return b.y - a.y;
         return (screenHeight - 1 - a.y) % 2 === 0 ? a.x - b.x : b.x - a.x;
       case 'serpentine-vertical':
-        if (a.x !== b.x) return a.x - b.x;
-        return a.x % 2 === 0 ? a.y - b.y : b.y - a.y;
+         if (a.x !== b.x) return a.x - b.x;
+         return a.x % 2 === 0 ? a.y - b.y : b.y - a.y;
       case 'serpentine-vertical-reverse':
-         if (a.x !== b.x) return b.x - a.x;
-        return (screenWidth - 1 - a.x) % 2 === 0 ? b.y - a.y : a.y - b.y;
+        if (a.x !== b.x) return b.x - a.x;
+        const colFromRight = screenWidth - 1 - a.x;
+        return colFromRight % 2 === 0 ? a.y - b.y : b.y - a.y;
       case 'serpentine-vertical-bottom-start':
         if (a.x !== b.x) return a.x - b.x;
         return a.x % 2 === 0 ? b.y - a.y : a.y - b.y;
@@ -282,6 +284,7 @@ export function applyManualPowerWiring(
     // Now assign the new power circuit labels
     circuitTilesIndices.forEach((tileIndex, i) => {
         if (newTiles[tileIndex]) {
+            // Assign the label only to the first tile in the new circuit
             newTiles[tileIndex].powerPortLabel = i === 0 ? newPortLabel : '';
         }
     });
@@ -385,6 +388,8 @@ export function getWiringData({
   }
   
   if (powerWiringPattern !== 'manual') {
+    // Clear all manual labels if not in manual mode
+    allTilesData.forEach(t => t.powerPortLabel = '');
     const powerPathOrder = getPathOrder(activeTileIndices, powerWiringPattern, screenWidth, screenHeight);
     const powerTilesPath = powerPathOrder.map(index => ({ tile: allTilesData[index], index }));
     const powerCounters = { powerCounter: 1, powerGroupCounter: 0 };
@@ -394,30 +399,56 @@ export function getWiringData({
       const powerPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight); // Follow data path for sequence
       const powerTilesPath = powerPathOrder.map(index => allTilesData[index]);
 
-      let currentCircuitTiles: WiringInfo[] = [];
-      const labeledPorts = new Set<string>();
-
+      const circuits = new Map<string, WiringInfo[]>();
       powerTilesPath.forEach(tile => {
-          if (tile.powerPortLabel && !labeledPorts.has(tile.powerPortLabel)) {
-              if (currentCircuitTiles.length > 1) {
-                  // Connect up the previous circuit
-                  for (let i = 0; i < currentCircuitTiles.length - 1; i++) {
-                      currentCircuitTiles[i].nextPowerTile = { x: currentCircuitTiles[i+1].x, y: currentCircuitTiles[i+1].y };
-                  }
-              }
-              labeledPorts.add(tile.powerPortLabel);
-              currentCircuitTiles = [tile];
-          } else if (currentCircuitTiles.length > 0) {
-              currentCircuitTiles.push(tile);
-          }
+        if(tile.powerPortLabel?.startsWith('P')) {
+            if(!circuits.has(tile.powerPortLabel)) {
+                circuits.set(tile.powerPortLabel, []);
+            }
+        }
+        // This logic is complex, requires finding the right circuit for a tile.
+        // A simpler approach: find all tiles for a given port label.
       });
-
-      // Connect the last circuit
-      if (currentCircuitTiles.length > 1) {
-          for (let i = 0; i < currentCircuitTiles.length - 1; i++) {
-              currentCircuitTiles[i].nextPowerTile = { x: currentCircuitTiles[i+1].x, y: currentCircuitTiles[i+1].y };
+      
+      const tilesByPort = new Map<string, number[]>();
+      allTilesData.forEach((tile, index) => {
+        if (tile.powerPortLabel && tile.powerPortLabel.startsWith('P')) {
+            tilesByPort.set(tile.powerPortLabel, [index]);
+        }
+      });
+      
+      // For each starting tile, find its chain
+      tilesByPort.forEach((startIndexArray, portLabel) => {
+          const startIndex = startIndexArray[0];
+          const startTileInPath = powerPathOrder.indexOf(startIndex);
+          if (startTileInPath === -1) return;
+          
+          const circuitTiles: WiringInfo[] = [];
+          
+          // Heuristic to find the number of tiles in this manual circuit.
+          // Count tiles in the path until we hit another labeled tile or end of path.
+          let numTilesInCircuit = 0;
+          for (let i = startTileInPath; i < powerPathOrder.length; i++) {
+              const currentTileIndex = powerPathOrder[i];
+              const currentTile = allTilesData[currentTileIndex];
+              if (i > startTileInPath && currentTile.powerPortLabel && currentTile.powerPortLabel.startsWith('P')) {
+                  break; // Found the start of the next circuit
+              }
+              numTilesInCircuit++;
           }
-      }
+          
+          for (let i = 0; i < numTilesInCircuit; i++) {
+              const tileIndex = powerPathOrder[startTileInPath + i];
+              if (tileIndex !== undefined) {
+                  circuitTiles.push(allTilesData[tileIndex]);
+              }
+          }
+          
+          for(let i = 0; i < circuitTiles.length - 1; i++) {
+              circuitTiles[i].nextPowerTile = { x: circuitTiles[i+1].x, y: circuitTiles[i+1].y };
+          }
+
+      });
   }
 
   return allTilesData;
