@@ -42,6 +42,7 @@ export function PowerControls() {
             <SelectValue placeholder="Select pattern" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="manual">Manual</SelectItem>
             <SelectItem value="serpentine-horizontal">Serpentine (Horizontal)</SelectItem>
             <SelectItem value="serpentine-horizontal-reverse">Serpentine (Horizontal Reverse)</SelectItem>
             <SelectItem value="serpentine-vertical">Serpentine (Vertical)</SelectItem>
@@ -64,6 +65,7 @@ export function PowerControls() {
             onChange={(e) => setTilesPerPowerString(e.target.value)}
             placeholder="e.g., 20"
             min="1"
+            disabled={powerWiringPattern === 'manual'}
         />
       </div>
       <div className="flex items-center justify-between">

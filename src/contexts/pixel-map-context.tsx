@@ -38,7 +38,7 @@ interface ActiveBounds {
   maxY: number;
 }
 
-type ActiveTool = 'delete' | 'label' | 'color';
+type ActiveTool = 'delete' | 'label' | 'color' | 'power';
 type LabelFormat = 'none' | 'sequential' | 'row-col' | 'dmx-style' | 'row-letter-col-number';
 type LabelPosition = 'top-left' | 'top-right' | 'center' | 'bottom-left' | 'bottom-right';
 type LabelColorMode = 'single' | 'auto';
@@ -679,6 +679,10 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         setTiles(prev =>
           prev.map(tile => (tile.id === tileId ? { ...tile, color: currentScreen.brushColor, deleted: false } : tile))
         );
+        break;
+      case 'power':
+        // TODO: Implement manual power circuit creation
+        console.log("Power tool clicked on tile", tileId);
         break;
       default:
         break;
