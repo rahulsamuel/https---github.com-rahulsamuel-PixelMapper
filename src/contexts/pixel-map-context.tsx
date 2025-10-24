@@ -682,28 +682,29 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         );
         break;
       case 'power':
-        if (currentScreen.powerWiringPattern === 'manual') {
-            const numTilesStr = window.prompt("Enter number of tiles for this power circuit:", currentScreen.tilesPerPowerString);
-            if (numTilesStr) {
-                const numTiles = parseInt(numTilesStr, 10);
-                if (!isNaN(numTiles) && numTiles > 0) {
-                    const newTiles = applyManualPowerWiring(
-                        currentScreen.tiles,
-                        tileId,
-                        numTiles,
-                        currentScreen.wiringPattern, // Use data pattern for sequence
-                        currentScreen.dimensions.screenWidth,
-                        effectiveScreenHeight
-                    );
-                    setTiles(newTiles);
-                }
+        if (currentScreen.powerWiringPattern !== 'manual') {
+          toast({
+              title: "Manual Mode Required",
+              description: "Switch to the 'Manual' power wiring pattern to assign circuits by clicking.",
+              variant: "destructive",
+          });
+          return;
+        }
+        
+        const numTilesStr = window.prompt("Enter number of tiles for this power circuit:", currentScreen.tilesPerPowerString);
+        if (numTilesStr) {
+            const numTiles = parseInt(numTilesStr, 10);
+            if (!isNaN(numTiles) && numTiles > 0) {
+                const newTiles = applyManualPowerWiring(
+                    currentScreen.tiles,
+                    tileId,
+                    numTiles,
+                    currentScreen.wiringPattern, // Use data wiring pattern to define sequence for now
+                    currentScreen.dimensions.screenWidth,
+                    effectiveScreenHeight
+                );
+                setTiles(newTiles);
             }
-        } else {
-            toast({
-                title: "Manual Mode Required",
-                description: "Switch to the 'Manual' power wiring pattern to assign circuits by clicking.",
-                variant: "destructive",
-            });
         }
         break;
       default:
