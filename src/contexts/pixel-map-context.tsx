@@ -25,7 +25,7 @@ interface Dimensions {
   screenHeight: number;
 }
 
-interface Tile {
+export interface Tile {
   id: number;
   deleted: boolean;
   color?: string;
@@ -212,6 +212,10 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'> {
   effectiveScreenHeight: number;
   setProcessorType: Dispatch<SetStateAction<ProcessorType>>;
   setSelectedProductId: Dispatch<SetStateAction<string | null>>;
+  isManualPowerModalOpen: boolean;
+  setIsManualPowerModalOpen: Dispatch<SetStateAction<boolean>>;
+  selectedTileForPower: number | null;
+  applyManualPowerWiring: (args: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; }) => void;
 }
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
@@ -301,6 +305,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState('grid');
   const [rasterMapConfig, setRasterMapConfig] = useState<RasterMapConfig | null>(null);
   const [products, setProducts] = useState<LedProduct[]>([]);
+  const [isManualPowerModalOpen, setIsManualPowerModalOpen] = useState(false);
+  const [selectedTileForPower, setSelectedTileForPower] = useState<number | null>(null);
 
   useEffect(() => {
       async function fetchProducts() {
@@ -690,34 +696,32 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
                 });
                 return;
             }
-            
-            const numTilesStr = window.prompt("Enter number of tiles for this power circuit:", currentScreen.tilesPerPowerString);
-            if (numTilesStr) {
-                const numTiles = parseInt(numTilesStr, 10);
-                if (!isNaN(numTiles) && numTiles > 0) {
-                    const newTiles = applyManualPowerWiring(
-                        currentScreen.tiles,
-                        tileId,
-                        numTiles,
-                        currentScreen.powerWiringPattern, // Use power pattern
-                        currentScreen.dimensions.screenWidth,
-                        effectiveScreenHeight
-                    );
-                    setTiles(newTiles);
-                } else {
-                    toast({
-                        title: "Invalid Number",
-                        description: "Please enter a positive number of tiles.",
-                        variant: "destructive",
-                    });
-                }
-            }
+            setSelectedTileForPower(tileId);
+            setIsManualPowerModalOpen(true);
             break;
         default:
             break;
     }
-}, [currentScreen, effectiveScreenHeight, toast, setTiles]);
+}, [currentScreen.activeTool, currentScreen.powerWiringPattern, currentScreen.brushColor, toast]);
 
+
+  const applyManualPowerWiring = useCallback(({ startTileId, label, numTiles, pattern }: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; }) => {
+    updateCurrentScreen(screen => {
+      const { tiles, dimensions } = screen;
+      const screenHeight = dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+      
+      const newTiles = applyManualPowerWiring(
+          tiles,
+          startTileId,
+          numTiles,
+          pattern,
+          dimensions.screenWidth,
+          screenHeight,
+          label
+      );
+      return { ...screen, tiles: newTiles };
+    });
+  }, [updateCurrentScreen]);
 
   const restoreDeletedTiles = useCallback(() => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, deleted: false })));
@@ -1859,6 +1863,10 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     setProcessorType,
     selectedProductId: currentScreen.selectedProductId,
     setSelectedProductId,
+    isManualPowerModalOpen,
+    setIsManualPowerModalOpen,
+    selectedTileForPower,
+    applyManualPowerWiring,
   };
 
   return (

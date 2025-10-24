@@ -29,6 +29,7 @@ import { RasterMapPreview } from "./raster-map-preview";
 import { WiringControls } from "../pixel-mapper/wiring-controls";
 import { PowerControls } from "../pixel-mapper/power-controls";
 import { ColorToolControls } from "../pixel-mapper/color-tool-controls";
+import { ManualPowerWiringModal } from "../pixel-mapper/manual-power-wiring-modal";
 import {
   Accordion,
   AccordionContent,
@@ -72,7 +73,9 @@ export function PixelMapLayout() {
     addNewScreen,
     renameScreen,
     deleteScreen,
-    zoom, setZoom, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, effectiveScreenHeight, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels } = usePixelMap();
+    zoom, setZoom, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, effectiveScreenHeight, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels,
+    isManualPowerModalOpen, setIsManualPowerModalOpen, selectedTileForPower, applyManualPowerWiring
+   } = usePixelMap();
   const [activeAccordion, setActiveAccordion] = useState("screens");
   const viewportRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -210,6 +213,15 @@ export function PixelMapLayout() {
 
   return (
     <SidebarProvider>
+      <ManualPowerWiringModal
+        isOpen={isManualPowerModalOpen}
+        onClose={() => setIsManualPowerModalOpen(false)}
+        onSubmit={(data) => {
+          if (selectedTileForPower !== null) {
+            applyManualPowerWiring({ startTileId: selectedTileForPower, ...data });
+          }
+        }}
+      />
       <Sidebar>
         <SidebarHeader className="p-0">
            <AppHeader />
