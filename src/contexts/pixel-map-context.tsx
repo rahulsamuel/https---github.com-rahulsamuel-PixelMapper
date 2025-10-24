@@ -1,10 +1,9 @@
 
-
 "use client";
 
 import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction, useMemo } from "react";
-import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo, applyManualPowerWiring } from "@/lib/wiring";
+import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo, applyManualPowerWiring as applyManualPowerWiringLogic } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 import { isColorDark } from "@/lib/utils";
 import { getProducts } from "@/app/calculator/actions";
@@ -705,12 +704,17 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 }, [currentScreen.activeTool, currentScreen.powerWiringPattern, currentScreen.brushColor, toast]);
 
 
-  const applyManualPowerWiring = useCallback(({ startTileId, label, numTiles, pattern }: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; }) => {
+  const applyManualPowerWiring = useCallback((args: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; }) => {
+    if (!args) {
+      console.error("applyManualPowerWiring called with undefined arguments");
+      return;
+    }
+    const { startTileId, label, numTiles, pattern } = args;
     updateCurrentScreen(screen => {
       const { tiles, dimensions } = screen;
       const screenHeight = dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
       
-      const newTiles = applyManualPowerWiring(
+      const newTiles = applyManualPowerWiringLogic(
           tiles,
           startTileId,
           numTiles,
@@ -1481,6 +1485,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
                 newLabels[i] = `${y + startNumber}-${x + 1}`;
               } else if (screen.labelFormat === 'row-letter-col-number') {
                 const rowLetter = String.fromCharCode('A'.charCodeAt(0) + y + startNumber - 1);
+                const colNumber = x + 1;
                 newLabels[i] = `${rowLetter}${x + 1}`;
               }
             }
@@ -1875,3 +1880,5 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     </PixelMapContext.Provider>
   );
 }
+
+    
