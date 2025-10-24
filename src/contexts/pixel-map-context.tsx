@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { toPng } from "html-to-image";
@@ -678,6 +679,24 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     return newLabels;
   }, [currentScreen, rasterMapConfig, activeBounds, effectiveScreenHeight, topHalfTile, bottomHalfTile]);
 
+  const applyManualPowerWiring = useCallback((args: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; }) => {
+    const { startTileId, label, numTiles, pattern } = args;
+    updateCurrentScreen(screen => {
+      const { tiles, dimensions } = screen;
+      const screenHeight = dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+      
+      const newTiles = applyManualPowerWiringLogic(
+          tiles,
+          startTileId,
+          numTiles,
+          pattern,
+          dimensions.screenWidth,
+          screenHeight,
+          label
+      );
+      return { ...screen, tiles: newTiles };
+    });
+  }, [updateCurrentScreen]);
 
   const handleTileClick = useCallback((tileId: number) => {
     switch (currentScreen.activeTool) {
@@ -710,30 +729,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
               setIsManualPowerModalOpen(true);
             }
             break;
-        default:
-            break;
     }
   }, [currentScreen.activeTool, currentScreen.powerWiringPattern, currentScreen.brushColor, currentScreen.tiles, toast, applyManualPowerWiring]);
-
-
-  const applyManualPowerWiring = useCallback((args: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; }) => {
-    const { startTileId, label, numTiles, pattern } = args;
-    updateCurrentScreen(screen => {
-      const { tiles, dimensions } = screen;
-      const screenHeight = dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
-      
-      const newTiles = applyManualPowerWiringLogic(
-          tiles,
-          startTileId,
-          numTiles,
-          pattern,
-          dimensions.screenWidth,
-          screenHeight,
-          label
-      );
-      return { ...screen, tiles: newTiles };
-    });
-  }, [updateCurrentScreen]);
 
   const restoreDeletedTiles = useCallback(() => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, deleted: false })));
@@ -1890,3 +1887,4 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 }
 
     
+
