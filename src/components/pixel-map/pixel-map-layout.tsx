@@ -30,6 +30,7 @@ import { WiringControls } from "../pixel-mapper/wiring-controls";
 import { PowerControls } from "../pixel-mapper/power-controls";
 import { ColorToolControls } from "../pixel-mapper/color-tool-controls";
 import { ManualPowerWiringModal } from "../pixel-mapper/manual-power-wiring-modal";
+import { ManualDataWiringModal } from "../pixel-mapper/manual-data-wiring-modal";
 import {
   Accordion,
   AccordionContent,
@@ -74,7 +75,8 @@ export function PixelMapLayout() {
     renameScreen,
     deleteScreen,
     zoom, setZoom, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, effectiveScreenHeight, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels,
-    isManualPowerModalOpen, setIsManualPowerModalOpen, selectedTileForPower, applyManualPowerWiring
+    isManualPowerModalOpen, setIsManualPowerModalOpen, selectedTileForPower, applyManualPowerWiring,
+    isManualDataModalOpen, setIsManualDataModalOpen, selectedTileForData, applyManualDataWiring
    } = usePixelMap();
   const [activeAccordion, setActiveAccordion] = useState("screens");
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -219,6 +221,15 @@ export function PixelMapLayout() {
         onSubmit={(data) => {
           if (selectedTileForPower !== null) {
             applyManualPowerWiring({ startTileId: selectedTileForPower, ...data });
+          }
+        }}
+      />
+      <ManualDataWiringModal
+        isOpen={isManualDataModalOpen}
+        onClose={() => setIsManualDataModalOpen(false)}
+        onSubmit={(data) => {
+          if (selectedTileForData !== null) {
+            applyManualDataWiring({ startTileId: selectedTileForData, ...data });
           }
         }}
       />

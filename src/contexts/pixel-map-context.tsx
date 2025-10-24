@@ -4,7 +4,7 @@
 
 import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction, useMemo } from "react";
-import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo, applyManualPowerWiring as applyManualPowerWiringLogic } from "@/lib/wiring";
+import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo, applyManualPowerWiring as applyManualPowerWiringLogic, applyManualDataWiring as applyManualDataWiringLogic } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 import { isColorDark } from "@/lib/utils";
 import { getProducts } from "@/app/calculator/actions";
@@ -35,6 +35,12 @@ export interface Tile {
     tileCount: number;
     pattern: WiringPattern;
   };
+  dataCircuit?: {
+    mainLabel: string;
+    backupLabel: string;
+    tileCount: number;
+    pattern: WiringPattern;
+  };
 }
 
 interface ActiveBounds {
@@ -44,7 +50,7 @@ interface ActiveBounds {
   maxY: number;
 }
 
-type ActiveTool = 'delete' | 'label' | 'color' | 'power';
+type ActiveTool = 'delete' | 'label' | 'color' | 'power' | 'data';
 type LabelFormat = 'none' | 'sequential' | 'row-col' | 'dmx-style' | 'row-letter-col-number';
 type LabelPosition = 'top-left' | 'top-right' | 'center' | 'bottom-left' | 'bottom-right';
 type LabelColorMode = 'single' | 'auto';
@@ -221,6 +227,10 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'> {
   setIsManualPowerModalOpen: Dispatch<SetStateAction<boolean>>;
   selectedTileForPower: number | null;
   applyManualPowerWiring: (args: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; }) => void;
+  isManualDataModalOpen: boolean;
+  setIsManualDataModalOpen: Dispatch<SetStateAction<boolean>>;
+  selectedTileForData: number | null;
+  applyManualDataWiring: (args: { startTileId: number; mainLabel: string; backupLabel: string; numTiles: number; pattern: WiringPattern; }) => void;
 }
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
@@ -312,6 +322,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<LedProduct[]>([]);
   const [isManualPowerModalOpen, setIsManualPowerModalOpen] = useState(false);
   const [selectedTileForPower, setSelectedTileForPower] = useState<number | null>(null);
+  const [isManualDataModalOpen, setIsManualDataModalOpen] = useState(false);
+  const [selectedTileForData, setSelectedTileForData] = useState<number | null>(null);
 
   useEffect(() => {
       async function fetchProducts() {
@@ -697,8 +709,31 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       return { ...screen, tiles: newTiles };
     });
   }, [updateCurrentScreen]);
+  
+  const applyManualDataWiring = useCallback((args: { startTileId: number; mainLabel: string; backupLabel: string; numTiles: number; pattern: WiringPattern; }) => {
+    const { startTileId, mainLabel, backupLabel, numTiles, pattern } = args;
+    updateCurrentScreen(screen => {
+      const { tiles, dimensions } = screen;
+      const screenHeight = dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+      
+      const newTiles = applyManualDataWiringLogic(
+          tiles,
+          startTileId,
+          numTiles,
+          pattern,
+          dimensions.screenWidth,
+          screenHeight,
+          mainLabel,
+          backupLabel
+      );
+      return { ...screen, tiles: newTiles };
+    });
+  }, [updateCurrentScreen]);
 
   const handleTileClick = useCallback((tileId: number) => {
+    const clickedTile = currentScreen.tiles.find(t => t.id === tileId);
+    if (!clickedTile) return;
+
     switch (currentScreen.activeTool) {
         case 'delete':
             setTiles(prev =>
@@ -719,7 +754,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
                 });
                 return;
             }
-            const clickedTile = currentScreen.tiles.find(t => t.id === tileId);
             if (clickedTile?.powerCircuit) {
               // This tile is the start of a circuit, so we clear it.
               applyManualPowerWiring({ startTileId: tileId, label: '', numTiles: 0, pattern: 'left-right' });
@@ -729,8 +763,26 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
               setIsManualPowerModalOpen(true);
             }
             break;
+        case 'data':
+            if (currentScreen.wiringPattern !== 'manual') {
+                toast({
+                    title: "Manual Mode Required",
+                    description: "Switch to the 'Manual' data wiring pattern to assign circuits by clicking.",
+                    variant: "destructive",
+                });
+                return;
+            }
+            if (clickedTile?.dataCircuit) {
+              // This tile is the start of a circuit, so we clear it.
+              applyManualDataWiring({ startTileId: tileId, mainLabel: '', backupLabel: '', numTiles: 0, pattern: 'left-right' });
+            } else {
+              // This is a new circuit
+              setSelectedTileForData(tileId);
+              setIsManualDataModalOpen(true);
+            }
+            break;
     }
-  }, [currentScreen.activeTool, currentScreen.powerWiringPattern, currentScreen.brushColor, currentScreen.tiles, toast, applyManualPowerWiring]);
+  }, [currentScreen, toast, applyManualPowerWiring, applyManualDataWiring, setTiles]);
 
   const restoreDeletedTiles = useCallback(() => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, deleted: false })));
@@ -1877,6 +1929,10 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     setIsManualPowerModalOpen,
     selectedTileForPower,
     applyManualPowerWiring,
+    isManualDataModalOpen,
+    setIsManualDataModalOpen,
+    selectedTileForData,
+    applyManualDataWiring,
   };
 
   return (
@@ -1885,6 +1941,3 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     </PixelMapContext.Provider>
   );
 }
-
-    
-

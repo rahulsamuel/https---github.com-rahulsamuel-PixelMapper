@@ -240,17 +240,12 @@ export function applyManualPowerWiring(
     portLabel: string,
 ): Tile[] {
     const newTiles = tiles.map(t => ({ ...t }));
-    
-    // Find the starting tile in the grid
     const startTileGridIndex = newTiles.findIndex(t => t.id === startTileId);
-    if (startTileGridIndex === -1) {
-        console.warn("Manual power wiring: start tile not found.");
-        return tiles; 
-    }
+    if (startTileGridIndex === -1) return tiles; 
 
-    // If numTiles is 0, it means we are clearing the circuit
-    if (numTiles === 0 && newTiles[startTileGridIndex].powerCircuit) {
-      const circuitToClear = newTiles[startTileGridIndex].powerCircuit!;
+    // If numTiles is 0 or portLabel is empty, it means we are clearing the circuit
+    const circuitToClear = newTiles[startTileGridIndex].powerCircuit;
+    if ((numTiles === 0 || !portLabel) && circuitToClear) {
       const activeTileIndices = tiles.map((t, i) => !t.deleted ? i : -1).filter(i => i !== -1);
       const pathOrder = getPathOrder(activeTileIndices, circuitToClear.pattern, screenWidth, screenHeight);
       const startTilePathIndex = pathOrder.indexOf(startTileGridIndex);
@@ -268,16 +263,10 @@ export function applyManualPowerWiring(
       return newTiles;
     }
 
-
     const activeTileIndices = newTiles.map((t, i) => !t.deleted ? i : -1).filter(i => i !== -1);
     const pathOrder = getPathOrder(activeTileIndices, powerPattern, screenWidth, screenHeight);
-    
     const startTilePathIndex = pathOrder.indexOf(startTileGridIndex);
-
-    if (startTilePathIndex === -1) {
-        console.warn("Manual power wiring: start tile is not in the active path for the selected pattern.");
-        return tiles; 
-    }
+    if (startTilePathIndex === -1) return tiles; 
 
     const circuitTilesIndices: number[] = [];
     for (let i = 0; i < numTiles; i++) {
@@ -287,21 +276,107 @@ export function applyManualPowerWiring(
         }
     }
     
-    // Clear old labels and circuit data from the tiles that are about to be used
+    // Clear old labels from tiles that are about to be used, if they were part of another manual circuit
     circuitTilesIndices.forEach(tileIndex => {
-        if (newTiles[tileIndex]) {
-            newTiles[tileIndex].powerPortLabel = undefined;
-            newTiles[tileIndex].powerCircuit = undefined;
+        if (newTiles[tileIndex]?.powerCircuit) {
+            // It's a start of another circuit, need to clear that entire old circuit
+            const oldCircuit = newTiles[tileIndex].powerCircuit!;
+            const oldPathOrder = getPathOrder(activeTileIndices, oldCircuit.pattern, screenWidth, screenHeight);
+            const oldStartIdx = oldPathOrder.indexOf(tileIndex);
+            if (oldStartIdx !== -1) {
+                for (let i = 0; i < oldCircuit.tileCount; i++) {
+                    const idxToClear = oldPathOrder[oldStartIdx + i];
+                    if (idxToClear !== undefined) {
+                        newTiles[idxToClear].powerPortLabel = undefined;
+                        newTiles[idxToClear].powerCircuit = undefined;
+                    }
+                }
+            }
         }
+        newTiles[tileIndex].powerPortLabel = undefined;
+        newTiles[tileIndex].powerCircuit = undefined;
     });
     
-    // Set the new starting label and circuit data
     if (circuitTilesIndices.length > 0) {
         newTiles[circuitTilesIndices[0]].powerPortLabel = portLabel;
         newTiles[circuitTilesIndices[0]].powerCircuit = {
             label: portLabel,
             tileCount: numTiles,
             pattern: powerPattern,
+        };
+    }
+    
+    return newTiles;
+}
+
+export function applyManualDataWiring(
+    tiles: Tile[],
+    startTileId: number,
+    numTiles: number,
+    dataPattern: WiringPattern,
+    screenWidth: number,
+    screenHeight: number,
+    mainLabel: string,
+    backupLabel: string,
+): Tile[] {
+    const newTiles = tiles.map(t => ({ ...t }));
+    const startTileGridIndex = newTiles.findIndex(t => t.id === startTileId);
+    if (startTileGridIndex === -1) return tiles; 
+
+    const circuitToClear = newTiles[startTileGridIndex].dataCircuit;
+    if ((numTiles === 0 || !mainLabel) && circuitToClear) {
+        const activeTileIndices = tiles.map((t, i) => !t.deleted ? i : -1).filter(i => i !== -1);
+        const pathOrder = getPathOrder(activeTileIndices, circuitToClear.pattern, screenWidth, screenHeight);
+        const startTilePathIndex = pathOrder.indexOf(startTileGridIndex);
+        
+        if(startTilePathIndex !== -1) {
+            for (let i = 0; i < circuitToClear.tileCount; i++) {
+                const currentPathIndex = startTilePathIndex + i;
+                if (currentPathIndex < pathOrder.length) {
+                    const tileToClearIndex = pathOrder[currentPathIndex];
+                    newTiles[tileToClearIndex].dataCircuit = undefined; // Main trigger for manual data wiring
+                }
+            }
+        }
+        return newTiles;
+    }
+
+    const activeTileIndices = newTiles.map((t, i) => !t.deleted ? i : -1).filter(i => i !== -1);
+    const pathOrder = getPathOrder(activeTileIndices, dataPattern, screenWidth, screenHeight);
+    const startTilePathIndex = pathOrder.indexOf(startTileGridIndex);
+    if (startTilePathIndex === -1) return tiles; 
+
+    const circuitTilesIndices: number[] = [];
+    for (let i = 0; i < numTiles; i++) {
+        const currentPathIndex = startTilePathIndex + i;
+        if (currentPathIndex < pathOrder.length) {
+            circuitTilesIndices.push(pathOrder[currentPathIndex]);
+        }
+    }
+    
+    circuitTilesIndices.forEach(tileIndex => {
+        if (newTiles[tileIndex]?.dataCircuit) {
+            const oldCircuit = newTiles[tileIndex].dataCircuit!;
+            const oldPathOrder = getPathOrder(activeTileIndices, oldCircuit.pattern, screenWidth, screenHeight);
+            const oldStartIdx = oldPathOrder.indexOf(tileIndex);
+            if (oldStartIdx !== -1) {
+                for (let i = 0; i < oldCircuit.tileCount; i++) {
+                    const idxToClear = oldPathOrder[oldStartIdx + i];
+                    if (idxToClear !== undefined) {
+                        newTiles[idxToClear].dataCircuit = undefined;
+                    }
+                }
+            }
+        }
+        newTiles[tileIndex].dataCircuit = undefined;
+    });
+    
+    if (circuitTilesIndices.length > 0) {
+        newTiles[circuitTilesIndices[0]].dataCircuit = {
+            mainLabel: mainLabel,
+            backupLabel: backupLabel,
+            tileCount: numTiles,
+            pattern: dataPattern,
         };
     }
     
@@ -357,7 +432,44 @@ export function getWiringData({
 
   const activeTileIndices = tiles.map((_, i) => i).filter(i => !tiles[i].deleted);
 
-  if (rasterMapConfig && rasterMapConfig.slices.length > 0 && rasterMapConfig.outputWidth > 0 && rasterMapConfig.outputHeight > 0) {
+  // DATA WIRING
+  if (wiringPattern === 'manual') {
+      const processedDataIndices = new Set<number>();
+      allTilesData.forEach((startTileInfo, startTileGridIndex) => {
+          const startTile = tiles[startTileGridIndex];
+          if (startTile.isDeleted || !startTile.dataCircuit || processedDataIndices.has(startTileGridIndex)) return;
+          
+          const { tileCount, pattern, mainLabel, backupLabel } = startTile.dataCircuit;
+          if (tileCount === 0) return;
+
+          const pathOrder = getPathOrder(activeTileIndices, pattern, screenWidth, screenHeight);
+          const startTileIndexInPath = pathOrder.indexOf(startTileGridIndex);
+          if (startTileIndexInPath === -1) return;
+          
+          allTilesData[startTileGridIndex].dataLabel = mainLabel;
+
+          for (let i = 0; i < tileCount; i++) {
+              const currentPathIndex = startTileIndexInPath + i;
+              if (currentPathIndex >= pathOrder.length) break;
+              
+              const currentGridIndex = pathOrder[currentPathIndex];
+              processedDataIndices.add(currentGridIndex);
+
+              const isLastInCircuit = i === tileCount - 1;
+              const isLastInPath = currentPathIndex === pathOrder.length - 1;
+
+              if (isLastInCircuit || isLastInPath) {
+                  allTilesData[currentGridIndex].nextTile = null;
+                  allTilesData[currentGridIndex].backupLabel = backupLabel;
+              } else {
+                  const nextGridIndex = pathOrder[currentPathIndex + 1];
+                  const nextTileInfo = allTilesData[nextGridIndex];
+                  allTilesData[currentGridIndex].nextTile = { x: nextTileInfo.x, y: nextTileInfo.y };
+                  allTilesData[currentGridIndex].backupLabel = "";
+              }
+          }
+      });
+  } else if (rasterMapConfig && rasterMapConfig.slices.length > 0 && rasterMapConfig.outputWidth > 0 && rasterMapConfig.outputHeight > 0) {
     const currentScreenArrangement = rasterMapConfig.screenArrangement.find(s => s.screenId === screenId);
     if (currentScreenArrangement) {
         let groupCounter = dataPortStartNumber - 1;
@@ -403,25 +515,15 @@ export function getWiringData({
     applyDataWiring(dataTilesPath, wiringPortConfig, dataPortStartNumber, processorType, dataPortStartNumber - 1);
   }
   
-  if (powerWiringPattern !== 'manual') {
-    // Clear all manual labels if not in manual mode
-    allTilesData.forEach(t => t.powerPortLabel = '');
-    const powerPathOrder = getPathOrder(activeTileIndices, powerWiringPattern, screenWidth, screenHeight);
-    const powerTilesPath = powerPathOrder.map(index => ({ tile: allTilesData[index], index }));
-    const powerCounters = { powerCounter: 1, powerGroupCounter: 0 };
-    applyPowerWiring(powerTilesPath, tilesPerPowerString, powerCounters);
-  } else {
-      // Manual mode: find circuits and draw their arrows
-      const processedIndices = new Set<number>();
-      
+  // POWER WIRING
+  if (powerWiringPattern === 'manual') {
+      const processedPowerIndices = new Set<number>();
       allTilesData.forEach((startTileInfo, startTileGridIndex) => {
           const startTile = tiles[startTileGridIndex];
-          if (startTile.isDeleted || !startTile.powerCircuit || processedIndices.has(startTileGridIndex)) {
-              return;
-          }
+          if (startTile.isDeleted || !startTile.powerCircuit || processedPowerIndices.has(startTileGridIndex)) return;
 
           const { tileCount, pattern } = startTile.powerCircuit;
-          if (tileCount === 0) return; // This is a cleared circuit
+          if (tileCount === 0) return;
 
           const pathOrder = getPathOrder(activeTileIndices, pattern, screenWidth, screenHeight);
           const startTileIndexInPath = pathOrder.indexOf(startTileGridIndex);
@@ -432,7 +534,7 @@ export function getWiringData({
               if (currentPathIndex >= pathOrder.length) break;
               
               const currentGridIndex = pathOrder[currentPathIndex];
-              processedIndices.add(currentGridIndex);
+              processedPowerIndices.add(currentGridIndex);
 
               const isLastInCircuit = i === tileCount - 1;
               const isLastInPath = currentPathIndex === pathOrder.length - 1;
@@ -446,6 +548,13 @@ export function getWiringData({
               }
           }
       });
+  } else {
+    // Automatic power wiring
+    allTilesData.forEach(t => t.powerPortLabel = '');
+    const powerPathOrder = getPathOrder(activeTileIndices, powerWiringPattern, screenWidth, screenHeight);
+    const powerTilesPath = powerPathOrder.map(index => ({ tile: allTilesData[index], index }));
+    const powerCounters = { powerCounter: 1, powerGroupCounter: 0 };
+    applyPowerWiring(powerTilesPath, tilesPerPowerString, powerCounters);
   }
 
   return allTilesData;

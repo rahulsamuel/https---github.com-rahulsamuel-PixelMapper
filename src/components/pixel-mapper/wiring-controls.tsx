@@ -62,6 +62,7 @@ export function WiringControls() {
             <SelectValue placeholder="Select pattern" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="manual">Manual</SelectItem>
             <SelectItem value="serpentine-horizontal">Serpentine (Horizontal)</SelectItem>
             <SelectItem value="serpentine-horizontal-reverse">Serpentine (Horizontal Reverse)</SelectItem>
             <SelectItem value="serpentine-vertical">Serpentine (Vertical)</SelectItem>
@@ -84,6 +85,7 @@ export function WiringControls() {
             onChange={(e) => setWiringPortConfig(e.target.value)}
             placeholder="e.g., 4"
             min="1"
+            disabled={wiringPattern === 'manual'}
         />
       </div>
       <div className="space-y-2">
@@ -94,6 +96,7 @@ export function WiringControls() {
             value={dataPortStartNumber}
             onChange={(e) => setDataPortStartNumber(Number(e.target.value) || 1)}
             min="1"
+            disabled={wiringPattern === 'manual'}
         />
       </div>
       <div className="flex items-center justify-between">

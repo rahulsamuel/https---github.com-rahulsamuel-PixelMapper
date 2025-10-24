@@ -4,7 +4,7 @@
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
-import { Palette, Trash2, Bolt } from "lucide-react";
+import { Palette, Trash2, Bolt, GitBranch } from "lucide-react";
 
 export function EditTools() {
   const { activeTool, setActiveTool } = usePixelMap();
@@ -34,6 +34,14 @@ export function EditTools() {
       >
         <Bolt className="mr-2" />
         Power
+      </Button>
+      <Button
+        variant={activeTool === 'data' ? 'secondary' : 'outline'}
+        onClick={() => setActiveTool(activeTool === 'data' ? 'delete' : 'data')}
+        size="sm"
+      >
+        <GitBranch className="mr-2" />
+        Data
       </Button>
     </div>
   );
