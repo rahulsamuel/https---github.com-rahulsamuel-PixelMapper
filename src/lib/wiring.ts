@@ -4,6 +4,7 @@
 
 
 
+
 interface Dimensions {
   tileWidth: number;
   tileHeight: number;
@@ -91,7 +92,7 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
          return a.x % 2 === 0 ? a.y - b.y : b.y - a.y;
       case 'serpentine-vertical-reverse':
         if (a.x !== b.x) return b.x - a.x;
-        return (screenWidth - 1 - a.x) % 2 === 0 ? a.y - b.y : b.y - a.y;
+        return (screenWidth - 1 - a.x) % 2 === 0 ? b.y - a.y : a.y - b.y;
       case 'serpentine-vertical-bottom-start':
         if (a.x !== b.x) return a.x - b.x;
         return a.x % 2 === 0 ? b.y - a.y : a.y - b.y;
@@ -246,10 +247,10 @@ export function applyManualPowerWiring(
     const activeTileIndices = tiles.map((t, i) => !t.deleted ? i : -1).filter(i => i !== -1);
     const pathOrder = getPathOrder(activeTileIndices, powerPattern, screenWidth, screenHeight);
     
-    const startTileIndex = tiles.findIndex(t => t.id === startTileId);
-    const startPathIndex = pathOrder.indexOf(startTileIndex);
+    const startTileIndexInGrid = tiles.findIndex(t => t.id === startTileId);
+    const startTileIndexInPath = pathOrder.indexOf(startTileIndexInGrid);
 
-    if (startPathIndex === -1) {
+    if (startTileIndexInPath === -1) {
         console.warn("Manual power wiring: start tile is not in the active path.");
         return tiles; // Clicked tile is not active or not in path
     }
@@ -268,9 +269,9 @@ export function applyManualPowerWiring(
     });
     const newPortLabel = `P${maxPortNum + 1}`;
 
-    const circuitTilesIndices = [];
+    const circuitTilesIndices: number[] = [];
     for (let i = 0; i < numTiles; i++) {
-        const currentPathIndex = startPathIndex + i;
+        const currentPathIndex = startTileIndexInPath + i;
         if (currentPathIndex < pathOrder.length) {
             circuitTilesIndices.push(pathOrder[currentPathIndex]);
         }
@@ -395,30 +396,40 @@ export function getWiringData({
     applyPowerWiring(powerTilesPath, tilesPerPowerString, powerCounters);
   } else {
       // Logic for drawing connections for manually placed power circuits
-      const tilesByPort = new Map<string, number[]>();
+      const tilesByPort = new Map<string, number>();
       allTilesData.forEach((tile, index) => {
         if (!tile.isDeleted && tile.powerPortLabel?.startsWith('P')) {
-            tilesByPort.set(tile.powerPortLabel, [index]);
+            tilesByPort.set(tile.powerPortLabel, index);
         }
       });
       
-      const powerPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
+      const powerPathOrder = getPathOrder(activeTileIndices, powerWiringPattern, screenWidth, screenHeight);
 
-      tilesByPort.forEach((startIndexArray, portLabel) => {
-          const startTileIndexInGrid = startIndexArray[0];
+      const sortedPorts = [...tilesByPort.entries()].sort((a, b) => {
+        const portNumA = parseInt(a[0].substring(1));
+        const portNumB = parseInt(b[0].substring(1));
+        return portNumA - portNumB;
+      });
+      
+      sortedPorts.forEach(([portLabel, startTileIndexInGrid]) => {
           const startTileInPath = powerPathOrder.indexOf(startTileIndexInGrid);
-
           if (startTileInPath === -1) return;
 
           let numTilesInCircuit = 0;
           for (let i = startTileInPath; i < powerPathOrder.length; i++) {
               const currentTileIndex = powerPathOrder[i];
               const currentTile = allTilesData[currentTileIndex];
-              // Stop counting if we hit a tile that starts another manual circuit
+              numTilesInCircuit++;
+              // This logic needs to be smarter. We need to know how many tiles were requested for this port.
+              // For now, let's assume it's the tilesPerPowerString value for visualization. A better approach is needed.
+              // We'll use the tilesPerPowerString value for now. A better implementation would store the count per manual port.
+              if (numTilesInCircuit >= parseInt(tilesPerPowerString, 10)) {
+                  break; 
+              }
+              // Stop if we hit a tile that starts another manual circuit
               if (i > startTileInPath && currentTile.powerPortLabel && currentTile.powerPortLabel.startsWith('P')) {
                   break;
               }
-              numTilesInCircuit++;
           }
           
           for (let i = 0; i < numTilesInCircuit - 1; i++) {
@@ -428,6 +439,13 @@ export function getWiringData({
               if (currentTileIndexInPath < powerPathOrder.length && nextTileIndexInPath < powerPathOrder.length) {
                   const currentTileIndex = powerPathOrder[currentTileIndexInPath];
                   const nextTileIndex = powerPathOrder[nextTileIndexInPath];
+
+                  // Ensure we don't cross into another manually defined port group
+                  const nextTileInfo = allTilesData[nextTileIndex];
+                  if (nextTileInfo.powerPortLabel && nextTileInfo.powerPortLabel.startsWith('P') && nextTileInfo.powerPortLabel !== portLabel) {
+                      break;
+                  }
+
                   const currentTile = allTilesData[currentTileIndex];
                   const nextTile = allTilesData[nextTileIndex];
                   currentTile.nextPowerTile = { x: nextTile.x, y: nextTile.y };

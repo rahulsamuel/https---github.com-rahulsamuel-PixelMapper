@@ -671,46 +671,52 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
   const handleTileClick = useCallback((tileId: number) => {
     switch (currentScreen.activeTool) {
-      case 'delete':
-        setTiles(prev =>
-          prev.map(tile => (tile.id === tileId ? { ...tile, deleted: !tile.deleted } : tile))
-        );
-        break;
-      case 'color':
-        setTiles(prev =>
-          prev.map(tile => (tile.id === tileId ? { ...tile, color: currentScreen.brushColor, deleted: false } : tile))
-        );
-        break;
-      case 'power':
-        if (currentScreen.powerWiringPattern !== 'manual') {
-          toast({
-              title: "Manual Mode Required",
-              description: "Switch to the 'Manual' power wiring pattern to assign circuits by clicking.",
-              variant: "destructive",
-          });
-          return;
-        }
-        
-        const numTilesStr = window.prompt("Enter number of tiles for this power circuit:", currentScreen.tilesPerPowerString);
-        if (numTilesStr) {
-            const numTiles = parseInt(numTilesStr, 10);
-            if (!isNaN(numTiles) && numTiles > 0) {
-                const newTiles = applyManualPowerWiring(
-                    currentScreen.tiles,
-                    tileId,
-                    numTiles,
-                    currentScreen.wiringPattern, // Use data wiring pattern to define sequence for now
-                    currentScreen.dimensions.screenWidth,
-                    effectiveScreenHeight
-                );
-                setTiles(newTiles);
+        case 'delete':
+            setTiles(prev =>
+                prev.map(tile => (tile.id === tileId ? { ...tile, deleted: !tile.deleted } : tile))
+            );
+            break;
+        case 'color':
+            setTiles(prev =>
+                prev.map(tile => (tile.id === tileId ? { ...tile, color: currentScreen.brushColor, deleted: false } : tile))
+            );
+            break;
+        case 'power':
+            if (currentScreen.powerWiringPattern !== 'manual') {
+                toast({
+                    title: "Manual Mode Required",
+                    description: "Switch to the 'Manual' power wiring pattern to assign circuits by clicking.",
+                    variant: "destructive",
+                });
+                return;
             }
-        }
-        break;
-      default:
-        break;
+            
+            const numTilesStr = window.prompt("Enter number of tiles for this power circuit:", currentScreen.tilesPerPowerString);
+            if (numTilesStr) {
+                const numTiles = parseInt(numTilesStr, 10);
+                if (!isNaN(numTiles) && numTiles > 0) {
+                    const newTiles = applyManualPowerWiring(
+                        currentScreen.tiles,
+                        tileId,
+                        numTiles,
+                        currentScreen.powerWiringPattern, // Use power pattern
+                        currentScreen.dimensions.screenWidth,
+                        effectiveScreenHeight
+                    );
+                    setTiles(newTiles);
+                } else {
+                    toast({
+                        title: "Invalid Number",
+                        description: "Please enter a positive number of tiles.",
+                        variant: "destructive",
+                    });
+                }
+            }
+            break;
+        default:
+            break;
     }
-  }, [currentScreen, effectiveScreenHeight, toast, setTiles]);
+}, [currentScreen, effectiveScreenHeight, toast, setTiles]);
 
 
   const restoreDeletedTiles = useCallback(() => {
