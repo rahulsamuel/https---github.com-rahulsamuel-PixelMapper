@@ -239,22 +239,49 @@ export function applyManualPowerWiring(
     screenHeight: number,
     portLabel: string,
 ): Tile[] {
-    const activeTileIndices = tiles.map((t, i) => !t.deleted ? i : -1).filter(i => i !== -1);
-    const pathOrder = getPathOrder(activeTileIndices, powerPattern, screenWidth, screenHeight);
+    const newTiles = tiles.map(t => ({ ...t }));
     
-    const startTileIndexInGrid = tiles.findIndex(t => t.id === startTileId);
-    const startTileIndexInPath = pathOrder.indexOf(startTileIndexInGrid);
-
-    if (startTileIndexInPath === -1) {
-        console.warn("Manual power wiring: start tile is not in the active path.");
+    // Find the starting tile in the grid
+    const startTileGridIndex = newTiles.findIndex(t => t.id === startTileId);
+    if (startTileGridIndex === -1) {
+        console.warn("Manual power wiring: start tile not found.");
         return tiles; 
     }
 
-    const newTiles = tiles.map(t => ({ ...t }));
+    // If numTiles is 0, it means we are clearing the circuit
+    if (numTiles === 0 && newTiles[startTileGridIndex].powerCircuit) {
+      const circuitToClear = newTiles[startTileGridIndex].powerCircuit!;
+      const activeTileIndices = tiles.map((t, i) => !t.deleted ? i : -1).filter(i => i !== -1);
+      const pathOrder = getPathOrder(activeTileIndices, circuitToClear.pattern, screenWidth, screenHeight);
+      const startTilePathIndex = pathOrder.indexOf(startTileGridIndex);
+      
+      if(startTilePathIndex !== -1) {
+        for (let i = 0; i < circuitToClear.tileCount; i++) {
+          const currentPathIndex = startTilePathIndex + i;
+          if (currentPathIndex < pathOrder.length) {
+            const tileToClearIndex = pathOrder[currentPathIndex];
+            newTiles[tileToClearIndex].powerPortLabel = undefined;
+            newTiles[tileToClearIndex].powerCircuit = undefined;
+          }
+        }
+      }
+      return newTiles;
+    }
+
+
+    const activeTileIndices = newTiles.map((t, i) => !t.deleted ? i : -1).filter(i => i !== -1);
+    const pathOrder = getPathOrder(activeTileIndices, powerPattern, screenWidth, screenHeight);
+    
+    const startTilePathIndex = pathOrder.indexOf(startTileGridIndex);
+
+    if (startTilePathIndex === -1) {
+        console.warn("Manual power wiring: start tile is not in the active path for the selected pattern.");
+        return tiles; 
+    }
 
     const circuitTilesIndices: number[] = [];
     for (let i = 0; i < numTiles; i++) {
-        const currentPathIndex = startTileIndexInPath + i;
+        const currentPathIndex = startTilePathIndex + i;
         if (currentPathIndex < pathOrder.length) {
             circuitTilesIndices.push(pathOrder[currentPathIndex]);
         }
@@ -263,7 +290,7 @@ export function applyManualPowerWiring(
     // Clear old labels and circuit data from the tiles that are about to be used
     circuitTilesIndices.forEach(tileIndex => {
         if (newTiles[tileIndex]) {
-            newTiles[tileIndex].powerPortLabel = '';
+            newTiles[tileIndex].powerPortLabel = undefined;
             newTiles[tileIndex].powerCircuit = undefined;
         }
     });
@@ -394,6 +421,7 @@ export function getWiringData({
           }
 
           const { tileCount, pattern } = startTile.powerCircuit;
+          if (tileCount === 0) return; // This is a cleared circuit
 
           const pathOrder = getPathOrder(activeTileIndices, pattern, screenWidth, screenHeight);
           const startTileIndexInPath = pathOrder.indexOf(startTileGridIndex);

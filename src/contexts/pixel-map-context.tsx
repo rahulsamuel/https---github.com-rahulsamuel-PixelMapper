@@ -700,13 +700,20 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
                 });
                 return;
             }
-            setSelectedTileForPower(tileId);
-            setIsManualPowerModalOpen(true);
+            const clickedTile = currentScreen.tiles.find(t => t.id === tileId);
+            if (clickedTile?.powerCircuit) {
+              // This tile is the start of a circuit, so we clear it.
+              applyManualPowerWiring({ startTileId: tileId, label: '', numTiles: 0, pattern: 'left-right' });
+            } else {
+              // This is a new circuit
+              setSelectedTileForPower(tileId);
+              setIsManualPowerModalOpen(true);
+            }
             break;
         default:
             break;
     }
-}, [currentScreen.activeTool, currentScreen.powerWiringPattern, currentScreen.brushColor, toast]);
+  }, [currentScreen.activeTool, currentScreen.powerWiringPattern, currentScreen.brushColor, currentScreen.tiles, toast, applyManualPowerWiring]);
 
 
   const applyManualPowerWiring = useCallback((args: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; }) => {
