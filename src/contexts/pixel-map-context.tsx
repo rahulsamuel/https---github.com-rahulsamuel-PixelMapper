@@ -325,8 +325,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const wiringDiagramRef = useRef<HTMLDivElement>(null);
   const rasterMapRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const nextIdCounter = useRef(0);
-  const subscriptionStatus = 'pro';
+  const nextIdCounter = useRef(1);
 
   const [screens, setScreens] = useState<Screen[]>(() => {
     const initialScreen = createNewScreen("Default Screen", nextIdCounter.current);
@@ -375,10 +374,13 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
           }
           
           const totalTiles = newDimensions.screenWidth * newDimensions.screenHeight;
-          const newTiles = (totalTiles > 0 && totalTiles <= 4096)
-              ? Array.from({ length: totalTiles }, (_, i) => ({ id: screen.nextTileId + i, deleted: false }))
-              : [];
-          
+          let newTiles: Tile[];
+          if (totalTiles > 0 && totalTiles <= 4096) {
+              newTiles = Array.from({ length: totalTiles }, (_, i) => ({ id: screen.nextTileId + i, deleted: false }));
+          } else {
+              newTiles = [];
+          }
+
           return { 
             ...updatedScreen, 
             tiles: newTiles, 
@@ -554,10 +556,11 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     updateCurrentScreen(screen => {
       const { screenWidth } = screen.dimensions;
       const currentEffectiveWidth = screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
-      let newTiles;
+      let newTiles: Tile[];
       let nextTileId = screen.nextTileId;
       if (add) {
-          const newRow = Array.from({ length: currentEffectiveWidth }, () => ({ id: nextTileId++, deleted: false }));
+          const newRow = Array.from({ length: currentEffectiveWidth }, (_, i) => ({ id: nextTileId + i, deleted: false }));
+          nextTileId += newRow.length;
           newTiles = [...newRow, ...screen.tiles];
       } else {
           newTiles = screen.tiles.slice(currentEffectiveWidth);
@@ -570,10 +573,11 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     updateCurrentScreen(screen => {
       const { screenWidth } = screen.dimensions;
       const currentEffectiveWidth = screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
-      let newTiles;
+      let newTiles: Tile[];
       let nextTileId = screen.nextTileId;
       if (add) {
-          const newRow = Array.from({ length: currentEffectiveWidth }, () => ({ id: nextTileId++, deleted: false }));
+          const newRow = Array.from({ length: currentEffectiveWidth }, (_, i) => ({ id: nextTileId + i, deleted: false }));
+          nextTileId += newRow.length;
           newTiles = [...screen.tiles, ...newRow];
       } else {
           newTiles = screen.tiles.slice(0, screen.tiles.length - currentEffectiveWidth);
@@ -591,7 +595,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
       if (add) {
         for (let y = 0; y < originalHeight; y++) {
-          const newTile = { id: nextTileId++, deleted: false };
+          const newTile: Tile = { id: nextTileId++, deleted: false };
           const originalRow = screen.tiles.slice(y * originalWidth, (y + 1) * originalWidth);
           newTiles.push(newTile, ...originalRow);
         }
@@ -614,7 +618,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       
       if (add) {
         for (let y = 0; y < originalHeight; y++) {
-          const newTile = { id: nextTileId++, deleted: false };
+          const newTile: Tile = { id: nextTileId++, deleted: false };
           const originalRow = screen.tiles.slice(y * originalWidth, (y + 1) * originalWidth);
           newTiles.push(...originalRow, newTile);
         }
@@ -744,7 +748,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
       const sliceCol = Math.floor(absoluteContentX / outputWidth);
       const sliceRow = Math.floor(absoluteContentY / outputHeight);
-      const sliceKey = `${sliceRow}-${col}`;
+      const sliceKey = `${sliceRow}-${sliceCol}`;
       
       if (!tilesBySlice.has(sliceKey)) tilesBySlice.set(sliceKey, []);
       tilesBySlice.get(sliceKey)!.push(index);
@@ -1604,7 +1608,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
           const migratedScreens = data.screens.map((s: any) => {
             const newScreen = createNewScreen("", 0); // Create a default screen to get all keys
             const migratedScreen = { ...newScreen, ...s };
-            migratedScreen.tiles.forEach(t => {
+            migratedScreen.tiles.forEach((t: Tile) => {
               if (t.id > maxId) maxId = t.id;
             });
             // ensure nextTileId is set correctly after import
