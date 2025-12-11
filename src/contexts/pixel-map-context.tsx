@@ -139,6 +139,7 @@ interface Screen {
   rightHalfTile: boolean;
   processorType: ProcessorType;
   selectedProductId: string | null;
+  nextTileId: number;
 }
 
 interface ProjectData {
@@ -150,7 +151,7 @@ interface ProjectData {
 }
 
 // Omit functions and refs from the state, pass them separately
-interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'> {
+interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nextTileId'> {
   screens: Screen[];
   products: LedProduct[];
   currentScreen: Screen;
@@ -263,13 +264,17 @@ const trackEvent = async (eventType: string, eventData: any) => {
   }
 };
 
-const createNewScreen = (name: string): Screen => {
+const createNewScreen = (name: string, idCounter: number): Screen => {
   const screenId = crypto.randomUUID();
+  const initialWidth = 5;
+  const initialHeight = 3;
+  const initialTiles = Array.from({ length: initialWidth * initialHeight }, (_, i) => ({ id: idCounter + i, deleted: false }));
+  
   return {
     id: screenId,
     name,
-    dimensions: { tileWidth: 200, tileHeight: 200, screenWidth: 5, screenHeight: 3 },
-    tiles: Array.from({ length: 5 * 3 }, (_, i) => ({ id: i, deleted: false })),
+    dimensions: { tileWidth: 200, tileHeight: 200, screenWidth: initialWidth, screenHeight: initialHeight },
+    tiles: initialTiles,
     tileColor: "#273a5e",
     tileColorTwo: "#d1d9e6",
     borderWidth: 1,
@@ -310,6 +315,7 @@ const createNewScreen = (name: string): Screen => {
     rightHalfTile: false,
     processorType: 'Brompton',
     selectedProductId: 'custom',
+    nextTileId: idCounter + initialTiles.length,
   };
 };
 
@@ -319,10 +325,15 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const wiringDiagramRef = useRef<HTMLDivElement>(null);
   const rasterMapRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const nextTileId = useRef(0);
+  const nextIdCounter = useRef(0);
   const subscriptionStatus = 'pro';
 
-  const [screens, setScreens] = useState<Screen[]>(() => [createNewScreen("Default Screen")]);
+  const [screens, setScreens] = useState<Screen[]>(() => {
+    const initialScreen = createNewScreen("Default Screen", nextIdCounter.current);
+    nextIdCounter.current = initialScreen.nextTileId;
+    return [initialScreen];
+  });
+
   const [currentScreenId, setCurrentScreenId] = useState<string>(screens[0].id);
   const [activeTab, setActiveTab] = useState('grid');
   const [rasterMapConfig, setRasterMapConfig] = useState<RasterMapConfig | null>(null);
@@ -365,11 +376,18 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
           
           const totalTiles = newDimensions.screenWidth * newDimensions.screenHeight;
           const newTiles = (totalTiles > 0 && totalTiles <= 4096)
-              ? Array.from({ length: totalTiles }, (_, i) => ({ id: i, deleted: false }))
+              ? Array.from({ length: totalTiles }, (_, i) => ({ id: screen.nextTileId + i, deleted: false }))
               : [];
-          nextTileId.current = newTiles.length;
-
-          return { ...updatedScreen, tiles: newTiles, topHalfTile: false, bottomHalfTile: false, leftHalfTile: false, rightHalfTile: false };
+          
+          return { 
+            ...updatedScreen, 
+            tiles: newTiles, 
+            nextTileId: screen.nextTileId + newTiles.length,
+            topHalfTile: false, 
+            bottomHalfTile: false, 
+            leftHalfTile: false, 
+            rightHalfTile: false 
+          };
       });
   };
 
@@ -439,7 +457,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
 
   const addNewScreen = () => {
-    const newScreen = createNewScreen(`Screen ${screens.length + 1}`);
+    const newScreen = createNewScreen(`Screen ${screens.length + 1}`, nextIdCounter.current);
+    nextIdCounter.current = newScreen.nextTileId;
     setScreens(prev => [...prev, newScreen]);
     setCurrentScreenId(newScreen.id);
   };
@@ -534,28 +553,32 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const handleTopHalfTileChange = (add: boolean) => {
     updateCurrentScreen(screen => {
       const { screenWidth } = screen.dimensions;
+      const currentEffectiveWidth = screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
       let newTiles;
+      let nextTileId = screen.nextTileId;
       if (add) {
-          const newRow = Array.from({ length: effectiveScreenWidth }, () => ({ id: nextTileId.current++, deleted: false }));
+          const newRow = Array.from({ length: currentEffectiveWidth }, () => ({ id: nextTileId++, deleted: false }));
           newTiles = [...newRow, ...screen.tiles];
       } else {
-          newTiles = screen.tiles.slice(effectiveScreenWidth);
+          newTiles = screen.tiles.slice(currentEffectiveWidth);
       }
-      return { ...screen, topHalfTile: add, tiles: newTiles };
+      return { ...screen, topHalfTile: add, tiles: newTiles, nextTileId };
     });
   };
   
   const handleBottomHalfTileChange = (add: boolean) => {
     updateCurrentScreen(screen => {
       const { screenWidth } = screen.dimensions;
+      const currentEffectiveWidth = screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
       let newTiles;
+      let nextTileId = screen.nextTileId;
       if (add) {
-          const newRow = Array.from({ length: effectiveScreenWidth }, () => ({ id: nextTileId.current++, deleted: false }));
+          const newRow = Array.from({ length: currentEffectiveWidth }, () => ({ id: nextTileId++, deleted: false }));
           newTiles = [...screen.tiles, ...newRow];
       } else {
-          newTiles = screen.tiles.slice(0, screen.tiles.length - effectiveScreenWidth);
+          newTiles = screen.tiles.slice(0, screen.tiles.length - currentEffectiveWidth);
       }
-      return { ...screen, bottomHalfTile: add, tiles: newTiles };
+      return { ...screen, bottomHalfTile: add, tiles: newTiles, nextTileId };
     });
   };
   
@@ -564,10 +587,11 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       const newTiles: Tile[] = [];
       const originalHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
       const originalWidth = screen.dimensions.screenWidth + (screen.rightHalfTile ? 1 : 0);
+      let nextTileId = screen.nextTileId;
 
       if (add) {
         for (let y = 0; y < originalHeight; y++) {
-          const newTile = { id: nextTileId.current++, deleted: false };
+          const newTile = { id: nextTileId++, deleted: false };
           const originalRow = screen.tiles.slice(y * originalWidth, (y + 1) * originalWidth);
           newTiles.push(newTile, ...originalRow);
         }
@@ -577,7 +601,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
           newTiles.push(...originalRow.slice(1));
         }
       }
-      return { ...screen, leftHalfTile: add, tiles: newTiles };
+      return { ...screen, leftHalfTile: add, tiles: newTiles, nextTileId };
     });
   };
   
@@ -586,10 +610,11 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       const newTiles: Tile[] = [];
       const originalHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
       const originalWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0);
+      let nextTileId = screen.nextTileId;
       
       if (add) {
         for (let y = 0; y < originalHeight; y++) {
-          const newTile = { id: nextTileId.current++, deleted: false };
+          const newTile = { id: nextTileId++, deleted: false };
           const originalRow = screen.tiles.slice(y * originalWidth, (y + 1) * originalWidth);
           newTiles.push(...originalRow, newTile);
         }
@@ -599,7 +624,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
           newTiles.push(...originalRow.slice(0, -1));
         }
       }
-       return { ...screen, rightHalfTile: add, tiles: newTiles };
+       return { ...screen, rightHalfTile: add, tiles: newTiles, nextTileId };
     });
   };
   
@@ -719,7 +744,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
       const sliceCol = Math.floor(absoluteContentX / outputWidth);
       const sliceRow = Math.floor(absoluteContentY / outputHeight);
-      const sliceKey = `${sliceRow}-${sliceCol}`;
+      const sliceKey = `${sliceRow}-${col}`;
       
       if (!tilesBySlice.has(sliceKey)) tilesBySlice.set(sliceKey, []);
       tilesBySlice.get(sliceKey)!.push(index);
@@ -766,38 +791,42 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     const { startTileId, label, numTiles, pattern } = args;
     updateCurrentScreen(screen => {
       const { tiles, dimensions } = screen;
+      const screenHeight = dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+      const screenWidth = dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
       
       const newTiles = applyManualPowerWiringLogic(
           tiles,
           startTileId,
           numTiles,
           pattern,
-          effectiveScreenWidth,
-          effectiveScreenHeight,
+          screenWidth,
+          screenHeight,
           label
       );
       return { ...screen, tiles: newTiles };
     });
-  }, [updateCurrentScreen, effectiveScreenWidth, effectiveScreenHeight]);
+  }, [updateCurrentScreen]);
   
   const applyManualDataWiring = useCallback((args: { startTileId: number; mainLabel: string; backupLabel: string; numTiles: number; pattern: WiringPattern; }) => {
     const { startTileId, mainLabel, backupLabel, numTiles, pattern } = args;
     updateCurrentScreen(screen => {
       const { tiles, dimensions } = screen;
+      const screenHeight = dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+      const screenWidth = dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
       
       const newTiles = applyManualDataWiringLogic(
           tiles,
           startTileId,
           numTiles,
           pattern,
-          effectiveScreenWidth,
-          effectiveScreenHeight,
+          screenWidth,
+          screenHeight,
           mainLabel,
           backupLabel
       );
       return { ...screen, tiles: newTiles };
     });
-  }, [updateCurrentScreen, effectiveScreenWidth, effectiveScreenHeight]);
+  }, [updateCurrentScreen]);
 
   const handleTileClick = useCallback((tileId: number) => {
     const clickedTile = currentScreen.tiles.find(t => t.id === tileId);
@@ -823,9 +852,9 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
                 });
                 return;
             }
-            if (clickedTile?.powerCircuit) {
+            if (clickedTile.powerCircuit) {
               // This tile is the start of a circuit, so we clear it.
-              applyManualPowerWiring({ startTileId: tileId, label: '', numTiles: 0, pattern: 'left-right' });
+              applyManualPowerWiring({ startTileId: tileId, label: '', numTiles: 0, pattern: clickedTile.powerCircuit.pattern });
             } else {
               // This is a new circuit
               setSelectedTileForPower(tileId);
@@ -841,9 +870,9 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
                 });
                 return;
             }
-            if (clickedTile?.dataCircuit) {
+            if (clickedTile.dataCircuit) {
               // This tile is the start of a circuit, so we clear it.
-              applyManualDataWiring({ startTileId: tileId, mainLabel: '', backupLabel: '', numTiles: 0, pattern: 'left-right' });
+              applyManualDataWiring({ startTileId: tileId, mainLabel: '', backupLabel: '', numTiles: 0, pattern: clickedTile.dataCircuit.pattern });
             } else {
               // This is a new circuit
               setSelectedTileForData(tileId);
@@ -851,7 +880,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
             }
             break;
     }
-  }, [currentScreen.activeTool, currentScreen.powerWiringPattern, currentScreen.wiringPattern, currentScreen.brushColor, setTiles, toast, applyManualPowerWiring, applyManualDataWiring]);
+  }, [currentScreen.activeTool, currentScreen.powerWiringPattern, currentScreen.wiringPattern, currentScreen.brushColor, currentScreen.tiles, toast, applyManualPowerWiring, applyManualDataWiring]);
 
   const restoreDeletedTiles = useCallback(() => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, deleted: false })));
@@ -1552,9 +1581,12 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
           throw new Error("Invalid project file format.");
         }
         
+        let maxId = 0;
+        
         // Handle legacy project import (pre-multiple screens)
         if (data.dimensions) {
-          const screen = createNewScreen("Imported Screen");
+          const screen = createNewScreen("Imported Screen", nextIdCounter.current);
+          nextIdCounter.current += screen.tiles.length;
           
           Object.assign(screen, {
             ...data,
@@ -1570,10 +1602,18 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         } else {
            // Make sure all screens have all properties from the latest `Screen` interface
           const migratedScreens = data.screens.map((s: any) => {
-            const newScreen = createNewScreen(""); // Create a default screen
-            // Merge the loaded data into the default screen to ensure all properties exist
-            return { ...newScreen, ...s, processorType: s.processorType || 'Brompton' };
+            const newScreen = createNewScreen("", 0); // Create a default screen to get all keys
+            const migratedScreen = { ...newScreen, ...s };
+            migratedScreen.tiles.forEach(t => {
+              if (t.id > maxId) maxId = t.id;
+            });
+            // ensure nextTileId is set correctly after import
+            if (!migratedScreen.nextTileId || migratedScreen.nextTileId <= maxId) {
+              migratedScreen.nextTileId = maxId + 1;
+            }
+            return migratedScreen;
           });
+          nextIdCounter.current = maxId + 1;
           setScreens(migratedScreens);
           setCurrentScreenId(data.currentScreenId);
           setActiveTab(data.activeTab);
