@@ -462,8 +462,8 @@ export function PixelMapLayout() {
       <SidebarInset>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-screen w-full">
            <header className="sticky top-0 z-10 flex-shrink-0 bg-background p-2 border-b">
-            <div className="flex items-center justify-between w-full">
-               <div className="flex items-center gap-4">
+            <div className="flex items-center justify-between flex-wrap gap-2 w-full">
+               <div className="hidden md:flex items-center gap-4">
                  <div className="text-sm text-muted-foreground">
                    Res: <span className="font-mono">{Math.round(totalWidth)}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
                  </div>
@@ -477,7 +477,7 @@ export function PixelMapLayout() {
                  )}
                </div>
               
-               <div className="absolute left-1/2 -translate-x-1/2">
+               <div className="mx-auto">
                 <TabsList>
                   <TabsTrigger value="grid">LED Grid</TabsTrigger>
                   <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
