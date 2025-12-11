@@ -1,6 +1,5 @@
 
 
-
 "use client";
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
@@ -95,7 +94,17 @@ export function PixelMapLayout() {
     }
   }
 
-  const totalWidth = activeBounds ? (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth : 0;
+  const totalWidth = useMemo(() => {
+    if (!activeBounds || !currentScreen) return 0;
+    
+    let width = 0;
+    for (let x = activeBounds.minX; x <= activeBounds.maxX; x++) {
+      const isLeftHalf = currentScreen.leftHalfTile && x === 0;
+      const isRightHalf = currentScreen.rightHalfTile && x === effectiveScreenWidth - 1;
+      width += (isLeftHalf || isRightHalf) ? dimensions.tileWidth / 2 : dimensions.tileWidth;
+    }
+    return width;
+  }, [activeBounds, dimensions.tileWidth, effectiveScreenWidth, currentScreen]);
   
   const totalHeight = useMemo(() => {
     if (!activeBounds || !currentScreen) return 0;
