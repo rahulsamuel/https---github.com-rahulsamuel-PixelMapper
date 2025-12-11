@@ -27,23 +27,28 @@ export function LedGrid() {
     showSliceOffsetLabels,
     topHalfTile,
     bottomHalfTile,
+    leftHalfTile,
+    rightHalfTile,
     effectiveScreenHeight,
+    effectiveScreenWidth,
   } = usePixelMap();
 
   const { totalGridPixelWidth, totalGridPixelHeight } = useMemo(() => {
-    const width = dimensions.screenWidth * dimensions.tileWidth;
+    let width = 0;
+    for (let i = 0; i < effectiveScreenWidth; i++) {
+        const isLeftHalf = leftHalfTile && i === 0;
+        const isRightHalf = rightHalfTile && i === effectiveScreenWidth - 1;
+        width += isLeftHalf || isRightHalf ? dimensions.tileWidth / 2 : dimensions.tileWidth;
+    }
+
     let height = 0;
     for (let i = 0; i < effectiveScreenHeight; i++) {
         const isTopHalfRow = topHalfTile && i === 0;
         const isBottomHalfRow = bottomHalfTile && i === effectiveScreenHeight - 1;
-        let rowHeight = dimensions.tileHeight;
-        if (isTopHalfRow || isBottomHalfRow) {
-            rowHeight /= 2;
-        }
-        height += rowHeight;
+        height += (isTopHalfRow || isBottomHalfRow) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
     }
     return { totalGridPixelWidth: width, totalGridPixelHeight: height };
-  }, [dimensions, effectiveScreenHeight, topHalfTile, bottomHalfTile]);
+  }, [dimensions, effectiveScreenWidth, effectiveScreenHeight, leftHalfTile, rightHalfTile, topHalfTile, bottomHalfTile]);
 
 
   if (tiles.length === 0) {
@@ -56,14 +61,14 @@ export function LedGrid() {
 
   const gridStyle: React.CSSProperties = {
     display: "grid",
-    gridTemplateColumns: `repeat(${dimensions.screenWidth}, 1fr)`,
+    gridTemplateColumns: `repeat(${effectiveScreenWidth}, auto)`,
     gridTemplateRows: `repeat(${effectiveScreenHeight}, auto)`,
     width: `${totalGridPixelWidth}px`,
     height: `${totalGridPixelHeight}px`,
     transform: `scale(${zoom})`,
     transformOrigin: 'top left',
   };
-
+  
   const getTileHeight = (y: number) => {
     const isTopHalfRow = topHalfTile && y === 0;
     const isBottomHalfRow = bottomHalfTile && y === effectiveScreenHeight - 1;
@@ -74,13 +79,23 @@ export function LedGrid() {
     return dimensions.tileHeight;
   };
 
+  const getTileWidth = (x: number) => {
+    const isLeftHalfCol = leftHalfTile && x === 0;
+    const isRightHalfCol = rightHalfTile && x === effectiveScreenWidth - 1;
+
+    if (isLeftHalfCol || isRightHalfCol) {
+        return dimensions.tileWidth / 2;
+    }
+    return dimensions.tileWidth;
+  };
+
   return (
     <div className="bg-muted/20 p-4">
       <div style={{ width: totalGridPixelWidth * zoom, height: totalGridPixelHeight * zoom }}>
         <div ref={gridRef} style={gridStyle} className="bg-muted">
           {tiles.map((tile, index) => {
-            const x = index % dimensions.screenWidth;
-            const y = Math.floor(index / dimensions.screenWidth);
+            const x = index % effectiveScreenWidth;
+            const y = Math.floor(index / effectiveScreenWidth);
 
             let bgColor;
             if (onOffMode) {
@@ -100,9 +115,10 @@ export function LedGrid() {
               : labelColor;
 
             const tileEffectiveHeight = getTileHeight(y);
+            const tileEffectiveWidth = getTileWidth(x);
 
             const tileDynamicStyle: React.CSSProperties = {
-              width: `${dimensions.tileWidth}px`,
+              width: `${tileEffectiveWidth}px`,
               height: `${tileEffectiveHeight}px`,
               borderWidth: `${borderWidth}px`,
               borderColor: borderColor,

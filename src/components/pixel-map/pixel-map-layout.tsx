@@ -1,5 +1,6 @@
 
 
+
 "use client";
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
@@ -74,7 +75,7 @@ export function PixelMapLayout() {
     addNewScreen,
     renameScreen,
     deleteScreen,
-    zoom, setZoom, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, effectiveScreenHeight, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels,
+    zoom, setZoom, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels,
     isManualPowerModalOpen, setIsManualPowerModalOpen, selectedTileForPower, applyManualPowerWiring,
     isManualDataModalOpen, setIsManualDataModalOpen, selectedTileForData, applyManualDataWiring
    } = usePixelMap();
@@ -125,16 +126,18 @@ export function PixelMapLayout() {
     switch (activeTab) {
       case 'grid':
       case 'wiring':
-        contentWidth = dimensions.screenWidth * dimensions.tileWidth;
+        contentWidth = 0;
+        for (let i = 0; i < effectiveScreenWidth; i++) {
+          const isLeftHalf = leftHalfTile && i === 0;
+          const isRightHalf = rightHalfTile && i === effectiveScreenWidth - 1;
+          contentWidth += isLeftHalf || isRightHalf ? dimensions.tileWidth / 2 : dimensions.tileWidth;
+        }
+
         contentHeight = 0;
         for (let i = 0; i < effectiveScreenHeight; i++) {
             const isTopHalfRow = topHalfTile && i === 0;
             const isBottomHalfRow = bottomHalfTile && i === effectiveScreenHeight - 1;
-            let rowHeight = dimensions.tileHeight;
-            if (isTopHalfRow || isBottomHalfRow) {
-                rowHeight /= 2;
-            }
-            contentHeight += rowHeight;
+            contentHeight += (isTopHalfRow || isBottomHalfRow) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
         }
         break;
       case 'raster':
@@ -204,14 +207,21 @@ export function PixelMapLayout() {
     for (let i = 0; i < effectiveScreenHeight; i++) {
         const isTopHalfRow = currentScreen.topHalfTile && i === 0;
         const isBottomHalfRow = currentScreen.bottomHalfTile && i === effectiveScreenHeight - 1;
-        let rowHeight = dimensions.tileHeight;
-        if (isTopHalfRow || isBottomHalfRow) {
-            rowHeight /= 2;
-        }
-        height += rowHeight;
+        height += (isTopHalfRow || isBottomHalfRow) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
     }
     return height;
   }, [effectiveScreenHeight, dimensions.tileHeight, currentScreen]);
+
+  const fullGridWidth = useMemo(() => {
+    if (!currentScreen) return 0;
+    let width = 0;
+    for (let i = 0; i < effectiveScreenWidth; i++) {
+        const isLeftHalf = currentScreen.leftHalfTile && i === 0;
+        const isRightHalf = currentScreen.rightHalfTile && i === effectiveScreenWidth - 1;
+        width += (isLeftHalf || isRightHalf) ? dimensions.tileWidth / 2 : dimensions.tileWidth;
+    }
+    return width;
+  }, [effectiveScreenWidth, dimensions.tileWidth, currentScreen]);
 
   return (
     <SidebarProvider>
@@ -446,7 +456,7 @@ export function PixelMapLayout() {
             <div className="flex items-center justify-between w-full">
                <div className="flex items-center gap-4">
                  <div className="text-sm text-muted-foreground">
-                   Res: <span className="font-mono">{totalWidth}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
+                   Res: <span className="font-mono">{Math.round(totalWidth)}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
                  </div>
                  {activeTab === 'wiring' && portCount > 0 && (
                    <>
@@ -494,12 +504,12 @@ export function PixelMapLayout() {
            </header>
           <ScrollArea className="h-full w-full bg-muted/20" viewportRef={viewportRef}>
               <TabsContent value="grid" className="mt-0 h-full w-full">
-                <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: fullGridHeight * zoom }}>
+                <div style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
                   <LedGrid />
                 </div>
               </TabsContent>
               <TabsContent value="wiring" className="mt-0 h-full w-full">
-                <div style={{ width: dimensions.screenWidth * dimensions.tileWidth * zoom, height: fullGridHeight * zoom }}>
+                <div style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
                   <WiringDiagram />
                 </div>
               </TabsContent>

@@ -17,6 +17,10 @@ export function DimensionControls() {
     handleTopHalfTileChange, 
     bottomHalfTile, 
     handleBottomHalfTileChange,
+    leftHalfTile,
+    handleLeftHalfTileChange,
+    rightHalfTile,
+    handleRightHalfTileChange,
     products,
     selectedProductId,
     setSelectedProductId,
@@ -126,7 +130,7 @@ export function DimensionControls() {
         </div>
         <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-                <Label htmlFor="screenWidth">Screen Width (tiles)</Label>
+                <Label htmlFor="screenWidth">Screen Width (full tiles)</Label>
                 <Input
                     id="screenWidth"
                     name="screenWidth"
@@ -149,7 +153,23 @@ export function DimensionControls() {
             </div>
         </div>
         <Separator />
-        <div className="space-y-4">
+        <div className="space-y-2">
+            <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/20">
+                <Label htmlFor="left-half-tile">Add Left Half Tile</Label>
+                <Switch
+                    id="left-half-tile"
+                    checked={leftHalfTile}
+                    onCheckedChange={handleLeftHalfTileChange}
+                />
+            </div>
+             <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/20">
+                <Label htmlFor="right-half-tile">Add Right Half Tile</Label>
+                <Switch
+                    id="right-half-tile"
+                    checked={rightHalfTile}
+                    onCheckedChange={handleRightHalfTileChange}
+                />
+            </div>
             <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/20">
                 <Label htmlFor="top-half-tile">Add Top Half Tile</Label>
                 <Switch

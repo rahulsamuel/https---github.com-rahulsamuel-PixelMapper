@@ -135,6 +135,8 @@ interface Screen {
   showSliceOffsetLabels: boolean;
   topHalfTile: boolean;
   bottomHalfTile: boolean;
+  leftHalfTile: boolean;
+  rightHalfTile: boolean;
   processorType: ProcessorType;
   selectedProductId: string | null;
 }
@@ -220,7 +222,10 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'> {
   setShowSliceOffsetLabels: Dispatch<SetStateAction<boolean>>;
   handleTopHalfTileChange: (add: boolean) => void;
   handleBottomHalfTileChange: (add: boolean) => void;
+  handleLeftHalfTileChange: (add: boolean) => void;
+  handleRightHalfTileChange: (add: boolean) => void;
   effectiveScreenHeight: number;
+  effectiveScreenWidth: number;
   setProcessorType: Dispatch<SetStateAction<ProcessorType>>;
   setSelectedProductId: Dispatch<SetStateAction<string | null>>;
   isManualPowerModalOpen: boolean;
@@ -301,6 +306,8 @@ const createNewScreen = (name: string): Screen => {
     showSliceOffsetLabels: true,
     topHalfTile: false,
     bottomHalfTile: false,
+    leftHalfTile: false,
+    rightHalfTile: false,
     processorType: 'Brompton',
     selectedProductId: 'custom',
   };
@@ -362,7 +369,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
               : [];
           nextTileId.current = newTiles.length;
 
-          return { ...updatedScreen, tiles: newTiles, topHalfTile: false, bottomHalfTile: false };
+          return { ...updatedScreen, tiles: newTiles, topHalfTile: false, bottomHalfTile: false, leftHalfTile: false, rightHalfTile: false };
       });
   };
 
@@ -455,7 +462,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const { dimensions, tiles, topHalfTile, bottomHalfTile } = currentScreen;
+  const { dimensions, tiles, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile } = currentScreen;
 
   const effectiveScreenHeight = useMemo(() => {
     let height = dimensions.screenHeight;
@@ -463,11 +470,18 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     if (bottomHalfTile) height++;
     return height;
   }, [dimensions.screenHeight, topHalfTile, bottomHalfTile]);
+  
+  const effectiveScreenWidth = useMemo(() => {
+    let width = dimensions.screenWidth;
+    if (leftHalfTile) width++;
+    if (rightHalfTile) width++;
+    return width;
+  }, [dimensions.screenWidth, leftHalfTile, rightHalfTile]);
 
   const wiringData = useMemo(() => {
     if (!currentScreen) return [];
     return getWiringData({
-      dimensions: { ...currentScreen.dimensions, screenHeight: effectiveScreenHeight }, 
+      dimensions: { ...currentScreen.dimensions, screenHeight: effectiveScreenHeight, screenWidth: effectiveScreenWidth }, 
       tiles: currentScreen.tiles, 
       wiringPortConfig: currentScreen.wiringPortConfig, 
       dataPortStartNumber: currentScreen.dataPortStartNumber,
@@ -477,10 +491,12 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       tilesPerPowerString: currentScreen.tilesPerPowerString, 
       topHalfTile: currentScreen.topHalfTile,
       bottomHalfTile: currentScreen.bottomHalfTile,
+      leftHalfTile: currentScreen.leftHalfTile,
+      rightHalfTile: currentScreen.rightHalfTile,
       processorType: currentScreen.processorType,
       screenId: currentScreen.id
     })
-  }, [currentScreen, effectiveScreenHeight, rasterMapConfig]);
+  }, [currentScreen, effectiveScreenHeight, effectiveScreenWidth, rasterMapConfig]);
 
 
   const zoom = currentScreen.zoomLevels[activeTab as keyof typeof currentScreen.zoomLevels] || 1;
@@ -520,10 +536,10 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       const { screenWidth } = screen.dimensions;
       let newTiles;
       if (add) {
-          const newRow = Array.from({ length: screenWidth }, () => ({ id: nextTileId.current++, deleted: false }));
+          const newRow = Array.from({ length: effectiveScreenWidth }, () => ({ id: nextTileId.current++, deleted: false }));
           newTiles = [...newRow, ...screen.tiles];
       } else {
-          newTiles = screen.tiles.slice(screenWidth);
+          newTiles = screen.tiles.slice(effectiveScreenWidth);
       }
       return { ...screen, topHalfTile: add, tiles: newTiles };
     });
@@ -534,19 +550,62 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       const { screenWidth } = screen.dimensions;
       let newTiles;
       if (add) {
-          const newRow = Array.from({ length: screenWidth }, () => ({ id: nextTileId.current++, deleted: false }));
+          const newRow = Array.from({ length: effectiveScreenWidth }, () => ({ id: nextTileId.current++, deleted: false }));
           newTiles = [...screen.tiles, ...newRow];
       } else {
-          newTiles = screen.tiles.slice(0, screen.tiles.length - screenWidth);
+          newTiles = screen.tiles.slice(0, screen.tiles.length - effectiveScreenWidth);
       }
       return { ...screen, bottomHalfTile: add, tiles: newTiles };
+    });
+  };
+  
+  const handleLeftHalfTileChange = (add: boolean) => {
+    updateCurrentScreen(screen => {
+      const newTiles: Tile[] = [];
+      const originalHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+      const originalWidth = screen.dimensions.screenWidth + (screen.rightHalfTile ? 1 : 0);
+
+      if (add) {
+        for (let y = 0; y < originalHeight; y++) {
+          const newTile = { id: nextTileId.current++, deleted: false };
+          const originalRow = screen.tiles.slice(y * originalWidth, (y + 1) * originalWidth);
+          newTiles.push(newTile, ...originalRow);
+        }
+      } else {
+         for (let y = 0; y < originalHeight; y++) {
+          const originalRow = screen.tiles.slice(y * (originalWidth + 1), (y + 1) * (originalWidth + 1));
+          newTiles.push(...originalRow.slice(1));
+        }
+      }
+      return { ...screen, leftHalfTile: add, tiles: newTiles };
+    });
+  };
+  
+  const handleRightHalfTileChange = (add: boolean) => {
+    updateCurrentScreen(screen => {
+      const newTiles: Tile[] = [];
+      const originalHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+      const originalWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0);
+      
+      if (add) {
+        for (let y = 0; y < originalHeight; y++) {
+          const newTile = { id: nextTileId.current++, deleted: false };
+          const originalRow = screen.tiles.slice(y * originalWidth, (y + 1) * originalWidth);
+          newTiles.push(...originalRow, newTile);
+        }
+      } else {
+         for (let y = 0; y < originalHeight; y++) {
+          const originalRow = screen.tiles.slice(y * (originalWidth + 1), (y + 1) * (originalWidth + 1));
+          newTiles.push(...originalRow.slice(0, -1));
+        }
+      }
+       return { ...screen, rightHalfTile: add, tiles: newTiles };
     });
   };
   
   const [activeBounds, setActiveBounds] = useState<ActiveBounds | null>(null);
 
   useEffect(() => {
-    const { screenWidth } = currentScreen.dimensions;
     const activeTiles = currentScreen.tiles.map((t, i) => ({...t, index: i})).filter(t => !t.deleted);
 
     if (activeTiles.length === 0) {
@@ -554,14 +613,14 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         return;
     }
 
-    let minX = screenWidth;
+    let minX = effectiveScreenWidth;
     let minY = Infinity;
     let maxX = -1;
     let maxY = -1;
 
     activeTiles.forEach(tile => {
-        const x = tile.index % screenWidth;
-        const y = Math.floor(tile.index / screenWidth);
+        const x = tile.index % effectiveScreenWidth;
+        const y = Math.floor(tile.index / effectiveScreenWidth);
         if (x < minX) minX = x;
         if (x > maxX) maxX = x;
         if (y < minY) minY = y;
@@ -569,19 +628,18 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     });
     
     setActiveBounds({ minX, minY, maxX, maxY });
-  }, [currentScreen.tiles, currentScreen.dimensions]);
+  }, [currentScreen.tiles, effectiveScreenWidth]);
 
   const deletedCount = useMemo(() => currentScreen.tiles.filter((tile) => tile.deleted).length, [currentScreen.tiles]);
   const coloredCount = useMemo(() => currentScreen.tiles.filter((tile) => !!tile.color && !tile.deleted).length, [currentScreen.tiles]);
 
   const labels = useMemo(() => {
-    const { screenWidth } = currentScreen.dimensions;
     const totalTiles = currentScreen.tiles.length;
     if (totalTiles <= 0) return [];
 
     const newLabels = Array(totalTiles).fill('');
     const activeTileIndices = currentScreen.tiles.map((_, i) => i).filter(i => !currentScreen.tiles[i].deleted);
-    const pathOrder = getPathOrder(activeTileIndices, currentScreen.wiringPattern, screenWidth, effectiveScreenHeight);
+    const pathOrder = getPathOrder(activeTileIndices, currentScreen.wiringPattern, effectiveScreenWidth, effectiveScreenHeight);
     
     const startNumber = currentScreen.labelStartNumber || 1;
 
@@ -600,8 +658,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     } else if (currentScreen.labelFormat !== 'none') {
       for (let i = 0; i < totalTiles; i++) {
         if (currentScreen.tiles[i] && !currentScreen.tiles[i].deleted) {
-          const x = i % screenWidth;
-          const y = Math.floor(i / screenWidth);
+          const x = i % effectiveScreenWidth;
+          const y = Math.floor(i / effectiveScreenWidth);
           
           switch (currentScreen.labelFormat) {
             case 'row-col':
@@ -618,7 +676,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     }
     
     return newLabels;
-  }, [currentScreen, effectiveScreenHeight]);
+  }, [currentScreen, effectiveScreenWidth, effectiveScreenHeight]);
 
   // Effect to calculate slice offset labels
   const sliceOffsetLabels = useMemo(() => {
@@ -626,16 +684,16 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       return [];
     }
 
-    const { screenWidth, tileHeight, tileWidth } = currentScreen.dimensions;
+    const { tileHeight, tileWidth } = currentScreen.dimensions;
     const { slices, outputWidth, outputHeight } = rasterMapConfig;
     
-    const newLabels = Array(screenWidth * effectiveScreenHeight).fill('');
+    const newLabels = Array(effectiveScreenWidth * effectiveScreenHeight).fill('');
     const activeTileIndices = currentScreen.tiles.map((_, i) => i).filter(i => !currentScreen.tiles[i].deleted);
 
     const tilesBySlice = new Map<string, number[]>();
     activeTileIndices.forEach(index => {
-      const x = index % screenWidth;
-      const y = Math.floor(index / screenWidth);
+      const x = index % effectiveScreenWidth;
+      const y = Math.floor(index / effectiveScreenWidth);
 
       if (x < activeBounds.minX || x > activeBounds.maxX || y < activeBounds.minY || y > activeBounds.maxY) {
                 return;
@@ -647,8 +705,15 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         const isBottomRow = bottomHalfTile && i === effectiveScreenHeight - 1;
         tileContentY += (isTopRow || isBottomRow) ? tileHeight / 2 : tileHeight;
       }
+      
+      let tileContentX = 0;
+      for (let i = activeBounds.minX; i < x; i++) {
+          const isLeftHalf = leftHalfTile && i === 0;
+          const isRightHalf = rightHalfTile && i === effectiveScreenWidth - 1;
+          tileContentX += (isLeftHalf || isRightHalf) ? tileWidth / 2 : tileWidth;
+      }
 
-      const tileContentX = (x - activeBounds.minX) * tileWidth;
+
       const absoluteContentX = tileContentX + currentScreen.rasterOffset.x;
       const absoluteContentY = tileContentY + currentScreen.rasterOffset.y;
 
@@ -661,14 +726,14 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     });
 
     tilesBySlice.forEach((sliceIndices, sliceKey) => {
-      const pathOrder = getPathOrder(sliceIndices, currentScreen.wiringPattern, screenWidth, effectiveScreenHeight);
+      const pathOrder = getPathOrder(sliceIndices, currentScreen.wiringPattern, effectiveScreenWidth, effectiveScreenHeight);
       const currentSlice = slices.find(s => s.key === sliceKey);
       
       if (currentSlice && pathOrder.length > 0) {
         const firstTileIndex = pathOrder[0];
         
-        const x = firstTileIndex % screenWidth;
-        const y = Math.floor(firstTileIndex / screenWidth);
+        const x = firstTileIndex % effectiveScreenWidth;
+        const y = Math.floor(firstTileIndex / effectiveScreenWidth);
 
         let tileContentY = 0;
         for (let i = activeBounds.minY; i < y; i++) {
@@ -677,7 +742,13 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
             tileContentY += (isTopRow || isBottomRow) ? tileHeight / 2 : tileHeight;
         }
 
-        const tileContentX = (x - activeBounds.minX) * tileWidth;
+        let tileContentX = 0;
+        for (let i = activeBounds.minX; i < x; i++) {
+            const isLeftHalf = leftHalfTile && i === 0;
+            const isRightHalf = rightHalfTile && i === effectiveScreenWidth - 1;
+            tileContentX += (isLeftHalf || isRightHalf) ? tileWidth / 2 : tileWidth;
+        }
+
         const absoluteContentX = tileContentX + currentScreen.rasterOffset.x;
         const absoluteContentY = tileContentY + currentScreen.rasterOffset.y;
 
@@ -689,46 +760,44 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     });
 
     return newLabels;
-  }, [currentScreen, rasterMapConfig, activeBounds, effectiveScreenHeight, topHalfTile, bottomHalfTile]);
+  }, [currentScreen, rasterMapConfig, activeBounds, effectiveScreenWidth, effectiveScreenHeight, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile]);
 
   const applyManualPowerWiring = useCallback((args: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; }) => {
     const { startTileId, label, numTiles, pattern } = args;
     updateCurrentScreen(screen => {
       const { tiles, dimensions } = screen;
-      const screenHeight = dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
       
       const newTiles = applyManualPowerWiringLogic(
           tiles,
           startTileId,
           numTiles,
           pattern,
-          dimensions.screenWidth,
-          screenHeight,
+          effectiveScreenWidth,
+          effectiveScreenHeight,
           label
       );
       return { ...screen, tiles: newTiles };
     });
-  }, [updateCurrentScreen]);
+  }, [updateCurrentScreen, effectiveScreenWidth, effectiveScreenHeight]);
   
   const applyManualDataWiring = useCallback((args: { startTileId: number; mainLabel: string; backupLabel: string; numTiles: number; pattern: WiringPattern; }) => {
     const { startTileId, mainLabel, backupLabel, numTiles, pattern } = args;
     updateCurrentScreen(screen => {
       const { tiles, dimensions } = screen;
-      const screenHeight = dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
       
       const newTiles = applyManualDataWiringLogic(
           tiles,
           startTileId,
           numTiles,
           pattern,
-          dimensions.screenWidth,
-          screenHeight,
+          effectiveScreenWidth,
+          effectiveScreenHeight,
           mainLabel,
           backupLabel
       );
       return { ...screen, tiles: newTiles };
     });
-  }, [updateCurrentScreen]);
+  }, [updateCurrentScreen, effectiveScreenWidth, effectiveScreenHeight]);
 
   const handleTileClick = useCallback((tileId: number) => {
     const clickedTile = currentScreen.tiles.find(t => t.id === tileId);
@@ -782,7 +851,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
             }
             break;
     }
-  }, [currentScreen, toast, applyManualPowerWiring, applyManualDataWiring, setTiles]);
+  }, [currentScreen.activeTool, currentScreen.powerWiringPattern, currentScreen.wiringPattern, currentScreen.brushColor, setTiles, toast, applyManualPowerWiring, applyManualDataWiring]);
 
   const restoreDeletedTiles = useCallback(() => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, deleted: false })));
@@ -815,10 +884,27 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         }
         return height;
       })();
+      
+    const contentPixelWidth = (() => {
+      if (!activeBounds) return 0;
+      let width = 0;
+      for (let x = activeBounds.minX; x <= activeBounds.maxX; x++) {
+          const isLeftHalf = leftHalfTile && x === 0;
+          const isRightHalf = rightHalfTile && x === (effectiveScreenWidth - 1);
+          width += (isLeftHalf || isRightHalf) ? dimensions.tileWidth / 2 : dimensions.tileWidth;
+      }
+      return width;
+    })();
+    
+    let xPosOfMinX = 0;
+    for (let i = 0; i < activeBounds.minX; i++) {
+        const isLeftHalfCol = leftHalfTile && i === 0;
+        xPosOfMinX += isLeftHalfCol ? dimensions.tileWidth / 2 : dimensions.tileWidth;
+    }
 
-    const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
+    const cropWidth = contentPixelWidth;
     const cropHeight = contentPixelHeight;
-    const sx = activeBounds.minX * dimensions.tileWidth;
+    const sx = xPosOfMinX;
     const sy = yPosOfMinY;
 
     toPng(node, {
@@ -847,7 +933,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       .catch((err) => {
         console.error("Could not generate PNG.", err);
       });
-  }, [gridRef, activeBounds, dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight, subscriptionStatus]);
+  }, [gridRef, activeBounds, dimensions, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, subscriptionStatus]);
 
   const createScreenContentCanvas = useCallback((screen: Screen, screenActiveBounds: ActiveBounds | null) => {
     if (!screenActiveBounds) return null;
@@ -860,8 +946,9 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         const activeTileIndices = screen.tiles.map((_, i) => i).filter(i => !screen.tiles[i].deleted);
         
         const screenEffectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+        const screenEffectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
         
-        const pathOrder = getPathOrder(activeTileIndices, screen.wiringPattern, screenWidth, screenEffectiveHeight);
+        const pathOrder = getPathOrder(activeTileIndices, screen.wiringPattern, screenEffectiveWidth, screenEffectiveHeight);
         const startNumber = screen.labelStartNumber || 1;
 
         if (screen.labelFormat === 'sequential' || screen.labelFormat === 'dmx-style') {
@@ -879,8 +966,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         } else if (screen.labelFormat !== 'none') {
             for (let i = 0; i < totalTiles; i++) {
                 if (screen.tiles[i] && !screen.tiles[i].deleted) {
-                    const x = i % screenWidth;
-                    const y = Math.floor(i / screenWidth);
+                    const x = i % screenEffectiveWidth;
+                    const y = Math.floor(i / screenEffectiveWidth);
                     if (screen.labelFormat === 'row-col') {
                       newLabels[i] = `${y + startNumber}-${x + 1}`;
                     } else if (screen.labelFormat === 'row-letter-col-number') {
@@ -893,9 +980,10 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         return newLabels;
     })();
 
-    const { tileWidth, tileHeight, screenWidth } = screen.dimensions;
+    const { tileWidth, tileHeight } = screen.dimensions;
 
     const screenEffectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+    const screenEffectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
     
     const contentPixelHeight = (() => {
         let height = 0;
@@ -906,8 +994,18 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         }
         return height;
     })();
+    
+    const contentPixelWidth = (() => {
+      let width = 0;
+      for (let x = screenActiveBounds.minX; x <= screenActiveBounds.maxX; x++) {
+          const isLeftHalf = screen.leftHalfTile && x === 0;
+          const isRightHalf = screen.rightHalfTile && x === (screenEffectiveWidth - 1);
+          width += (isLeftHalf || isRightHalf) ? tileWidth / 2 : tileWidth;
+      }
+      return width;
+    })();
 
-    const contentWidth = (screenActiveBounds.maxX - screenActiveBounds.minX + 1) * tileWidth;
+    const contentWidth = contentPixelWidth;
     const contentHeight = contentPixelHeight;
 
     const masterCanvas = document.createElement('canvas');
@@ -924,23 +1022,27 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         const isTopHalfRow = screen.topHalfTile && y === 0;
         const isBottomHalfRow = screen.bottomHalfTile && y === (screenEffectiveHeight - 1);
         const rowPixelHeight = (isTopHalfRow || isBottomHalfRow) ? tileHeight / 2 : tileHeight;
-
+        
+        let currentDrawX = 0;
         for (let x = screenActiveBounds.minX; x <= screenActiveBounds.maxX; x++) {
-            const index = y * screenWidth + x;
+            const isLeftHalfCol = screen.leftHalfTile && x === 0;
+            const isRightHalfCol = screen.rightHalfTile && x === (screenEffectiveWidth - 1);
+            const colPixelWidth = (isLeftHalfCol || isRightHalfCol) ? tileWidth / 2 : tileWidth;
+            
+            const index = y * screenEffectiveWidth + x;
             const tile = screen.tiles[index];
             if (tile && !tile.deleted) {
-                const tileXPos = (x - screenActiveBounds.minX) * tileWidth;
                 let bgColor = (x + y) % 2 === 0 ? screen.tileColor : screen.tileColorTwo;
                 if (screen.onOffMode) bgColor = '#FFFFFF';
                 else if (tile.color) bgColor = tile.color;
 
                 masterCtx.fillStyle = bgColor;
-                masterCtx.fillRect(tileXPos, currentDrawY, tileWidth, rowPixelHeight);
+                masterCtx.fillRect(currentDrawX, currentDrawY, colPixelWidth, rowPixelHeight);
 
                 if (screen.borderWidth > 0) {
                     masterCtx.strokeStyle = screen.borderColor;
                     masterCtx.lineWidth = screen.borderWidth;
-                    masterCtx.strokeRect(tileXPos + screen.borderWidth / 2, currentDrawY + screen.borderWidth / 2, tileWidth - screen.borderWidth, rowPixelHeight - screen.borderWidth);
+                    masterCtx.strokeRect(currentDrawX + screen.borderWidth / 2, currentDrawY + screen.borderWidth / 2, colPixelWidth - screen.borderWidth, rowPixelHeight - screen.borderWidth);
                 }
 
                 if (screen.showLabels && screenLabels[index]) {
@@ -949,9 +1051,10 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
                     masterCtx.font = `bold ${screen.labelFontSize}px sans-serif`;
                     masterCtx.textAlign = 'center';
                     masterCtx.textBaseline = 'middle';
-                    masterCtx.fillText(screenLabels[index], tileXPos + tileWidth / 2, currentDrawY + rowPixelHeight / 2);
+                    masterCtx.fillText(screenLabels[index], currentDrawX + colPixelWidth / 2, currentDrawY + rowPixelHeight / 2);
                 }
             }
+            currentDrawX += colPixelWidth;
         }
         currentDrawY += rowPixelHeight;
     }
@@ -975,9 +1078,12 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         if (activeTiles.length === 0) continue;
 
         let minX = screen.dimensions.screenWidth, minY = Infinity, maxX = -1, maxY = -1;
+        
+        const currentEffectiveScreenWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+
         activeTiles.forEach(tile => {
-            const x = tile.index % screen.dimensions.screenWidth;
-            const y = Math.floor(tile.index / screen.dimensions.screenWidth);
+            const x = tile.index % currentEffectiveScreenWidth;
+            const y = Math.floor(tile.index / currentEffectiveScreenWidth);
             if (x < minX) minX = x;
             if (x > maxX) maxX = x;
             if (y < minY) minY = y;
@@ -986,8 +1092,15 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
         const screenActiveBounds = { minX, minY, maxX, maxY };
         const screenEffectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+        const screenEffectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
 
-        const contentWidth = (maxX - minX + 1) * screen.dimensions.tileWidth;
+        const contentWidth = Array.from({ length: maxX - minX + 1 }, (_, i) => {
+            const x = minX + i;
+            const isLeftHalf = screen.leftHalfTile && x === 0;
+            const isRightHalf = screen.rightHalfTile && x === (screenEffectiveWidth - 1);
+            return (isLeftHalf || isRightHalf) ? screen.dimensions.tileWidth / 2 : screen.dimensions.tileWidth;
+        }).reduce((a,b) => a + b, 0);
+
         const contentHeight = Array.from({ length: maxY - minY + 1 }, (_, i) => {
             const y = minY + i;
             const isTopHalf = screen.topHalfTile && y === 0;
@@ -1239,6 +1352,17 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         }
         return height;
     })();
+
+    const contentPixelWidth = (() => {
+        if (!activeBounds) return 0;
+        let width = 0;
+        for (let x = activeBounds.minX; x <= activeBounds.maxX; x++) {
+            const isLeftHalf = leftHalfTile && x === 0;
+            const isRightHalf = rightHalfTile && x === (effectiveScreenWidth - 1);
+            width += (isLeftHalf || isRightHalf) ? dimensions.tileWidth / 2 : dimensions.tileWidth;
+        }
+        return width;
+    })();
     
     let yPosOfMinY = 0;
     for (let i = 0; i < activeBounds.minY; i++) {
@@ -1246,11 +1370,17 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         yPosOfMinY += isTopHalfRow ? dimensions.tileHeight / 2 : dimensions.tileHeight;
     }
     
-    const cropWidth = (activeBounds.maxX - activeBounds.minX + 1) * dimensions.tileWidth;
+    let xPosOfMinX = 0;
+    for (let i = 0; i < activeBounds.minX; i++) {
+        const isLeftHalfCol = leftHalfTile && i === 0;
+        xPosOfMinX += isLeftHalfCol ? dimensions.tileWidth / 2 : dimensions.tileWidth;
+    }
+
+    const cropWidth = contentPixelWidth;
     const cropHeight = contentPixelHeight;
     const sx = currentScreen.isWiringMirrored 
-        ? (dimensions.screenWidth - 1 - activeBounds.maxX) * dimensions.tileWidth
-        : activeBounds.minX * dimensions.tileWidth;
+        ? xPosOfMinX
+        : xPosOfMinX;
     const sy = yPosOfMinY;
 
     const computedStyle = getComputedStyle(document.documentElement);
@@ -1326,7 +1456,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
             }
         });
       });
-  }, [wiringDiagramRef, currentScreen.isWiringMirrored, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight, subscriptionStatus]);
+  }, [wiringDiagramRef, currentScreen.isWiringMirrored, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, subscriptionStatus]);
 
   const handleDownloadFullRaster = useCallback(() => {
     if (subscriptionStatus !== 'pro') {
@@ -1498,8 +1628,10 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     const computedStyle = getComputedStyle(document.documentElement);
 
     const screenEffectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+    const screenEffectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+
     const screenWiringData = getWiringData({
-        dimensions: { ...screen.dimensions, screenHeight: screenEffectiveHeight },
+        dimensions: { ...screen.dimensions, screenHeight: screenEffectiveHeight, screenWidth: screenEffectiveWidth },
         tiles: screen.tiles,
         wiringPortConfig: screen.wiringPortConfig,
         dataPortStartNumber: screen.dataPortStartNumber,
@@ -1509,16 +1641,17 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         processorType: screen.processorType,
         topHalfTile: screen.topHalfTile,
         bottomHalfTile: screen.bottomHalfTile,
+        leftHalfTile: screen.leftHalfTile,
+        rightHalfTile: screen.rightHalfTile,
         screenId: screen.id,
     });
     
     const screenLabels = (() => {
-        const { screenWidth } = screen.dimensions;
         const totalTiles = screen.tiles.length;
         if (totalTiles <= 0) return [];
         const newLabels = Array(totalTiles).fill('');
         const activeTileIndices = screen.tiles.map((_, i) => i).filter(i => !screen.tiles[i].deleted);
-        const pathOrder = getPathOrder(activeTileIndices, screen.wiringPattern, screenWidth, screenEffectiveHeight);
+        const pathOrder = getPathOrder(activeTileIndices, screen.wiringPattern, screenEffectiveWidth, screenEffectiveHeight);
         const startNumber = screen.labelStartNumber || 1;
 
         if (screen.labelFormat === 'sequential' || screen.labelFormat === 'dmx-style') {
@@ -1536,14 +1669,14 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         } else if (screen.labelFormat !== 'none') {
           for (let i = 0; i < totalTiles; i++) {
             if (screen.tiles[i] && !screen.tiles[i].deleted) {
-              const x = i % screenWidth;
-              const y = Math.floor(i / screenWidth);
+              const x = i % screenEffectiveWidth;
+              const y = Math.floor(i / screenEffectiveWidth);
               if (screen.labelFormat === 'row-col') {
                 newLabels[i] = `${y + startNumber}-${x + 1}`;
               } else if (screen.labelFormat === 'row-letter-col-number') {
                 const rowLetter = String.fromCharCode('A'.charCodeAt(0) + y + startNumber - 1);
                 const colNumber = x + 1;
-                newLabels[i] = `${rowLetter}${x + 1}`;
+                newLabels[i] = `${rowLetter}${colNumber}`;
               }
             }
           }
@@ -1551,8 +1684,14 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         return newLabels;
     })();
 
-    const { tileWidth, tileHeight, screenWidth } = screen.dimensions;
-    const contentWidth = (screenActiveBounds.maxX - screenActiveBounds.minX + 1) * tileWidth;
+    const { tileWidth, tileHeight } = screen.dimensions;
+    const contentWidth = Array.from({ length: screenActiveBounds.maxX - screenActiveBounds.minX + 1 }, (_, i) => {
+        const x = screenActiveBounds.minX + i;
+        const isLeftHalf = screen.leftHalfTile && x === 0;
+        const isRightHalf = screen.rightHalfTile && x === (screenEffectiveWidth - 1);
+        return (isLeftHalf || isRightHalf) ? tileWidth / 2 : tileWidth;
+    }).reduce((a,b) => a+b, 0);
+
     const contentHeight = Array.from({ length: screenActiveBounds.maxY - screenActiveBounds.minY + 1 }, (_, i) => {
         const y = screenActiveBounds.minY + i;
         const isTopHalf = screen.topHalfTile && y === 0;
@@ -1589,68 +1728,75 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     }
 
     // Draw Tiles
+    let currentDrawY = 0;
     for (let y = screenActiveBounds.minY; y <= screenActiveBounds.maxY; y++) {
-        const tileXPos = (x: number) => (x - screenActiveBounds.minX) * tileWidth;
         const tileYPos = getTileVisualY(y);
         const rowPixelHeight = rowData[y].height;
-
+        
+        let currentDrawX = 0;
         for (let x = screenActiveBounds.minX; x <= screenActiveBounds.maxX; x++) {
-            const index = y * screenWidth + x;
+            const isLeftHalfCol = screen.leftHalfTile && x === 0;
+            const isRightHalfCol = screen.rightHalfTile && x === (screenEffectiveWidth - 1);
+            const colPixelWidth = (isLeftHalfCol || isRightHalfCol) ? tileWidth / 2 : tileWidth;
+
+            const index = y * screenEffectiveWidth + x;
             const tile = screen.tiles[index];
-            if (!tile || tile.deleted) continue;
+            if (tile && !tile.deleted) {
+                const bgColor = (x + y) % 2 === 0 ? screen.tileColor : screen.tileColorTwo;
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(currentDrawX, tileYPos, colPixelWidth, rowPixelHeight);
 
-            const bgColor = (x + y) % 2 === 0 ? screen.tileColor : screen.tileColorTwo;
-            ctx.fillStyle = bgColor;
-            ctx.fillRect(tileXPos(x), tileYPos, tileWidth, rowPixelHeight);
-
-            if (screen.borderWidth > 0) {
-              ctx.strokeStyle = screen.borderColor;
-              ctx.lineWidth = screen.borderWidth;
-              ctx.strokeRect(tileXPos(x), tileYPos, tileWidth, rowPixelHeight);
-            }
-             if (screen.showLabels && screenLabels[index]) {
-                const currentLabelColor = screen.labelColorMode === 'auto' ? (isColorDark(bgColor) ? '#FFFFFF' : '#000000') : screen.labelColor;
-                ctx.fillStyle = currentLabelColor;
-                ctx.font = `bold ${screen.labelFontSize}px sans-serif`;
-                
-                let textX = 0;
-                let textY = tileYPos + rowPixelHeight / 2;
-
-                switch (screen.labelPosition) {
-                    case 'top-left':
-                        ctx.textAlign = 'left';
-                        ctx.textBaseline = 'top';
-                        textX = tileXPos(x) + 8;
-                        textY = tileYPos + 4;
-                        break;
-                    case 'top-right':
-                        ctx.textAlign = 'right';
-                        ctx.textBaseline = 'top';
-                        textX = tileXPos(x) + tileWidth - 8;
-                        textY = tileYPos + 4;
-                        break;
-                    case 'bottom-left':
-                        ctx.textAlign = 'left';
-                        ctx.textBaseline = 'bottom';
-                        textX = tileXPos(x) + 8;
-                        textY = tileYPos + rowPixelHeight - 4;
-                        break;
-                    case 'bottom-right':
-                        ctx.textAlign = 'right';
-                        ctx.textBaseline = 'bottom';
-                        textX = tileXPos(x) + tileWidth - 8;
-                        textY = tileYPos + rowPixelHeight - 4;
-                        break;
-                    case 'center':
-                    default:
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        textX = tileXPos(x) + tileWidth / 2;
-                        break;
+                if (screen.borderWidth > 0) {
+                  ctx.strokeStyle = screen.borderColor;
+                  ctx.lineWidth = screen.borderWidth;
+                  ctx.strokeRect(currentDrawX, tileYPos, colPixelWidth, rowPixelHeight);
                 }
-                ctx.fillText(screenLabels[index], textX, textY);
+                 if (screen.showLabels && screenLabels[index]) {
+                    const currentLabelColor = screen.labelColorMode === 'auto' ? (isColorDark(bgColor) ? '#FFFFFF' : '#000000') : screen.labelColor;
+                    ctx.fillStyle = currentLabelColor;
+                    ctx.font = `bold ${screen.labelFontSize}px sans-serif`;
+                    
+                    let textX = 0;
+                    let textY = tileYPos + rowPixelHeight / 2;
+
+                    switch (screen.labelPosition) {
+                        case 'top-left':
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'top';
+                            textX = currentDrawX + 8;
+                            textY = tileYPos + 4;
+                            break;
+                        case 'top-right':
+                            ctx.textAlign = 'right';
+                            ctx.textBaseline = 'top';
+                            textX = currentDrawX + colPixelWidth - 8;
+                            textY = tileYPos + 4;
+                            break;
+                        case 'bottom-left':
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'bottom';
+                            textX = currentDrawX + 8;
+                            textY = tileYPos + rowPixelHeight - 4;
+                            break;
+                        case 'bottom-right':
+                            ctx.textAlign = 'right';
+                            ctx.textBaseline = 'bottom';
+                            textX = currentDrawX + colPixelWidth - 8;
+                            textY = tileYPos + rowPixelHeight - 4;
+                            break;
+                        case 'center':
+                        default:
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            textX = currentDrawX + colPixelWidth / 2;
+                            break;
+                    }
+                    ctx.fillText(screenLabels[index], textX, textY);
+                }
             }
+            currentDrawX += colPixelWidth;
         }
+        currentDrawY += rowPixelHeight;
     }
 
     const drawArrow = (fromX: number, fromY: number, toX: number, toY: number, color: string, gap: number, ahSize: number, ahLength: number) => {
@@ -1728,7 +1874,17 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         if (isDeleted) return;
         if (x < screenActiveBounds.minX || x > screenActiveBounds.maxX || y < screenActiveBounds.minY || y > screenActiveBounds.maxY) return;
         
-        const tileXPos = (x - screenActiveBounds.minX) * tileWidth + tileWidth / 2;
+        let tileXPos = 0;
+        for (let i = screenActiveBounds.minX; i < x; i++) {
+          const isLeftHalfCol = screen.leftHalfTile && i === 0;
+          const isRightHalfCol = screen.rightHalfTile && i === (screenEffectiveWidth - 1);
+          tileXPos += (isLeftHalfCol || isRightHalfCol) ? tileWidth / 2 : tileWidth;
+        }
+        const isCurrentLeftHalf = screen.leftHalfTile && x === 0;
+        const isCurrentRightHalf = screen.rightHalfTile && x === (screenEffectiveWidth - 1);
+        const currentTileWidth = (isCurrentLeftHalf || isCurrentRightHalf) ? tileWidth / 2 : tileWidth;
+        tileXPos += currentTileWidth / 2;
+
         const tileYPos = getTileVisualY(y) + rowData[y].height / 2;
 
         ctx.textAlign = 'center';
@@ -1920,7 +2076,12 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     handleTopHalfTileChange,
     bottomHalfTile: currentScreen.bottomHalfTile,
     handleBottomHalfTileChange,
+    leftHalfTile: currentScreen.leftHalfTile,
+    handleLeftHalfTileChange,
+    rightHalfTile: currentScreen.rightHalfTile,
+    handleRightHalfTileChange,
     effectiveScreenHeight,
+    effectiveScreenWidth,
     processorType: currentScreen.processorType,
     setProcessorType,
     selectedProductId: currentScreen.selectedProductId,
