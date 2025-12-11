@@ -8,6 +8,7 @@ import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo, apply
 import { useToast } from "@/hooks/use-toast";
 import { isColorDark } from "@/lib/utils";
 import { getProducts } from "@/app/calculator/actions";
+import { useAuth } from "./auth-context";
 
 interface LedProduct {
     id: string;
@@ -327,6 +328,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const nextIdCounter = useRef(1);
 
+  const { subscriptionStatus } = useAuth();
+
   const [screens, setScreens] = useState<Screen[]>(() => {
     const initialScreen = createNewScreen("Default Screen", nextIdCounter.current);
     nextIdCounter.current = initialScreen.nextTileId;
@@ -588,48 +591,46 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   
   const handleLeftHalfTileChange = (add: boolean) => {
     updateCurrentScreen(screen => {
-      const newTiles: Tile[] = [];
-      const originalHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
-      const originalWidth = screen.dimensions.screenWidth + (screen.rightHalfTile ? 1 : 0);
-      let nextTileId = screen.nextTileId;
+        let newTiles: Tile[] = [];
+        let nextTileId = screen.nextTileId;
+        const originalHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+        const originalWidth = screen.dimensions.screenWidth + (screen.rightHalfTile ? 1 : 0);
 
-      if (add) {
-        for (let y = 0; y < originalHeight; y++) {
-          const newTile: Tile = { id: nextTileId++, deleted: false };
-          const originalRow = screen.tiles.slice(y * originalWidth, (y + 1) * originalWidth);
-          newTiles.push(newTile, ...originalRow);
+        if (add) {
+            for (let y = 0; y < originalHeight; y++) {
+                newTiles.push({ id: nextTileId++, deleted: false });
+                newTiles.push(...screen.tiles.slice(y * originalWidth, (y + 1) * originalWidth));
+            }
+        } else {
+            const currentWidth = originalWidth + 1;
+            for (let y = 0; y < originalHeight; y++) {
+                newTiles.push(...screen.tiles.slice(y * currentWidth + 1, (y + 1) * currentWidth));
+            }
         }
-      } else {
-         for (let y = 0; y < originalHeight; y++) {
-          const originalRow = screen.tiles.slice(y * (originalWidth + 1), (y + 1) * (originalWidth + 1));
-          newTiles.push(...originalRow.slice(1));
-        }
-      }
-      return { ...screen, leftHalfTile: add, tiles: newTiles, nextTileId };
+        return { ...screen, leftHalfTile: add, tiles: newTiles, nextTileId };
     });
-  };
+};
   
   const handleRightHalfTileChange = (add: boolean) => {
-    updateCurrentScreen(screen => {
-      const newTiles: Tile[] = [];
-      const originalHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
-      const originalWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0);
-      let nextTileId = screen.nextTileId;
-      
-      if (add) {
-        for (let y = 0; y < originalHeight; y++) {
-          const newTile: Tile = { id: nextTileId++, deleted: false };
-          const originalRow = screen.tiles.slice(y * originalWidth, (y + 1) * originalWidth);
-          newTiles.push(...originalRow, newTile);
-        }
-      } else {
-         for (let y = 0; y < originalHeight; y++) {
-          const originalRow = screen.tiles.slice(y * (originalWidth + 1), (y + 1) * (originalWidth + 1));
-          newTiles.push(...originalRow.slice(0, -1));
-        }
-      }
-       return { ...screen, rightHalfTile: add, tiles: newTiles, nextTileId };
-    });
+      updateCurrentScreen(screen => {
+          let newTiles: Tile[] = [];
+          let nextTileId = screen.nextTileId;
+          const originalHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+          const originalWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0);
+
+          if (add) {
+              for (let y = 0; y < originalHeight; y++) {
+                  newTiles.push(...screen.tiles.slice(y * originalWidth, (y + 1) * originalWidth));
+                  newTiles.push({ id: nextTileId++, deleted: false });
+              }
+          } else {
+              const currentWidth = originalWidth + 1;
+              for (let y = 0; y < originalHeight; y++) {
+                  newTiles.push(...screen.tiles.slice(y * currentWidth, (y + 1) * currentWidth - 1));
+              }
+          }
+          return { ...screen, rightHalfTile: add, tiles: newTiles, nextTileId };
+      });
   };
   
   const [activeBounds, setActiveBounds] = useState<ActiveBounds | null>(null);
@@ -792,7 +793,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   }, [currentScreen, rasterMapConfig, activeBounds, effectiveScreenWidth, effectiveScreenHeight, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile]);
 
   const applyManualPowerWiring = useCallback((args: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; }) => {
-    const { startTileId, label, numTiles, pattern } = args;
     updateCurrentScreen(screen => {
       const { tiles, dimensions } = screen;
       const screenHeight = dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
@@ -800,19 +800,18 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       
       const newTiles = applyManualPowerWiringLogic(
           tiles,
-          startTileId,
-          numTiles,
-          pattern,
+          args.startTileId,
+          args.numTiles,
+          args.pattern,
           screenWidth,
           screenHeight,
-          label
+          args.label
       );
       return { ...screen, tiles: newTiles };
     });
   }, [updateCurrentScreen]);
   
   const applyManualDataWiring = useCallback((args: { startTileId: number; mainLabel: string; backupLabel: string; numTiles: number; pattern: WiringPattern; }) => {
-    const { startTileId, mainLabel, backupLabel, numTiles, pattern } = args;
     updateCurrentScreen(screen => {
       const { tiles, dimensions } = screen;
       const screenHeight = dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
@@ -820,13 +819,13 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       
       const newTiles = applyManualDataWiringLogic(
           tiles,
-          startTileId,
-          numTiles,
-          pattern,
+          args.startTileId,
+          args.numTiles,
+          args.pattern,
           screenWidth,
           screenHeight,
-          mainLabel,
-          backupLabel
+          args.mainLabel,
+          args.backupLabel
       );
       return { ...screen, tiles: newTiles };
     });
@@ -857,10 +856,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
                 return;
             }
             if (clickedTile.powerCircuit) {
-              // This tile is the start of a circuit, so we clear it.
               applyManualPowerWiring({ startTileId: tileId, label: '', numTiles: 0, pattern: clickedTile.powerCircuit.pattern });
             } else {
-              // This is a new circuit
               setSelectedTileForPower(tileId);
               setIsManualPowerModalOpen(true);
             }
@@ -875,10 +872,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
                 return;
             }
             if (clickedTile.dataCircuit) {
-              // This tile is the start of a circuit, so we clear it.
               applyManualDataWiring({ startTileId: tileId, mainLabel: '', backupLabel: '', numTiles: 0, pattern: clickedTile.dataCircuit.pattern });
             } else {
-              // This is a new circuit
               setSelectedTileForData(tileId);
               setIsManualDataModalOpen(true);
             }
