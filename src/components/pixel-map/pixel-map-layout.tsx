@@ -9,6 +9,7 @@ import {
   SidebarHeader,
   SidebarContent,
   SidebarInset,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { DimensionControls } from "../pixel-mapper/dimension-controls";
 import { AppearanceControls } from "../pixel-mapper/appearance-controls";
@@ -463,21 +464,24 @@ export function PixelMapLayout() {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-screen w-full">
            <header className="sticky top-0 z-10 flex-shrink-0 bg-background p-2 border-b">
             <div className="flex items-center justify-between flex-wrap gap-2 w-full">
-               <div className="hidden md:flex items-center gap-4">
-                 <div className="text-sm text-muted-foreground">
-                   Res: <span className="font-mono">{Math.round(totalWidth)}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
-                 </div>
-                 {activeTab === 'wiring' && portCount > 0 && (
-                   <>
-                     <Separator orientation="vertical" className="h-6" />
-                     <span className="text-sm font-medium text-muted-foreground">
-                       ({portCount} {portLabelText})
-                     </span>
-                   </>
-                 )}
+               <div className="flex items-center gap-2">
+                <SidebarTrigger className="md:hidden" />
+                <div className="hidden md:flex items-center gap-4">
+                  <div className="text-sm text-muted-foreground">
+                    Res: <span className="font-mono">{Math.round(totalWidth)}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
+                  </div>
+                  {activeTab === 'wiring' && portCount > 0 && (
+                    <>
+                      <Separator orientation="vertical" className="h-6" />
+                      <span className="text-sm font-medium text-muted-foreground">
+                        ({portCount} {portLabelText})
+                      </span>
+                    </>
+                  )}
+                </div>
                </div>
               
-               <div className="mx-auto">
+               <div className="flex-1 min-w-fit flex justify-center">
                 <TabsList>
                   <TabsTrigger value="grid">LED Grid</TabsTrigger>
                   <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
