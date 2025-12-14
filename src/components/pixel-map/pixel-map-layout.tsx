@@ -21,7 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "../pixel-mapper/edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home, ScreenShare, Plus, MoreHorizontal, Pencil, Trash } from "lucide-react";
+import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home, ScreenShare, Plus, MoreHorizontal, Pencil, Trash, Copy } from "lucide-react";
 import { LabelControls } from "../pixel-mapper/label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -75,6 +75,7 @@ export function PixelMapLayout() {
     addNewScreen,
     renameScreen,
     deleteScreen,
+    duplicateScreen,
     zoom, setZoom, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels,
     isManualPowerModalOpen, setIsManualPowerModalOpen, selectedTileForPower, applyManualPowerWiring,
     isManualDataModalOpen, setIsManualDataModalOpen, selectedTileForData, applyManualDataWiring
@@ -322,6 +323,9 @@ export function PixelMapLayout() {
                           <DropdownMenuContent>
                             <DropdownMenuItem onClick={() => { setIsRenaming(screen.id); setRenameValue(screen.name); }}>
                               <Pencil className="mr-2" /> Rename
+                            </DropdownMenuItem>
+                             <DropdownMenuItem onClick={() => duplicateScreen(screen.id)}>
+                              <Copy className="mr-2" /> Duplicate
                             </DropdownMenuItem>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>

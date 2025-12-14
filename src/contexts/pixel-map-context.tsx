@@ -161,6 +161,7 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   addNewScreen: () => void;
   renameScreen: (id: string, newName: string) => void;
   deleteScreen: (id: string) => void;
+  duplicateScreen: (id: string) => void;
   appState: string;
   gridRef: React.RefObject<HTMLDivElement>;
   wiringDiagramRef: React.RefObject<HTMLDivElement>;
@@ -484,6 +485,27 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       }
       return newScreens;
     });
+  };
+
+  const duplicateScreen = (id: string) => {
+    const screenToDuplicate = screens.find(s => s.id === id);
+    if (!screenToDuplicate) return;
+
+    const newScreen = JSON.parse(JSON.stringify(screenToDuplicate));
+    newScreen.id = crypto.randomUUID();
+    newScreen.name = `${screenToDuplicate.name} (Copy)`;
+    
+    // Assign new unique IDs to tiles
+    let nextTileId = nextIdCounter.current;
+    newScreen.tiles = newScreen.tiles.map((tile: Tile) => {
+      tile.id = nextTileId++;
+      return tile;
+    });
+    nextIdCounter.current = nextTileId;
+    newScreen.nextTileId = nextTileId;
+
+    setScreens(prev => [...prev, newScreen]);
+    setCurrentScreenId(newScreen.id);
   };
 
   const { dimensions, tiles, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile } = currentScreen;
@@ -2020,6 +2042,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     addNewScreen,
     renameScreen,
     deleteScreen,
+    duplicateScreen,
     dimensions: currentScreen.dimensions,
     setDimensions,
     tiles: currentScreen.tiles,
