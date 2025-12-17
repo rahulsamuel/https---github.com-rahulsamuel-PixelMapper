@@ -31,6 +31,7 @@ export function LedGrid() {
     rightHalfTile,
     effectiveScreenHeight,
     effectiveScreenWidth,
+    showModules,
   } = usePixelMap();
 
   const { totalGridPixelWidth, totalGridPixelHeight } = useMemo(() => {
@@ -127,6 +128,9 @@ export function LedGrid() {
               boxSizing: 'border-box',
             };
 
+            const numModulesX = Math.floor(tileEffectiveWidth / dimensions.moduleWidth);
+            const numModulesY = Math.floor(tileEffectiveHeight / dimensions.moduleHeight);
+
             return (
               <button
                 key={tile.id}
@@ -137,6 +141,13 @@ export function LedGrid() {
                 style={tileDynamicStyle}
                 aria-label={`Tile ${index + 1}`}
               >
+                {showModules && !tile.deleted && (
+                  <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${numModulesX}, 1fr)`, gridTemplateRows: `repeat(${numModulesY}, 1fr)`}}>
+                    {Array.from({ length: numModulesX * numModulesY }).map((_, i) => (
+                      <div key={i} className="border border-black/20" />
+                    ))}
+                  </div>
+                )}
                 {showSliceOffsetLabels && !tile.deleted && sliceOffsetLabels[index] && (
                     <div
                         className="absolute top-1 left-1 bg-black/60 text-white text-xs font-mono px-1 py-0.5 rounded z-20"

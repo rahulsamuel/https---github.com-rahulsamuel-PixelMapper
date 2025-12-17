@@ -24,6 +24,8 @@ export function DimensionControls() {
     products,
     selectedProductId,
     setSelectedProductId,
+    showModules,
+    setShowModules,
    } = usePixelMap();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -151,6 +153,43 @@ export function DimensionControls() {
                     min="1"
                 />
             </div>
+        </div>
+        <Separator />
+         <div className="space-y-2">
+            <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/20">
+                <Label htmlFor="show-modules">Show Tile Modules</Label>
+                <Switch
+                    id="show-modules"
+                    checked={showModules}
+                    onCheckedChange={setShowModules}
+                />
+            </div>
+            {showModules && (
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div className="space-y-2">
+                        <Label htmlFor="moduleWidth">Module Width (px)</Label>
+                        <Input
+                            id="moduleWidth"
+                            name="moduleWidth"
+                            type="number"
+                            value={dimensions.moduleWidth}
+                            onChange={handleChange}
+                            min="1"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="moduleHeight">Module Height (px)</Label>
+                        <Input
+                            id="moduleHeight"
+                            name="moduleHeight"
+                            type="number"
+                            value={dimensions.moduleHeight}
+                            onChange={handleChange}
+                            min="1"
+                        />
+                    </div>
+                </div>
+            )}
         </div>
         <Separator />
         <div className="space-y-2">

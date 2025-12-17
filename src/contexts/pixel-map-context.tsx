@@ -24,6 +24,8 @@ interface Dimensions {
   tileHeight: number;
   screenWidth: number;
   screenHeight: number;
+  moduleWidth: number;
+  moduleHeight: number;
 }
 
 export interface Tile {
@@ -141,6 +143,7 @@ interface Screen {
   processorType: ProcessorType;
   selectedProductId: string | null;
   nextTileId: number;
+  showModules: boolean;
 }
 
 interface ProjectData {
@@ -239,6 +242,7 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setIsManualDataModalOpen: Dispatch<SetStateAction<boolean>>;
   selectedTileForData: number | null;
   applyManualDataWiring: (args: { startTileId: number; mainLabel: string; backupLabel: string; numTiles: number; pattern: WiringPattern; }) => void;
+  setShowModules: Dispatch<SetStateAction<boolean>>;
 }
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
@@ -275,7 +279,7 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
   return {
     id: screenId,
     name,
-    dimensions: { tileWidth: 200, tileHeight: 200, screenWidth: initialWidth, screenHeight: initialHeight },
+    dimensions: { tileWidth: 200, tileHeight: 200, screenWidth: initialWidth, screenHeight: initialHeight, moduleWidth: 128, moduleHeight: 128 },
     tiles: initialTiles,
     tileColor: "#273a5e",
     tileColorTwo: "#d1d9e6",
@@ -318,6 +322,7 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     processorType: 'Brompton',
     selectedProductId: 'custom',
     nextTileId: idCounter + initialTiles.length,
+    showModules: false,
   };
 };
 
@@ -460,6 +465,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setPowerLabelSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, powerLabelSize: typeof updater === 'function' ? updater(s.powerLabelSize) : updater }));
   const setShowSliceOffsetLabels = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showSliceOffsetLabels: typeof updater === 'function' ? updater(s.showSliceOffsetLabels) : updater }));
   const setProcessorType = (updater: SetStateAction<ProcessorType>) => updateCurrentScreen(s => ({ ...s, processorType: typeof updater === 'function' ? updater(s.processorType) : updater }));
+  const setShowModules = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showModules: typeof updater === 'function' ? updater(s.showModules) : updater }));
 
 
   const addNewScreen = () => {
@@ -498,8 +504,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     // Assign new unique IDs to tiles
     let nextTileId = nextIdCounter.current;
     newScreen.tiles = newScreen.tiles.map((tile: Tile) => {
-      tile.id = nextTileId++;
-      return tile;
+      const newTile = { ...tile, id: nextTileId++ };
+      return newTile;
     });
     nextIdCounter.current = nextTileId;
     newScreen.nextTileId = nextTileId;
@@ -579,42 +585,43 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
   const handleTopHalfTileChange = (add: boolean) => {
     updateCurrentScreen(screen => {
-      const { screenWidth } = screen.dimensions;
-      const currentEffectiveWidth = screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
-      let newTiles: Tile[];
-      let nextTileId = screen.nextTileId;
-      if (add) {
-          const newRow = Array.from({ length: currentEffectiveWidth }, (_, i) => ({ id: nextTileId + i, deleted: false }));
-          nextTileId += newRow.length;
-          newTiles = [...newRow, ...screen.tiles];
-      } else {
-          newTiles = screen.tiles.slice(currentEffectiveWidth);
-      }
-      return { ...screen, topHalfTile: add, tiles: newTiles, nextTileId };
-    });
-  };
-  
-  const handleBottomHalfTileChange = (add: boolean) => {
-    updateCurrentScreen(screen => {
-      const { screenWidth } = screen.dimensions;
-      const currentEffectiveWidth = screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
-      let newTiles: Tile[];
-      let nextTileId = screen.nextTileId;
-      if (add) {
-          const newRow = Array.from({ length: currentEffectiveWidth }, (_, i) => ({ id: nextTileId + i, deleted: false }));
-          nextTileId += newRow.length;
-          newTiles = [...screen.tiles, ...newRow];
-      } else {
-          newTiles = screen.tiles.slice(0, screen.tiles.length - currentEffectiveWidth);
-      }
-      return { ...screen, bottomHalfTile: add, tiles: newTiles, nextTileId };
-    });
-  };
-  
-  const handleLeftHalfTileChange = (add: boolean) => {
-    updateCurrentScreen(screen => {
-        let newTiles: Tile[] = [];
         let nextTileId = screen.nextTileId;
+        const currentEffectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+        let newTiles: Tile[];
+        
+        if (add) {
+            const newRow = Array.from({ length: currentEffectiveWidth }, (_, i) => ({ id: nextTileId + i, deleted: false }));
+            nextTileId += newRow.length;
+            newTiles = [...newRow, ...screen.tiles];
+        } else {
+            newTiles = screen.tiles.slice(currentEffectiveWidth);
+        }
+        
+        return { ...screen, topHalfTile: add, tiles: newTiles, nextTileId };
+    });
+};
+
+const handleBottomHalfTileChange = (add: boolean) => {
+    updateCurrentScreen(screen => {
+        let nextTileId = screen.nextTileId;
+        const currentEffectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+        let newTiles: Tile[];
+
+        if (add) {
+            const newRow = Array.from({ length: currentEffectiveWidth }, (_, i) => ({ id: nextTileId + i, deleted: false }));
+            nextTileId += newRow.length;
+            newTiles = [...screen.tiles, ...newRow];
+        } else {
+            newTiles = screen.tiles.slice(0, screen.tiles.length - currentEffectiveWidth);
+        }
+        return { ...screen, bottomHalfTile: add, tiles: newTiles, nextTileId };
+    });
+};
+
+const handleLeftHalfTileChange = (add: boolean) => {
+    updateCurrentScreen(screen => {
+        let nextTileId = screen.nextTileId;
+        let newTiles: Tile[] = [];
         const originalHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
         const originalWidth = screen.dimensions.screenWidth + (screen.rightHalfTile ? 1 : 0);
 
@@ -632,28 +639,28 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         return { ...screen, leftHalfTile: add, tiles: newTiles, nextTileId };
     });
 };
-  
-  const handleRightHalfTileChange = (add: boolean) => {
-      updateCurrentScreen(screen => {
-          let newTiles: Tile[] = [];
-          let nextTileId = screen.nextTileId;
-          const originalHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
-          const originalWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0);
 
-          if (add) {
-              for (let y = 0; y < originalHeight; y++) {
-                  newTiles.push(...screen.tiles.slice(y * originalWidth, (y + 1) * originalWidth));
-                  newTiles.push({ id: nextTileId++, deleted: false });
-              }
-          } else {
-              const currentWidth = originalWidth + 1;
-              for (let y = 0; y < originalHeight; y++) {
-                  newTiles.push(...screen.tiles.slice(y * currentWidth, (y + 1) * currentWidth - 1));
-              }
-          }
-          return { ...screen, rightHalfTile: add, tiles: newTiles, nextTileId };
-      });
-  };
+const handleRightHalfTileChange = (add: boolean) => {
+    updateCurrentScreen(screen => {
+        let nextTileId = screen.nextTileId;
+        let newTiles: Tile[] = [];
+        const originalHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+        const originalWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0);
+
+        if (add) {
+            for (let y = 0; y < originalHeight; y++) {
+                newTiles.push(...screen.tiles.slice(y * originalWidth, (y + 1) * originalWidth));
+                newTiles.push({ id: nextTileId++, deleted: false });
+            }
+        } else {
+            const currentWidth = originalWidth + 1;
+            for (let y = 0; y < originalHeight; y++) {
+                newTiles.push(...screen.tiles.slice(y * currentWidth, (y + 1) * currentWidth - 1));
+            }
+        }
+        return { ...screen, rightHalfTile: add, tiles: newTiles, nextTileId };
+    });
+};
   
   const [activeBounds, setActiveBounds] = useState<ActiveBounds | null>(null);
 
@@ -816,42 +823,113 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
   const applyManualPowerWiring = useCallback((args: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; }) => {
     updateCurrentScreen(screen => {
-      const { tiles, dimensions } = screen;
-      const screenHeight = dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
-      const screenWidth = dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
-      
-      const newTiles = applyManualPowerWiringLogic(
-          tiles,
-          args.startTileId,
-          args.numTiles,
-          args.pattern,
-          screenWidth,
-          screenHeight,
-          args.label
-      );
-      return { ...screen, tiles: newTiles };
+        const { tiles } = screen;
+        const newTiles = [...tiles];
+        const startTileIndex = newTiles.findIndex(t => t.id === args.startTileId);
+        if (startTileIndex === -1) return screen;
+
+        // If trying to clear, find the original circuit to clear it completely
+        if (args.numTiles === 0 && newTiles[startTileIndex].powerCircuit) {
+            const circuitToClear = newTiles[startTileIndex].powerCircuit;
+            const activeIndices = newTiles.map((t, i) => t.deleted ? -1 : i).filter(i => i !== -1);
+            const path = getPathOrder(activeIndices, circuitToClear.pattern, effectiveScreenWidth, effectiveScreenHeight);
+            const pathStartIndex = path.indexOf(startTileIndex);
+            
+            if (pathStartIndex !== -1) {
+                for (let i = 0; i < circuitToClear.tileCount; i++) {
+                    const tileIndex = path[pathStartIndex + i];
+                    if (tileIndex !== undefined) {
+                        newTiles[tileIndex] = { ...newTiles[tileIndex], powerPortLabel: undefined, powerCircuit: undefined };
+                    }
+                }
+            }
+        } else {
+            const activeIndices = newTiles.map((t, i) => t.deleted ? -1 : i).filter(i => i !== -1);
+            const path = getPathOrder(activeIndices, args.pattern, effectiveScreenWidth, effectiveScreenHeight);
+            const pathStartIndex = path.indexOf(startTileIndex);
+            if (pathStartIndex === -1) return screen;
+
+            for (let i = 0; i < args.numTiles; i++) {
+                const tileIndex = path[pathStartIndex + i];
+                if (tileIndex === undefined || (newTiles[tileIndex].powerCircuit && newTiles[tileIndex].powerCircuit?.label !== args.label) ) {
+                    // Stop if we hit the end of the available path or another circuit
+                    break;
+                }
+                 // Clear old circuit if we are overwriting it
+                if (newTiles[tileIndex].powerCircuit) {
+                   const oldCircuit = newTiles[tileIndex].powerCircuit!;
+                   const oldPath = getPathOrder(activeIndices, oldCircuit.pattern, effectiveScreenWidth, effectiveScreenHeight);
+                   const oldPathStart = oldPath.indexOf(tileIndex);
+                   if (oldPathStart !== -1) {
+                     for(let j=0; j< oldCircuit.tileCount; j++) {
+                       const oldTileIdx = oldPath[oldPathStart+j];
+                       if(oldTileIdx !== undefined) newTiles[oldTileIdx] = {...newTiles[oldTileIdx], powerPortLabel: undefined, powerCircuit: undefined};
+                     }
+                   }
+                }
+
+                newTiles[tileIndex] = { ...newTiles[tileIndex], powerCircuit: { label: args.label, tileCount: args.numTiles, pattern: args.pattern }};
+                if (i === 0) {
+                    newTiles[tileIndex].powerPortLabel = args.label;
+                }
+            }
+        }
+        return { ...screen, tiles: newTiles };
     });
-  }, [updateCurrentScreen]);
+  }, [updateCurrentScreen, effectiveScreenWidth, effectiveScreenHeight]);
   
-  const applyManualDataWiring = useCallback((args: { startTileId: number; mainLabel: string; backupLabel: string; numTiles: number; pattern: WiringPattern; }) => {
-    updateCurrentScreen(screen => {
-      const { tiles, dimensions } = screen;
-      const screenHeight = dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
-      const screenWidth = dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
-      
-      const newTiles = applyManualDataWiringLogic(
-          tiles,
-          args.startTileId,
-          args.numTiles,
-          args.pattern,
-          screenWidth,
-          screenHeight,
-          args.mainLabel,
-          args.backupLabel
-      );
-      return { ...screen, tiles: newTiles };
+  const applyManualDataWiring = useCallback((args: { startTileId: number; mainLabel: string; backupLabel: string, numTiles: number; pattern: WiringPattern; }) => {
+     updateCurrentScreen(screen => {
+        const { tiles } = screen;
+        const newTiles = [...tiles];
+        const startTileIndex = newTiles.findIndex(t => t.id === args.startTileId);
+        if (startTileIndex === -1) return screen;
+
+        // If trying to clear, find the original circuit to clear it completely
+        if (args.numTiles === 0 && newTiles[startTileIndex].dataCircuit) {
+            const circuitToClear = newTiles[startTileIndex].dataCircuit;
+            const activeIndices = newTiles.map((t, i) => t.deleted ? -1 : i).filter(i => i !== -1);
+            const path = getPathOrder(activeIndices, circuitToClear.pattern, effectiveScreenWidth, effectiveScreenHeight);
+            const pathStartIndex = path.indexOf(startTileIndex);
+            
+            if (pathStartIndex !== -1) {
+                for (let i = 0; i < circuitToClear.tileCount; i++) {
+                    const tileIndex = path[pathStartIndex + i];
+                    if (tileIndex !== undefined) {
+                        newTiles[tileIndex] = { ...newTiles[tileIndex], dataCircuit: undefined };
+                    }
+                }
+            }
+        } else {
+            const activeIndices = newTiles.map((t, i) => t.deleted ? -1 : i).filter(i => i !== -1);
+            const path = getPathOrder(activeIndices, args.pattern, effectiveScreenWidth, effectiveScreenHeight);
+            const pathStartIndex = path.indexOf(startTileIndex);
+            if (pathStartIndex === -1) return screen;
+
+            for (let i = 0; i < args.numTiles; i++) {
+                const tileIndex = path[pathStartIndex + i];
+                if (tileIndex === undefined || (newTiles[tileIndex].dataCircuit && newTiles[tileIndex].dataCircuit?.mainLabel !== args.mainLabel) ) {
+                    // Stop if we hit the end of the available path or another circuit
+                    break;
+                }
+
+                if (newTiles[tileIndex].dataCircuit) {
+                   const oldCircuit = newTiles[tileIndex].dataCircuit!;
+                   const oldPath = getPathOrder(activeIndices, oldCircuit.pattern, effectiveScreenWidth, effectiveScreenHeight);
+                   const oldPathStart = oldPath.indexOf(tileIndex);
+                   if (oldPathStart !== -1) {
+                     for(let j=0; j< oldCircuit.tileCount; j++) {
+                       const oldTileIdx = oldPath[oldPathStart+j];
+                       if(oldTileIdx !== undefined) newTiles[oldTileIdx] = {...newTiles[oldTileIdx], dataCircuit: undefined};
+                     }
+                   }
+                }
+                newTiles[tileIndex] = { ...newTiles[tileIndex], dataCircuit: { mainLabel: args.mainLabel, backupLabel: args.backupLabel, tileCount: args.numTiles, pattern: args.pattern }};
+            }
+        }
+        return { ...screen, tiles: newTiles };
     });
-  }, [updateCurrentScreen]);
+  }, [updateCurrentScreen, effectiveScreenWidth, effectiveScreenHeight]);
 
   const handleTileClick = useCallback((tileId: number) => {
     const clickedTile = currentScreen.tiles.find(t => t.id === tileId);
@@ -2156,6 +2234,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     setIsManualDataModalOpen,
     selectedTileForData,
     applyManualDataWiring,
+    showModules: currentScreen.showModules,
+    setShowModules,
   };
 
   return (
