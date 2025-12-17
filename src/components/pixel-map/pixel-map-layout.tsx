@@ -21,7 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "../pixel-mapper/edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home, ScreenShare, Plus, MoreHorizontal, Pencil, Trash, Copy } from "lucide-react";
+import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home, ScreenShare, Plus, MoreHorizontal, Pencil, Trash, Copy, CaseSensitive } from "lucide-react";
 import { LabelControls } from "../pixel-mapper/label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -360,34 +360,35 @@ export function PixelMapLayout() {
               </AccordionItem>
               
               {activeTab === 'grid' && (
-                <AccordionItem value="grid-setup" className="border-none">
-                  <AccordionSectionTrigger icon={<LayoutGrid className="size-5" />} title="Grid Setup" />
-                  <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
-                    <div>
-                      <div className="mb-4">
-                        <h3 className="font-semibold">Dimensions</h3>
-                        <p className="text-sm text-muted-foreground">Define the size of your LED tiles and the overall screen grid.</p>
+                <>
+                  <AccordionItem value="grid-setup" className="border-none">
+                    <AccordionSectionTrigger icon={<LayoutGrid className="size-5" />} title="Grid Setup" />
+                    <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
+                      <div>
+                        <div className="mb-4">
+                          <h3 className="font-semibold">Dimensions</h3>
+                          <p className="text-sm text-muted-foreground">Define the size of your LED tiles and the overall screen grid.</p>
+                        </div>
+                        <DimensionControls />
                       </div>
-                      <DimensionControls />
-                    </div>
-                    <Separator />
-                    <div>
-                      <div className="mb-4">
-                        <h3 className="font-semibold">Appearance</h3>
-                        <p className="text-sm text-muted-foreground">Customize the look of the LED tiles.</p>
+                      <Separator />
+                      <div>
+                        <div className="mb-4">
+                          <h3 className="font-semibold">Appearance</h3>
+                          <p className="text-sm text-muted-foreground">Customize the look of the LED tiles.</p>
+                        </div>
+                        <AppearanceControls />
                       </div>
-                      <AppearanceControls />
-                    </div>
-                    <Separator />
-                    <div>
-                      <div className="mb-4">
-                        <h3 className="font-semibold">Labeling</h3>
-                        <p className="text-sm text-muted-foreground">Customize the labels on the LED tiles.</p>
-                      </div>
-                      <LabelControls />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="labeling" className="border-none">
+                    <AccordionSectionTrigger icon={<CaseSensitive className="size-5" />} title="Labeling" />
+                     <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
+                       <p className="text-sm text-muted-foreground pb-4">Customize the labels on the LED tiles.</p>
+                       <LabelControls />
+                     </AccordionContent>
+                  </AccordionItem>
+                </>
               )}
 
               {activeTab === 'wiring' && (
