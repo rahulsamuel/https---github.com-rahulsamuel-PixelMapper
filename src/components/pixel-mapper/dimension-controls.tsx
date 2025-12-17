@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMemo } from "react";
+import { Button } from "../ui/button";
+import { RefreshCw } from "lucide-react";
 
 export function DimensionControls() {
   const { 
@@ -26,6 +28,11 @@ export function DimensionControls() {
     setSelectedProductId,
     showModules,
     setShowModules,
+    moduleBorderColor,
+    setModuleBorderColor,
+    randomizeModuleColors,
+    setRandomizeModuleColors,
+    regenerateModuleColors,
    } = usePixelMap();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -165,29 +172,64 @@ export function DimensionControls() {
                 />
             </div>
             {showModules && (
-                <div className="grid grid-cols-2 gap-4 pt-2">
-                    <div className="space-y-2">
-                        <Label htmlFor="moduleWidth">Module Width (px)</Label>
-                        <Input
-                            id="moduleWidth"
-                            name="moduleWidth"
-                            type="number"
-                            value={dimensions.moduleWidth}
-                            onChange={handleChange}
-                            min="1"
-                        />
+                <div className="space-y-4 pt-2">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="moduleWidth">Module Width (px)</Label>
+                            <Input
+                                id="moduleWidth"
+                                name="moduleWidth"
+                                type="number"
+                                value={dimensions.moduleWidth}
+                                onChange={handleChange}
+                                min="1"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="moduleHeight">Module Height (px)</Label>
+                            <Input
+                                id="moduleHeight"
+                                name="moduleHeight"
+                                type="number"
+                                value={dimensions.moduleHeight}
+                                onChange={handleChange}
+                                min="1"
+                            />
+                        </div>
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="moduleHeight">Module Height (px)</Label>
-                        <Input
-                            id="moduleHeight"
-                            name="moduleHeight"
-                            type="number"
-                            value={dimensions.moduleHeight}
-                            onChange={handleChange}
-                            min="1"
+                        <Label htmlFor="module-border-color">Module Border Color</Label>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                id="module-border-color"
+                                type="color"
+                                value={moduleBorderColor}
+                                onChange={(e) => setModuleBorderColor(e.target.value)}
+                                className="w-14 p-1"
+                            />
+                             <Input
+                                type="text"
+                                value={moduleBorderColor}
+                                onChange={(e) => setModuleBorderColor(e.target.value)}
+                                placeholder="#000000"
+                                className="font-mono"
+                            />
+                        </div>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-3 bg-card">
+                        <Label htmlFor="randomize-module-colors">Apply Random Module Colors</Label>
+                        <Switch
+                            id="randomize-module-colors"
+                            checked={randomizeModuleColors}
+                            onCheckedChange={setRandomizeModuleColors}
                         />
                     </div>
+                    {randomizeModuleColors && (
+                         <Button onClick={regenerateModuleColors} variant="outline" size="sm" className="w-full">
+                            <RefreshCw className="mr-2" />
+                            Regenerate Colors
+                        </Button>
+                    )}
                 </div>
             )}
         </div>

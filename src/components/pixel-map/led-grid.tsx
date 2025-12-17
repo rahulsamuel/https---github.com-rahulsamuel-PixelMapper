@@ -32,6 +32,9 @@ export function LedGrid() {
     effectiveScreenHeight,
     effectiveScreenWidth,
     showModules,
+    moduleBorderColor,
+    randomizeModuleColors,
+    currentScreen,
   } = usePixelMap();
 
   const { totalGridPixelWidth, totalGridPixelHeight } = useMemo(() => {
@@ -123,13 +126,14 @@ export function LedGrid() {
               height: `${tileEffectiveHeight}px`,
               borderWidth: `${borderWidth}px`,
               borderColor: borderColor,
-              backgroundColor: bgColor,
+              backgroundColor: randomizeModuleColors ? 'transparent' : bgColor,
               borderStyle: tile.deleted ? 'none' : 'solid',
               boxSizing: 'border-box',
             };
 
             const numModulesX = Math.floor(tileEffectiveWidth / dimensions.moduleWidth);
             const numModulesY = Math.floor(tileEffectiveHeight / dimensions.moduleHeight);
+            const totalModules = numModulesX * numModulesY;
 
             return (
               <button
@@ -143,9 +147,15 @@ export function LedGrid() {
               >
                 {showModules && !tile.deleted && (
                   <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${numModulesX}, 1fr)`, gridTemplateRows: `repeat(${numModulesY}, 1fr)`}}>
-                    {Array.from({ length: numModulesX * numModulesY }).map((_, i) => (
-                      <div key={i} className="border border-black/20" />
-                    ))}
+                    {Array.from({ length: totalModules }).map((_, i) => {
+                      const moduleStyle: React.CSSProperties = {
+                        border: `1px solid ${moduleBorderColor}`,
+                        backgroundColor: randomizeModuleColors ? currentScreen.moduleColors[index]?.[i] ?? '#000000' : bgColor,
+                      };
+                      return (
+                        <div key={i} style={moduleStyle} />
+                      );
+                    })}
                   </div>
                 )}
                 {showSliceOffsetLabels && !tile.deleted && sliceOffsetLabels[index] && (

@@ -144,6 +144,9 @@ interface Screen {
   selectedProductId: string | null;
   nextTileId: number;
   showModules: boolean;
+  moduleBorderColor: string;
+  randomizeModuleColors: boolean;
+  moduleColors: string[][];
 }
 
 interface ProjectData {
@@ -155,7 +158,7 @@ interface ProjectData {
 }
 
 // Omit functions and refs from the state, pass them separately
-interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nextTileId'> {
+interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nextTileId' | 'moduleColors'> {
   screens: Screen[];
   products: LedProduct[];
   currentScreen: Screen;
@@ -243,6 +246,9 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   selectedTileForData: number | null;
   applyManualDataWiring: (args: { startTileId: number; mainLabel: string; backupLabel: string; numTiles: number; pattern: WiringPattern; }) => void;
   setShowModules: Dispatch<SetStateAction<boolean>>;
+  setModuleBorderColor: Dispatch<SetStateAction<string>>;
+  setRandomizeModuleColors: Dispatch<SetStateAction<boolean>>;
+  regenerateModuleColors: () => void;
 }
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
@@ -323,6 +329,9 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     selectedProductId: 'custom',
     nextTileId: idCounter + initialTiles.length,
     showModules: false,
+    moduleBorderColor: "#000000",
+    randomizeModuleColors: false,
+    moduleColors: [],
   };
 };
 
@@ -466,6 +475,25 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setShowSliceOffsetLabels = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showSliceOffsetLabels: typeof updater === 'function' ? updater(s.showSliceOffsetLabels) : updater }));
   const setProcessorType = (updater: SetStateAction<ProcessorType>) => updateCurrentScreen(s => ({ ...s, processorType: typeof updater === 'function' ? updater(s.processorType) : updater }));
   const setShowModules = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showModules: typeof updater === 'function' ? updater(s.showModules) : updater }));
+  const setModuleBorderColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, moduleBorderColor: typeof updater === 'function' ? updater(s.moduleBorderColor) : updater }));
+  const setRandomizeModuleColors = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, randomizeModuleColors: typeof updater === 'function' ? updater(s.randomizeModuleColors) : updater }));
+  
+  const regenerateModuleColors = useCallback(() => {
+    updateCurrentScreen(screen => {
+      const newModuleColors = screen.tiles.map(tile => {
+        if (tile.deleted) return [];
+        const numModulesX = Math.floor(screen.dimensions.tileWidth / screen.dimensions.moduleWidth);
+        const numModulesY = Math.floor(screen.dimensions.tileHeight / screen.dimensions.moduleHeight);
+        const totalModules = numModulesX * numModulesY;
+        return Array.from({ length: totalModules }, () => `hsl(${Math.random() * 360}, 70%, 50%)`);
+      });
+      return { ...screen, moduleColors: newModuleColors };
+    });
+  }, [updateCurrentScreen]);
+
+  useEffect(() => {
+    regenerateModuleColors();
+  }, [currentScreen.tiles, currentScreen.dimensions.moduleWidth, currentScreen.dimensions.moduleHeight, regenerateModuleColors]);
 
 
   const addNewScreen = () => {
@@ -851,19 +879,23 @@ const handleRightHalfTileChange = (add: boolean) => {
 
             for (let i = 0; i < args.numTiles; i++) {
                 const tileIndex = path[pathStartIndex + i];
-                if (tileIndex === undefined || (newTiles[tileIndex].powerCircuit && newTiles[tileIndex].powerCircuit?.label !== args.label) ) {
+                 if (tileIndex === undefined || (newTiles[tileIndex].powerCircuit && newTiles[tileIndex].powerCircuit?.label !== args.label) ) {
                     // Stop if we hit the end of the available path or another circuit
                     break;
                 }
-                 // Clear old circuit if we are overwriting it
-                if (newTiles[tileIndex].powerCircuit) {
+
+                // If the tile is part of an existing different circuit, we should clear that entire circuit first
+                if (newTiles[tileIndex].powerCircuit && newTiles[tileIndex].powerCircuit?.label !== args.label) {
                    const oldCircuit = newTiles[tileIndex].powerCircuit!;
                    const oldPath = getPathOrder(activeIndices, oldCircuit.pattern, effectiveScreenWidth, effectiveScreenHeight);
-                   const oldPathStart = oldPath.indexOf(tileIndex);
-                   if (oldPathStart !== -1) {
+                   const oldStartIdx = oldPath.findIndex(pIndex => tiles[pIndex].powerCircuit?.label === oldCircuit.label);
+
+                   if(oldStartIdx !== -1){
                      for(let j=0; j< oldCircuit.tileCount; j++) {
-                       const oldTileIdx = oldPath[oldPathStart+j];
-                       if(oldTileIdx !== undefined) newTiles[oldTileIdx] = {...newTiles[oldTileIdx], powerPortLabel: undefined, powerCircuit: undefined};
+                       const oldTileIdx = oldPath[oldStartIdx+j];
+                       if(oldTileIdx !== undefined) {
+                          newTiles[oldTileIdx] = {...newTiles[oldTileIdx], powerPortLabel: undefined, powerCircuit: undefined};
+                       }
                      }
                    }
                 }
@@ -913,17 +945,22 @@ const handleRightHalfTileChange = (add: boolean) => {
                     break;
                 }
 
-                if (newTiles[tileIndex].dataCircuit) {
+                 // If the tile is part of an existing different circuit, we should clear that entire circuit first
+                if (newTiles[tileIndex].dataCircuit && newTiles[tileIndex].dataCircuit?.mainLabel !== args.mainLabel) {
                    const oldCircuit = newTiles[tileIndex].dataCircuit!;
                    const oldPath = getPathOrder(activeIndices, oldCircuit.pattern, effectiveScreenWidth, effectiveScreenHeight);
-                   const oldPathStart = oldPath.indexOf(tileIndex);
-                   if (oldPathStart !== -1) {
+                   const oldStartIdx = oldPath.findIndex(pIndex => tiles[pIndex].dataCircuit?.mainLabel === oldCircuit.mainLabel);
+                   
+                   if(oldStartIdx !== -1){
                      for(let j=0; j< oldCircuit.tileCount; j++) {
-                       const oldTileIdx = oldPath[oldPathStart+j];
-                       if(oldTileIdx !== undefined) newTiles[oldTileIdx] = {...newTiles[oldTileIdx], dataCircuit: undefined};
+                       const oldTileIdx = oldPath[oldStartIdx+j];
+                       if(oldTileIdx !== undefined) {
+                         newTiles[oldTileIdx] = {...newTiles[oldTileIdx], dataCircuit: undefined};
+                       }
                      }
                    }
                 }
+
                 newTiles[tileIndex] = { ...newTiles[tileIndex], dataCircuit: { mainLabel: args.mainLabel, backupLabel: args.backupLabel, tileCount: args.numTiles, pattern: args.pattern }};
             }
         }
@@ -2236,6 +2273,11 @@ const handleRightHalfTileChange = (add: boolean) => {
     applyManualDataWiring,
     showModules: currentScreen.showModules,
     setShowModules,
+    moduleBorderColor: currentScreen.moduleBorderColor,
+    setModuleBorderColor,
+    randomizeModuleColors: currentScreen.randomizeModuleColors,
+    setRandomizeModuleColors,
+    regenerateModuleColors,
   };
 
   return (
