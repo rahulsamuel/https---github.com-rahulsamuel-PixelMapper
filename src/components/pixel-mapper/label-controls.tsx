@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
@@ -33,6 +34,16 @@ export function LabelControls() {
     setShowSliceOffsetLabels,
     labelStartNumber,
     setLabelStartNumber,
+    showScreenName,
+    setShowScreenName,
+    screenNameLabelPosition,
+    setScreenNameLabelPosition,
+    screenNameLabelFontSize,
+    setScreenNameLabelFontSize,
+    screenNameLabelColor,
+    setScreenNameLabelColor,
+    screenNameLabelColorMode,
+    setScreenNameLabelColorMode,
   } = usePixelMap();
 
   return (
@@ -153,6 +164,84 @@ export function LabelControls() {
         <div className="flex items-center justify-between">
           <Label htmlFor="show-slice-offsets-grid">Show Content Offsets</Label>
           <Switch id="show-slice-offsets-grid" checked={showSliceOffsetLabels} onCheckedChange={setShowSliceOffsetLabels} />
+        </div>
+
+        <Separator />
+        
+        <div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="show-screen-name">Show Screen Name</Label>
+              <Switch
+                id="show-screen-name"
+                checked={showScreenName}
+                onCheckedChange={setShowScreenName}
+              />
+            </div>
+            {showScreenName && (
+                <div className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="screen-name-position">Position</Label>
+                        <Select
+                            value={screenNameLabelPosition}
+                            onValueChange={(value) => setScreenNameLabelPosition(value as any)}
+                        >
+                            <SelectTrigger id="screen-name-position"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="top-left">Top Left</SelectItem>
+                                <SelectItem value="top-right">Top Right</SelectItem>
+                                <SelectItem value="center">Center</SelectItem>
+                                <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                                <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="screen-name-color-mode">Color Mode</Label>
+                        <Select
+                            value={screenNameLabelColorMode}
+                            onValueChange={(v) => setScreenNameLabelColorMode(v as any)}
+                        >
+                            <SelectTrigger id="screen-name-color-mode"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="single">Single Color</SelectItem>
+                                <SelectItem value="auto">Automatic (B&W)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    {screenNameLabelColorMode === 'single' && (
+                        <div className="space-y-2">
+                        <Label htmlFor="screen-name-color">Color</Label>
+                        <div className="flex items-center gap-2">
+                            <Input
+                            id="screen-name-color"
+                            type="color"
+                            value={screenNameLabelColor}
+                            onChange={(e) => setScreenNameLabelColor(e.target.value)}
+                            className="w-14 p-1"
+                            />
+                             <Input
+                                type="text"
+                                value={screenNameLabelColor}
+                                onChange={(e) => setScreenNameLabelColor(e.target.value)}
+                                placeholder="#ffffff"
+                                className="font-mono"
+                            />
+                        </div>
+                        </div>
+                    )}
+                    <div className="space-y-2">
+                        <Label htmlFor="screen-name-font-size">Font Size: {screenNameLabelFontSize}px</Label>
+                        <Slider
+                            id="screen-name-font-size"
+                            min={12}
+                            max={256}
+                            step={1}
+                            value={[screenNameLabelFontSize]}
+                            onValueChange={(value) => setScreenNameLabelFontSize(value[0])}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
       </div>
   );

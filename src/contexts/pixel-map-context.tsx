@@ -114,6 +114,11 @@ interface Screen {
   labelPosition: LabelPosition;
   labelColorMode: LabelColorMode;
   labelStartNumber: number;
+  showScreenName: boolean;
+  screenNameLabelPosition: LabelPosition;
+  screenNameLabelFontSize: number;
+  screenNameLabelColor: string;
+  screenNameLabelColorMode: LabelColorMode;
   onOffMode: boolean;
   zoomLevels: { grid: number; wiring: number; raster: number; };
   rasterOffset: { x: number; y: number; };
@@ -199,6 +204,11 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setLabelPosition: Dispatch<SetStateAction<LabelPosition>>;
   setLabelColorMode: Dispatch<SetStateAction<LabelColorMode>>;
   setLabelStartNumber: Dispatch<SetStateAction<number>>;
+  setShowScreenName: Dispatch<SetStateAction<boolean>>;
+  setScreenNameLabelPosition: Dispatch<SetStateAction<LabelPosition>>;
+  setScreenNameLabelFontSize: Dispatch<SetStateAction<number>>;
+  setScreenNameLabelColor: Dispatch<SetStateAction<string>>;
+  setScreenNameLabelColorMode: Dispatch<SetStateAction<LabelColorMode>>;
   setOnOffMode: Dispatch<SetStateAction<boolean>>;
   zoom: number;
   setZoom: (value: number | ((prev: number) => number), applyToAllTabs?: boolean) => void;
@@ -299,6 +309,11 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     labelPosition: 'center',
     labelColorMode: 'auto',
     labelStartNumber: 1,
+    showScreenName: false,
+    screenNameLabelPosition: 'center',
+    screenNameLabelFontSize: 64,
+    screenNameLabelColor: '#ffffff',
+    screenNameLabelColorMode: 'auto',
     onOffMode: false,
     zoomLevels: { grid: 1, wiring: 1, raster: 1 },
     rasterOffset: { x: 0, y: 0 },
@@ -452,6 +467,11 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setLabelPosition = (updater: SetStateAction<LabelPosition>) => updateCurrentScreen(s => ({ ...s, labelPosition: typeof updater === 'function' ? updater(s.labelPosition) : updater }));
   const setLabelColorMode = (updater: SetStateAction<LabelColorMode>) => updateCurrentScreen(s => ({ ...s, labelColorMode: typeof updater === 'function' ? updater(s.labelColorMode) : updater }));
   const setLabelStartNumber = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, labelStartNumber: typeof updater === 'function' ? updater(s.labelStartNumber) : updater }));
+  const setShowScreenName = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showScreenName: typeof updater === 'function' ? updater(s.showScreenName) : updater }));
+  const setScreenNameLabelPosition = (updater: SetStateAction<LabelPosition>) => updateCurrentScreen(s => ({ ...s, screenNameLabelPosition: typeof updater === 'function' ? updater(s.screenNameLabelPosition) : updater }));
+  const setScreenNameLabelFontSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, screenNameLabelFontSize: typeof updater === 'function' ? updater(s.screenNameLabelFontSize) : updater }));
+  const setScreenNameLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, screenNameLabelColor: typeof updater === 'function' ? updater(s.screenNameLabelColor) : updater }));
+  const setScreenNameLabelColorMode = (updater: SetStateAction<LabelColorMode>) => updateCurrentScreen(s => ({ ...s, screenNameLabelColorMode: typeof updater === 'function' ? updater(s.screenNameLabelColorMode) : updater }));
   const setOnOffMode = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, onOffMode: typeof updater === 'function' ? updater(s.onOffMode) : updater }));
   const setRasterOffset = (updater: SetStateAction<{x: number, y: number}>) => updateCurrentScreen(s => ({ ...s, rasterOffset: typeof updater === 'function' ? updater(s.rasterOffset) : updater }));
   const setLastRasterArgs = (updater: SetStateAction<RasterArgs | null>) => updateCurrentScreen(s => ({ ...s, lastRasterArgs: typeof updater === 'function' ? updater(s.lastRasterArgs) : updater }));
@@ -919,7 +939,7 @@ const handleRightHalfTileChange = (add: boolean) => {
 
         // If trying to clear, find the original circuit to clear it completely
         if (args.numTiles === 0 && newTiles[startTileIndex].dataCircuit) {
-            const circuitToClear = newTiles[startTileIndex].dataCircuit;
+            const circuitToClear = newTiles[startTileIndex].dataCircuit!;
             const activeIndices = newTiles.map((t, i) => t.deleted ? -1 : i).filter(i => i !== -1);
             const path = getPathOrder(activeIndices, circuitToClear.pattern, effectiveScreenWidth, effectiveScreenHeight);
             const pathStartIndex = path.indexOf(startTileIndex);
@@ -928,7 +948,9 @@ const handleRightHalfTileChange = (add: boolean) => {
                 for (let i = 0; i < circuitToClear.tileCount; i++) {
                     const tileIndex = path[pathStartIndex + i];
                     if (tileIndex !== undefined) {
-                        newTiles[tileIndex] = { ...newTiles[tileIndex], dataCircuit: undefined };
+                         if (newTiles[tileIndex].dataCircuit?.mainLabel === circuitToClear.mainLabel) {
+                            newTiles[tileIndex] = { ...newTiles[tileIndex], dataCircuit: undefined };
+                        }
                     }
                 }
             }
@@ -954,7 +976,7 @@ const handleRightHalfTileChange = (add: boolean) => {
                    if(oldStartIdx !== -1){
                      for(let j=0; j< oldCircuit.tileCount; j++) {
                        const oldTileIdx = oldPath[oldStartIdx+j];
-                       if(oldTileIdx !== undefined) {
+                       if(oldTileIdx !== undefined && newTiles[oldTileIdx].dataCircuit?.mainLabel === oldCircuit.mainLabel) {
                          newTiles[oldTileIdx] = {...newTiles[oldTileIdx], dataCircuit: undefined};
                        }
                      }
@@ -2199,6 +2221,16 @@ const handleRightHalfTileChange = (add: boolean) => {
     setLabelColorMode,
     labelStartNumber: currentScreen.labelStartNumber,
     setLabelStartNumber,
+    showScreenName: currentScreen.showScreenName,
+    setShowScreenName,
+    screenNameLabelPosition: currentScreen.screenNameLabelPosition,
+    setScreenNameLabelPosition,
+    screenNameLabelFontSize: currentScreen.screenNameLabelFontSize,
+    setScreenNameLabelFontSize,
+    screenNameLabelColor: currentScreen.screenNameLabelColor,
+    setScreenNameLabelColor,
+    screenNameLabelColorMode: currentScreen.screenNameLabelColorMode,
+    setScreenNameLabelColorMode,
     onOffMode: currentScreen.onOffMode,
     setOnOffMode,
     zoom,

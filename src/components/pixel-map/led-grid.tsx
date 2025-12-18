@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
@@ -21,6 +22,11 @@ export function LedGrid() {
     labelColor,
     labelColorMode,
     labelPosition,
+    showScreenName,
+    screenNameLabelPosition,
+    screenNameLabelFontSize,
+    screenNameLabelColor,
+    screenNameLabelColorMode,
     zoom,
     onOffMode,
     sliceOffsetLabels,
@@ -92,10 +98,22 @@ export function LedGrid() {
     }
     return dimensions.tileWidth;
   };
+  
+  const averageBackgroundColor = useMemo(() => {
+    const activeTiles = tiles.filter(t => !t.deleted);
+    if (activeTiles.length === 0) return tileColor;
+    // For simplicity, just use the first tile's potential color
+    return tiles[0]?.color || tileColor;
+  }, [tiles, tileColor]);
+
+  const currentScreenNameLabelColor = screenNameLabelColorMode === 'auto'
+    ? isColorDark(averageBackgroundColor) ? '#FFFFFF' : '#000000'
+    : screenNameLabelColor;
+
 
   return (
     <div className="bg-muted/20 p-4">
-      <div style={{ width: totalGridPixelWidth * zoom, height: totalGridPixelHeight * zoom }}>
+      <div style={{ width: totalGridPixelWidth * zoom, height: totalGridPixelHeight * zoom }} className="relative">
         <div ref={gridRef} style={gridStyle} className="bg-muted">
           {tiles.map((tile, index) => {
             const x = index % effectiveScreenWidth;
@@ -189,6 +207,30 @@ export function LedGrid() {
             );
           })}
         </div>
+        {showScreenName && (
+            <div
+                className={cn(
+                    "absolute font-bold pointer-events-none drop-shadow-lg z-30",
+                    {
+                        'top-4 left-4': screenNameLabelPosition === 'top-left',
+                        'top-4 right-4 text-right': screenNameLabelPosition === 'top-right',
+                        'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center': screenNameLabelPosition === 'center',
+                        'bottom-4 left-4': screenNameLabelPosition === 'bottom-left',
+                        'bottom-4 right-4 text-right': screenNameLabelPosition === 'bottom-right',
+                    }
+                )}
+                 style={{
+                    fontSize: `${screenNameLabelFontSize}px`,
+                    color: currentScreenNameLabelColor,
+                    transform: `scale(${zoom}) ${screenNameLabelPosition.includes('center') ? 'translate(-50%, -50%)' : ''}`,
+                    transformOrigin: 'top left',
+                    left: screenNameLabelPosition.includes('center') ? '50%' : (screenNameLabelPosition.includes('left') ? '1rem' : undefined),
+                    right: screenNameLabelPosition.includes('right') ? '1rem' : undefined,
+                 }}
+            >
+                {currentScreen.name}
+            </div>
+        )}
       </div>
     </div>
   );
