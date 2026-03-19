@@ -1,4 +1,3 @@
-
 "use client";
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
@@ -15,7 +14,7 @@ import { AppearanceControls } from "../pixel-mapper/appearance-controls";
 import { PixelMapActions } from "../pixel-mapper/pixel-mapper-actions";
 import { LedGrid } from "./led-grid";
 import { WiringDiagram } from "./wiring-diagram";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "../pixel-mapper/edit-tools";
@@ -56,13 +55,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input";
 import { DownloadsControls } from "../pixel-mapper/downloads-controls";
 import { useState, useRef, useEffect, useMemo } from "react";
-import Link from "next/link";
-import { Logo } from "../logo";
 import { useAuth } from "@/contexts/auth-context";
 import { AppHeader } from "../app/app-header";
 
@@ -336,11 +332,11 @@ export function PixelMapLayout() {
                               <Copy className="mr-2" /> Duplicate
                             </DropdownMenuItem>
                             <AlertDialog>
-                              <AlertDialogTrigger asChild>
+                              <DropdownMenuLabel>
                                 <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
                                   <Trash className="mr-2" /> Delete
                                 </DropdownMenuItem>
-                              </AlertDialogTrigger>
+                              </DropdownMenuLabel>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Are you sure?</AlertDialogTitle>
