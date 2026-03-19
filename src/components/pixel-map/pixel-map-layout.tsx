@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
@@ -16,12 +15,12 @@ import { AppearanceControls } from "../pixel-mapper/appearance-controls";
 import { PixelMapActions } from "../pixel-mapper/pixel-mapper-actions";
 import { LedGrid } from "./led-grid";
 import { WiringDiagram } from "./wiring-diagram";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "../pixel-mapper/edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home, ScreenShare, Plus, MoreHorizontal, Pencil, Trash, Copy, CaseSensitive } from "lucide-react";
+import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home, ScreenShare, Plus, MoreHorizontal, Pencil, Trash, Copy, CaseSensitive, FileText, Info } from "lucide-react";
 import { LabelControls } from "../pixel-mapper/label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -32,6 +31,8 @@ import { PowerControls } from "../pixel-mapper/power-controls";
 import { ColorToolControls } from "../pixel-mapper/color-tool-controls";
 import { ManualPowerWiringModal } from "../pixel-mapper/manual-power-wiring-modal";
 import { ManualDataWiringModal } from "../pixel-mapper/manual-data-wiring-modal";
+import { DeliverablesView } from "./deliverables-view";
+import { ProjectDetailsControls } from "../pixel-mapper/project-details-controls";
 import {
   Accordion,
   AccordionContent,
@@ -157,6 +158,10 @@ export function PixelMapLayout() {
           contentHeight = rasterMapConfig.totalHeight;
         }
         break;
+      case 'deliverables':
+        contentWidth = 1200;
+        contentHeight = 800;
+        break;
     }
   
     if (contentWidth <= 0 || contentHeight <= 0) {
@@ -195,6 +200,9 @@ export function PixelMapLayout() {
         break;
       case 'raster':
         setActiveAccordion('export');
+        break;
+      case 'deliverables':
+        setActiveAccordion('project-details');
         break;
     }
   }, [activeTab]);
@@ -461,6 +469,15 @@ export function PixelMapLayout() {
                 </AccordionItem>
               )}
 
+              {activeTab === 'deliverables' && (
+                <AccordionItem value="project-details" className="border-none">
+                  <AccordionSectionTrigger icon={<Info className="size-5" />} title="Project Info" />
+                  <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
+                    <ProjectDetailsControls />
+                  </AccordionContent>
+                </AccordionItem>
+              )}
+
             </Accordion>
           </ScrollArea>
         </SidebarContent>
@@ -491,6 +508,7 @@ export function PixelMapLayout() {
                   <TabsTrigger value="grid">LED Grid</TabsTrigger>
                   <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
                   <TabsTrigger value="raster">Raster Map</TabsTrigger>
+                  <TabsTrigger value="deliverables">Deliverables</TabsTrigger>
                 </TabsList>
                </div>
 
@@ -534,6 +552,11 @@ export function PixelMapLayout() {
               <TabsContent value="raster" className="mt-0 h-full w-full">
                  <div style={{ width: (rasterMapConfig?.totalWidth ?? 0) * zoom, height: (rasterMapConfig?.totalHeight ?? 0) * zoom }}>
                   <RasterMapPreview />
+                </div>
+              </TabsContent>
+              <TabsContent value="deliverables" className="mt-0 h-full w-full p-8 flex justify-center">
+                 <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
+                  <DeliverablesView />
                 </div>
               </TabsContent>
           </ScrollArea>

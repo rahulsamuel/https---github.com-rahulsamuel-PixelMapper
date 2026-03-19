@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { toPng } from "html-to-image";
@@ -120,7 +119,7 @@ interface Screen {
   screenNameLabelColor: string;
   screenNameLabelColorMode: LabelColorMode;
   onOffMode: boolean;
-  zoomLevels: { grid: number; wiring: number; raster: number; };
+  zoomLevels: { grid: number; wiring: number; raster: number; deliverables: number; };
   rasterOffset: { x: number; y: number; };
   lastRasterArgs: RasterArgs | null;
   wiringPortConfig: string;
@@ -159,10 +158,12 @@ interface ProjectData {
   screens: Screen[];
   currentScreenId: string;
   activeTab: string;
-  lastRasterArgs?: RasterArgs | null; // For backward compatibility
+  lastRasterArgs?: RasterArgs | null;
+  projectNumber?: string;
+  versionNumber?: string;
+  projectNotes?: string;
 }
 
-// Omit functions and refs from the state, pass them separately
 interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nextTileId' | 'moduleColors'> {
   screens: Screen[];
   products: LedProduct[];
@@ -259,6 +260,15 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setModuleBorderColor: Dispatch<SetStateAction<string>>;
   setRandomizeModuleColors: Dispatch<SetStateAction<boolean>>;
   regenerateModuleColors: () => void;
+  projectNumber: string;
+  setProjectNumber: Dispatch<SetStateAction<string>>;
+  versionNumber: string;
+  setVersionNumber: Dispatch<SetStateAction<string>>;
+  projectNotes: string;
+  setProjectNotes: Dispatch<SetStateAction<string>>;
+  uploadedMaps: string[];
+  addUploadedMap: (dataUri: string) => void;
+  removeUploadedMap: (index: number) => void;
 }
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
@@ -271,7 +281,6 @@ export const usePixelMap = () => {
   return context;
 };
 
-// Helper to track events
 const trackEvent = async (eventType: string, eventData: any) => {
   try {
     await fetch('/api/track', {
@@ -315,7 +324,7 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     screenNameLabelColor: '#ffffff',
     screenNameLabelColorMode: 'auto',
     onOffMode: false,
-    zoomLevels: { grid: 1, wiring: 1, raster: 1 },
+    zoomLevels: { grid: 1, wiring: 1, raster: 1, deliverables: 1 },
     rasterOffset: { x: 0, y: 0 },
     lastRasterArgs: null,
     wiringPortConfig: "4",
@@ -375,14 +384,20 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [isManualDataModalOpen, setIsManualDataModalOpen] = useState(false);
   const [selectedTileForData, setSelectedTileForData] = useState<number | null>(null);
 
+  // Deliverables State
+  const [projectNumber, setProjectNumber] = useState("");
+  const [versionNumber, setVersionNumber] = useState("1.0");
+  const [projectNotes, setProjectNotes] = useState("");
+  const [uploadedMaps, setUploadedMaps] = useState<string[]>([]);
+
+  const addUploadedMap = (dataUri: string) => setUploadedMaps(prev => [...prev, dataUri]);
+  const removeUploadedMap = (index: number) => setUploadedMaps(prev => prev.filter((_, i) => i !== index));
+
   useEffect(() => {
       async function fetchProducts() {
           const { data, error } = await getProducts();
           if (data) {
               setProducts(data as LedProduct[]);
-              if (data.length > 0 && !currentScreen.selectedProductId) {
-                  // Don't auto-select here to avoid race conditions, let user select.
-              }
           }
           if (error) {
               console.error("Failed to fetch LED products:", error);
@@ -400,7 +415,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setDimensions = (updater: SetStateAction<Dimensions>) => {
       updateCurrentScreen(screen => {
           const newDimensions = typeof updater === 'function' ? updater(screen.dimensions) : updater;
-          // When manually setting dimensions, clear the selected product if it's not custom
           const updatedScreen = { ...screen, dimensions: newDimensions };
           if (screen.selectedProductId !== 'custom') {
             updatedScreen.selectedProductId = 'custom';
@@ -549,7 +563,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     newScreen.id = crypto.randomUUID();
     newScreen.name = `${screenToDuplicate.name} (Copy)`;
     
-    // Assign new unique IDs to tiles
     let nextTileId = nextIdCounter.current;
     newScreen.tiles = newScreen.tiles.map((tile: Tile) => {
       const newTile = { ...tile, id: nextTileId++ };
@@ -609,7 +622,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       const newZoom = typeof value === 'function' ? value(currentZoom) : value;
 
       if (applyToAllTabs) {
-        return { ...screen, zoomLevels: { grid: newZoom, wiring: newZoom, raster: newZoom } };
+        return { ...screen, zoomLevels: { grid: newZoom, wiring: newZoom, raster: newZoom, deliverables: newZoom } };
       }
       
       newZoomLevels[currentTabKey] = newZoom;
@@ -785,7 +798,6 @@ const handleRightHalfTileChange = (add: boolean) => {
     return newLabels;
   }, [currentScreen, effectiveScreenWidth, effectiveScreenHeight]);
 
-  // Effect to calculate slice offset labels
   const sliceOffsetLabels = useMemo(() => {
     if (!rasterMapConfig || !activeBounds || !rasterMapConfig.slices.length || !currentScreen.rasterOffset || !currentScreen.wiringPattern) {
       return [];
@@ -876,7 +888,6 @@ const handleRightHalfTileChange = (add: boolean) => {
         const startTileIndex = newTiles.findIndex(t => t.id === args.startTileId);
         if (startTileIndex === -1) return screen;
 
-        // If trying to clear, find the original circuit to clear it completely
         if (args.numTiles === 0 && newTiles[startTileIndex].powerCircuit) {
             const circuitToClear = newTiles[startTileIndex].powerCircuit;
             const activeIndices = newTiles.map((t, i) => t.deleted ? -1 : i).filter(i => i !== -1);
@@ -900,11 +911,9 @@ const handleRightHalfTileChange = (add: boolean) => {
             for (let i = 0; i < args.numTiles; i++) {
                 const tileIndex = path[pathStartIndex + i];
                  if (tileIndex === undefined || (newTiles[tileIndex].powerCircuit && newTiles[tileIndex].powerCircuit?.label !== args.label) ) {
-                    // Stop if we hit the end of the available path or another circuit
                     break;
                 }
 
-                // If the tile is part of an existing different circuit, we should clear that entire circuit first
                 if (newTiles[tileIndex].powerCircuit && newTiles[tileIndex].powerCircuit?.label !== args.label) {
                    const oldCircuit = newTiles[tileIndex].powerCircuit!;
                    const oldPath = getPathOrder(activeIndices, oldCircuit.pattern, effectiveScreenWidth, effectiveScreenHeight);
@@ -937,7 +946,6 @@ const handleRightHalfTileChange = (add: boolean) => {
         const startTileIndex = newTiles.findIndex(t => t.id === args.startTileId);
         if (startTileIndex === -1) return screen;
 
-        // If trying to clear, find the original circuit to clear it completely
         if (args.numTiles === 0 && newTiles[startTileIndex].dataCircuit) {
             const circuitToClear = newTiles[startTileIndex].dataCircuit!;
             const activeIndices = newTiles.map((t, i) => t.deleted ? -1 : i).filter(i => i !== -1);
@@ -963,11 +971,9 @@ const handleRightHalfTileChange = (add: boolean) => {
             for (let i = 0; i < args.numTiles; i++) {
                 const tileIndex = path[pathStartIndex + i];
                 if (tileIndex === undefined || (newTiles[tileIndex].dataCircuit && newTiles[tileIndex].dataCircuit?.mainLabel !== args.mainLabel) ) {
-                    // Stop if we hit the end of the available path or another circuit
                     break;
                 }
 
-                 // If the tile is part of an existing different circuit, we should clear that entire circuit first
                 if (newTiles[tileIndex].dataCircuit && newTiles[tileIndex].dataCircuit?.mainLabel !== args.mainLabel) {
                    const oldCircuit = newTiles[tileIndex].dataCircuit!;
                    const oldPath = getPathOrder(activeIndices, oldCircuit.pattern, effectiveScreenWidth, effectiveScreenHeight);
@@ -1254,7 +1260,6 @@ const handleRightHalfTileChange = (add: boolean) => {
         return;
     }
     const { filename, outputWidth, outputHeight } = currentScreen.lastRasterArgs;
-    const PADDING = 20;
 
     const screenArrangement: ScreenArrangement[] = [];
     let totalContentWidth = 0;
@@ -1390,11 +1395,10 @@ const handleRightHalfTileChange = (add: boolean) => {
     if (currentScreen.lastRasterArgs) {
       regenerateRasterPreview();
     }
-  }, [regenerateRasterPreview, screens]); // Removed currentScreen.lastRasterArgs from here as it caused loops. Now relies on screen state.
+  }, [regenerateRasterPreview, screens]);
   
   const generateRasterMap = useCallback((filename: string, outputWidth?: number, outputHeight?: number) => {
     setLastRasterArgs({ filename, outputWidth, outputHeight });
-    // Don't reset offset here, it is now per-screen
   }, [setLastRasterArgs]);
 
   useEffect(() => {
@@ -1701,10 +1705,13 @@ const handleRightHalfTileChange = (add: boolean) => {
 
   const exportProject = useCallback(() => {
     const projectData: ProjectData = {
-      version: "1.3.0",
+      version: "1.4.0",
       screens,
       currentScreenId,
       activeTab,
+      projectNumber,
+      versionNumber,
+      projectNotes,
     };
 
     const jsonString = JSON.stringify(projectData, null, 2);
@@ -1724,7 +1731,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       description: `Project saved to ${filename}`,
     });
     trackEvent('download', { type: 'project-file', filename, projectData: { screensCount: screens.length } });
-  }, [screens, currentScreenId, activeTab, toast]);
+  }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, toast]);
   
   const importProject = useCallback((file: File) => {
     const reader = new FileReader();
@@ -1741,16 +1748,15 @@ const handleRightHalfTileChange = (add: boolean) => {
         
         let maxId = 0;
         
-        // Handle legacy project import (pre-multiple screens)
         if (data.dimensions) {
           const screen = createNewScreen("Imported Screen", nextIdCounter.current);
           nextIdCounter.current += screen.tiles.length;
           
           Object.assign(screen, {
             ...data,
-            id: crypto.randomUUID(), // ensure it has a unique ID
+            id: crypto.randomUUID(),
             name: "Imported Screen",
-            zoomLevels: data.zoomLevels || { grid: data.zoom || 1, wiring: data.zoom || 1, raster: data.zoom || 1 },
+            zoomLevels: data.zoomLevels || { grid: data.zoom || 1, wiring: data.zoom || 1, raster: data.zoom || 1, deliverables: 1 },
             lastRasterArgs: data.lastRasterArgs || null,
           });
           
@@ -1758,14 +1764,12 @@ const handleRightHalfTileChange = (add: boolean) => {
           setCurrentScreenId(screen.id);
           setActiveTab(data.activeTab || 'grid');
         } else {
-           // Make sure all screens have all properties from the latest `Screen` interface
           const migratedScreens = data.screens.map((s: any) => {
-            const newScreen = createNewScreen("", 0); // Create a default screen to get all keys
+            const newScreen = createNewScreen("", 0);
             const migratedScreen = { ...newScreen, ...s };
             migratedScreen.tiles.forEach((t: Tile) => {
               if (t.id > maxId) maxId = t.id;
             });
-            // ensure nextTileId is set correctly after import
             if (!migratedScreen.nextTileId || migratedScreen.nextTileId <= maxId) {
               migratedScreen.nextTileId = maxId + 1;
             }
@@ -1775,6 +1779,9 @@ const handleRightHalfTileChange = (add: boolean) => {
           setScreens(migratedScreens);
           setCurrentScreenId(data.currentScreenId);
           setActiveTab(data.activeTab);
+          if (data.projectNumber) setProjectNumber(data.projectNumber);
+          if (data.versionNumber) setVersionNumber(data.versionNumber);
+          if (data.projectNotes) setProjectNotes(data.projectNotes);
         }
         
         toast({
@@ -1810,10 +1817,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       });
       return;
     }
-    
-    // Resetting just the current screen's offset to 0,0
     setRasterOffset({ x: 0, y: 0 });
-
     toast({
       title: "Offset Reset",
       description: `Offset for "${currentScreen.name}" has been reset to (0, 0).`,
@@ -1856,7 +1860,7 @@ const handleRightHalfTileChange = (add: boolean) => {
           pathOrder.forEach((originalIndex, pathIndex) => {
             if (screen.labelFormat === 'sequential') {
               newLabels[originalIndex] = String(pathIndex + startNumber);
-            } else { // dmx-style
+            } else { 
               const universeSize = 170;
               const dmxIndex = pathIndex + startNumber - 1;
               const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(dmxIndex / universeSize));
@@ -1925,7 +1929,6 @@ const handleRightHalfTileChange = (add: boolean) => {
       return totalY;
     }
 
-    // Draw Tiles
     let currentDrawY = 0;
     for (let y = screenActiveBounds.minY; y <= screenActiveBounds.maxY; y++) {
         const tileYPos = getTileVisualY(y);
@@ -2035,7 +2038,6 @@ const handleRightHalfTileChange = (add: boolean) => {
         ctx.fill();
     };
 
-    // Draw Data Arrows
     if (screen.showDataLabels) {
       const dataColor = `hsl(${computedStyle.getPropertyValue('--data-wiring').trim()})`;
       screenWiringData.forEach(({ x, y, nextTile, isDeleted }) => {
@@ -2051,7 +2053,6 @@ const handleRightHalfTileChange = (add: boolean) => {
       });
     }
     
-    // Draw Power Arrows
     if (screen.showPowerLabels) {
         const powerColor = `hsl(${computedStyle.getPropertyValue('--power-wiring').trim()})`;
         screenWiringData.forEach(({ x, y, nextPowerTile, isDeleted }) => {
@@ -2067,7 +2068,6 @@ const handleRightHalfTileChange = (add: boolean) => {
         });
     }
 
-    // Draw Labels
     screenWiringData.forEach(({ x, y, isDeleted, dataLabel, backupLabel, powerPortLabel }) => {
         if (isDeleted) return;
         if (x < screenActiveBounds.minX || x > screenActiveBounds.maxX || y < screenActiveBounds.minY || y > screenActiveBounds.maxY) return;
@@ -2310,6 +2310,15 @@ const handleRightHalfTileChange = (add: boolean) => {
     randomizeModuleColors: currentScreen.randomizeModuleColors,
     setRandomizeModuleColors,
     regenerateModuleColors,
+    projectNumber,
+    setProjectNumber,
+    versionNumber,
+    setVersionNumber,
+    projectNotes,
+    setProjectNotes,
+    uploadedMaps,
+    addUploadedMap,
+    removeUploadedMap,
   };
 
   return (
