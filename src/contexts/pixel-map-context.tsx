@@ -162,6 +162,10 @@ interface ProjectData {
   projectNumber?: string;
   versionNumber?: string;
   projectNotes?: string;
+  mediaServer?: string;
+  preferredCodec?: string;
+  audioFormat?: string;
+  imageFormat?: string;
 }
 
 interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nextTileId' | 'moduleColors'> {
@@ -269,6 +273,14 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   uploadedMaps: string[];
   addUploadedMap: (dataUri: string) => void;
   removeUploadedMap: (index: number) => void;
+  mediaServer: string;
+  setMediaServer: Dispatch<SetStateAction<string>>;
+  preferredCodec: string;
+  setPreferredCodec: Dispatch<SetStateAction<string>>;
+  audioFormat: string;
+  setAudioFormat: Dispatch<SetStateAction<string>>;
+  imageFormat: string;
+  setImageFormat: Dispatch<SetStateAction<string>>;
 }
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
@@ -389,6 +401,10 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [versionNumber, setVersionNumber] = useState("1.0");
   const [projectNotes, setProjectNotes] = useState("");
   const [uploadedMaps, setUploadedMaps] = useState<string[]>([]);
+  const [mediaServer, setMediaServer] = useState("disguise");
+  const [preferredCodec, setPreferredCodec] = useState("HAP");
+  const [audioFormat, setAudioFormat] = useState("WAV 48kHz 24-bit Stereo");
+  const [imageFormat, setImageFormat] = useState("PNG");
 
   const addUploadedMap = (dataUri: string) => setUploadedMaps(prev => [...prev, dataUri]);
   const removeUploadedMap = (index: number) => setUploadedMaps(prev => prev.filter((_, i) => i !== index));
@@ -1712,6 +1728,10 @@ const handleRightHalfTileChange = (add: boolean) => {
       projectNumber,
       versionNumber,
       projectNotes,
+      mediaServer,
+      preferredCodec,
+      audioFormat,
+      imageFormat,
     };
 
     const jsonString = JSON.stringify(projectData, null, 2);
@@ -1731,7 +1751,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       description: `Project saved to ${filename}`,
     });
     trackEvent('download', { type: 'project-file', filename, projectData: { screensCount: screens.length } });
-  }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, toast]);
+  }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, audioFormat, imageFormat, toast]);
   
   const importProject = useCallback((file: File) => {
     const reader = new FileReader();
@@ -1782,6 +1802,10 @@ const handleRightHalfTileChange = (add: boolean) => {
           if (data.projectNumber) setProjectNumber(data.projectNumber);
           if (data.versionNumber) setVersionNumber(data.versionNumber);
           if (data.projectNotes) setProjectNotes(data.projectNotes);
+          if (data.mediaServer) setMediaServer(data.mediaServer);
+          if (data.preferredCodec) setPreferredCodec(data.preferredCodec);
+          if (data.audioFormat) setAudioFormat(data.audioFormat);
+          if (data.imageFormat) setImageFormat(data.imageFormat);
         }
         
         toast({
@@ -2319,6 +2343,14 @@ const handleRightHalfTileChange = (add: boolean) => {
     uploadedMaps,
     addUploadedMap,
     removeUploadedMap,
+    mediaServer,
+    setMediaServer,
+    preferredCodec,
+    setPreferredCodec,
+    audioFormat,
+    setAudioFormat,
+    imageFormat,
+    setImageFormat,
   };
 
   return (

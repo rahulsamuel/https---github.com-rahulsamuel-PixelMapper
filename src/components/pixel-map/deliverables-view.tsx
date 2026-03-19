@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { FileUp, Trash2, Layout, FileImage, ClipboardList, FileDown, FileCode, Printer } from "lucide-react";
+import { FileUp, Trash2, Layout, FileImage, ClipboardList, FileDown, FileCode, Printer, Video, Music } from "lucide-react";
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
@@ -21,7 +21,11 @@ export function DeliverablesView() {
     rasterMapConfig,
     uploadedMaps,
     addUploadedMap,
-    removeUploadedMap
+    removeUploadedMap,
+    mediaServer,
+    preferredCodec,
+    audioFormat,
+    imageFormat
   } = usePixelMap();
 
   const { toast } = useToast();
@@ -86,6 +90,10 @@ export function DeliverablesView() {
           img { max-width: 100%; display: block; }
           .badge { background: #eee; padding: 4px 12px; border-radius: 20px; font-weight: bold; }
           pre { white-space: pre-wrap; font-family: inherit; }
+          .tech-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+          .tech-item { padding: 8px; background: #f9f9f9; border-radius: 4px; }
+          .tech-label { font-size: 10px; color: #666; text-transform: uppercase; }
+          .tech-value { font-weight: bold; }
         </style>
       </head>
       <body>
@@ -108,7 +116,17 @@ export function DeliverablesView() {
         </div>
 
         <div class="section">
-          <div class="section-title">Specifications</div>
+          <div class="section-title">Technical Specifications</div>
+          <div class="tech-grid">
+            <div class="tech-item"><div class="tech-label">Media Server</div><div class="tech-value">${mediaServer}</div></div>
+            <div class="tech-item"><div class="tech-label">Codec</div><div class="tech-value">${preferredCodec}</div></div>
+            <div class="tech-item"><div class="tech-label">Image Format</div><div class="tech-value">${imageFormat}</div></div>
+            <div class="tech-item"><div class="tech-label">Audio Format</div><div class="tech-value">${audioFormat}</div></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Mapping Specifications</div>
           ${rasterMapConfig ? `
             <p><strong>Canvas:</strong> ${rasterMapConfig.totalWidth} x ${rasterMapConfig.totalHeight} px</p>
             <p><strong>Content Area:</strong> ${rasterMapConfig.contentWidth} x ${rasterMapConfig.contentHeight} px</p>
@@ -189,17 +207,49 @@ export function DeliverablesView() {
           </CardHeader>
           <CardContent className="pt-8">
             <div className="grid grid-cols-3 gap-8">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-primary">
-                  <ClipboardList className="size-5" />
-                  <h3 className="font-bold uppercase tracking-wider text-sm">Project Details</h3>
+              <div className="space-y-6">
+                <div>
+                  <div className="flex items-center gap-2 text-primary mb-4">
+                    <ClipboardList className="size-5" />
+                    <h3 className="font-bold uppercase tracking-wider text-sm">Project Details</h3>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm"><span className="text-muted-foreground">Project Name:</span> <span className="font-semibold">{currentScreen.name}</span></p>
+                    <p className="text-sm"><span className="text-muted-foreground">Project #:</span> <span className="font-semibold">{projectNumber || "Unassigned"}</span></p>
+                    <p className="text-sm"><span className="text-muted-foreground">Revision:</span> <span className="font-semibold">{versionNumber || "1.0"}</span></p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <p className="text-sm"><span className="text-muted-foreground">Project Name:</span> <span className="font-semibold">{currentScreen.name}</span></p>
-                  <p className="text-sm"><span className="text-muted-foreground">Project #:</span> <span className="font-semibold">{projectNumber || "Unassigned"}</span></p>
-                  <p className="text-sm"><span className="text-muted-foreground">Revision:</span> <span className="font-semibold">{versionNumber || "1.0"}</span></p>
+
+                <Separator />
+
+                <div>
+                  <div className="flex items-center gap-2 text-primary mb-4">
+                    <Video className="size-5" />
+                    <h3 className="font-bold uppercase tracking-wider text-sm">Playback Specs</h3>
+                  </div>
+                  <div className="grid gap-3">
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold">Server / System</p>
+                      <p className="text-sm font-semibold">{mediaServer}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold">Preferred Codec</p>
+                      <p className="text-sm font-semibold">{preferredCodec}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold">Image Format</p>
+                      <p className="text-sm font-semibold">{imageFormat}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] text-muted-foreground uppercase font-bold text-primary flex items-center gap-1">
+                        <Music className="size-3" /> Audio Requirements
+                      </p>
+                      <p className="text-xs font-medium italic">{audioFormat || "No audio required"}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
+
               <div className="col-span-2 space-y-4">
                 <div className="flex items-center gap-2 text-primary">
                   <Layout className="size-5" />
@@ -229,20 +279,18 @@ export function DeliverablesView() {
                     No raster map generated yet. Switch to the Raster Map tab to define output resolution.
                   </div>
                 )}
+
+                {projectNotes && (
+                  <div className="mt-6">
+                    <Separator className="my-4" />
+                    <h3 className="font-bold uppercase tracking-wider text-sm text-primary mb-2">Delivery Instructions</h3>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
+                      {projectNotes}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
-
-            {projectNotes && (
-              <>
-                <Separator className="my-8" />
-                <div className="space-y-4">
-                  <h3 className="font-bold uppercase tracking-wider text-sm text-primary">Notes / Delivery Instructions</h3>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
-                    {projectNotes}
-                  </p>
-                </div>
-              </>
-            )}
           </CardContent>
         </Card>
 
