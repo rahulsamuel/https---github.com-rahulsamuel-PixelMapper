@@ -1,3 +1,4 @@
+
 "use client";
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
@@ -134,19 +135,8 @@ export function PixelMapLayout() {
     switch (activeTab) {
       case 'grid':
       case 'wiring':
-        contentWidth = 0;
-        for (let i = 0; i < effectiveScreenWidth; i++) {
-          const isLeftHalf = leftHalfTile && i === 0;
-          const isRightHalf = rightHalfTile && i === effectiveScreenWidth - 1;
-          contentWidth += isLeftHalf || isRightHalf ? dimensions.tileWidth / 2 : dimensions.tileWidth;
-        }
-
-        contentHeight = 0;
-        for (let i = 0; i < effectiveScreenHeight; i++) {
-            const isTopHalfRow = topHalfTile && i === 0;
-            const isBottomHalfRow = bottomHalfTile && i === effectiveScreenHeight - 1;
-            contentHeight += (isTopHalfRow || isBottomHalfRow) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
-        }
+        contentWidth = fullGridWidth;
+        contentHeight = fullGridHeight;
         break;
       case 'raster':
         if (rasterMapConfig) {
@@ -155,7 +145,7 @@ export function PixelMapLayout() {
         }
         break;
       case 'deliverables':
-        contentWidth = 1200;
+        contentWidth = 1000;
         contentHeight = 800;
         break;
     }
@@ -165,7 +155,7 @@ export function PixelMapLayout() {
       return;
     }
   
-    const padding = 32;
+    const padding = 64;
     const scaleX = (viewportWidth - padding) / contentWidth;
     const scaleY = (viewportHeight - padding) / contentHeight;
   
@@ -481,17 +471,17 @@ export function PixelMapLayout() {
       <SidebarInset>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-screen w-full">
            <header className="sticky top-0 z-10 flex-shrink-0 bg-background p-2 border-b">
-            <div className="flex items-center justify-between flex-wrap gap-2 w-full">
+            <div className="flex items-center justify-between flex-nowrap gap-4 w-full">
                <div className="flex items-center gap-2">
                 <SidebarTrigger className="md:hidden" />
                 <div className="hidden md:flex items-center gap-4">
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground whitespace-nowrap">
                     Res: <span className="font-mono">{Math.round(totalWidth)}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
                   </div>
                   {activeTab === 'wiring' && portCount > 0 && (
                     <>
                       <Separator orientation="vertical" className="h-6" />
-                      <span className="text-sm font-medium text-muted-foreground">
+                      <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
                         ({portCount} {portLabelText})
                       </span>
                     </>
@@ -499,7 +489,7 @@ export function PixelMapLayout() {
                 </div>
                </div>
               
-               <div className="flex-1 min-w-fit flex justify-center">
+               <div className="flex-1 flex justify-center">
                 <TabsList>
                   <TabsTrigger value="grid">LED Grid</TabsTrigger>
                   <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
@@ -512,7 +502,7 @@ export function PixelMapLayout() {
                  {activeTab === 'wiring' && (
                    <div className="flex items-center space-x-2">
                      <Switch id="mirror-switch" checked={isWiringMirrored} onCheckedChange={setIsWiringMirrored} />
-                     <Label htmlFor="mirror-switch" className="flex items-center gap-2"><RefreshCw className="size-4" /> Mirror</Label>
+                     <Label htmlFor="mirror-switch" className="flex items-center gap-2 whitespace-nowrap"><RefreshCw className="size-4" /> Mirror</Label>
                    </div>
                  )}
                  <Separator orientation="vertical" className="h-6 mx-1" />
@@ -551,7 +541,7 @@ export function PixelMapLayout() {
                 </div>
               </TabsContent>
               <TabsContent value="deliverables" className="mt-0 h-full w-full p-8 flex justify-center">
-                 <div style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
+                 <div style={{ width: 1000 * zoom, minHeight: '100%', transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
                   <DeliverablesView />
                 </div>
               </TabsContent>

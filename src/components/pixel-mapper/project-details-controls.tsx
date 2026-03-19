@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { useState, useEffect } from "react";
 
 const MEDIA_SERVERS = [
   "disguise", "Hippotizer", "Pixera", "Resolume", "Watchout", "Millumin", "vMix", "7thSense", "Custom"
@@ -20,6 +21,18 @@ const IMAGE_FORMATS = [
   "PNG", "TIFF", "TGA", "JPG", "EXR"
 ];
 
+const AUDIO_FORMATS = [
+  "No Audio",
+  "WAV 48kHz 24-bit Stereo",
+  "WAV 48kHz 16-bit Stereo",
+  "WAV 44.1kHz 16-bit Stereo",
+  "AAC 48kHz 320kbps Stereo",
+  "AIFF 48kHz 24-bit Stereo",
+  "Embedded (L/R)",
+  "Multichannel (5.1)",
+  "Custom"
+];
+
 export function ProjectDetailsControls() {
   const { 
     projectNumber, setProjectNumber,
@@ -30,6 +43,26 @@ export function ProjectDetailsControls() {
     audioFormat, setAudioFormat,
     imageFormat, setImageFormat
   } = usePixelMap();
+
+  const [isCustomAudio, setIsCustomAudio] = useState(false);
+
+  useEffect(() => {
+    if (audioFormat && !AUDIO_FORMATS.includes(audioFormat)) {
+      setIsCustomAudio(true);
+    }
+  }, [audioFormat]);
+
+  const handleAudioChange = (value: string) => {
+    if (value === "Custom") {
+      setIsCustomAudio(true);
+      if (AUDIO_FORMATS.includes(audioFormat)) {
+        setAudioFormat("");
+      }
+    } else {
+      setIsCustomAudio(false);
+      setAudioFormat(value);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -91,13 +124,27 @@ export function ProjectDetailsControls() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="audio-format">Audio Requirements</Label>
-          <Input 
-            id="audio-format" 
-            placeholder="e.g. WAV 48kHz 24-bit Stereo" 
-            value={audioFormat} 
-            onChange={(e) => setAudioFormat(e.target.value)}
-          />
+          <Label>Audio Requirements</Label>
+          <Select 
+            value={AUDIO_FORMATS.includes(audioFormat) ? audioFormat : "Custom"} 
+            onValueChange={handleAudioChange}
+          >
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {AUDIO_FORMATS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          
+          {isCustomAudio && (
+            <div className="mt-2 animate-in fade-in slide-in-from-top-1">
+              <Input 
+                id="audio-format-custom" 
+                placeholder="Type custom audio spec..." 
+                value={audioFormat} 
+                onChange={(e) => setAudioFormat(e.target.value)}
+              />
+            </div>
+          )}
         </div>
       </div>
 
