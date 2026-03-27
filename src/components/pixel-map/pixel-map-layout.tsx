@@ -78,11 +78,12 @@ export function PixelMapLayout() {
     isManualPowerModalOpen, setIsManualPowerModalOpen, selectedTileForPower, applyManualPowerWiring,
     isManualDataModalOpen, setIsManualDataModalOpen, selectedTileForData, applyManualDataWiring
    } = usePixelMap();
-  const [activeAccordion, setActiveAccordion] = useState("screens");
   const viewportRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const [renameValue, setRenameValue] = useState("");
   const [isRenaming, setIsRenaming] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [screenToDelete, setScreenToDelete] = useState<string | null>(null);
 
   const dimensions = currentScreen.dimensions;
   
@@ -248,6 +249,27 @@ export function PixelMapLayout() {
           }
         }}
       />
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the screen.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (screenToDelete) {
+                deleteScreen(screenToDelete);
+                setScreenToDelete(null);
+              }
+            }}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Sidebar>
         <SidebarHeader className="p-0">
            <AppHeader />
@@ -256,10 +278,7 @@ export function PixelMapLayout() {
         <SidebarContent asChild>
           <ScrollArea className="flex-grow">
             <Accordion
-              type="single"
-              collapsible
-              value={activeAccordion}
-              onValueChange={setActiveAccordion}
+              type="multiple"
               className="p-4 flex flex-col gap-2"
             >
               <AccordionItem value="project" className="border-none">
@@ -314,33 +333,23 @@ export function PixelMapLayout() {
                               <MoreHorizontal className="size-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent>
+                          <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => { setIsRenaming(screen.id); setRenameValue(screen.name); }}>
-                              <Pencil className="mr-2" /> Rename
+                              <Pencil className="mr-2 size-4" /> Rename
                             </DropdownMenuItem>
                              <DropdownMenuItem onClick={() => duplicateScreen(screen.id)}>
-                              <Copy className="mr-2" /> Duplicate
+                              <Copy className="mr-2 size-4" /> Duplicate
                             </DropdownMenuItem>
-                            <AlertDialog>
-                              <DropdownMenuLabel>
-                                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
-                                  <Trash className="mr-2" /> Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuLabel>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete the screen "{screen.name}".
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => deleteScreen(screen.id)}>Continue</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => {
+                                setScreenToDelete(screen.id);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash className="mr-2 size-4" /> Delete
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -525,22 +534,22 @@ export function PixelMapLayout() {
              </div>
            </header>
           <ScrollArea className="h-full w-full bg-muted/20" viewportRef={viewportRef}>
-              <TabsContent value="grid" className="mt-0 h-full w-full">
+              <TabsContent value="grid" className="mt-0 p-8">
                 <div style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
                   <LedGrid />
                 </div>
               </TabsContent>
-              <TabsContent value="wiring" className="mt-0 h-full w-full">
+              <TabsContent value="wiring" className="mt-0 p-8">
                 <div style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
                   <WiringDiagram />
                 </div>
               </TabsContent>
-              <TabsContent value="raster" className="mt-0 h-full w-full">
+              <TabsContent value="raster" className="mt-0 p-8">
                  <div style={{ width: (rasterMapConfig?.totalWidth ?? 0) * zoom, height: (rasterMapConfig?.totalHeight ?? 0) * zoom }}>
                   <RasterMapPreview />
                 </div>
               </TabsContent>
-              <TabsContent value="deliverables" className="mt-0 h-full w-full p-8 flex justify-center">
+              <TabsContent value="deliverables" className="mt-0 p-8 flex justify-center">
                  <div style={{ width: 1000 * zoom, minHeight: '100%', transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
                   <DeliverablesView />
                 </div>
