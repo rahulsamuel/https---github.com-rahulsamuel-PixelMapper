@@ -41,50 +41,50 @@ export function AppHeader() {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="z-[100]">
-                    <Link href="/app">
-                        <DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <Link href="/app" className="flex items-center cursor-pointer">
                             <DraftingCompass className="mr-2 h-4 w-4" />
                             <span>Pixel Map</span>
-                        </DropdownMenuItem>
-                    </Link>
-                    <Link href="/calculator">
-                        <DropdownMenuItem>
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <Link href="/calculator" className="flex items-center cursor-pointer">
                             <Calculator className="mr-2 h-4 w-4" />
                             <span>LED Calculator</span>
-                        </DropdownMenuItem>
-                    </Link>
-                     <Link href="/power-data">
-                        <DropdownMenuItem>
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <Link href="/power-data" className="flex items-center cursor-pointer">
                             <Bolt className="mr-2 h-4 w-4" />
                             <span>Power & Data</span>
-                        </DropdownMenuItem>
-                    </Link>
-                    <Link href="/rack-drawing">
-                        <DropdownMenuItem>
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <Link href="/rack-drawing" className="flex items-center cursor-pointer">
                             <Server className="mr-2 h-4 w-4" />
                             <span>Rack Drawing</span>
-                        </DropdownMenuItem>
-                    </Link>
+                        </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                     <Link href="/admin/tracking">
-                        <DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <Link href="/admin/tracking" className="flex items-center cursor-pointer">
                             <LineChart className="mr-2 h-4 w-4" />
                             <span>Tracking</span>
-                        </DropdownMenuItem>
-                    </Link>
-                     <Link href="/admin/products">
-                        <DropdownMenuItem>
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <Link href="/admin/products" className="flex items-center cursor-pointer">
                             <Package className="mr-2 h-4 w-4" />
                             <span>Products</span>
-                        </DropdownMenuItem>
-                    </Link>
+                        </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <Link href="/">
-                        <DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                        <Link href="/" className="flex items-center cursor-pointer">
                             <Home className="mr-2 h-4 w-4" />
                             <span>Homepage</span>
-                        </DropdownMenuItem>
-                    </Link>
+                        </Link>
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
             <div className="flex-1 flex justify-end">
