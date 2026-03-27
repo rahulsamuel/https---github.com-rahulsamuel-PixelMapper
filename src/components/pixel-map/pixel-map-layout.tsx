@@ -61,7 +61,6 @@ import { Input } from "@/components/ui/input";
 import { DownloadsControls } from "../pixel-mapper/downloads-controls";
 import { useState, useRef, useMemo } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { AppHeader } from "../app/app-header";
 
 
 export function PixelMapLayout() {
@@ -254,8 +253,10 @@ export function PixelMapLayout() {
         </AlertDialogContent>
       </AlertDialog>
       <Sidebar>
-        <SidebarHeader className="p-0">
-           <AppHeader />
+        <SidebarHeader className="p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Pixel Map</h2>
+          </div>
         </SidebarHeader>
         <Separator />
         <SidebarContent asChild>
