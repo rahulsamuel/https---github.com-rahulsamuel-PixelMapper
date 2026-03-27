@@ -1,6 +1,7 @@
 
 'use server';
 
+import { addLedProduct } from '@/services/supabase';
 import { z } from 'zod';
 
 const formSchema = z.object({
@@ -49,13 +50,22 @@ export async function addProductAction(prevState: FormState, formData: FormData)
   }
   
   try {
-    // This is a temporary measure to prevent app crashes.
-    // To connect to a database, this needs to be re-implemented.
-    console.log("Product data:", validatedFields.data);
+    const { success, error } = await addLedProduct({
+      manufacturer: validatedFields.data.manufacturer,
+      productName: validatedFields.data.productName,
+      tileWidthPx: validatedFields.data.tileWidthPx,
+      tileHeightPx: validatedFields.data.tileHeightPx,
+      wattsPerTile: validatedFields.data.maxPowerConsumption,
+      createdBy: 'anonymous',
+    });
+
+    if (!success) {
+      throw new Error(error || 'Failed to add product');
+    }
 
     return {
       success: true,
-      message: 'Product has been logged to console successfully!',
+      message: 'Product has been added to the database successfully!',
     };
   } catch (error) {
     console.error('Add product error:', error);

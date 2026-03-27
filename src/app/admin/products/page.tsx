@@ -1,5 +1,5 @@
 
-import { getData } from "@/services/firestore";
+import { getLedProducts } from "@/services/supabase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import {
 import Link from "next/link";
 
 export default async function ProductsPage() {
-    const { data: products, error } = await getData('led_products');
+    const { data: products, error } = await getLedProducts();
 
     if (error) {
         return <div>Error loading products: {error}</div>

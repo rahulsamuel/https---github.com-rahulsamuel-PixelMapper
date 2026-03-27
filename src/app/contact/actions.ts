@@ -1,6 +1,7 @@
 
 'use server';
 
+import { submitContactMessage } from '@/services/supabase';
 import { z } from 'zod';
 
 const formSchema = z.object({
@@ -37,12 +38,15 @@ export async function submitContactForm(prevState: FormState, formData: FormData
   const { name, email, message } = validatedFields.data;
 
   try {
-    // Here is where you would integrate an email sending service
-    // For example, using Resend, Nodemailer, or SendGrid.
-    console.log('New contact form submission:');
-    console.log('Name:', name);
-    console.log('Email:', email);
-    console.log('Message:', message);
+    const { success, error } = await submitContactMessage({
+      name,
+      email,
+      message,
+    });
+
+    if (!success) {
+      throw new Error(error || 'Failed to submit message');
+    }
 
     return {
       success: true,

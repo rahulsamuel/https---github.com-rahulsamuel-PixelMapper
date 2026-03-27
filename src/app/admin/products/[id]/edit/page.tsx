@@ -1,5 +1,5 @@
 
-import { getDataById } from "@/services/firestore";
+import { getLedProductById } from "@/services/supabase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EditProductForm } from "@/components/admin/edit-product-form";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -10,7 +10,7 @@ import { ArrowLeft } from "lucide-react";
 
 export default async function EditProductPage({ params }: { params: { id: string } }) {
     const { id } = params;
-    const { data: product, error } = await getDataById('led_products', id);
+    const { data: product, error } = await getLedProductById(id);
 
     if (error || !product) {
         return (

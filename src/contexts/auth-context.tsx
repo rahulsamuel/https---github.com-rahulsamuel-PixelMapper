@@ -3,19 +3,20 @@
 
 import { useRouter } from "next/navigation";
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { supabase } from "@/lib/supabase/client";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
-type SubscriptionStatus = 'loading' | 'trial' | 'pro' | 'free';
-
-// For now, user can be a simple object. In a real app, this would be more complex.
 interface User {
+  id: string;
   email: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  subscriptionStatus: SubscriptionStatus;
-  login: (email: string) => void;
-  logout: () => void;
+  loading: boolean;
+  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,44 +29,107 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider = ({ 
+export const AuthProvider = ({
   children
-}: { 
+}: {
   children: ReactNode
 }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [subscriptionStatus] = useState<SubscriptionStatus>('pro');
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // On initial load, check if user is stored (e.g., in localStorage)
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email!,
+          });
+        }
+      } catch (error) {
+        console.error("Error initializing auth:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (session?.user) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email!,
+          });
+        } else {
+          setUser(null);
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const login = (email: string) => {
-    // In a real app, you'd verify credentials against a server
-    const newUser = { email };
-    setUser(newUser);
-    localStorage.setItem('user', JSON.stringify(newUser));
-    router.push('/admin/tracking');
+  const signUp = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      if (data.user) {
+        await supabase.from('users').insert({
+          id: data.user.id,
+          email: data.user.email!,
+        });
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { error: "An unexpected error occurred" };
+    }
   };
 
-  const logout = () => {
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        return { error: error.message };
+      }
+
+      router.push('/app');
+      return { error: null };
+    } catch (error) {
+      return { error: "An unexpected error occurred" };
+    }
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('user');
     router.push('/');
   };
 
-
   const value: AuthContextType = {
-      user,
-      subscriptionStatus,
-      login,
-      logout,
-  }
+    user,
+    loading,
+    signUp,
+    signIn,
+    signOut,
+  };
 
   return (
     <AuthContext.Provider value={value}>

@@ -1,9 +1,9 @@
 
 'use server';
 
-import { getData } from '@/services/firestore';
+import { getLedProducts } from '@/services/supabase';
 
 export async function getProducts() {
-  const { data, error } = await getData('led_products', 'manufacturer');
+  const { data, error } = await getLedProducts();
   return { data, error };
 }

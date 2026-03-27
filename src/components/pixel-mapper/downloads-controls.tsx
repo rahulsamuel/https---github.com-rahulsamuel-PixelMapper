@@ -3,9 +3,8 @@
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
-import { Download, Gem } from "lucide-react";
+import { Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useAuth } from "@/contexts/auth-context";
 
 export function DownloadsControls() {
     const {
@@ -20,9 +19,6 @@ export function DownloadsControls() {
         screens,
     } = usePixelMap();
 
-    const { subscriptionStatus } = useAuth();
-    const isPro = subscriptionStatus === 'pro';
-
     const isGridEmpty = !activeBounds;
     const isGridTab = activeTab === 'grid';
     const isWiringTab = activeTab === 'wiring';
@@ -31,9 +27,9 @@ export function DownloadsControls() {
 
     const pngDownloadDisabled = isGridEmpty || !isGridTab;
     const wiringDownloadDisabled = isGridEmpty || !isWiringTab;
-    const compositeWiringDownloadDisabled = !isPro || isGridEmpty || !rasterMapConfig || !hasMultipleScreens;
-    const slicesDownloadDisabled = !isPro || !rasterMapConfig || rasterMapConfig.slices.length === 0;
-    const fullRasterDownloadDisabled = !isPro || !rasterMapConfig || !isRasterTab;
+    const compositeWiringDownloadDisabled = isGridEmpty || !rasterMapConfig || !hasMultipleScreens;
+    const slicesDownloadDisabled = !rasterMapConfig || rasterMapConfig.slices.length === 0;
+    const fullRasterDownloadDisabled = !rasterMapConfig || !isRasterTab;
 
     let pngTooltip;
     if (isGridEmpty) {
@@ -50,9 +46,7 @@ export function DownloadsControls() {
     }
 
     let compositeWiringTooltip;
-    if (!isPro) {
-        compositeWiringTooltip = "This is a Pro feature. Please subscribe for full access.";
-    } else if (isGridEmpty) {
+    if (isGridEmpty) {
         compositeWiringTooltip = "Cannot download an empty grid.";
     } else if (!rasterMapConfig) {
         compositeWiringTooltip = "Generate a raster map first to set screen positions.";
@@ -60,20 +54,15 @@ export function DownloadsControls() {
         compositeWiringTooltip = "This download is for projects with multiple screens.";
     }
 
-
     let fullRasterTooltip;
-    if (!isPro) {
-        fullRasterTooltip = "This is a Pro feature. Please subscribe for full access.";
-    } else if (!rasterMapConfig) {
+    if (!rasterMapConfig) {
         fullRasterTooltip = "Generate a raster map first.";
     } else if (!isRasterTab) {
         fullRasterTooltip = "Switch to the Raster Map Preview tab to download.";
     }
-    
+
     let slicesDownloadTooltip;
-    if (!isPro) {
-        slicesDownloadTooltip = "This is a Pro feature. Please subscribe for full access.";
-    } else if (!rasterMapConfig || rasterMapConfig.slices.length === 0) {
+    if (!rasterMapConfig || rasterMapConfig.slices.length === 0) {
         slicesDownloadTooltip = "Generate a raster map with slices first.";
     }
 
@@ -124,7 +113,7 @@ export function DownloadsControls() {
                         <TooltipTrigger asChild>
                             <div className="w-full">
                                 <Button size="sm" variant="outline" className="w-full justify-start" disabled>
-                                    <Gem className="mr-2" />
+                                    <Download className="mr-2" />
                                     Download Composite Wiring
                                 </Button>
                             </div>
@@ -133,17 +122,17 @@ export function DownloadsControls() {
                     </Tooltip>
                 ) : (
                     <Button size="sm" onClick={handleDownloadCompositeWiringDiagram} variant="outline" className="w-full justify-start">
-                        <Gem className="mr-2" />
+                        <Download className="mr-2" />
                         Download Composite Wiring
                     </Button>
                 )}
-                
+
                 {slicesDownloadDisabled ? (
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <div className="w-full">
                                 <Button size="sm" variant="outline" className="w-full justify-start" disabled>
-                                    <Gem className="mr-2" />
+                                    <Download className="mr-2" />
                                     Download Raster Slices
                                 </Button>
                             </div>
@@ -152,17 +141,17 @@ export function DownloadsControls() {
                     </Tooltip>
                 ) : (
                     <Button size="sm" onClick={downloadRasterSlices} variant="outline" className="w-full justify-start">
-                        <Gem className="mr-2" />
+                        <Download className="mr-2" />
                         Download Raster Slices
                     </Button>
                 )}
-                
+
                 {fullRasterDownloadDisabled ? (
                      <Tooltip>
                         <TooltipTrigger asChild>
                             <div className="w-full">
                                 <Button size="sm" variant="outline" className="w-full justify-start" disabled>
-                                    <Gem className="mr-2" />
+                                    <Download className="mr-2" />
                                     Download Full Raster Map
                                 </Button>
                             </div>
@@ -171,7 +160,7 @@ export function DownloadsControls() {
                     </Tooltip>
                 ) : (
                     <Button size="sm" onClick={handleDownloadFullRaster} variant="outline" className="w-full justify-start">
-                        <Gem className="mr-2" />
+                        <Download className="mr-2" />
                         Download Full Raster Map
                     </Button>
                 )}

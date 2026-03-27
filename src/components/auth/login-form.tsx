@@ -12,35 +12,43 @@ export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const [isSignUp, setIsSignUp] = useState(false);
+  const { signIn, signUp } = useAuth();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Basic validation
     if (!email || !password) {
       toast({
-        title: 'Login Failed',
+        title: isSignUp ? 'Sign Up Failed' : 'Login Failed',
         description: 'Please enter both email and password.',
         variant: 'destructive',
       });
       setIsLoading(false);
       return;
     }
-    
-    // Simulate API call
-    setTimeout(() => {
-      // In a real app, you would validate credentials here.
-      // For now, any non-empty email/password is considered valid.
-      login(email);
+
+    const { error } = isSignUp
+      ? await signUp(email, password)
+      : await signIn(email, password);
+
+    if (error) {
       toast({
-        title: 'Login Successful',
-        description: 'Welcome back!',
+        title: isSignUp ? 'Sign Up Failed' : 'Login Failed',
+        description: error,
+        variant: 'destructive',
       });
-      setIsLoading(false);
-    }, 1000);
+    } else if (isSignUp) {
+      toast({
+        title: 'Account Created',
+        description: 'Your account has been created successfully!',
+      });
+      setIsSignUp(false);
+    }
+
+    setIsLoading(false);
   };
 
   return (
@@ -67,8 +75,22 @@ export function LoginForm() {
         />
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? 'Logging in...' : 'Login'}
+        {isLoading
+          ? (isSignUp ? 'Creating Account...' : 'Logging in...')
+          : (isSignUp ? 'Sign Up' : 'Login')}
       </Button>
+      <div className="text-center text-sm">
+        <button
+          type="button"
+          onClick={() => setIsSignUp(!isSignUp)}
+          className="text-primary hover:underline"
+          disabled={isLoading}
+        >
+          {isSignUp
+            ? 'Already have an account? Login'
+            : "Don't have an account? Sign Up"}
+        </button>
+      </div>
     </form>
   );
 }

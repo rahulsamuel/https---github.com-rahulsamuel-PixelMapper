@@ -1,34 +1,15 @@
 
-import { addData } from '@/services/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
     const { eventType, eventData } = await req.json();
-    
+
     if (!eventType || !eventData) {
       return NextResponse.json({ message: 'Missing required event data' }, { status: 400 });
     }
 
-    const ip = req.ip ?? req.headers.get('x-forwarded-for') ?? 'unknown';
-    
-    const docData = {
-      ip,
-      timestamp: new Date().toISOString(),
-      type: eventType,
-      data: eventData,
-    };
-
-    // To prevent storing very large images in firestore, we'll cap the thumbnail size.
-    if (eventData.thumbnail && eventData.thumbnail.length > 1_000_000) {
-      docData.data.thumbnail = 'Image too large to store.';
-    }
-
-    const { error } = await addData('tracking_events', docData);
-
-    if (error) {
-      throw error;
-    }
+    console.log('Tracking event:', { eventType, eventData });
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {

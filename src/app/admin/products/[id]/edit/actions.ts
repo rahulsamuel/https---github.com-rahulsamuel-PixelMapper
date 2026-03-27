@@ -1,7 +1,7 @@
 
 'use server';
 
-import { updateData } from '@/services/firestore';
+import { updateLedProduct } from '@/services/supabase';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
@@ -51,17 +51,18 @@ export async function updateProductAction(productId: string, prevState: FormStat
   }
   
   try {
-    const productData = {
-        ...validatedFields.data,
-        updatedAt: new Date().toISOString(),
-    };
+    const { success, error } = await updateLedProduct(productId, {
+      manufacturer: validatedFields.data.manufacturer,
+      productName: validatedFields.data.productName,
+      tileWidthPx: validatedFields.data.tileWidthPx,
+      tileHeightPx: validatedFields.data.tileHeightPx,
+      wattsPerTile: validatedFields.data.maxPowerConsumption,
+    });
 
-    const { error } = await updateData('led_products', productId, productData);
-
-    if (error) {
-      throw new Error(error);
+    if (!success) {
+      throw new Error(error || 'Failed to update product');
     }
-    
+
     revalidatePath('/admin/products');
     revalidatePath(`/admin/products/${productId}/edit`);
     revalidatePath('/calculator');

@@ -1,7 +1,7 @@
 
 'use server';
 
-import { addData } from '@/services/firestore';
+import { addLedProduct } from '@/services/supabase';
 import { z } from 'zod';
 
 const formSchema = z.object({
@@ -50,15 +50,16 @@ export async function addProductAction(prevState: FormState, formData: FormData)
   }
   
   try {
-    const productData = {
-      ...validatedFields.data,
-      createdAt: new Date().toISOString(),
-      createdBy: 'anonymous', // Placeholder until auth is re-enabled
-    };
+    const { success, error } = await addLedProduct({
+      manufacturer: validatedFields.data.manufacturer,
+      productName: validatedFields.data.productName,
+      tileWidthPx: validatedFields.data.tileWidthPx,
+      tileHeightPx: validatedFields.data.tileHeightPx,
+      wattsPerTile: validatedFields.data.maxPowerConsumption,
+      createdBy: 'anonymous',
+    });
 
-    const { error } = await addData('led_products', productData);
-
-    if (error) {
+    if (!success) {
       throw new Error(error);
     }
 
