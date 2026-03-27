@@ -2,7 +2,7 @@
 'use client';
 
 import Link from "next/link";
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Logo } from "@/components/logo";
 import {
   DropdownMenu,
@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/auth-context";
 
 export function AppHeader() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuth();
 
   const getPageTitle = () => {
@@ -28,11 +29,15 @@ export function AppHeader() {
     if (pathname.startsWith('/login')) return 'Login';
     return 'MapMyLED';
   }
+
+  const handleNavigation = (href: string) => {
+    router.push(href);
+  }
   
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center">
-            <DropdownMenu modal={false}>
+            <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="mr-6 px-2">
                         <Logo className="h-6 w-6 text-primary" />
@@ -40,50 +45,36 @@ export function AppHeader() {
                         <ChevronDown className="ml-1 h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="z-[100]">
-                    <DropdownMenuItem asChild>
-                        <Link href="/app" className="flex items-center cursor-pointer">
-                            <DraftingCompass className="mr-2 h-4 w-4" />
-                            <span>Pixel Map</span>
-                        </Link>
+                <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => handleNavigation('/app')}>
+                        <DraftingCompass className="mr-2 h-4 w-4" />
+                        <span>Pixel Map</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                        <Link href="/calculator" className="flex items-center cursor-pointer">
-                            <Calculator className="mr-2 h-4 w-4" />
-                            <span>LED Calculator</span>
-                        </Link>
+                    <DropdownMenuItem onClick={() => handleNavigation('/calculator')}>
+                        <Calculator className="mr-2 h-4 w-4" />
+                        <span>LED Calculator</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                        <Link href="/power-data" className="flex items-center cursor-pointer">
-                            <Bolt className="mr-2 h-4 w-4" />
-                            <span>Power & Data</span>
-                        </Link>
+                    <DropdownMenuItem onClick={() => handleNavigation('/power-data')}>
+                        <Bolt className="mr-2 h-4 w-4" />
+                        <span>Power & Data</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                        <Link href="/rack-drawing" className="flex items-center cursor-pointer">
-                            <Server className="mr-2 h-4 w-4" />
-                            <span>Rack Drawing</span>
-                        </Link>
+                    <DropdownMenuItem onClick={() => handleNavigation('/rack-drawing')}>
+                        <Server className="mr-2 h-4 w-4" />
+                        <span>Rack Drawing</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                        <Link href="/admin/tracking" className="flex items-center cursor-pointer">
-                            <LineChart className="mr-2 h-4 w-4" />
-                            <span>Tracking</span>
-                        </Link>
+                    <DropdownMenuItem onClick={() => handleNavigation('/admin/tracking')}>
+                        <LineChart className="mr-2 h-4 w-4" />
+                        <span>Tracking</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                        <Link href="/admin/products" className="flex items-center cursor-pointer">
-                            <Package className="mr-2 h-4 w-4" />
-                            <span>Products</span>
-                        </Link>
+                    <DropdownMenuItem onClick={() => handleNavigation('/admin/products')}>
+                        <Package className="mr-2 h-4 w-4" />
+                        <span>Products</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                        <Link href="/" className="flex items-center cursor-pointer">
-                            <Home className="mr-2 h-4 w-4" />
-                            <span>Homepage</span>
-                        </Link>
+                    <DropdownMenuItem onClick={() => handleNavigation('/')}>
+                        <Home className="mr-2 h-4 w-4" />
+                        <span>Homepage</span>
                     </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
