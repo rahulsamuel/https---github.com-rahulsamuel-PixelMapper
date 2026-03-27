@@ -103,3 +103,18 @@
       @apply font-semibold;
   }
 }
+
+/* Hide development environment indicators */
+iframe[style*="position: fixed"],
+iframe[style*="bottom"],
+div[style*="position: fixed"][style*="bottom"][style*="left"],
+div[style*="z-index: 999"],
+div[style*="z-index: 9999"] {
+  display: none !important;
+}
+
+/* Hide IDX/Bolt.new workspace indicators */
+body > div[style*="position: fixed"][style*="bottom: 0"],
+body > div[style*="position: fixed"][style*="left: 0"] {
+  display: none !important;
+}
