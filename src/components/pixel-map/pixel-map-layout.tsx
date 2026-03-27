@@ -59,7 +59,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input";
 import { DownloadsControls } from "../pixel-mapper/downloads-controls";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { AppHeader } from "../app/app-header";
 
@@ -176,23 +176,6 @@ export function PixelMapLayout() {
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
   };
-
-  useEffect(() => {
-    switch (activeTab) {
-      case 'grid':
-        setActiveAccordion('grid-setup');
-        break;
-      case 'wiring':
-        setActiveAccordion('wiring');
-        break;
-      case 'raster':
-        setActiveAccordion('export');
-        break;
-      case 'deliverables':
-        setActiveAccordion('project-details');
-        break;
-    }
-  }, [activeTab]);
 
   const dataPortsCount = wiringData ? wiringData.filter(d => d.dataLabel).length : 0;
   const powerPortsCount = wiringData ? wiringData.filter(d => d.powerPortLabel).length : 0;
