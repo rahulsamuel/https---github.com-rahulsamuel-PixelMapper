@@ -27,13 +27,13 @@ export function GlobalHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center">
-        <Link href="/" className="mr-8 flex items-center space-x-2 flex-shrink-0">
+      <div className="w-full px-4 flex h-14 items-center max-w-none">
+        <Link href="/" className="mr-6 flex items-center space-x-2 flex-shrink-0">
           <Logo className="h-6 w-6 text-primary" />
           <span className="font-bold hidden sm:inline-block">MapMyLED</span>
         </Link>
 
-        <nav className="flex items-center space-x-1 flex-1 overflow-x-auto">
+        <nav className="flex items-center space-x-1 flex-1 justify-center">
           {navItems.map((item) => (
             <Link key={item.href} href={item.href}>
               <Button
@@ -50,7 +50,7 @@ export function GlobalHeader() {
           ))}
         </nav>
 
-        <div className="flex items-center space-x-2 flex-shrink-0 ml-4">
+        <div className="flex items-center space-x-2 flex-shrink-0">
           {user ? (
             <>
               {pathname.startsWith('/admin') ? (

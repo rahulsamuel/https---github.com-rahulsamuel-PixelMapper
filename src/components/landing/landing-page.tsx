@@ -8,14 +8,16 @@ import { GitBranch, FileOutput, Download, Upload, Cpu, Shapes, LineChart, Bolt, 
 import Image from 'next/image';
 import { Logo } from '../logo';
 import { cn } from '@/lib/utils';
+import { AnimatedBackground } from './animated-background';
 
 export async function LandingPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <main className="flex-1">
-        <section className="py-12 md:py-24 lg:py-32">
-          <div className="container px-4 md:px-6">
+        <section className="relative py-12 md:py-24 lg:py-32 overflow-hidden">
+          <AnimatedBackground />
+          <div className="container px-4 md:px-6 relative z-10">
             <div className="grid gap-6 lg:grid-cols-[1fr_500px] lg:gap-12 xl:grid-cols-[1fr_500px]">
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
