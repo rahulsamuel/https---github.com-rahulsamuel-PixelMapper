@@ -32,7 +32,7 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center">
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="mr-6 px-2">
                         <Logo className="h-6 w-6 text-primary" />
@@ -40,7 +40,7 @@ export function AppHeader() {
                         <ChevronDown className="ml-1 h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent>
+                <DropdownMenuContent align="start" className="z-[100]">
                     <Link href="/app">
                         <DropdownMenuItem>
                             <DraftingCompass className="mr-2 h-4 w-4" />

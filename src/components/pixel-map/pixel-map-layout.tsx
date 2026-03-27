@@ -517,22 +517,22 @@ export function PixelMapLayout() {
              </div>
            </header>
           <ScrollArea className="h-full w-full bg-muted/20" viewportRef={viewportRef}>
-              <TabsContent value="grid" className="mt-0 p-8">
-                <div style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
+              <TabsContent value="grid" className="mt-0 p-8 inline-block min-w-full">
+                <div className="inline-block" style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
                   <LedGrid />
                 </div>
               </TabsContent>
-              <TabsContent value="wiring" className="mt-0 p-8">
-                <div style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
+              <TabsContent value="wiring" className="mt-0 p-8 inline-block min-w-full">
+                <div className="inline-block" style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
                   <WiringDiagram />
                 </div>
               </TabsContent>
-              <TabsContent value="raster" className="mt-0 p-8">
-                 <div style={{ width: (rasterMapConfig?.totalWidth ?? 0) * zoom, height: (rasterMapConfig?.totalHeight ?? 0) * zoom }}>
+              <TabsContent value="raster" className="mt-0 p-8 inline-block min-w-full">
+                 <div className="inline-block" style={{ width: (rasterMapConfig?.totalWidth ?? 0) * zoom, height: (rasterMapConfig?.totalHeight ?? 0) * zoom }}>
                   <RasterMapPreview />
                 </div>
               </TabsContent>
-              <TabsContent value="deliverables" className="mt-0 p-8 flex justify-center">
+              <TabsContent value="deliverables" className="mt-0 p-8 flex justify-center min-w-full">
                  <div style={{ width: 1000 * zoom, minHeight: '100%', transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
                   <DeliverablesView />
                 </div>
