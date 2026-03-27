@@ -55,39 +55,14 @@ export async function LandingPage() {
                   </Link>
                 </div>
               </div>
-              <div className="mx-auto aspect-square overflow-hidden rounded-xl bg-gradient-to-br from-teal-500/20 to-emerald-500/20 border-2 border-teal-500/30 sm:w-full lg:order-last flex items-center justify-center p-8">
-                <svg className="w-full h-full" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="100" y="50" width="80" height="80" fill="currentColor" className="text-teal-500" opacity="0.8"/>
-                  <rect x="190" y="50" width="80" height="80" fill="currentColor" className="text-emerald-400" opacity="0.6"/>
-                  <rect x="280" y="50" width="80" height="80" fill="currentColor" className="text-teal-600" opacity="0.7"/>
-                  <rect x="100" y="140" width="80" height="80" fill="currentColor" className="text-emerald-500" opacity="0.7"/>
-                  <rect x="190" y="140" width="80" height="80" fill="currentColor" className="text-teal-400" opacity="0.9"/>
-                  <rect x="280" y="140" width="80" height="80" fill="currentColor" className="text-emerald-600" opacity="0.6"/>
-                  <rect x="100" y="230" width="80" height="80" fill="currentColor" className="text-teal-500" opacity="0.7"/>
-                  <rect x="190" y="230" width="80" height="80" fill="currentColor" className="text-emerald-400" opacity="0.8"/>
-                  <rect x="280" y="230" width="80" height="80" fill="currentColor" className="text-teal-600" opacity="0.6"/>
-
-                  <text x="140" y="95" className="text-xs fill-white font-mono" fontSize="12">A1</text>
-                  <text x="230" y="95" className="text-xs fill-white font-mono" fontSize="12">A2</text>
-                  <text x="320" y="95" className="text-xs fill-white font-mono" fontSize="12">A3</text>
-                  <text x="140" y="185" className="text-xs fill-white font-mono" fontSize="12">B1</text>
-                  <text x="230" y="185" className="text-xs fill-white font-mono" fontSize="12">B2</text>
-                  <text x="320" y="185" className="text-xs fill-white font-mono" fontSize="12">B3</text>
-                  <text x="140" y="275" className="text-xs fill-white font-mono" fontSize="12">C1</text>
-                  <text x="230" y="275" className="text-xs fill-white font-mono" fontSize="12">C2</text>
-                  <text x="320" y="275" className="text-xs fill-white font-mono" fontSize="12">C3</text>
-
-                  <path d="M 90 90 L 80 90" stroke="currentColor" className="text-emerald-300" strokeWidth="2" markerEnd="url(#arrowhead)"/>
-                  <path d="M 270 90 L 290 90" stroke="currentColor" className="text-emerald-300" strokeWidth="2" markerEnd="url(#arrowhead)"/>
-                  <path d="M 140 320 L 140 340" stroke="currentColor" className="text-emerald-300" strokeWidth="2" markerEnd="url(#arrowhead)"/>
-
-                  <defs>
-                    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="5" refY="3" orient="auto">
-                      <polygon points="0 0, 10 3, 0 6" fill="currentColor" className="text-emerald-300" />
-                    </marker>
-                  </defs>
-                </svg>
-              </div>
+              <Image
+                src="/500x500-removebg.png"
+                width="500"
+                height="500"
+                alt="MapMyLED Screenshot"
+                className="mx-auto aspect-square overflow-hidden rounded-xl object-contain sm:w-full lg:order-last"
+                data-ai-hint="led screen custom layout"
+              />
             </div>
           </div>
         </section>
