@@ -537,22 +537,22 @@ export function PixelMapLayout() {
              </div>
            </header>
           <div className="flex-1 overflow-auto bg-muted/20" ref={viewportRef}>
-              <TabsContent value="grid" className="mt-0 p-8 min-h-full">
+              <TabsContent value="grid" className="mt-0 p-8">
                 <div className="inline-block" style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
                   <LedGrid />
                 </div>
               </TabsContent>
-              <TabsContent value="wiring" className="mt-0 p-8 min-h-full">
+              <TabsContent value="wiring" className="mt-0 p-8">
                 <div className="inline-block" style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
                   <WiringDiagram />
                 </div>
               </TabsContent>
-              <TabsContent value="raster" className="mt-0 p-8 min-h-full">
+              <TabsContent value="raster" className="mt-0 p-8">
                  <div className="inline-block" style={{ width: (rasterMapConfig?.totalWidth ?? 0) * zoom, height: (rasterMapConfig?.totalHeight ?? 0) * zoom }}>
                   <RasterMapPreview />
                 </div>
               </TabsContent>
-              <TabsContent value="deliverables" className="mt-0 p-8 flex justify-center items-start h-full overflow-y-auto">
+              <TabsContent value="deliverables" className="mt-0 p-8 flex justify-center items-start">
                 <DeliverablesView />
               </TabsContent>
           </div>
