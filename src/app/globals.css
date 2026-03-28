@@ -122,26 +122,30 @@ body > div[style*="position: fixed"][style*="left: 0"] {
 @keyframes blob {
   0%, 100% {
     transform: translate(0, 0) scale(1);
+    opacity: 0.7;
   }
-  25% {
-    transform: translate(20px, -50px) scale(1.1);
+  33% {
+    transform: translate(30px, -50px) scale(1.15);
+    opacity: 0.9;
   }
-  50% {
-    transform: translate(-20px, 20px) scale(0.9);
-  }
-  75% {
-    transform: translate(40px, 10px) scale(1.05);
+  66% {
+    transform: translate(-40px, 30px) scale(0.85);
+    opacity: 0.6;
   }
 }
 
-@keyframes twinkle {
-  0%, 100% {
-    opacity: 0.2;
+@keyframes ping-slow {
+  0% {
     transform: scale(1);
+    opacity: 1;
   }
   50% {
-    opacity: 1;
-    transform: scale(1.5);
+    transform: scale(2.5);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
   }
 }
 
@@ -155,7 +159,7 @@ body > div[style*="position: fixed"][style*="left: 0"] {
 }
 
 .animate-blob {
-  animation: blob 7s infinite;
+  animation: blob 8s ease-in-out infinite;
 }
 
 .animation-delay-2000 {
@@ -166,10 +170,23 @@ body > div[style*="position: fixed"][style*="left: 0"] {
   animation-delay: 4s;
 }
 
-.animate-twinkle {
-  animation: twinkle 3s ease-in-out infinite;
+.animate-ping-slow {
+  animation: ping-slow 4s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
 .animate-pulse-slow {
   animation: pulse-slow 4s ease-in-out infinite;
+}
+
+@keyframes scan {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-scan {
+  animation: scan 8s ease-in-out infinite;
 }

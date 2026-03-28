@@ -11,14 +11,24 @@ export function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <main className="flex-1">
-        <section className="relative py-12 md:py-24 lg:py-32 overflow-hidden">
+        <section className="relative py-12 md:py-24 lg:py-32 overflow-hidden bg-gradient-to-b from-background via-background to-muted/20">
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(45,134,134,0.15),transparent_50%),radial-gradient(circle_at_70%_60%,rgba(177,13,201,0.1),transparent_50%)]" />
+
             <div className="absolute top-0 left-0 w-full h-full">
-              <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob" />
-              <div className="absolute top-40 right-10 w-72 h-72 bg-accent/10 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000" />
-              <div className="absolute -bottom-8 left-1/3 w-72 h-72 bg-primary/10 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000" />
+              <div className="absolute top-20 left-[10%] w-96 h-96 bg-primary/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl animate-blob" />
+              <div className="absolute top-40 right-[10%] w-96 h-96 bg-accent/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl animate-blob animation-delay-2000" />
+              <div className="absolute bottom-0 left-[40%] w-96 h-96 bg-primary/15 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl animate-blob animation-delay-4000" />
             </div>
+
+            <div className="absolute inset-0 opacity-40">
+              <div className="absolute top-[10%] left-[5%] w-2 h-2 bg-primary rounded-full animate-ping-slow" />
+              <div className="absolute top-[20%] right-[15%] w-2 h-2 bg-accent rounded-full animate-ping-slow animation-delay-2000" />
+              <div className="absolute top-[60%] left-[20%] w-2 h-2 bg-primary rounded-full animate-ping-slow animation-delay-4000" />
+              <div className="absolute bottom-[20%] right-[30%] w-2 h-2 bg-accent rounded-full animate-ping-slow" />
+            </div>
+
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,transparent_0%,transparent_48%,rgba(45,134,134,0.08)_50%,transparent_52%,transparent_100%)] animate-scan" />
           </div>
           <div className="container px-4 md:px-6 relative z-10">
             <div className="grid gap-6 lg:grid-cols-[1fr_500px] lg:gap-12 xl:grid-cols-[1fr_500px]">
