@@ -59,7 +59,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input";
 import { DownloadsControls } from "../pixel-mapper/downloads-controls";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
 
 
@@ -83,6 +83,7 @@ export function PixelMapLayout() {
   const [isRenaming, setIsRenaming] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [screenToDelete, setScreenToDelete] = useState<string | null>(null);
+  const [hasAutoFitted, setHasAutoFitted] = useState(false);
 
   const dimensions = currentScreen.dimensions;
   
@@ -125,13 +126,13 @@ export function PixelMapLayout() {
   
   const handleFitToScreen = () => {
     if (!viewportRef.current) return;
-  
+
     const viewportWidth = viewportRef.current.clientWidth;
     const viewportHeight = viewportRef.current.clientHeight;
-  
+
     let contentWidth = 0;
     let contentHeight = 0;
-  
+
     switch (activeTab) {
       case 'grid':
       case 'wiring':
@@ -149,16 +150,16 @@ export function PixelMapLayout() {
         contentHeight = 800;
         break;
     }
-  
+
     if (contentWidth <= 0 || contentHeight <= 0) {
       setZoom(1, true);
       return;
     }
-  
+
     const padding = 64;
     const scaleX = (viewportWidth - padding) / contentWidth;
     const scaleY = (viewportHeight - padding) / contentHeight;
-  
+
     const newZoom = Math.min(scaleX, scaleY);
     setZoom(newZoom > 0 ? newZoom : 1, true);
   };
@@ -175,6 +176,20 @@ export function PixelMapLayout() {
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
   };
+
+  useEffect(() => {
+    if (viewportRef.current && fullGridWidth > 0 && fullGridHeight > 0 && !hasAutoFitted) {
+      const timer = setTimeout(() => {
+        handleFitToScreen();
+        setHasAutoFitted(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [fullGridWidth, fullGridHeight, hasAutoFitted]);
+
+  useEffect(() => {
+    setHasAutoFitted(false);
+  }, [currentScreenId, dimensions.screenWidth, dimensions.screenHeight]);
 
   const dataPortsCount = wiringData ? wiringData.filter(d => d.dataLabel).length : 0;
   const powerPortsCount = wiringData ? wiringData.filter(d => d.powerPortLabel).length : 0;
@@ -461,7 +476,7 @@ export function PixelMapLayout() {
           </ScrollArea>
         </SidebarContent>
       </Sidebar>
-      <SidebarInset className="flex flex-col h-screen overflow-hidden">
+      <SidebarInset className="flex flex-col h-full overflow-hidden">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full w-full">
            <header className="sticky top-0 z-10 flex-shrink-0 bg-background p-2 border-b">
             <div className="flex items-center justify-between flex-nowrap gap-4 w-full">
