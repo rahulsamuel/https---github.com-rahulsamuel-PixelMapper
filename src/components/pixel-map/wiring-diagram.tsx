@@ -97,7 +97,7 @@ export function WiringDiagram() {
   }
 
   return (
-    <div className="p-4 bg-muted/20">
+    <div>
       <div style={{ width: totalGridPixelWidth * zoom, height: totalGridPixelHeight * zoom }}>
         <div 
           ref={wiringDiagramRef}

@@ -461,8 +461,8 @@ export function PixelMapLayout() {
           </ScrollArea>
         </SidebarContent>
       </Sidebar>
-      <SidebarInset>
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-screen w-full">
+      <SidebarInset className="flex flex-col h-screen overflow-hidden">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full w-full">
            <header className="sticky top-0 z-10 flex-shrink-0 bg-background p-2 border-b">
             <div className="flex items-center justify-between flex-nowrap gap-4 w-full">
                <div className="flex items-center gap-2">
@@ -481,7 +481,7 @@ export function PixelMapLayout() {
                   )}
                 </div>
                </div>
-              
+
                <div className="flex-1 flex justify-center">
                 <TabsList>
                   <TabsTrigger value="grid">LED Grid</TabsTrigger>
@@ -517,28 +517,28 @@ export function PixelMapLayout() {
                </div>
              </div>
            </header>
-          <ScrollArea className="h-full w-full bg-muted/20" viewportRef={viewportRef}>
-              <TabsContent value="grid" className="mt-0 p-8 inline-block min-w-full">
+          <div className="flex-1 overflow-auto bg-muted/20" ref={viewportRef}>
+              <TabsContent value="grid" className="mt-0 p-8 h-full">
                 <div className="inline-block" style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
                   <LedGrid />
                 </div>
               </TabsContent>
-              <TabsContent value="wiring" className="mt-0 p-8 inline-block min-w-full">
+              <TabsContent value="wiring" className="mt-0 p-8 h-full">
                 <div className="inline-block" style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
                   <WiringDiagram />
                 </div>
               </TabsContent>
-              <TabsContent value="raster" className="mt-0 p-8 inline-block min-w-full">
+              <TabsContent value="raster" className="mt-0 p-8 h-full">
                  <div className="inline-block" style={{ width: (rasterMapConfig?.totalWidth ?? 0) * zoom, height: (rasterMapConfig?.totalHeight ?? 0) * zoom }}>
                   <RasterMapPreview />
                 </div>
               </TabsContent>
-              <TabsContent value="deliverables" className="mt-0 p-8 flex justify-center min-w-full">
+              <TabsContent value="deliverables" className="mt-0 p-8 flex justify-center h-full">
                  <div style={{ width: 1000 * zoom, minHeight: '100%', transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
                   <DeliverablesView />
                 </div>
               </TabsContent>
-          </ScrollArea>
+          </div>
         </Tabs>
       </SidebarInset>
     </SidebarProvider>

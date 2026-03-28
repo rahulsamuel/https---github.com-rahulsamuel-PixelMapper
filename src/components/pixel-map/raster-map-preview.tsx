@@ -54,7 +54,7 @@ export function RasterMapPreview() {
   }
   
   return (
-     <div className="p-4 bg-muted/20">
+     <div>
         <div style={{ width: totalWidth * zoom, height: totalHeight * zoom }}>
           <div 
             ref={rasterMapRef}

@@ -112,7 +112,7 @@ export function LedGrid() {
 
 
   return (
-    <div className="bg-muted/20 p-4">
+    <div>
       <div style={{ width: totalGridPixelWidth * zoom, height: totalGridPixelHeight * zoom }} className="relative">
         <div ref={gridRef} style={gridStyle} className="bg-muted">
           {tiles.map((tile, index) => {
