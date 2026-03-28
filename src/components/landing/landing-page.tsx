@@ -1,6 +1,4 @@
 
-'use server';
-
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,15 +6,20 @@ import { GitBranch, FileOutput, Download, Upload, Cpu, Shapes, LineChart, Bolt, 
 import Image from 'next/image';
 import { Logo } from '../logo';
 import { cn } from '@/lib/utils';
-import { AnimatedBackground } from './animated-background';
 
-export async function LandingPage() {
-
+export function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <main className="flex-1">
         <section className="relative py-12 md:py-24 lg:py-32 overflow-hidden">
-          <AnimatedBackground />
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
+            <div className="absolute top-0 left-0 w-full h-full">
+              <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob" />
+              <div className="absolute top-40 right-10 w-72 h-72 bg-accent/10 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000" />
+              <div className="absolute -bottom-8 left-1/3 w-72 h-72 bg-primary/10 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000" />
+            </div>
+          </div>
           <div className="container px-4 md:px-6 relative z-10">
             <div className="grid gap-6 lg:grid-cols-[1fr_500px] lg:gap-12 xl:grid-cols-[1fr_500px]">
               <div className="flex flex-col justify-center space-y-4">
