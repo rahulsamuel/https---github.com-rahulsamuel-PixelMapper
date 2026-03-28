@@ -177,20 +177,6 @@ export function PixelMapLayout() {
     setActiveTab(tab);
   };
 
-  useEffect(() => {
-    if (viewportRef.current && fullGridWidth > 0 && fullGridHeight > 0 && !hasAutoFitted) {
-      const timer = setTimeout(() => {
-        handleFitToScreen();
-        setHasAutoFitted(true);
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [fullGridWidth, fullGridHeight, hasAutoFitted]);
-
-  useEffect(() => {
-    setHasAutoFitted(false);
-  }, [currentScreenId, dimensions.screenWidth, dimensions.screenHeight]);
-
   const dataPortsCount = wiringData ? wiringData.filter(d => d.dataLabel).length : 0;
   const powerPortsCount = wiringData ? wiringData.filter(d => d.powerPortLabel).length : 0;
   let portCount = 0;
@@ -225,6 +211,20 @@ export function PixelMapLayout() {
     }
     return width;
   }, [effectiveScreenWidth, dimensions.tileWidth, currentScreen]);
+
+  useEffect(() => {
+    if (viewportRef.current && fullGridWidth > 0 && fullGridHeight > 0 && !hasAutoFitted) {
+      const timer = setTimeout(() => {
+        handleFitToScreen();
+        setHasAutoFitted(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [fullGridWidth, fullGridHeight, hasAutoFitted]);
+
+  useEffect(() => {
+    setHasAutoFitted(false);
+  }, [currentScreenId, dimensions.screenWidth, dimensions.screenHeight]);
 
   return (
     <SidebarProvider>
