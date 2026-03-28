@@ -513,45 +513,47 @@ export function PixelMapLayout() {
                      <Label htmlFor="mirror-switch" className="flex items-center gap-2 whitespace-nowrap"><RefreshCw className="size-4" /> Mirror</Label>
                    </div>
                  )}
-                 <Separator orientation="vertical" className="h-6 mx-1" />
-                 <div className="flex items-center gap-1">
-                   <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom Out">
-                     <ZoomOut />
-                   </Button>
-                   <div className="w-14 text-center font-mono text-sm" title="Current Zoom">
-                     {Math.round(zoom * 100)}%
-                   </div>
-                   <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom In">
-                     <ZoomIn />
-                   </Button>
-                 </div>
-                 <Separator orientation="vertical" className="h-6 mx-1" />
-                 <Button onClick={handleFitToScreen} variant="ghost" size="icon" className="h-8 w-8" aria-label="Fit to Screen">
-                   <Expand />
-                 </Button>
+                 {activeTab !== 'deliverables' && (
+                   <>
+                     <Separator orientation="vertical" className="h-6 mx-1" />
+                     <div className="flex items-center gap-1">
+                       <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom Out">
+                         <ZoomOut />
+                       </Button>
+                       <div className="w-14 text-center font-mono text-sm" title="Current Zoom">
+                         {Math.round(zoom * 100)}%
+                       </div>
+                       <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom In">
+                         <ZoomIn />
+                       </Button>
+                     </div>
+                     <Separator orientation="vertical" className="h-6 mx-1" />
+                     <Button onClick={handleFitToScreen} variant="ghost" size="icon" className="h-8 w-8" aria-label="Fit to Screen">
+                       <Expand />
+                     </Button>
+                   </>
+                 )}
                </div>
              </div>
            </header>
           <div className="flex-1 overflow-auto bg-muted/20" ref={viewportRef}>
-              <TabsContent value="grid" className="mt-0 p-8 h-full">
+              <TabsContent value="grid" className="mt-0 p-8 min-h-full">
                 <div className="inline-block" style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
                   <LedGrid />
                 </div>
               </TabsContent>
-              <TabsContent value="wiring" className="mt-0 p-8 h-full">
+              <TabsContent value="wiring" className="mt-0 p-8 min-h-full">
                 <div className="inline-block" style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
                   <WiringDiagram />
                 </div>
               </TabsContent>
-              <TabsContent value="raster" className="mt-0 p-8 h-full">
+              <TabsContent value="raster" className="mt-0 p-8 min-h-full">
                  <div className="inline-block" style={{ width: (rasterMapConfig?.totalWidth ?? 0) * zoom, height: (rasterMapConfig?.totalHeight ?? 0) * zoom }}>
                   <RasterMapPreview />
                 </div>
               </TabsContent>
-              <TabsContent value="deliverables" className="mt-0 p-8 flex justify-center h-full">
-                 <div style={{ width: 1000 * zoom, minHeight: '100%', transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
-                  <DeliverablesView />
-                </div>
+              <TabsContent value="deliverables" className="mt-0 p-8 flex justify-center items-start h-full overflow-y-auto">
+                <DeliverablesView />
               </TabsContent>
           </div>
         </Tabs>
