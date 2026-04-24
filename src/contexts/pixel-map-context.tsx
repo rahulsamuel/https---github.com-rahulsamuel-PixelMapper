@@ -379,7 +379,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const nextIdCounter = useRef(1);
 
-  const { subscriptionStatus } = useAuth();
+  useAuth();
+  const subscriptionStatus = 'pro';
 
   const [screens, setScreens] = useState<Screen[]>(() => {
     const initialScreen = createNewScreen("Default Screen", nextIdCounter.current);

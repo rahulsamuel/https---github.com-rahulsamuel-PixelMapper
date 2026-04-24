@@ -18,7 +18,7 @@ import { useAuth } from "@/contexts/auth-context";
 export function AppHeader() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
 
   const getPageTitle = () => {
     if (pathname.startsWith('/app')) return 'Pixel Map';
@@ -80,7 +80,7 @@ export function AppHeader() {
             </DropdownMenu>
             <div className="flex-1 flex justify-end">
               {user && (
-                <Button variant="ghost" onClick={logout}>
+                <Button variant="ghost" onClick={signOut}>
                   <LogOut className="mr-2" />
                   Logout
                 </Button>
