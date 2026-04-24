@@ -1,50 +1,27 @@
-
 'use client';
 
-import { Logo } from "@/components/logo";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Button } from "@/components/ui/button";
 
 export default function LegalLayout({ children }: { children: ReactNode }) {
-  
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-14 items-center">
-          <Link href="/" className="mr-6 flex items-center space-x-2">
-            <Logo className="h-6 w-6 text-primary" />
-            <span className="font-bold sm:inline-block">MapMyLED</span>
-          </Link>
-           <div className="flex flex-1 items-center justify-end space-x-2">
-            <Link href="/app">
-              <Button>Pixel Map</Button>
-            </Link>
-            <Link href={"/calculator"}>
-              <Button variant="outline">LED Calculator</Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+    <div className="flex flex-col min-h-[calc(100svh-3.5rem)]">
       <main className="flex-1 py-12">
-        <div className="container">
-            {children}
+        <div className="container max-w-4xl">
+          {children}
         </div>
       </main>
-      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
+      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t border-border/50">
         <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} MapMyLED. All rights reserved.</p>
         <nav className="sm:ml-auto flex gap-4 sm:gap-6">
-          <Link href="/legal/terms" className="text-xs hover:text-primary hover:underline underline-offset-4 transition-colors">
+          <Link href="/legal/terms" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
             Terms of Service
           </Link>
-          <Link href="/legal/privacy" className="text-xs hover:text-primary hover:underline underline-offset-4 transition-colors">
+          <Link href="/legal/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
             Privacy Policy
           </Link>
-          <Link href="/contact" className="text-xs hover:text-primary hover:underline underline-offset-4 transition-colors">
+          <Link href="/contact" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
             Contact Us
-          </Link>
-          <Link href="/admin/tracking" className="text-xs hover:text-primary hover:underline underline-offset-4 transition-colors">
-            Admin
           </Link>
         </nav>
       </footer>
