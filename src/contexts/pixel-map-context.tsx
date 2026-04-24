@@ -153,7 +153,7 @@ interface Screen {
   moduleColors: string[][];
 }
 
-interface ProjectData {
+export interface ProjectData {
   version: string;
   screens: Screen[];
   currentScreenId: string;
@@ -281,6 +281,8 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setAudioFormat: Dispatch<SetStateAction<string>>;
   imageFormat: string;
   setImageFormat: Dispatch<SetStateAction<string>>;
+  getProjectData: () => ProjectData;
+  loadProjectData: (data: ProjectData) => void;
 }
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
@@ -1720,8 +1722,8 @@ const handleRightHalfTileChange = (add: boolean) => {
   }, [rasterMapRef, rasterMapConfig, toast, subscriptionStatus]);
 
 
-  const exportProject = useCallback(() => {
-    const projectData: ProjectData = {
+  const getProjectData = useCallback((): ProjectData => {
+    return {
       version: "1.4.0",
       screens,
       currentScreenId,
@@ -1734,6 +1736,36 @@ const handleRightHalfTileChange = (add: boolean) => {
       audioFormat,
       imageFormat,
     };
+  }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, audioFormat, imageFormat]);
+
+  const loadProjectData = useCallback((data: ProjectData) => {
+    let maxId = 0;
+    const migratedScreens = data.screens.map((s: any) => {
+      const newScreen = createNewScreen("", 0);
+      const migratedScreen = { ...newScreen, ...s };
+      migratedScreen.tiles.forEach((t: Tile) => {
+        if (t.id > maxId) maxId = t.id;
+      });
+      if (!migratedScreen.nextTileId || migratedScreen.nextTileId <= maxId) {
+        migratedScreen.nextTileId = maxId + 1;
+      }
+      return migratedScreen;
+    });
+    nextIdCounter.current = maxId + 1;
+    setScreens(migratedScreens);
+    setCurrentScreenId(data.currentScreenId);
+    setActiveTab(data.activeTab);
+    if (data.projectNumber) setProjectNumber(data.projectNumber);
+    if (data.versionNumber) setVersionNumber(data.versionNumber);
+    if (data.projectNotes) setProjectNotes(data.projectNotes);
+    if (data.mediaServer) setMediaServer(data.mediaServer);
+    if (data.preferredCodec) setPreferredCodec(data.preferredCodec);
+    if (data.audioFormat) setAudioFormat(data.audioFormat);
+    if (data.imageFormat) setImageFormat(data.imageFormat);
+  }, []);
+
+  const exportProject = useCallback(() => {
+    const projectData: ProjectData = getProjectData();
 
     const jsonString = JSON.stringify(projectData, null, 2);
     const blob = new Blob([jsonString], { type: "application/json" });
@@ -1752,7 +1784,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       description: `Project saved to ${filename}`,
     });
     trackEvent('download', { type: 'project-file', filename, projectData: { screensCount: screens.length } });
-  }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, audioFormat, imageFormat, toast]);
+  }, [getProjectData, screens.length, toast]);
   
   const importProject = useCallback((file: File) => {
     const reader = new FileReader();
@@ -2295,6 +2327,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     setPowerArrowGap,
     exportProject,
     importProject,
+    getProjectData,
+    loadProjectData,
     brushColor: currentScreen.brushColor,
     setBrushColor,
     isWiringMirrored: currentScreen.isWiringMirrored,
