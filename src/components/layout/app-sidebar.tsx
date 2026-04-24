@@ -56,18 +56,20 @@ function NavItem({
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
 
-  const content = (
+  const btn = (
     <SidebarMenuButton
       asChild
       isActive={isActive}
       className={cn(
-        "transition-colors",
-        isActive && "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+        "h-9 rounded-lg transition-all duration-150",
+        isActive
+          ? "bg-primary/15 text-primary font-medium"
+          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
       )}
     >
-      <Link href={href}>
-        <Icon className="shrink-0" />
-        <span>{label}</span>
+      <Link href={href} className="flex items-center gap-3">
+        <Icon className="shrink-0 w-4 h-4" />
+        <span className="text-sm">{label}</span>
       </Link>
     </SidebarMenuButton>
   );
@@ -76,14 +78,14 @@ function NavItem({
     return (
       <SidebarMenuItem>
         <Tooltip>
-          <TooltipTrigger asChild>{content}</TooltipTrigger>
-          <TooltipContent side="right">{label}</TooltipContent>
+          <TooltipTrigger asChild>{btn}</TooltipTrigger>
+          <TooltipContent side="right" className="text-xs font-medium">{label}</TooltipContent>
         </Tooltip>
       </SidebarMenuItem>
     );
   }
 
-  return <SidebarMenuItem>{content}</SidebarMenuItem>;
+  return <SidebarMenuItem>{btn}</SidebarMenuItem>;
 }
 
 export function AppSidebar() {
@@ -98,25 +100,34 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon" variant="sidebar">
-      {/* Header */}
-      <SidebarHeader className="border-b border-sidebar-border py-3 px-3">
-        <Link
-          href="/"
-          className="flex items-center gap-3 min-w-0 overflow-hidden"
-        >
-          <Logo className="h-7 w-7 text-primary shrink-0" />
+    <Sidebar collapsible="icon" variant="sidebar" className="border-r border-sidebar-border">
+      {/* Logo header */}
+      <SidebarHeader className="px-3 py-4">
+        <Link href="/" className="flex items-center gap-2.5 min-w-0 group">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
+            <Logo className="h-4 w-auto" />
+          </div>
           {!collapsed && (
-            <span className="font-bold text-sm whitespace-nowrap overflow-hidden text-ellipsis">
-              MapMyLED
-            </span>
+            <div className="min-w-0">
+              <div className="text-sm font-bold tracking-tight text-sidebar-foreground leading-none">MapMyLED</div>
+              <div className="text-[10px] text-sidebar-foreground/40 mt-0.5 leading-none">LED Design Studio</div>
+            </div>
           )}
         </Link>
       </SidebarHeader>
 
-      {/* Nav */}
-      <SidebarContent className="py-2">
-        <SidebarMenu>
+      <SidebarSeparator className="mx-0 opacity-50" />
+
+      {/* Main nav */}
+      <SidebarContent className="px-2 py-3">
+        {!collapsed && (
+          <div className="px-2 mb-2">
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">
+              Tools
+            </span>
+          </div>
+        )}
+        <SidebarMenu className="gap-0.5">
           {navItems.map((item) => (
             <NavItem
               key={item.href}
@@ -131,11 +142,18 @@ export function AppSidebar() {
 
         {user && (
           <>
-            <SidebarSeparator />
+            <SidebarSeparator className="my-3 mx-0 opacity-40" />
+            {!collapsed && (
+              <div className="px-2 mb-2">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/35">
+                  Admin
+                </span>
+              </div>
+            )}
             <SidebarMenu>
               <NavItem
                 href="/admin/products"
-                label="Admin"
+                label="Admin Panel"
                 icon={ShieldCheck}
                 isActive={isActive("/admin")}
               />
@@ -145,24 +163,30 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* Footer */}
-      <SidebarFooter className="border-t border-sidebar-border py-2">
+      <SidebarFooter className="px-2 py-3 border-t border-sidebar-border/50">
         <SidebarMenu>
           {user ? (
             <SidebarMenuItem>
               {collapsed ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <SidebarMenuButton onClick={signOut}>
-                      <LogOut className="shrink-0" />
-                      <span>Sign Out</span>
+                    <SidebarMenuButton
+                      onClick={signOut}
+                      className="h-9 rounded-lg text-sidebar-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-all duration-150"
+                    >
+                      <LogOut className="w-4 h-4 shrink-0" />
+                      <span className="text-sm">Sign Out</span>
                     </SidebarMenuButton>
                   </TooltipTrigger>
-                  <TooltipContent side="right">Sign Out</TooltipContent>
+                  <TooltipContent side="right" className="text-xs">Sign Out</TooltipContent>
                 </Tooltip>
               ) : (
-                <SidebarMenuButton onClick={signOut}>
-                  <LogOut className="shrink-0" />
-                  <span>Sign Out</span>
+                <SidebarMenuButton
+                  onClick={signOut}
+                  className="h-9 rounded-lg text-sidebar-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-all duration-150"
+                >
+                  <LogOut className="w-4 h-4 shrink-0" />
+                  <span className="text-sm">Sign Out</span>
                 </SidebarMenuButton>
               )}
             </SidebarMenuItem>

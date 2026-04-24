@@ -21,13 +21,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head />
-      <body className="font-body antialiased">
+      <body className="font-body antialiased min-h-svh">
         <AuthProvider>
           <SidebarProvider defaultOpen={true}>
             <AppSidebar />
             <SidebarInset className="flex flex-col min-h-svh">
               <GlobalHeader />
-              <main className="flex-1">
+              <main className="flex-1 flex flex-col">
                 {children}
               </main>
             </SidebarInset>
