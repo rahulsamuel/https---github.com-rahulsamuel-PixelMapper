@@ -262,7 +262,7 @@ export function PixelMapLayout() {
       </AlertDialog>
       {/* Tool panel */}
       <div
-        className={`flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden transition-all duration-200 ease-linear ${toolPanelOpen ? 'w-80' : 'w-0'}`}
+        className={`flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden transition-[width] duration-200 ease-linear ${toolPanelOpen ? 'w-80' : 'w-0'}`}
       >
         <div className="w-80 flex flex-col h-full">
           <div className="p-4 border-b flex items-center justify-between flex-shrink-0">

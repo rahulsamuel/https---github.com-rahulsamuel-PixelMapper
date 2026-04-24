@@ -129,16 +129,10 @@
   @apply bg-muted-foreground/40;
 }
 
-/* Hide development environment indicators */
-iframe[style*="position: fixed"],
-iframe[style*="bottom"],
-div[style*="position: fixed"][style*="bottom"][style*="left"],
-div[style*="z-index: 999"],
-div[style*="z-index: 9999"] {
-  display: none !important;
-}
-body > div[style*="position: fixed"][style*="bottom: 0"],
-body > div[style*="position: fixed"][style*="left: 0"] {
+/* Hide development environment indicators - scoped tightly to avoid hiding Radix portals */
+nextjs-portal,
+[data-nextjs-dialog-overlay],
+[data-nextjs-toast] {
   display: none !important;
 }
 
