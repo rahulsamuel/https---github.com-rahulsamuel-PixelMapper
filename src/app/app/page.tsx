@@ -4,7 +4,7 @@ import { PixelMapProvider } from "@/contexts/pixel-map-context";
 
 export default function AppPage() {
   return (
-    <div className="fixed inset-0 top-14 overflow-hidden">
+    <div className="h-[calc(100svh-3.5rem)] overflow-hidden">
       <PixelMapProvider>
         <PixelMapLayout />
       </PixelMapProvider>

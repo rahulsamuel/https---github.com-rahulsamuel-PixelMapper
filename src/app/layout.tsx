@@ -4,6 +4,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/contexts/auth-context';
 import { GlobalHeader } from '@/components/layout/global-header';
+import { AppSidebar } from '@/components/layout/app-sidebar';
+import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 
 export const metadata: Metadata = {
   title: 'MapMyLED',
@@ -21,8 +23,15 @@ export default function RootLayout({
       <head />
       <body className="font-body antialiased">
         <AuthProvider>
-          <GlobalHeader />
-          {children}
+          <SidebarProvider defaultOpen={true}>
+            <AppSidebar />
+            <SidebarInset className="flex flex-col min-h-svh">
+              <GlobalHeader />
+              <main className="flex-1">
+                {children}
+              </main>
+            </SidebarInset>
+          </SidebarProvider>
         </AuthProvider>
         <Toaster />
       </body>
