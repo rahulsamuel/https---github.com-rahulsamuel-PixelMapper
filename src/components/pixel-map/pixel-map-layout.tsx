@@ -2,14 +2,6 @@
 "use client";
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarInset,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
 import { DimensionControls } from "../pixel-mapper/dimension-controls";
 import { AppearanceControls } from "../pixel-mapper/appearance-controls";
 import { PixelMapActions } from "../pixel-mapper/pixel-mapper-actions";
@@ -20,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "../pixel-mapper/edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home, ScreenShare, Plus, MoreHorizontal, Pencil, Trash, Copy, CaseSensitive, FileText, Info } from "lucide-react";
+import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home, ScreenShare, Plus, MoreHorizontal, Pencil, Trash, Copy, CaseSensitive, FileText, Info, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { LabelControls } from "../pixel-mapper/label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -59,7 +51,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input";
 import { DownloadsControls } from "../pixel-mapper/downloads-controls";
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/auth-context";
 
 
@@ -84,6 +76,7 @@ export function PixelMapLayout() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [screenToDelete, setScreenToDelete] = useState<string | null>(null);
   const [hasAutoFitted, setHasAutoFitted] = useState(false);
+  const [toolPanelOpen, setToolPanelOpen] = useState(true);
 
   const dimensions = currentScreen.dimensions;
   
@@ -227,7 +220,7 @@ export function PixelMapLayout() {
   }, [currentScreenId, dimensions.screenWidth, dimensions.screenHeight]);
 
   return (
-    <SidebarProvider>
+    <div className="flex h-full w-full overflow-hidden">
       <ManualPowerWiringModal
         isOpen={isManualPowerModalOpen}
         onClose={() => setIsManualPowerModalOpen(false)}
@@ -267,15 +260,15 @@ export function PixelMapLayout() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      <Sidebar>
-        <SidebarHeader className="p-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Pixel Map</h2>
+      {/* Tool panel */}
+      <div
+        className={`flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden transition-all duration-200 ease-linear ${toolPanelOpen ? 'w-80' : 'w-0'}`}
+      >
+        <div className="w-80 flex flex-col h-full">
+          <div className="p-4 border-b flex items-center justify-between flex-shrink-0">
+            <h2 className="text-base font-semibold text-sidebar-foreground">Pixel Map</h2>
           </div>
-        </SidebarHeader>
-        <Separator />
-        <SidebarContent asChild>
-          <ScrollArea className="flex-grow">
+          <ScrollArea className="flex-1">
             <Accordion
               type="multiple"
               className="p-4 flex flex-col gap-2"
@@ -474,14 +467,24 @@ export function PixelMapLayout() {
 
             </Accordion>
           </ScrollArea>
-        </SidebarContent>
-      </Sidebar>
-      <SidebarInset className="flex flex-col h-full overflow-hidden">
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden min-h-0">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full w-full">
            <header className="sticky top-0 z-10 flex-shrink-0 bg-background p-2 border-b">
             <div className="flex items-center justify-between flex-nowrap gap-4 w-full">
                <div className="flex items-center gap-2">
-                <SidebarTrigger className="md:hidden" />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setToolPanelOpen(o => !o)}
+                  aria-label="Toggle tool panel"
+                >
+                  {toolPanelOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+                </Button>
                 <div className="hidden md:flex items-center gap-4">
                   <div className="text-sm text-muted-foreground whitespace-nowrap">
                     Res: <span className="font-mono">{Math.round(totalWidth)}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
@@ -557,7 +560,7 @@ export function PixelMapLayout() {
               </TabsContent>
           </div>
         </Tabs>
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+    </div>
   );
 }
