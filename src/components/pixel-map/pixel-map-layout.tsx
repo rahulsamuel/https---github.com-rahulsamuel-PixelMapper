@@ -227,7 +227,7 @@ export function PixelMapLayout() {
   }, [currentScreenId, dimensions.screenWidth, dimensions.screenHeight]);
 
   return (
-    <SidebarProvider className="h-full [&_[data-sidebar=sidebar]]:h-full">
+    <SidebarProvider>
       <ManualPowerWiringModal
         isOpen={isManualPowerModalOpen}
         onClose={() => setIsManualPowerModalOpen(false)}
@@ -476,13 +476,13 @@ export function PixelMapLayout() {
           </ScrollArea>
         </SidebarContent>
       </Sidebar>
-      <SidebarInset className="flex flex-col h-full overflow-hidden min-h-0">
+      <SidebarInset className="flex flex-col h-full overflow-hidden">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full w-full">
            <header className="sticky top-0 z-10 flex-shrink-0 bg-background p-2 border-b">
             <div className="flex items-center justify-between flex-nowrap gap-4 w-full">
                <div className="flex items-center gap-2">
-                <SidebarTrigger />
-                <div className="flex items-center gap-4">
+                <SidebarTrigger className="md:hidden" />
+                <div className="hidden md:flex items-center gap-4">
                   <div className="text-sm text-muted-foreground whitespace-nowrap">
                     Res: <span className="font-mono">{Math.round(totalWidth)}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
                   </div>
