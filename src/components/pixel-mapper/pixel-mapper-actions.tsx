@@ -193,25 +193,25 @@ export function PixelMapActions() {
             onClick={handleSaveToCloud}
             disabled={isSaving}
             size="sm"
-            className="w-full"
+            className="w-full min-w-0"
           >
             {isSaving ? (
-              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="shrink-0 mr-1.5 h-3.5 w-3.5 animate-spin" />
             ) : (
-              <CloudUpload className="mr-2 h-3.5 w-3.5" />
+              <CloudUpload className="shrink-0 mr-1.5 h-3.5 w-3.5" />
             )}
-            {user ? "Save to Cloud" : "Save to Cloud"}
+            <span className="truncate">Save</span>
           </Button>
 
           <Button
             onClick={handleOpenProjects}
             variant="outline"
             size="sm"
-            className="w-full"
+            className="w-full min-w-0"
             disabled={!user}
           >
-            <FolderOpen className="mr-2 h-3.5 w-3.5" />
-            My Projects
+            <FolderOpen className="shrink-0 mr-1.5 h-3.5 w-3.5" />
+            <span className="truncate">My Projects</span>
           </Button>
         </div>
 

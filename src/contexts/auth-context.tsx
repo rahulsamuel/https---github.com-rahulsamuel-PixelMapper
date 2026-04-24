@@ -110,13 +110,20 @@ export const AuthProvider = ({
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
         return { error: error.message };
+      }
+
+      if (data.user) {
+        await supabase.from('users').upsert(
+          { id: data.user.id, email: data.user.email! },
+          { onConflict: 'id', ignoreDuplicates: true }
+        );
       }
 
       router.push('/app');

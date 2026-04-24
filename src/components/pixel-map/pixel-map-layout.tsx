@@ -429,13 +429,13 @@ export function PixelMapLayout() {
                         <span className="font-mono text-lg font-bold">{coloredCount}</span>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                         <Button onClick={resetAllColors} variant="outline" className="w-full">
-                            <Eraser className="mr-2" />
-                            Reset Colors
+                         <Button onClick={resetAllColors} variant="outline" size="sm" className="w-full min-w-0">
+                            <Eraser className="shrink-0 mr-1.5 h-3.5 w-3.5" />
+                            <span className="truncate">Reset Colors</span>
                         </Button>
-                        <Button onClick={restoreDeletedTiles} variant="outline" className="w-full">
-                            <RotateCcw className="mr-2" />
-                            Restore Deleted
+                        <Button onClick={restoreDeletedTiles} variant="outline" size="sm" className="w-full min-w-0">
+                            <RotateCcw className="shrink-0 mr-1.5 h-3.5 w-3.5" />
+                            <span className="truncate">Restore</span>
                         </Button>
                       </div>
                     </div>

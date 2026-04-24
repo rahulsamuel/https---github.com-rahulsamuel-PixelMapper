@@ -59,7 +59,7 @@ export function GlobalHeader() {
         <div className="hidden md:flex items-center gap-2 ml-auto shrink-0">
           {user ? (
             <>
-              {!pathname.startsWith('/admin') && (
+              {!pathname.startsWith('/admin') && user?.email === 'rahulsamuel@gmail.com' && (
                 <Link href="/admin/products">
                   <Button variant="ghost" size="sm" className="h-8 px-3 text-sm text-muted-foreground hover:text-foreground gap-1.5">
                     <ShieldCheck className="h-3.5 w-3.5" />
@@ -115,7 +115,7 @@ export function GlobalHeader() {
           <div className="border-t border-border/50 mt-2 pt-2 flex flex-col gap-1">
             {user ? (
               <>
-                {!pathname.startsWith('/admin') && (
+                {!pathname.startsWith('/admin') && user?.email === 'rahulsamuel@gmail.com' && (
                   <Link href="/admin/products" onClick={() => setMobileOpen(false)}>
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                       <ShieldCheck className="h-3.5 w-3.5" />
