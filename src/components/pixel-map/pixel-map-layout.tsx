@@ -265,9 +265,6 @@ export function PixelMapLayout() {
         className={`flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden transition-[width] duration-200 ease-linear ${toolPanelOpen ? 'w-80' : 'w-0'}`}
       >
         <div className="w-80 flex flex-col h-full">
-          <div className="p-4 border-b flex items-center justify-between flex-shrink-0">
-            <h2 className="text-base font-semibold text-sidebar-foreground">Pixel Map</h2>
-          </div>
           <ScrollArea className="flex-1">
             <Accordion
               type="multiple"
