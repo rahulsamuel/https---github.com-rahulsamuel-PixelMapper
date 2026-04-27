@@ -255,15 +255,6 @@ nextjs-portal,
   animation: shimmer 4s linear infinite;
 }
 
-/* Hide scrollbar but keep scrollable */
-.scrollbar-none {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.scrollbar-none::-webkit-scrollbar {
-  display: none;
-}
-
 /* Gradient border card */
 .card-gradient-border {
   position: relative;
