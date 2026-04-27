@@ -3,6 +3,9 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { AdminLoginModal } from '@/components/admin/admin-login-modal';
+import { useAuth } from '@/contexts/auth-context';
 import {
   GitBranch, FileOutput, Upload, Cpu, Shapes, Bolt,
   ArrowRight, CheckCircle2, Sparkles, Layers, Zap, Map,
@@ -150,8 +153,12 @@ const testimonials = [
 /* ─── Component ─── */
 
 export function LandingPage() {
+  const { isAdmin } = useAuth();
+  const [adminModalOpen, setAdminModalOpen] = useState(false);
+
   return (
     <div className="flex flex-col min-h-[calc(100svh-3.5rem)] bg-background text-foreground overflow-x-hidden">
+      <AdminLoginModal open={adminModalOpen} onClose={() => setAdminModalOpen(false)} />
 
       {/* ═══════════════════ HERO ═══════════════════ */}
       <section className="relative min-h-[calc(100svh-3.5rem)] flex items-center justify-center overflow-hidden">
@@ -530,12 +537,23 @@ export function LandingPage() {
                 { href: '/legal/terms', label: 'Terms' },
                 { href: '/legal/privacy', label: 'Privacy' },
                 { href: '/contact', label: 'Contact' },
-                { href: '/admin/tracking', label: 'Admin' },
               ].map(l => (
                 <Link key={l.href} href={l.href} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
                   {l.label}
                 </Link>
               ))}
+              {isAdmin ? (
+                <Link href="/admin/tracking" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  Admin
+                </Link>
+              ) : (
+                <button
+                  onClick={() => setAdminModalOpen(true)}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Admin
+                </button>
+              )}
             </nav>
           </div>
         </div>
