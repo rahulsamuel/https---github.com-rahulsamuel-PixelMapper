@@ -220,7 +220,7 @@ export function PixelMapLayout() {
   }, [currentScreenId, dimensions.screenWidth, dimensions.screenHeight]);
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div className="flex h-full w-full overflow-hidden relative">
       <ManualPowerWiringModal
         isOpen={isManualPowerModalOpen}
         onClose={() => setIsManualPowerModalOpen(false)}
@@ -260,9 +260,23 @@ export function PixelMapLayout() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Mobile backdrop */}
+      {toolPanelOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-20 bg-black/50"
+          onClick={() => setToolPanelOpen(false)}
+        />
+      )}
+
       {/* Tool panel */}
       <div
-        className={`flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden transition-[width] duration-200 ease-linear ${toolPanelOpen ? 'w-80' : 'w-0'}`}
+        className={`
+          flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden
+          transition-[width,transform] duration-200 ease-linear
+          md:relative md:z-auto
+          fixed left-0 top-0 z-30 h-full
+          ${toolPanelOpen ? 'w-80 translate-x-0' : 'w-80 -translate-x-full md:w-0 md:translate-x-0'}
+        `}
       >
         <div className="w-80 flex flex-col h-full">
           <ScrollArea className="flex-1">
@@ -470,71 +484,91 @@ export function PixelMapLayout() {
       {/* Main content */}
       <div className="flex-1 flex flex-col h-full overflow-hidden min-h-0">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full w-full">
-           <header className="sticky top-0 z-10 flex-shrink-0 bg-background p-2 border-b">
-            <div className="flex items-center justify-between flex-nowrap gap-4 w-full">
-               <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => setToolPanelOpen(o => !o)}
-                  aria-label="Toggle tool panel"
-                >
-                  {toolPanelOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
-                </Button>
-                <div className="hidden md:flex items-center gap-4">
-                  <div className="text-sm text-muted-foreground whitespace-nowrap">
-                    Res: <span className="font-mono">{Math.round(totalWidth)}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
-                  </div>
-                  {activeTab === 'wiring' && portCount > 0 && (
-                    <>
-                      <Separator orientation="vertical" className="h-6" />
-                      <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
-                        ({portCount} {portLabelText})
-                      </span>
-                    </>
-                  )}
-                </div>
-               </div>
+           <header className="sticky top-0 z-10 flex-shrink-0 bg-background border-b">
+            {/* Row 1: toggle + tabs + zoom */}
+            <div className="flex items-center gap-1 px-2 py-1.5 min-w-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={() => setToolPanelOpen(o => !o)}
+                aria-label="Toggle tool panel"
+              >
+                {toolPanelOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+              </Button>
 
-               <div className="flex-1 flex justify-center">
-                <TabsList>
-                  <TabsTrigger value="grid">LED Grid</TabsTrigger>
-                  <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
-                  <TabsTrigger value="raster">Raster Map</TabsTrigger>
-                  <TabsTrigger value="deliverables">Deliverables</TabsTrigger>
+              {/* Tabs — scrollable on mobile */}
+              <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none">
+                <TabsList className="flex w-max min-w-full">
+                  <TabsTrigger value="grid" className="flex-1 text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap">
+                    <span className="sm:hidden">Grid</span>
+                    <span className="hidden sm:inline">LED Grid</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="wiring" className="flex-1 text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap">
+                    <span className="sm:hidden">Wiring</span>
+                    <span className="hidden sm:inline">Wiring Diagram</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="raster" className="flex-1 text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap">
+                    <span className="sm:hidden">Raster</span>
+                    <span className="hidden sm:inline">Raster Map</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="deliverables" className="flex-1 text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap">
+                    <span className="sm:hidden">Docs</span>
+                    <span className="hidden sm:inline">Deliverables</span>
+                  </TabsTrigger>
                 </TabsList>
-               </div>
+              </div>
 
-               <div className="flex items-center gap-2">
-                 {activeTab === 'wiring' && (
-                   <div className="flex items-center space-x-2">
-                     <Switch id="mirror-switch" checked={isWiringMirrored} onCheckedChange={setIsWiringMirrored} />
-                     <Label htmlFor="mirror-switch" className="flex items-center gap-2 whitespace-nowrap"><RefreshCw className="size-4" /> Mirror</Label>
-                   </div>
-                 )}
-                 {activeTab !== 'deliverables' && (
-                   <>
-                     <Separator orientation="vertical" className="h-6 mx-1" />
-                     <div className="flex items-center gap-1">
-                       <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom Out">
-                         <ZoomOut />
-                       </Button>
-                       <div className="w-14 text-center font-mono text-sm" title="Current Zoom">
-                         {Math.round(zoom * 100)}%
-                       </div>
-                       <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-8 w-8" aria-label="Zoom In">
-                         <ZoomIn />
-                       </Button>
-                     </div>
-                     <Separator orientation="vertical" className="h-6 mx-1" />
-                     <Button onClick={handleFitToScreen} variant="ghost" size="icon" className="h-8 w-8" aria-label="Fit to Screen">
-                       <Expand />
-                     </Button>
-                   </>
-                 )}
-               </div>
-             </div>
+              {/* Zoom controls — always visible, compact */}
+              {activeTab !== 'deliverables' && (
+                <div className="flex items-center gap-0.5 shrink-0 ml-1">
+                  {activeTab === 'wiring' && (
+                    <div className="hidden sm:flex items-center space-x-1.5 mr-1">
+                      <Switch id="mirror-switch" checked={isWiringMirrored} onCheckedChange={setIsWiringMirrored} />
+                      <Label htmlFor="mirror-switch" className="flex items-center gap-1 text-xs whitespace-nowrap text-muted-foreground">
+                        <RefreshCw className="size-3" /> Mirror
+                      </Label>
+                    </div>
+                  )}
+                  <Button onClick={handleZoomOut} variant="ghost" size="icon" className="h-7 w-7" aria-label="Zoom Out">
+                    <ZoomOut className="h-3.5 w-3.5" />
+                  </Button>
+                  <div className="w-10 text-center font-mono text-xs tabular-nums" title="Current Zoom">
+                    {Math.round(zoom * 100)}%
+                  </div>
+                  <Button onClick={handleZoomIn} variant="ghost" size="icon" className="h-7 w-7" aria-label="Zoom In">
+                    <ZoomIn className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button onClick={handleFitToScreen} variant="ghost" size="icon" className="h-7 w-7" aria-label="Fit to Screen">
+                    <Expand className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Row 2 (mobile only): mirror switch + resolution info */}
+            <div className="sm:hidden flex items-center gap-3 px-3 pb-1.5 text-xs text-muted-foreground">
+              {activeTab === 'wiring' && (
+                <div className="flex items-center space-x-1.5">
+                  <Switch id="mirror-switch-mobile" checked={isWiringMirrored} onCheckedChange={setIsWiringMirrored} />
+                  <Label htmlFor="mirror-switch-mobile" className="flex items-center gap-1 text-xs whitespace-nowrap">
+                    <RefreshCw className="size-3" /> Mirror
+                  </Label>
+                </div>
+              )}
+              <span className="font-mono">{Math.round(totalWidth)}×{Math.round(totalHeight)}px</span>
+              {activeTab === 'wiring' && portCount > 0 && (
+                <span>{portCount} {portLabelText}</span>
+              )}
+            </div>
+
+            {/* Desktop-only: resolution row */}
+            <div className="hidden sm:flex items-center gap-3 px-3 pb-1 text-xs text-muted-foreground">
+              <span>Res: <span className="font-mono">{Math.round(totalWidth)}px × {Math.round(totalHeight)}px</span></span>
+              {activeTab === 'wiring' && portCount > 0 && (
+                <span>· {portCount} {portLabelText}</span>
+              )}
+            </div>
            </header>
           <div className="flex-1 overflow-auto bg-muted/20" ref={viewportRef}>
               <TabsContent value="grid" className="mt-0 p-8">
@@ -552,7 +586,7 @@ export function PixelMapLayout() {
                   <RasterMapPreview />
                 </div>
               </TabsContent>
-              <TabsContent value="deliverables" className="mt-0 p-8 flex justify-center items-start">
+              <TabsContent value="deliverables" className="mt-0 p-3 sm:p-8 flex justify-center items-start">
                 <DeliverablesView />
               </TabsContent>
           </div>

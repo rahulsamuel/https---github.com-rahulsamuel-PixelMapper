@@ -176,8 +176,8 @@ export function DeliverablesView() {
   };
 
   return (
-    <div className="w-[1000px] space-y-8 pb-20">
-      <div className="flex justify-end gap-3 mb-4 no-print">
+    <div className="w-full max-w-[1000px] space-y-8 pb-20">
+      <div className="flex flex-wrap justify-end gap-2 mb-4 no-print">
         <Button variant="outline" size="sm" onClick={handleDownloadHtml}>
           <FileCode className="size-4 mr-2" /> Export HTML
         </Button>
@@ -206,7 +206,7 @@ export function DeliverablesView() {
             </div>
           </CardHeader>
           <CardContent className="pt-8">
-            <div className="grid grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
               <div className="space-y-6">
                 <div>
                   <div className="flex items-center gap-2 text-primary mb-4">
@@ -250,7 +250,7 @@ export function DeliverablesView() {
                 </div>
               </div>
 
-              <div className="col-span-2 space-y-4">
+              <div className="sm:col-span-2 space-y-4">
                 <div className="flex items-center gap-2 text-primary">
                   <Layout className="size-5" />
                   <h3 className="font-bold uppercase tracking-wider text-sm">Content Specifications</h3>
