@@ -25,18 +25,20 @@ export function GlobalHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto max-w-screen-2xl px-4 md:px-6 flex h-14 items-center gap-6">
+      <div className="mx-auto max-w-screen-2xl px-4 md:px-6 flex h-14 items-center">
 
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
-          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-            <Logo className="h-3.5 w-auto" />
-          </div>
-          <span className="font-bold text-sm tracking-tight">MapMyLED</span>
-        </Link>
+        {/* Logo — fixed left */}
+        <div className="flex-1 flex items-center">
+          <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+              <Logo className="h-3.5 w-auto" />
+            </div>
+            <span className="font-bold text-sm tracking-tight">MapMyLED</span>
+          </Link>
+        </div>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-1 flex-1">
+        {/* Desktop nav — centered absolutely */}
+        <nav className="hidden md:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
           {navItems.map((item) => (
             <Link key={item.href} href={item.href}>
               <Button
@@ -55,46 +57,48 @@ export function GlobalHeader() {
           ))}
         </nav>
 
-        {/* Right side actions */}
-        <div className="hidden md:flex items-center gap-2 ml-auto shrink-0">
-          {user ? (
-            <>
-              {!pathname.startsWith('/admin') && user?.email === 'rahulsamuel@gmail.com' && (
-                <Link href="/admin/products">
-                  <Button variant="ghost" size="sm" className="h-8 px-3 text-sm text-muted-foreground hover:text-foreground gap-1.5">
-                    <ShieldCheck className="h-3.5 w-3.5" />
-                    Admin
-                  </Button>
-                </Link>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={signOut}
-                className="h-8 px-3 text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1.5"
-              >
-                <LogOut className="h-3.5 w-3.5" />
-                Sign Out
-              </Button>
-            </>
-          ) : (
-            <Link href="/login">
-              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm gap-1.5">
-                <User className="h-3.5 w-3.5" />
-                Login
-              </Button>
-            </Link>
-          )}
-        </div>
+        {/* Right side actions — fixed right */}
+        <div className="flex-1 flex items-center justify-end gap-2">
+          <div className="hidden md:flex items-center gap-2">
+            {user ? (
+              <>
+                {!pathname.startsWith('/admin') && user?.email === 'rahulsamuel@gmail.com' && (
+                  <Link href="/admin/products">
+                    <Button variant="ghost" size="sm" className="h-8 px-3 text-sm text-muted-foreground hover:text-foreground gap-1.5">
+                      <ShieldCheck className="h-3.5 w-3.5" />
+                      Admin
+                    </Button>
+                  </Link>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={signOut}
+                  className="h-8 px-3 text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 gap-1.5"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <Link href="/login">
+                <Button variant="ghost" size="sm" className="h-8 px-3 text-sm gap-1.5">
+                  <User className="h-3.5 w-3.5" />
+                  Login
+                </Button>
+              </Link>
+            )}
+          </div>
 
-        {/* Mobile menu toggle */}
-        <button
-          className="md:hidden ml-auto p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          onClick={() => setMobileOpen(o => !o)}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-        </button>
+          {/* Mobile menu toggle */}
+          <button
+            className="md:hidden p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            onClick={() => setMobileOpen(o => !o)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile nav drawer */}
@@ -103,7 +107,7 @@ export function GlobalHeader() {
           {navItems.map((item) => (
             <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)}>
               <div className={cn(
-                'flex items-center px-3 py-2 rounded-lg text-sm transition-colors',
+                'flex items-center px-3 py-2.5 rounded-lg text-sm transition-colors',
                 isActive(item.href)
                   ? 'bg-primary/12 text-primary font-medium'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -117,7 +121,7 @@ export function GlobalHeader() {
               <>
                 {!pathname.startsWith('/admin') && user?.email === 'rahulsamuel@gmail.com' && (
                   <Link href="/admin/products" onClick={() => setMobileOpen(false)}>
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                    <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                       <ShieldCheck className="h-3.5 w-3.5" />
                       Admin
                     </div>
@@ -125,7 +129,7 @@ export function GlobalHeader() {
                 )}
                 <button
                   onClick={() => { signOut(); setMobileOpen(false); }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors w-full text-left"
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors w-full text-left"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                   Sign Out
@@ -133,7 +137,7 @@ export function GlobalHeader() {
               </>
             ) : (
               <Link href="/login" onClick={() => setMobileOpen(false)}>
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                   <User className="h-3.5 w-3.5" />
                   Login
                 </div>
