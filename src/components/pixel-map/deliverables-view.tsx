@@ -294,7 +294,7 @@ export function DeliverablesView() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -304,9 +304,9 @@ export function DeliverablesView() {
             <CardContent>
               {rasterMapConfig?.previewImage ? (
                 <div className="relative group overflow-hidden rounded-lg border bg-black aspect-video flex items-center justify-center">
-                  <img 
-                    src={rasterMapConfig.previewImage} 
-                    alt="Current Raster Map" 
+                  <img
+                    src={rasterMapConfig.previewImage}
+                    alt="Current Raster Map"
                     className="max-h-full max-w-full object-contain"
                   />
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center no-print">
@@ -322,29 +322,32 @@ export function DeliverablesView() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileImage className="size-5 text-primary" /> Reference Maps
-              </CardTitle>
-              <Button size="sm" variant="outline" className="no-print" onClick={() => fileInputRef.current?.click()}>
-                <FileUp className="size-4 mr-2" /> Upload
-              </Button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept="image/*" 
-                onChange={handleFileUpload} 
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-lg flex items-center gap-2 min-w-0">
+                  <FileImage className="size-5 text-primary shrink-0" />
+                  <span className="truncate">Reference Maps</span>
+                </CardTitle>
+                <Button size="sm" variant="outline" className="no-print shrink-0" onClick={() => fileInputRef.current?.click()}>
+                  <FileUp className="size-4 mr-1.5" /> Upload
+                </Button>
+              </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleFileUpload}
               />
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 {uploadedMaps.map((map, idx) => (
                   <div key={idx} className="relative group aspect-video rounded-lg border bg-muted overflow-hidden">
                     <img src={map} alt={`Uploaded reference ${idx}`} className="w-full h-full object-cover" />
-                    <Button 
-                      variant="destructive" 
-                      size="icon" 
+                    <Button
+                      variant="destructive"
+                      size="icon"
                       className="absolute top-1 right-1 size-6 opacity-0 group-hover:opacity-100 transition-opacity no-print"
                       onClick={() => removeUploadedMap(idx)}
                     >

@@ -263,7 +263,7 @@ export function PixelMapLayout() {
       {/* Mobile backdrop */}
       {toolPanelOpen && (
         <div
-          className="md:hidden fixed inset-0 z-20 bg-black/50"
+          className="md:hidden fixed inset-x-0 top-14 bottom-0 z-20 bg-black/50"
           onClick={() => setToolPanelOpen(false)}
         />
       )}
@@ -273,8 +273,8 @@ export function PixelMapLayout() {
         className={`
           flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden
           transition-[width,transform] duration-200 ease-linear
-          md:relative md:z-auto
-          fixed left-0 top-0 z-30 h-full
+          md:relative md:z-auto md:top-auto md:h-full
+          fixed left-0 top-14 z-30 h-[calc(100vh-3.5rem)]
           ${toolPanelOpen ? 'w-80 translate-x-0' : 'w-80 -translate-x-full md:w-0 md:translate-x-0'}
         `}
       >
