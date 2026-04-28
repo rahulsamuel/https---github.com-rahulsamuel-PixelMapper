@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,7 @@ interface AdminLoginModalProps {
 export function AdminLoginModal({ open, onClose }: AdminLoginModalProps) {
   const { signInAdmin } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -34,6 +36,7 @@ export function AdminLoginModal({ open, onClose }: AdminLoginModalProps) {
       setIsLoading(false);
     } else {
       onClose();
+      router.push('/admin/tracking');
     }
   };
 

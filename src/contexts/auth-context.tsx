@@ -60,13 +60,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser({ id: session.user.id, email: session.user.email! });
-        setIsAdmin(sessionIsAdmin(session));
-      } else {
-        setUser(null);
-        setIsAdmin(false);
-      }
+      (async () => {
+        if (session?.user) {
+          setUser({ id: session.user.id, email: session.user.email! });
+          setIsAdmin(sessionIsAdmin(session));
+        } else {
+          setUser(null);
+          setIsAdmin(false);
+        }
+      })();
     });
 
     return () => { subscription.unsubscribe(); };
@@ -137,7 +139,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setUser({ id: data.user.id, email: data.user.email! });
       setIsAdmin(true);
-      router.push('/admin/tracking');
       return { error: null };
     } catch {
       return { error: "An unexpected error occurred" };
