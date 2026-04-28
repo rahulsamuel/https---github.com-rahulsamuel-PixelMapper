@@ -4,7 +4,6 @@
 import { useRouter } from "next/navigation";
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
 
 interface User {
   id: string;
@@ -13,9 +12,11 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  isAdmin: boolean;
   loading: boolean;
   signUp: (email: string, password: string, fullName?: string, company?: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signInAdmin: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -29,12 +30,18 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider = ({
-  children
-}: {
-  children: ReactNode
-}) => {
+async function fetchIsAdmin(userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('users')
+    .select('is_admin')
+    .eq('id', userId)
+    .maybeSingle();
+  return data?.is_admin === true;
+}
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -43,10 +50,8 @@ export const AuthProvider = ({
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          setUser({
-            id: session.user.id,
-            email: session.user.email!,
-          });
+          setUser({ id: session.user.id, email: session.user.email! });
+          setIsAdmin(await fetchIsAdmin(session.user.id));
         }
       } catch (error) {
         console.error("Error initializing auth:", error);
@@ -57,22 +62,19 @@ export const AuthProvider = ({
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      (async () => {
         if (session?.user) {
-          setUser({
-            id: session.user.id,
-            email: session.user.email!,
-          });
+          setUser({ id: session.user.id, email: session.user.email! });
+          setIsAdmin(await fetchIsAdmin(session.user.id));
         } else {
           setUser(null);
+          setIsAdmin(false);
         }
-      }
-    );
+      })();
+    });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => { subscription.unsubscribe(); };
   }, []);
 
   const signUp = async (email: string, password: string, fullName?: string, company?: string) => {
@@ -80,17 +82,10 @@ export const AuthProvider = ({
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            full_name: fullName ?? '',
-            company: company ?? '',
-          },
-        },
+        options: { data: { full_name: fullName ?? '', company: company ?? '' } },
       });
 
-      if (error) {
-        return { error: error.message };
-      }
+      if (error) return { error: error.message };
 
       if (data.user) {
         await supabase.from('users').insert({
@@ -101,23 +96,16 @@ export const AuthProvider = ({
         });
         router.push('/app');
       }
-
       return { error: null };
-    } catch (error) {
+    } catch {
       return { error: "An unexpected error occurred" };
     }
   };
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        return { error: error.message };
-      }
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { error: error.message };
 
       if (data.user) {
         await supabase.from('users').upsert(
@@ -125,10 +113,34 @@ export const AuthProvider = ({
           { onConflict: 'id', ignoreDuplicates: true }
         );
       }
-
       router.push('/app');
       return { error: null };
-    } catch (error) {
+    } catch {
+      return { error: "An unexpected error occurred" };
+    }
+  };
+
+  const signInAdmin = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return { error: error.message };
+      if (!data.user) return { error: "Authentication failed" };
+
+      await supabase.from('users').upsert(
+        { id: data.user.id, email: data.user.email! },
+        { onConflict: 'id', ignoreDuplicates: true }
+      );
+
+      const admin = await fetchIsAdmin(data.user.id);
+      if (!admin) {
+        await supabase.auth.signOut();
+        return { error: "Access denied. Admin privileges required." };
+      }
+
+      setIsAdmin(true);
+      router.push('/admin/tracking');
+      return { error: null };
+    } catch {
       return { error: "An unexpected error occurred" };
     }
   };
@@ -136,19 +148,12 @@ export const AuthProvider = ({
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setIsAdmin(false);
     router.push('/');
   };
 
-  const value: AuthContextType = {
-    user,
-    loading,
-    signUp,
-    signIn,
-    signOut,
-  };
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, isAdmin, loading, signUp, signIn, signInAdmin, signOut }}>
       {children}
     </AuthContext.Provider>
   );

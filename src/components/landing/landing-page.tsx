@@ -530,7 +530,6 @@ export function LandingPage() {
                 { href: '/legal/terms', label: 'Terms' },
                 { href: '/legal/privacy', label: 'Privacy' },
                 { href: '/contact', label: 'Contact' },
-                { href: '/admin/tracking', label: 'Admin' },
               ].map(l => (
                 <Link key={l.href} href={l.href} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
                   {l.label}
