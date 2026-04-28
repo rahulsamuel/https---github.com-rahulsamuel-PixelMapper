@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Loader2, Mail, Lock, User, Building2, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +24,7 @@ export function LoginForm() {
 
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -58,9 +60,12 @@ export function LoginForm() {
         toast({ title: 'Account created!', description: 'Welcome to MapMyLED. You are now signed in.' });
       }
     } else {
-      const { error } = await signIn(email, password);
-      if (error) {
-        toast({ title: 'Login failed', description: error, variant: 'destructive' });
+      const result = await signIn(email, password);
+      if (result.error) {
+        toast({ title: 'Login failed', description: result.error, variant: 'destructive' });
+      } else {
+        // Admin goes to dashboard; regular users go to /app
+        router.push(result.isAdmin ? '/admin/tracking' : '/app');
       }
     }
 

@@ -15,7 +15,7 @@ interface AuthContextType {
   isAdmin: boolean;
   loading: boolean;
   signUp: (email: string, password: string, fullName?: string, company?: string) => Promise<{ error: string | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null; isAdmin?: boolean }>;
   signInAdmin: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
@@ -115,9 +115,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const admin = await fetchIsAdmin(data.user.id);
         setUser({ id: data.user.id, email: data.user.email! });
         setIsAdmin(admin);
-        router.push(admin ? '/admin/tracking' : '/app');
+        return { error: null, isAdmin: admin };
       }
-      return { error: null };
+      return { error: null, isAdmin: false };
     } catch {
       return { error: "An unexpected error occurred" };
     }
