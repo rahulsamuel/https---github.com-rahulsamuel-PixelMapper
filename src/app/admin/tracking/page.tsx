@@ -24,7 +24,7 @@ import {
 import {
   Loader2, Download, Users, Monitor, Search, RefreshCw,
   Shield, User, Calendar, Grid3x3, Package, Activity,
-  Pencil, Trash2, Plus, X, Check, Workflow, Map, Layers,
+  Pencil, Trash2, Plus, X, Check, Workflow, Map as MapIcon, Layers,
 } from 'lucide-react';
 
 interface Snapshot {
@@ -72,7 +72,7 @@ const DOWNLOAD_TYPE_LABELS: Record<string, string> = {
 const DOWNLOAD_TYPE_ICON: Record<string, React.ElementType> = {
   'wiring-diagram': Workflow,
   'composite-wiring-diagram': Workflow,
-  'full-raster-map': Map,
+  'full-raster-map': MapIcon,
   'raster-slice': Layers,
   'project-file': Package,
 };
