@@ -1527,7 +1527,7 @@ const handleRightHalfTileChange = (add: boolean) => {
             link.download = downloadFilename;
             link.href = dataUrl;
             link.click();
-            trackEvent('download', { type: 'raster-slice', filename: downloadFilename, thumbnail: dataUrl });
+            trackEvent('download', { type: 'raster-slice', filename: downloadFilename, thumbnail: dataUrl, userId: user?.id ?? null, sessionId: sessionId.current });
         } catch (err) {
             console.error("Could not generate raster map file.", err);
         }
@@ -1551,7 +1551,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         
         downloadCanvas(outputCanvas, slice.filename);
     }
-  }, [rasterMapConfig, createFullRasterCanvas, subscriptionStatus, toast]);
+  }, [rasterMapConfig, createFullRasterCanvas, subscriptionStatus, toast, user, sessionId]);
   
   const addWatermark = (dataUrl: string): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -1693,7 +1693,7 @@ const handleRightHalfTileChange = (add: boolean) => {
           description: "Your wiring diagram is being downloaded.",
         });
 
-        trackEvent('download', { type: 'wiring-diagram', filename: downloadFilename, thumbnail: dataUrl });
+        trackEvent('download', { type: 'wiring-diagram', filename: downloadFilename, thumbnail: dataUrl, userId: user?.id ?? null, sessionId: sessionId.current });
       })
       .catch((err) => {
         console.error("Failed to generate wiring diagram image", err);
@@ -1712,7 +1712,7 @@ const handleRightHalfTileChange = (add: boolean) => {
             }
         });
       });
-  }, [wiringDiagramRef, currentScreen.isWiringMirrored, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, subscriptionStatus]);
+  }, [wiringDiagramRef, currentScreen.isWiringMirrored, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, subscriptionStatus, user, sessionId]);
 
   const handleDownloadFullRaster = useCallback(() => {
     if (subscriptionStatus !== 'pro') {
@@ -1753,7 +1753,7 @@ const handleRightHalfTileChange = (add: boolean) => {
           title: "Download Started",
           description: "Your full raster map is being downloaded.",
         });
-        trackEvent('download', { type: 'full-raster-map', filename: downloadFilename, thumbnail: dataUrl });
+        trackEvent('download', { type: 'full-raster-map', filename: downloadFilename, thumbnail: dataUrl, userId: user?.id ?? null, sessionId: sessionId.current });
       })
       .catch((err) => {
         console.error("Failed to generate full raster map image", err);
@@ -1765,7 +1765,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       })
       .finally(() => {
       });
-  }, [rasterMapRef, rasterMapConfig, toast, subscriptionStatus]);
+  }, [rasterMapRef, rasterMapConfig, toast, subscriptionStatus, user, sessionId]);
 
 
   const getProjectData = useCallback((): ProjectData => {
@@ -1829,8 +1829,8 @@ const handleRightHalfTileChange = (add: boolean) => {
       title: "Export Successful",
       description: `Project saved to ${filename}`,
     });
-    trackEvent('download', { type: 'project-file', filename, projectData: { screensCount: screens.length } });
-  }, [getProjectData, screens.length, toast]);
+    trackEvent('download', { type: 'project-file', filename, projectData: { screensCount: screens.length }, userId: user?.id ?? null, sessionId: sessionId.current });
+  }, [getProjectData, screens.length, toast, user, sessionId]);
   
   const importProject = useCallback((file: File) => {
     const reader = new FileReader();
@@ -2264,9 +2264,9 @@ const handleRightHalfTileChange = (add: boolean) => {
     link.click();
 
     toast({ title: "Download Started", description: "Your composite wiring diagram is downloading." });
-    trackEvent('download', { type: 'composite-wiring-diagram', thumbnail: dataUrl });
+    trackEvent('download', { type: 'composite-wiring-diagram', thumbnail: dataUrl, userId: user?.id ?? null, sessionId: sessionId.current });
 
-  }, [rasterMapConfig, screens, createScreenWiringCanvas, subscriptionStatus, toast]);
+  }, [rasterMapConfig, screens, createScreenWiringCanvas, subscriptionStatus, toast, user, sessionId]);
 
 
   const value: PixelMapState = {

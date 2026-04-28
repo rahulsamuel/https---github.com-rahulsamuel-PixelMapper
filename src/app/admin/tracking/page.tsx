@@ -24,7 +24,7 @@ import {
 import {
   Loader2, Download, Users, Monitor, Search, RefreshCw,
   Shield, User, Calendar, Grid3x3, Package, Activity,
-  Pencil, Trash2, Plus, X, Check,
+  Pencil, Trash2, Plus, X, Check, Workflow, Map, Layers,
 } from 'lucide-react';
 
 interface Snapshot {
@@ -36,6 +36,9 @@ interface Snapshot {
   grid_height: number;
   thumbnail: string;
   project_data: unknown;
+  download_type: string;
+  filename: string;
+  ip_address: string;
   created_at: string;
 }
 
@@ -58,6 +61,22 @@ interface LedProduct {
   created_at: string;
 }
 
+const DOWNLOAD_TYPE_LABELS: Record<string, string> = {
+  'wiring-diagram': 'Wiring Diagram',
+  'composite-wiring-diagram': 'Composite Wiring',
+  'full-raster-map': 'Full Raster Map',
+  'raster-slice': 'Raster Slice',
+  'project-file': 'Project File',
+};
+
+const DOWNLOAD_TYPE_ICON: Record<string, React.ElementType> = {
+  'wiring-diagram': Workflow,
+  'composite-wiring-diagram': Workflow,
+  'full-raster-map': Map,
+  'raster-slice': Layers,
+  'project-file': Package,
+};
+
 function StatCard({ label, value, icon: Icon }: { label: string; value: number; icon: React.ElementType }) {
   return (
     <Card>
@@ -74,9 +93,20 @@ function StatCard({ label, value, icon: Icon }: { label: string; value: number; 
   );
 }
 
-function SnapshotCard({ snapshot, onClick }: { snapshot: Snapshot; onClick: () => void }) {
+function SnapshotCard({
+  snapshot,
+  userMap,
+  onClick,
+}: {
+  snapshot: Snapshot;
+  userMap: Map<string, UserRow>;
+  onClick: () => void;
+}) {
+  const userRow = snapshot.user_id ? userMap.get(snapshot.user_id) : null;
   const isGuest = !snapshot.user_id;
   const date = new Date(snapshot.created_at);
+  const TypeIcon = DOWNLOAD_TYPE_ICON[snapshot.download_type] ?? Monitor;
+
   return (
     <div
       className="group border rounded-xl overflow-hidden bg-card hover:border-primary/50 transition-all cursor-pointer hover:shadow-lg hover:shadow-black/20"
@@ -87,24 +117,33 @@ function SnapshotCard({ snapshot, onClick }: { snapshot: Snapshot; onClick: () =
           <img src={snapshot.thumbnail} alt={snapshot.screen_name} className="w-full h-full object-contain bg-white" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-            <Monitor className="h-8 w-8 opacity-20" />
+            <TypeIcon className="h-8 w-8 opacity-20" />
           </div>
         )}
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
           <Download className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
         </div>
-        <div className="absolute top-2 left-2">
-          <Badge variant={isGuest ? 'secondary' : 'default'} className="text-[10px] px-1.5 py-0 h-4">
-            {isGuest ? 'Guest' : 'User'}
-          </Badge>
+        <div className="absolute top-2 left-2 flex flex-col gap-1">
+          {isGuest ? (
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">Guest</Badge>
+          ) : userRow?.is_admin ? (
+            <Badge className="text-[10px] px-1.5 py-0 h-4 gap-0.5 bg-amber-500 hover:bg-amber-500">
+              <Shield className="h-2.5 w-2.5" /> Admin
+            </Badge>
+          ) : (
+            <Badge className="text-[10px] px-1.5 py-0 h-4">User</Badge>
+          )}
         </div>
       </div>
       <div className="p-3 space-y-1">
-        <p className="font-semibold text-sm truncate">{snapshot.screen_name || 'Untitled'}</p>
+        <p className="font-semibold text-sm truncate">{snapshot.screen_name || snapshot.filename || 'Untitled'}</p>
+        {userRow && (
+          <p className="text-[11px] text-primary truncate">{userRow.email}</p>
+        )}
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
-            <Grid3x3 className="h-3 w-3" />
-            {snapshot.grid_width}×{snapshot.grid_height}
+            <TypeIcon className="h-3 w-3" />
+            {DOWNLOAD_TYPE_LABELS[snapshot.download_type] ?? snapshot.download_type}
           </span>
           <span>{date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
@@ -134,8 +173,8 @@ function TrackingPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const validTabs = ['maps', 'users', 'tracking', 'products'];
-  const defaultTab = validTabs.includes(tabParam ?? '') ? tabParam! : 'maps';
+  const validTabs = ['pixel-maps', 'users', 'tracking', 'products'];
+  const defaultTab = validTabs.includes(tabParam ?? '') ? tabParam! : 'pixel-maps';
 
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -144,6 +183,7 @@ function TrackingPageInner() {
   const [search, setSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
+  const [trackingSearch, setTrackingSearch] = useState('');
   const [selectedSnapshot, setSelectedSnapshot] = useState<Snapshot | null>(null);
 
   // LED product form state
@@ -156,7 +196,7 @@ function TrackingPageInner() {
   const fetchData = useCallback(async () => {
     setFetching(true);
     const [snapRes, userRes, prodRes] = await Promise.all([
-      supabase.from('pixel_map_snapshots').select('*').order('created_at', { ascending: false }).limit(300),
+      supabase.from('pixel_map_snapshots').select('*').order('created_at', { ascending: false }).limit(500),
       supabase.from('users').select('id, email, full_name, company, is_admin, created_at').order('created_at', { ascending: false }),
       supabase.from('led_products').select('*').order('created_at', { ascending: false }),
     ]);
@@ -172,14 +212,29 @@ function TrackingPageInner() {
     fetchData();
   }, [user, isAdmin, loading, router, fetchData]);
 
+  // Build userId → UserRow lookup
+  const userMap = new Map<string, UserRow>(users.map(u => [u.id, u]));
+
+  // Pixel maps tab: only non-grid-png downloads (the tracked deliverables)
+  const deliverableSnapshots = snapshots.filter(s => s.download_type && s.download_type !== 'grid-png' && s.download_type !== '');
+  // Visitor tracking: all records
+  const allSnapshots = snapshots;
+
   const handleDownload = (snapshot: Snapshot) => {
     if (!snapshot.thumbnail) return;
     const link = document.createElement('a');
     link.href = snapshot.thumbnail;
-    link.download = `${snapshot.screen_name || 'pixel-map'}-${snapshot.id.slice(0, 8)}.png`;
+    link.download = snapshot.filename || `${snapshot.screen_name || 'download'}-${snapshot.id.slice(0, 8)}.png`;
     link.click();
   };
 
+  const clearSnapshots = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    await supabase.from('pixel_map_snapshots').delete().in('id', ids);
+    await fetchData();
+  };
+
+  // LED product helpers
   const openAddProduct = () => {
     setEditingProduct(null);
     setProductForm(emptyForm);
@@ -248,10 +303,12 @@ function TrackingPageInner() {
     await fetchData();
   };
 
-  const filteredSnapshots = snapshots.filter(s =>
+  // Filtered lists
+  const filteredDeliverables = deliverableSnapshots.filter(s =>
     !search ||
-    s.screen_name.toLowerCase().includes(search.toLowerCase()) ||
-    s.session_id.includes(search) ||
+    (s.screen_name ?? '').toLowerCase().includes(search.toLowerCase()) ||
+    (s.filename ?? '').toLowerCase().includes(search.toLowerCase()) ||
+    (s.session_id ?? '').includes(search) ||
     (s.user_id ?? '').includes(search)
   );
 
@@ -260,6 +317,13 @@ function TrackingPageInner() {
     u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
     (u.full_name ?? '').toLowerCase().includes(userSearch.toLowerCase()) ||
     (u.company ?? '').toLowerCase().includes(userSearch.toLowerCase())
+  );
+
+  const filteredTracking = allSnapshots.filter(s =>
+    !trackingSearch ||
+    (s.screen_name ?? '').toLowerCase().includes(trackingSearch.toLowerCase()) ||
+    (s.session_id ?? '').includes(trackingSearch) ||
+    (s.ip_address ?? '').includes(trackingSearch)
   );
 
   const filteredProducts = products.filter(p =>
@@ -277,8 +341,8 @@ function TrackingPageInner() {
   }
   if (!isAdmin) return null;
 
-  const guestCount = snapshots.filter(s => !s.user_id).length;
-  const userMapCount = snapshots.filter(s => !!s.user_id).length;
+  const guestCount = allSnapshots.filter(s => !s.user_id).length;
+  const userMapCount = allSnapshots.filter(s => !!s.user_id).length;
 
   return (
     <div className="container mx-auto p-4 sm:p-6 md:p-8 space-y-6">
@@ -299,20 +363,20 @@ function TrackingPageInner() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="Total Maps" value={snapshots.length} icon={Monitor} />
-        <StatCard label="Guest Maps" value={guestCount} icon={User} />
-        <StatCard label="User Maps" value={userMapCount} icon={Package} />
+        <StatCard label="Total Downloads" value={allSnapshots.length} icon={Monitor} />
+        <StatCard label="Guest Downloads" value={guestCount} icon={User} />
+        <StatCard label="User Downloads" value={userMapCount} icon={Package} />
         <StatCard label="Registered Users" value={users.length} icon={Users} />
       </div>
 
       {/* Tabs */}
       <Tabs defaultValue={defaultTab}>
         <TabsList>
-          <TabsTrigger value="maps" className="gap-1.5">
+          <TabsTrigger value="pixel-maps" className="gap-1.5">
             <Monitor className="h-3.5 w-3.5" />
-            Pixel Maps
-            {snapshots.length > 0 && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 h-4 ml-0.5">{snapshots.length}</Badge>
+            Downloads
+            {deliverableSnapshots.length > 0 && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 h-4 ml-0.5">{deliverableSnapshots.length}</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="users" className="gap-1.5">
@@ -325,6 +389,9 @@ function TrackingPageInner() {
           <TabsTrigger value="tracking" className="gap-1.5">
             <Activity className="h-3.5 w-3.5" />
             Visitor Tracking
+            {allSnapshots.length > 0 && (
+              <Badge variant="secondary" className="text-[10px] px-1.5 h-4 ml-0.5">{allSnapshots.length}</Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="products" className="gap-1.5">
             <Package className="h-3.5 w-3.5" />
@@ -335,8 +402,8 @@ function TrackingPageInner() {
           </TabsTrigger>
         </TabsList>
 
-        {/* ── Pixel Maps ── */}
-        <TabsContent value="maps" className="mt-4 space-y-4">
+        {/* ── Downloads (Pixel Maps / Wiring / Raster / Deliverables) ── */}
+        <TabsContent value="pixel-maps" className="mt-4 space-y-4">
           <div className="flex items-center gap-3">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -347,20 +414,48 @@ function TrackingPageInner() {
                 className="pl-9 h-9"
               />
             </div>
-            <span className="text-sm text-muted-foreground">{filteredSnapshots.length} maps</span>
+            <span className="text-sm text-muted-foreground">{filteredDeliverables.length} downloads</span>
+            {deliverableSnapshots.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto">
+                    <Trash2 className="h-3.5 w-3.5" /> Clear All
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear all downloads?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete all {deliverableSnapshots.length} tracked download records. This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => clearSnapshots(deliverableSnapshots.map(s => s.id))}>
+                      Clear All
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
-          {filteredSnapshots.length === 0 ? (
+          {filteredDeliverables.length === 0 ? (
             <Card>
               <CardContent className="py-20 text-center text-muted-foreground">
                 <Monitor className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                <p className="font-medium">No pixel maps captured yet</p>
-                <p className="text-sm mt-1 max-w-xs mx-auto">Maps are recorded automatically as visitors build LED grids.</p>
+                <p className="font-medium">No downloads tracked yet</p>
+                <p className="text-sm mt-1 max-w-xs mx-auto">Downloads are recorded automatically when users export wiring diagrams, raster maps, and other deliverables.</p>
               </CardContent>
             </Card>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-              {filteredSnapshots.map(s => (
-                <SnapshotCard key={s.id} snapshot={s} onClick={() => setSelectedSnapshot(s)} />
+              {filteredDeliverables.map(s => (
+                <SnapshotCard
+                  key={s.id}
+                  snapshot={s}
+                  userMap={userMap}
+                  onClick={() => setSelectedSnapshot(s)}
+                />
               ))}
             </div>
           )}
@@ -395,12 +490,12 @@ function TrackingPageInner() {
                       <TableHead>Company</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Joined</TableHead>
-                      <TableHead>Maps</TableHead>
+                      <TableHead>Downloads</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredUsers.map(u => {
-                      const mapCount = snapshots.filter(s => s.user_id === u.id).length;
+                      const dlCount = allSnapshots.filter(s => s.user_id === u.id).length;
                       return (
                         <TableRow key={u.id}>
                           <TableCell>
@@ -412,7 +507,9 @@ function TrackingPageInner() {
                           <TableCell className="text-sm text-muted-foreground">{u.company || '—'}</TableCell>
                           <TableCell>
                             {u.is_admin ? (
-                              <Badge className="gap-1 text-xs h-5"><Shield className="h-2.5 w-2.5" /> Admin</Badge>
+                              <Badge className="gap-1 text-xs h-5 bg-amber-500 hover:bg-amber-500">
+                                <Shield className="h-2.5 w-2.5" /> Admin
+                              </Badge>
                             ) : (
                               <Badge variant="secondary" className="text-xs h-5">User</Badge>
                             )}
@@ -424,7 +521,7 @@ function TrackingPageInner() {
                             </span>
                           </TableCell>
                           <TableCell>
-                            <span className="font-mono text-sm font-medium">{mapCount}</span>
+                            <span className="font-mono text-sm font-medium">{dlCount}</span>
                           </TableCell>
                         </TableRow>
                       );
@@ -438,29 +535,44 @@ function TrackingPageInner() {
 
         {/* ── Visitor Tracking ── */}
         <TabsContent value="tracking" className="mt-4 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-5 space-y-1">
-                <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Total Sessions</p>
-                <p className="text-3xl font-bold">{snapshots.length}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5 space-y-1">
-                <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Guest Sessions</p>
-                <p className="text-3xl font-bold">{guestCount}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-5 space-y-1">
-                <p className="text-xs text-muted-foreground uppercase font-semibold tracking-wider">Authenticated Sessions</p>
-                <p className="text-3xl font-bold">{userMapCount}</p>
-              </CardContent>
-            </Card>
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, session or IP…"
+                value={trackingSearch}
+                onChange={e => setTrackingSearch(e.target.value)}
+                className="pl-9 h-9"
+              />
+            </div>
+            <span className="text-sm text-muted-foreground">{filteredTracking.length} events</span>
+            {allSnapshots.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto">
+                    <Trash2 className="h-3.5 w-3.5" /> Clear All
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear all tracking records?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete all {allSnapshots.length} visitor tracking records. This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => clearSnapshots(allSnapshots.map(s => s.id))}>
+                      Clear All
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
           <Card>
             <CardContent className="p-0">
-              {snapshots.length === 0 ? (
+              {filteredTracking.length === 0 ? (
                 <div className="py-20 text-center text-muted-foreground">
                   <Activity className="h-10 w-10 mx-auto mb-3 opacity-20" />
                   <p className="font-medium">No visitor activity recorded yet</p>
@@ -469,37 +581,65 @@ function TrackingPageInner() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Screen Name</TableHead>
+                      <TableHead>Name / File</TableHead>
                       <TableHead>Type</TableHead>
-                      <TableHead>Grid</TableHead>
+                      <TableHead>User</TableHead>
                       <TableHead>Session</TableHead>
+                      <TableHead>IP Address</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead>Preview</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {snapshots.slice(0, 100).map(s => (
-                      <TableRow
-                        key={s.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => setSelectedSnapshot(s)}
-                      >
-                        <TableCell className="font-medium text-sm">{s.screen_name || 'Untitled'}</TableCell>
-                        <TableCell>
-                          <Badge variant={s.user_id ? 'default' : 'secondary'} className="text-[10px] h-4">
-                            {s.user_id ? 'User' : 'Guest'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground font-mono">
-                          {s.grid_width}×{s.grid_height}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground font-mono">
-                          {s.session_id?.slice(0, 12) || '—'}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                          {new Date(s.created_at).toLocaleDateString()} {new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredTracking.slice(0, 200).map(s => {
+                      const userRow = s.user_id ? userMap.get(s.user_id) : null;
+                      return (
+                        <TableRow
+                          key={s.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => setSelectedSnapshot(s)}
+                        >
+                          <TableCell className="font-medium text-sm max-w-[140px] truncate">
+                            {s.screen_name || s.filename || 'Untitled'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[10px] h-4 whitespace-nowrap">
+                              {DOWNLOAD_TYPE_LABELS[s.download_type] ?? s.download_type || '—'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {userRow ? (
+                              <div>
+                                <span className="flex items-center gap-1 text-xs">
+                                  {userRow.is_admin && <Shield className="h-2.5 w-2.5 text-amber-500" />}
+                                  <span className="font-medium truncate max-w-[120px]">{userRow.email}</span>
+                                </span>
+                              </div>
+                            ) : (
+                              <Badge variant="secondary" className="text-[10px] h-4">Guest</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground font-mono">
+                            {s.session_id?.slice(0, 10) || '—'}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground font-mono">
+                            {s.ip_address || '—'}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(s.created_at).toLocaleDateString()} {new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </TableCell>
+                          <TableCell>
+                            {s.thumbnail ? (
+                              <div className="w-12 h-8 rounded overflow-hidden border bg-white shrink-0">
+                                <img src={s.thumbnail} alt="" className="w-full h-full object-contain" />
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}
@@ -560,12 +700,7 @@ function TrackingPageInner() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={() => openEditProduct(p)}
-                            >
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditProduct(p)}>
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
                             <AlertDialog>
@@ -604,35 +739,45 @@ function TrackingPageInner() {
         <Dialog open onOpenChange={() => setSelectedSnapshot(null)}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle className="truncate">{selectedSnapshot.screen_name || 'Pixel Map'}</DialogTitle>
+              <DialogTitle className="truncate">
+                {selectedSnapshot.screen_name || selectedSnapshot.filename || 'Download'}
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="border rounded-xl overflow-hidden bg-white">
-                {selectedSnapshot.thumbnail ? (
-                  <img src={selectedSnapshot.thumbnail} alt={selectedSnapshot.screen_name} className="w-full object-contain max-h-[60vh]" />
-                ) : (
-                  <div className="h-48 flex items-center justify-center text-muted-foreground">No thumbnail available</div>
-                )}
-              </div>
+              {selectedSnapshot.thumbnail ? (
+                <div className="border rounded-xl overflow-hidden bg-white">
+                  <img src={selectedSnapshot.thumbnail} alt="" className="w-full object-contain max-h-[60vh]" />
+                </div>
+              ) : (
+                <div className="border rounded-xl h-32 flex items-center justify-center text-muted-foreground bg-muted">
+                  No thumbnail available
+                </div>
+              )}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider mb-0.5">Grid Size</p>
-                  <p className="font-mono">{selectedSnapshot.grid_width} × {selectedSnapshot.grid_height} tiles</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider mb-0.5">Type</p>
+                  <p>{DOWNLOAD_TYPE_LABELS[selectedSnapshot.download_type] ?? selectedSnapshot.download_type || '—'}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider mb-0.5">User Type</p>
-                  <p>{selectedSnapshot.user_id ? 'Registered' : 'Guest'}</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider mb-0.5">User</p>
+                  {selectedSnapshot.user_id ? (
+                    <p className="text-xs">{userMap.get(selectedSnapshot.user_id)?.email ?? selectedSnapshot.user_id}</p>
+                  ) : (
+                    <p>Guest</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider mb-0.5">IP Address</p>
+                  <p className="font-mono text-xs">{selectedSnapshot.ip_address || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider mb-0.5">Grid Size</p>
+                  <p className="font-mono">{selectedSnapshot.grid_width} × {selectedSnapshot.grid_height}</p>
                 </div>
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider mb-0.5">Captured</p>
                   <p>{new Date(selectedSnapshot.created_at).toLocaleString()}</p>
                 </div>
-                {selectedSnapshot.user_id && (
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider mb-0.5">User ID</p>
-                    <p className="font-mono text-xs truncate">{selectedSnapshot.user_id}</p>
-                  </div>
-                )}
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider mb-0.5">Session</p>
                   <p className="font-mono text-xs truncate">{selectedSnapshot.session_id?.slice(0, 16) || '—'}</p>
