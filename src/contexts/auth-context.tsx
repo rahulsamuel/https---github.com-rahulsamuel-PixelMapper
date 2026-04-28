@@ -4,6 +4,7 @@
 import { useRouter } from "next/navigation";
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
+import type { Session } from "@supabase/supabase-js";
 
 interface User {
   id: string;
@@ -30,13 +31,9 @@ export const useAuth = () => {
   return context;
 };
 
-async function fetchIsAdmin(userId: string): Promise<boolean> {
-  const { data } = await supabase
-    .from('users')
-    .select('is_admin')
-    .eq('id', userId)
-    .maybeSingle();
-  return data?.is_admin === true;
+// Read is_admin from app_metadata — set server-side, embedded in the JWT, always current
+function sessionIsAdmin(session: Session | null): boolean {
+  return session?.user?.app_metadata?.['is_admin'] === true;
 }
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -51,7 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           setUser({ id: session.user.id, email: session.user.email! });
-          setIsAdmin(await fetchIsAdmin(session.user.id));
+          setIsAdmin(sessionIsAdmin(session));
         }
       } catch (error) {
         console.error("Error initializing auth:", error);
@@ -63,15 +60,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      (async () => {
-        if (session?.user) {
-          setUser({ id: session.user.id, email: session.user.email! });
-          setIsAdmin(await fetchIsAdmin(session.user.id));
-        } else {
-          setUser(null);
-          setIsAdmin(false);
-        }
-      })();
+      if (session?.user) {
+        setUser({ id: session.user.id, email: session.user.email! });
+        setIsAdmin(sessionIsAdmin(session));
+      } else {
+        setUser(null);
+        setIsAdmin(false);
+      }
     });
 
     return () => { subscription.unsubscribe(); };
@@ -107,12 +102,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return { error: error.message };
 
-      if (data.user) {
+      if (data.user && data.session) {
         await supabase.from('users').upsert(
           { id: data.user.id, email: data.user.email! },
           { onConflict: 'id', ignoreDuplicates: true }
         );
-        const admin = await fetchIsAdmin(data.user.id);
+        const admin = sessionIsAdmin(data.session);
         setUser({ id: data.user.id, email: data.user.email! });
         setIsAdmin(admin);
         return { error: null, isAdmin: admin };
@@ -127,19 +122,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return { error: error.message };
-      if (!data.user) return { error: "Authentication failed" };
+      if (!data.user || !data.session) return { error: "Authentication failed" };
+
+      const admin = sessionIsAdmin(data.session);
+      if (!admin) {
+        await supabase.auth.signOut();
+        return { error: "Access denied. Admin privileges required." };
+      }
 
       await supabase.from('users').upsert(
         { id: data.user.id, email: data.user.email! },
         { onConflict: 'id', ignoreDuplicates: true }
       );
 
-      const admin = await fetchIsAdmin(data.user.id);
-      if (!admin) {
-        await supabase.auth.signOut();
-        return { error: "Access denied. Admin privileges required." };
-      }
-
+      setUser({ id: data.user.id, email: data.user.email! });
       setIsAdmin(true);
       router.push('/admin/tracking');
       return { error: null };
