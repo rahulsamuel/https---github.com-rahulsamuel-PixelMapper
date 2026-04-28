@@ -112,8 +112,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           { id: data.user.id, email: data.user.email! },
           { onConflict: 'id', ignoreDuplicates: true }
         );
+        const admin = await fetchIsAdmin(data.user.id);
+        setUser({ id: data.user.id, email: data.user.email! });
+        setIsAdmin(admin);
+        router.push(admin ? '/admin/tracking' : '/app');
       }
-      router.push('/app');
       return { error: null };
     } catch {
       return { error: "An unexpected error occurred" };
