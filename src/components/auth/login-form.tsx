@@ -58,9 +58,11 @@ export function LoginForm() {
         toast({ title: 'Account created!', description: 'Welcome to MapMyLED. You are now signed in.' });
       }
     } else {
-      const { error } = await signIn(email, password);
-      if (error) {
-        toast({ title: 'Login failed', description: error, variant: 'destructive' });
+      const result = await signIn(email, password);
+      if (result.error) {
+        toast({ title: 'Login failed', description: result.error, variant: 'destructive' });
+      } else {
+        router.push(result.isAdmin ? '/admin/tracking' : '/app');
       }
     }
 
