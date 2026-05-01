@@ -18,25 +18,25 @@ const navItems = [
 
 export function GlobalHeader() {
   const pathname = usePathname();
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isActive = (href: string) => pathname.startsWith(href);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto max-w-screen-2xl px-4 md:px-6 flex h-14 items-center">
+      <div className="mx-auto max-w-screen-2xl px-4 md:px-6 flex h-14 items-center gap-6">
 
-        {/* Logo — left */}
-        <Link href="/" className="flex items-center gap-2.5 shrink-0 group mr-6">
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
           <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
             <Logo className="h-3.5 w-auto" />
           </div>
           <span className="font-bold text-sm tracking-tight">MapMyLED</span>
         </Link>
 
-        {/* Desktop nav — center */}
-        <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-1 flex-1">
           {navItems.map((item) => (
             <Link key={item.href} href={item.href}>
               <Button
@@ -55,22 +55,13 @@ export function GlobalHeader() {
           ))}
         </nav>
 
-        {/* Right side — auth */}
+        {/* Right side actions */}
         <div className="hidden md:flex items-center gap-2 ml-auto shrink-0">
           {user ? (
             <>
-              {isAdmin && (
-                <Link href="/admin/tracking">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      'h-8 px-3 text-sm gap-1.5',
-                      isActive('/admin')
-                        ? 'bg-primary/12 text-primary font-medium'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                    )}
-                  >
+              {!pathname.startsWith('/admin') && user?.email === 'rahulsamuel@gmail.com' && (
+                <Link href="/admin/products">
+                  <Button variant="ghost" size="sm" className="h-8 px-3 text-sm text-muted-foreground hover:text-foreground gap-1.5">
                     <ShieldCheck className="h-3.5 w-3.5" />
                     Admin
                   </Button>
@@ -88,7 +79,7 @@ export function GlobalHeader() {
             </>
           ) : (
             <Link href="/login">
-              <Button size="sm" className="h-8 px-4 text-sm gap-1.5">
+              <Button variant="ghost" size="sm" className="h-8 px-3 text-sm gap-1.5">
                 <User className="h-3.5 w-3.5" />
                 Login
               </Button>
@@ -121,26 +112,20 @@ export function GlobalHeader() {
               </div>
             </Link>
           ))}
-
           <div className="border-t border-border/50 mt-2 pt-2 flex flex-col gap-1">
             {user ? (
               <>
-                {isAdmin && (
-                  <Link href="/admin/tracking" onClick={() => setMobileOpen(false)}>
-                    <div className={cn(
-                      'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
-                      isActive('/admin')
-                        ? 'bg-primary/12 text-primary font-medium'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                    )}>
+                {!pathname.startsWith('/admin') && user?.email === 'rahulsamuel@gmail.com' && (
+                  <Link href="/admin/products" onClick={() => setMobileOpen(false)}>
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                       <ShieldCheck className="h-3.5 w-3.5" />
-                      Admin Dashboard
+                      Admin
                     </div>
                   </Link>
                 )}
                 <button
                   onClick={() => { signOut(); setMobileOpen(false); }}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors w-full text-left mt-1"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors w-full text-left"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                   Sign Out
@@ -150,7 +135,7 @@ export function GlobalHeader() {
               <Link href="/login" onClick={() => setMobileOpen(false)}>
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                   <User className="h-3.5 w-3.5" />
-                  Login / Sign Up
+                  Login
                 </div>
               </Link>
             )}

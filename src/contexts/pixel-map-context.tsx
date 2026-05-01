@@ -381,17 +381,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const nextIdCounter = useRef(1);
 
-  const { user } = useAuth();
+  useAuth();
   const subscriptionStatus = 'pro';
-  const sessionId = useRef(
-    typeof window !== 'undefined'
-      ? (sessionStorage.getItem('mml_session_id') ?? (() => {
-          const id = crypto.randomUUID();
-          sessionStorage.setItem('mml_session_id', id);
-          return id;
-        })())
-      : ''
-  );
 
   const [screens, setScreens] = useState<Screen[]>(() => {
     const initialScreen = createNewScreen("Default Screen", nextIdCounter.current);
@@ -1149,22 +1140,12 @@ const handleRightHalfTileChange = (add: boolean) => {
         link.download = filename;
         link.href = dataUrl;
         link.click();
-        trackEvent('download', {
-          type: 'grid-png',
-          filename,
-          thumbnail: dataUrl,
-          userId: user?.id ?? null,
-          sessionId: sessionId.current,
-          screenName: currentScreen?.name ?? 'Untitled',
-          gridWidth: effectiveScreenWidth,
-          gridHeight: effectiveScreenHeight,
-          projectData: { screens, currentScreenId },
-        });
+        trackEvent('download', { type: 'grid-png', filename, thumbnail: dataUrl });
       })
       .catch((err) => {
         console.error("Could not generate PNG.", err);
       });
-  }, [gridRef, activeBounds, dimensions, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, subscriptionStatus, user, sessionId, currentScreen, screens, currentScreenId]);
+  }, [gridRef, activeBounds, dimensions, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, subscriptionStatus]);
 
   const createScreenContentCanvas = useCallback((screen: Screen, screenActiveBounds: ActiveBounds | null) => {
     if (!screenActiveBounds) return null;
@@ -1445,33 +1426,6 @@ const handleRightHalfTileChange = (add: boolean) => {
     }
   }, [generateRasterMap, activeBounds, currentScreen.lastRasterArgs]);
 
-  // Auto-snapshot: silently capture the grid 8 seconds after any tile change
-  const autoSnapshotTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!gridRef.current || !activeBounds) return;
-    if (autoSnapshotTimer.current) clearTimeout(autoSnapshotTimer.current);
-    autoSnapshotTimer.current = setTimeout(() => {
-      if (!gridRef.current || !activeBounds) return;
-      toPng(gridRef.current, { cacheBust: true, backgroundColor: '#ffffff', pixelRatio: 1 })
-        .then(thumbnail => {
-          trackEvent('download', {
-            type: 'grid-png',
-            filename: 'auto-snapshot',
-            thumbnail,
-            userId: user?.id ?? null,
-            sessionId: sessionId.current,
-            screenName: currentScreen?.name ?? 'Untitled',
-            gridWidth: effectiveScreenWidth,
-            gridHeight: effectiveScreenHeight,
-            projectData: { screens, currentScreenId },
-          });
-        })
-        .catch(() => {});
-    }, 8000);
-    return () => { if (autoSnapshotTimer.current) clearTimeout(autoSnapshotTimer.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentScreen?.tiles, currentScreen?.name, activeBounds]);
-
   const createFullRasterCanvas = useCallback(() => {
     if (!rasterMapConfig) return null;
 
@@ -1527,7 +1481,7 @@ const handleRightHalfTileChange = (add: boolean) => {
             link.download = downloadFilename;
             link.href = dataUrl;
             link.click();
-            trackEvent('download', { type: 'raster-slice', filename: downloadFilename, thumbnail: dataUrl, userId: user?.id ?? null, sessionId: sessionId.current });
+            trackEvent('download', { type: 'raster-slice', filename: downloadFilename, thumbnail: dataUrl });
         } catch (err) {
             console.error("Could not generate raster map file.", err);
         }
@@ -1551,7 +1505,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         
         downloadCanvas(outputCanvas, slice.filename);
     }
-  }, [rasterMapConfig, createFullRasterCanvas, subscriptionStatus, toast, user, sessionId]);
+  }, [rasterMapConfig, createFullRasterCanvas, subscriptionStatus, toast]);
   
   const addWatermark = (dataUrl: string): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -1693,7 +1647,7 @@ const handleRightHalfTileChange = (add: boolean) => {
           description: "Your wiring diagram is being downloaded.",
         });
 
-        trackEvent('download', { type: 'wiring-diagram', filename: downloadFilename, thumbnail: dataUrl, userId: user?.id ?? null, sessionId: sessionId.current });
+        trackEvent('download', { type: 'wiring-diagram', filename: downloadFilename, thumbnail: dataUrl });
       })
       .catch((err) => {
         console.error("Failed to generate wiring diagram image", err);
@@ -1712,7 +1666,7 @@ const handleRightHalfTileChange = (add: boolean) => {
             }
         });
       });
-  }, [wiringDiagramRef, currentScreen.isWiringMirrored, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, subscriptionStatus, user, sessionId]);
+  }, [wiringDiagramRef, currentScreen.isWiringMirrored, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, subscriptionStatus]);
 
   const handleDownloadFullRaster = useCallback(() => {
     if (subscriptionStatus !== 'pro') {
@@ -1753,7 +1707,7 @@ const handleRightHalfTileChange = (add: boolean) => {
           title: "Download Started",
           description: "Your full raster map is being downloaded.",
         });
-        trackEvent('download', { type: 'full-raster-map', filename: downloadFilename, thumbnail: dataUrl, userId: user?.id ?? null, sessionId: sessionId.current });
+        trackEvent('download', { type: 'full-raster-map', filename: downloadFilename, thumbnail: dataUrl });
       })
       .catch((err) => {
         console.error("Failed to generate full raster map image", err);
@@ -1765,7 +1719,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       })
       .finally(() => {
       });
-  }, [rasterMapRef, rasterMapConfig, toast, subscriptionStatus, user, sessionId]);
+  }, [rasterMapRef, rasterMapConfig, toast, subscriptionStatus]);
 
 
   const getProjectData = useCallback((): ProjectData => {
@@ -1829,8 +1783,8 @@ const handleRightHalfTileChange = (add: boolean) => {
       title: "Export Successful",
       description: `Project saved to ${filename}`,
     });
-    trackEvent('download', { type: 'project-file', filename, projectData: { screensCount: screens.length }, userId: user?.id ?? null, sessionId: sessionId.current });
-  }, [getProjectData, screens.length, toast, user, sessionId]);
+    trackEvent('download', { type: 'project-file', filename, projectData: { screensCount: screens.length } });
+  }, [getProjectData, screens.length, toast]);
   
   const importProject = useCallback((file: File) => {
     const reader = new FileReader();
@@ -2264,9 +2218,9 @@ const handleRightHalfTileChange = (add: boolean) => {
     link.click();
 
     toast({ title: "Download Started", description: "Your composite wiring diagram is downloading." });
-    trackEvent('download', { type: 'composite-wiring-diagram', thumbnail: dataUrl, userId: user?.id ?? null, sessionId: sessionId.current });
+    trackEvent('download', { type: 'composite-wiring-diagram', thumbnail: dataUrl });
 
-  }, [rasterMapConfig, screens, createScreenWiringCanvas, subscriptionStatus, toast, user, sessionId]);
+  }, [rasterMapConfig, screens, createScreenWiringCanvas, subscriptionStatus, toast]);
 
 
   const value: PixelMapState = {
