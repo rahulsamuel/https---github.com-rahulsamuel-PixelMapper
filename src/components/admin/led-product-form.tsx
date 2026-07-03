@@ -14,10 +14,12 @@ import { addProductAction, type FormState } from '@/app/add-led/actions';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { useAuth } from '@/contexts/auth-context';
 import {
   Upload, Link2, Sparkles, AlertCircle, ChevronRight,
   FileText, Image as ImageIcon, X, Check, RotateCcw,
-  Cpu, Zap, Eye, Layers, Weight, Ruler,
+  Cpu, Zap, Eye, Layers, Weight, Ruler, Lock,
+  CheckSquare, Square, Database,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -133,6 +135,43 @@ function toDefaults(p: ParsedProduct): Partial<FormData> {
   };
 }
 
+function buildFormData(d: Partial<FormData>, source: string): globalThis.FormData {
+  const fd = new globalThis.FormData();
+  const append = (k: string, v: unknown) => {
+    if (v !== undefined && v !== null && v !== '') fd.append(k, String(v));
+  };
+  append('manufacturer', d.manufacturer);
+  append('productName', d.productName);
+  append('tileWidthPx', d.tileWidthPx);
+  append('tileHeightPx', d.tileHeightPx);
+  append('maxPowerConsumption', d.maxPowerConsumption);
+  append('tileWidthMm', d.tileWidthMm);
+  append('tileHeightMm', d.tileHeightMm);
+  append('tileDepthMm', d.tileDepthMm);
+  append('tileWeightKg', d.tileWeightKg);
+  append('avgPowerConsumption', d.avgPowerConsumption);
+  append('maxPowerWPerSqm', d.maxPowerWPerSqm);
+  append('avgPowerWPerSqm', d.avgPowerWPerSqm);
+  append('pixelPitchMm', d.pixelPitchMm);
+  append('maxBrightness', d.maxBrightness);
+  append('refreshRate', d.refreshRate);
+  append('grayscaleBit', d.grayscaleBit);
+  append('contrastRatio', d.contrastRatio);
+  append('colorTemperatureK', d.colorTemperatureK);
+  append('viewingAngleH', d.viewingAngleH);
+  append('viewingAngleV', d.viewingAngleV);
+  append('driveMode', d.driveMode);
+  append('ledType', d.ledType);
+  append('ipRating', d.ipRating);
+  append('certification', d.certification);
+  fd.append('applicationIndoor', String(d.applicationIndoor ?? false));
+  fd.append('applicationOutdoor', String(d.applicationOutdoor ?? false));
+  fd.append('applicationFloor', String(d.applicationFloor ?? false));
+  append('productImageUrl', d.productImageUrl);
+  append('specSheetUrl', source);
+  return fd;
+}
+
 // ─── Submit button ────────────────────────────────────────────────────────────
 
 function SubmitButton() {
@@ -209,7 +248,7 @@ function InputStep({ onParsed }: { onParsed: (products: ParsedProduct[], source:
     try {
       let res: Response;
       if (mode === 'file' && file) {
-        const fd = new FormData(); fd.append('file', file);
+        const fd = new globalThis.FormData(); fd.append('file', file);
         res = await fetch(`${SUPABASE_URL}/functions/v1/parse-led-spec`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${ANON_KEY}` },
@@ -338,55 +377,143 @@ function InputStep({ onParsed }: { onParsed: (products: ParsedProduct[], source:
   );
 }
 
-// ─── Select step ──────────────────────────────────────────────────────────────
+// ─── Select step (multi-select) ───────────────────────────────────────────────
 
-function SelectStep({ products, onSelect, onBack }: {
-  products: ParsedProduct[]; onSelect: (p: ParsedProduct) => void; onBack: () => void;
+function SelectStep({ products, onSelect, onBack, onBulkSave }: {
+  products: ParsedProduct[];
+  onSelect: (p: ParsedProduct) => void;
+  onBack: () => void;
+  onBulkSave: (selected: ParsedProduct[]) => void;
 }) {
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const allSelected = selected.size === products.length;
+
+  function toggleProduct(i: number) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i); else next.add(i);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(products.map((_, i) => i)));
+  }
+
+  async function handleBulkSave() {
+    if (selected.size === 0) return;
+    setSaving(true);
+    onBulkSave(products.filter((_, i) => selected.has(i)));
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-semibold">Multiple Products Found</h3>
-          <p className="text-sm text-muted-foreground">Select the variant to add to the database.</p>
+          <p className="text-sm text-muted-foreground">Select products to add, or click a card to review individually.</p>
         </div>
         <Button type="button" variant="ghost" size="sm" onClick={onBack}>
           <RotateCcw className="w-3.5 h-3.5 mr-1.5" />Back
         </Button>
       </div>
+
+      {/* Select all toggle */}
+      <button
+        type="button"
+        onClick={toggleAll}
+        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        {allSelected
+          ? <CheckSquare className="w-4 h-4 text-primary" />
+          : <Square className="w-4 h-4" />
+        }
+        {allSelected ? 'Deselect all' : 'Select all'}
+      </button>
+
       <div className="grid gap-3 sm:grid-cols-2">
-        {products.map((p, i) => (
-          <Card key={i} className="cursor-pointer hover:border-primary hover:shadow-md transition-all group" onClick={() => onSelect(p)}>
-            <CardContent className="p-4 space-y-3">
-              {p.productImageUrl && (
-                <div className="w-full h-28 rounded-md overflow-hidden bg-muted">
-                  <img src={p.productImageUrl} alt={p.productName ?? 'Product'}
-                    className="w-full h-full object-contain"
-                    onError={e => { (e.target as HTMLImageElement).parentElement!.style.display = 'none'; }} />
-                </div>
+        {products.map((p, i) => {
+          const isSelected = selected.has(i);
+          return (
+            <Card
+              key={i}
+              className={cn(
+                'cursor-pointer transition-all group relative',
+                isSelected ? 'border-primary ring-1 ring-primary bg-primary/5' : 'hover:border-primary/60 hover:shadow-md'
               )}
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">{p.manufacturer}</p>
-                  <p className="font-semibold">{p.productName}</p>
+              onClick={() => toggleProduct(i)}
+            >
+              {/* Checkbox indicator */}
+              <div className={cn(
+                'absolute top-3 right-3 w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
+                isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/40 bg-background'
+              )}>
+                {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+              </div>
+
+              <CardContent className="p-4 space-y-3 pr-10">
+                {p.productImageUrl && (
+                  <div className="w-full h-28 rounded-md overflow-hidden bg-muted">
+                    <img src={p.productImageUrl} alt={p.productName ?? 'Product'}
+                      className="w-full h-full object-contain"
+                      onError={e => { (e.target as HTMLImageElement).parentElement!.style.display = 'none'; }} />
+                  </div>
+                )}
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">{p.manufacturer}</p>
+                    <p className="font-semibold">{p.productName}</p>
+                  </div>
+                  {p.pixelPitchMm && <Badge variant="secondary">{p.pixelPitchMm}mm</Badge>}
                 </div>
-                {p.pixelPitchMm && <Badge variant="secondary">{p.pixelPitchMm}mm</Badge>}
-              </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                {p.tileWidthMm && p.tileHeightMm && <span className="flex items-center gap-1"><Ruler className="w-3 h-3" />{p.tileWidthMm}×{p.tileHeightMm}mm</span>}
-                {p.tileWidthPx && p.tileHeightPx && <span className="flex items-center gap-1"><Layers className="w-3 h-3" />{p.tileWidthPx}×{p.tileHeightPx}px</span>}
-                {p.maxBrightnessNit && <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{p.maxBrightnessNit} nit</span>}
-                {p.maxPowerWPerSqm && <span className="flex items-center gap-1"><Zap className="w-3 h-3" />{p.maxPowerWPerSqm} W/m²</span>}
-                {p.tileWeightKg && <span className="flex items-center gap-1"><Weight className="w-3 h-3" />{p.tileWeightKg} kg</span>}
-                {p.refreshRateHz && <span className="flex items-center gap-1"><Cpu className="w-3 h-3" />{p.refreshRateHz} Hz</span>}
-              </div>
-              <div className="flex items-center gap-1.5 text-xs font-medium text-primary group-hover:underline">
-                Select this product <ChevronRight className="w-3.5 h-3.5" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {p.tileWidthMm && p.tileHeightMm && <span className="flex items-center gap-1"><Ruler className="w-3 h-3" />{p.tileWidthMm}×{p.tileHeightMm}mm</span>}
+                  {p.tileWidthPx && p.tileHeightPx && <span className="flex items-center gap-1"><Layers className="w-3 h-3" />{p.tileWidthPx}×{p.tileHeightPx}px</span>}
+                  {p.maxBrightnessNit && <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{p.maxBrightnessNit} nit</span>}
+                  {p.maxPowerWPerSqm && <span className="flex items-center gap-1"><Zap className="w-3 h-3" />{p.maxPowerWPerSqm} W/m²</span>}
+                  {p.tileWeightKg && <span className="flex items-center gap-1"><Weight className="w-3 h-3" />{p.tileWeightKg} kg</span>}
+                  {p.refreshRateHz && <span className="flex items-center gap-1"><Cpu className="w-3 h-3" />{p.refreshRateHz} Hz</span>}
+                </div>
+                {/* Review individually link */}
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                  onClick={e => { e.stopPropagation(); onSelect(p); }}
+                >
+                  Review &amp; edit individually <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
+
+      {/* Bulk save footer */}
+      {selected.size > 0 && (
+        <div className="sticky bottom-0 pt-4 pb-1">
+          <Button
+            type="button"
+            className="w-full"
+            size="lg"
+            disabled={saving}
+            onClick={handleBulkSave}
+          >
+            {saving ? (
+              <span className="flex items-center gap-2">
+                <span className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+                Saving...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <Database className="w-4 h-4" />
+                Add {selected.size} product{selected.size > 1 ? 's' : ''} to Database
+              </span>
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -396,6 +523,7 @@ function SelectStep({ products, onSelect, onBack }: {
 export function LedProductForm() {
   const [state, formAction] = useActionState(addProductAction, initialState);
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);
 
   const [step, setStep] = useState<WizardStep>('input');
@@ -403,6 +531,9 @@ export function LedProductForm() {
   const [specSource, setSpecSource] = useState('');
   const [previewImg, setPreviewImg] = useState('');
   const [aiPopulated, setAiPopulated] = useState(false);
+
+  // Non-admins skip straight to manual review
+  const effectiveStep: WizardStep = !isAdmin && step === 'input' ? 'review' : step;
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -414,7 +545,6 @@ export function LedProductForm() {
     },
   });
 
-  // Keep preview in sync with form field
   const imgUrl = form.watch('productImageUrl');
   useEffect(() => {
     if (imgUrl && imgUrl.startsWith('http')) setPreviewImg(imgUrl);
@@ -448,6 +578,31 @@ export function LedProductForm() {
     setStep('review');
   }
 
+  async function handleBulkSave(selected: ParsedProduct[]) {
+    let saved = 0;
+    let failed = 0;
+    for (const p of selected) {
+      const defaults = toDefaults(p);
+      const fd = buildFormData(defaults, specSource);
+      const result = await addProductAction(initialState, fd);
+      if (result.success) saved++;
+      else failed++;
+    }
+    if (saved > 0) {
+      toast({
+        title: `${saved} product${saved > 1 ? 's' : ''} added!`,
+        description: failed > 0 ? `${failed} failed to save.` : 'All products saved to the database.',
+      });
+    }
+    if (failed > 0 && saved === 0) {
+      toast({ title: 'Save failed', description: 'Could not save any products. Please try again.', variant: 'destructive' });
+    }
+    setStep('input');
+    setParsedProducts([]);
+    setSpecSource('');
+    setAiPopulated(false);
+  }
+
   // Helper renderers
   const N = (name: keyof FormData, label: string, unit?: string, ph?: string) => (
     <FormField control={form.control} name={name} render={({ field }) => (
@@ -475,13 +630,13 @@ export function LedProductForm() {
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumb */}
-      {step !== 'input' && (
+      {/* Breadcrumb — only for admins using AI flow */}
+      {isAdmin && effectiveStep !== 'input' && (
         <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <button type="button" onClick={() => setStep('input')} className="hover:text-foreground transition-colors">Upload / URL</button>
           <ChevronRight className="w-3 h-3" />
-          {step === 'select' && <span className="text-foreground font-medium">Select Variant</span>}
-          {step === 'review' && (
+          {effectiveStep === 'select' && <span className="text-foreground font-medium">Select Variant</span>}
+          {effectiveStep === 'review' && (
             <>
               {parsedProducts.length > 1 && (
                 <>
@@ -495,8 +650,8 @@ export function LedProductForm() {
         </nav>
       )}
 
-      {/* ── Input step ── */}
-      {step === 'input' && (
+      {/* ── Input step (admins only) ── */}
+      {effectiveStep === 'input' && (
         <>
           <InputStep onParsed={handleParsed} />
           <Separator />
@@ -507,23 +662,34 @@ export function LedProductForm() {
         </>
       )}
 
+      {/* Non-admin notice on manual form */}
+      {!isAdmin && effectiveStep === 'review' && (
+        <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
+          <Lock className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>AI spec parsing is available to admins only. Fill out the form manually below.</span>
+        </div>
+      )}
+
       {/* ── Select step ── */}
-      {step === 'select' && (
-        <SelectStep products={parsedProducts} onSelect={p => apply(p, specSource)} onBack={() => setStep('input')} />
+      {effectiveStep === 'select' && (
+        <SelectStep
+          products={parsedProducts}
+          onSelect={p => apply(p, specSource)}
+          onBack={() => setStep('input')}
+          onBulkSave={handleBulkSave}
+        />
       )}
 
       {/* ── Review step ── */}
-      {step === 'review' && (
+      {effectiveStep === 'review' && (
         <Form {...form}>
           <form ref={formRef} action={formAction} className="space-y-6">
-            {/* Pass booleans + hidden strings via hidden inputs */}
             <input type="hidden" name="applicationIndoor" value={String(form.watch('applicationIndoor'))} />
             <input type="hidden" name="applicationOutdoor" value={String(form.watch('applicationOutdoor'))} />
             <input type="hidden" name="applicationFloor" value={String(form.watch('applicationFloor'))} />
             <input type="hidden" name="productImageUrl" value={form.watch('productImageUrl') ?? ''} />
             <input type="hidden" name="specSheetUrl" value={form.watch('specSheetUrl') ?? ''} />
 
-            {/* AI badge */}
             {aiPopulated && (
               <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-xs">
                 <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -534,7 +700,6 @@ export function LedProductForm() {
               </div>
             )}
 
-            {/* Image preview */}
             {previewImg && (
               <div className="flex items-center gap-4 rounded-lg border p-3 bg-muted/30">
                 <div className="w-20 h-20 rounded-md overflow-hidden bg-muted flex items-center justify-center shrink-0">
@@ -552,7 +717,6 @@ export function LedProductForm() {
               </div>
             )}
 
-            {/* ── Basic Info ── */}
             <Section icon={Layers} title="Basic Information">
               <FGrid cols={2}>
                 {T('manufacturer', 'Manufacturer *', 'e.g. Absen, ROE Visual')}
@@ -566,7 +730,6 @@ export function LedProductForm() {
 
             <Separator />
 
-            {/* ── Panel Dimensions ── */}
             <Section icon={Ruler} title="Panel Dimensions" description="Physical size and pixel resolution of one panel.">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Physical Size</p>
               <FGrid cols={3}>
@@ -583,7 +746,6 @@ export function LedProductForm() {
 
             <Separator />
 
-            {/* ── Weight ── */}
             <Section icon={Weight} title="Weight">
               <div className="max-w-xs">
                 {N('tileWeightKg', 'Weight per Panel', 'kg', '9.5')}
@@ -592,7 +754,6 @@ export function LedProductForm() {
 
             <Separator />
 
-            {/* ── Power ── */}
             <Section icon={Zap} title="Power Consumption" description="W/m² from spec sheet; watts per tile used in the calculator.">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Per Square Meter (spec sheet)</p>
               <FGrid cols={2}>
@@ -608,7 +769,6 @@ export function LedProductForm() {
 
             <Separator />
 
-            {/* ── Display Performance ── */}
             <Section icon={Eye} title="Display Performance">
               <FGrid cols={3}>
                 {N('maxBrightness', 'Brightness', 'nit', '1500')}
@@ -628,7 +788,6 @@ export function LedProductForm() {
 
             <Separator />
 
-            {/* ── Technical & Compliance ── */}
             <Section icon={Cpu} title="Technical &amp; Compliance">
               <FGrid cols={2}>
                 {T('ipRating', 'IP Rating', 'IP40/IP21')}
@@ -638,7 +797,6 @@ export function LedProductForm() {
 
             <Separator />
 
-            {/* ── Application type ── */}
             <Section icon={Sparkles} title="Application Type" description="Select all that apply.">
               <div className="flex flex-wrap gap-3">
                 {(['applicationIndoor','applicationOutdoor','applicationFloor'] as const).map(name => (
@@ -658,7 +816,6 @@ export function LedProductForm() {
 
             <Separator />
 
-            {/* ── Product image URL ── */}
             <Section icon={ImageIcon} title="Product Image">
               {T('productImageUrl', 'Image URL', 'https://...')}
             </Section>
