@@ -1,10 +1,24 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { LoginForm } from '@/components/auth/login-form';
 import { Logo } from '@/components/logo';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/auth-context';
 
 export default function LoginPage() {
+  const { user, isAdmin, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace(isAdmin ? '/admin/tracking' : '/app');
+    }
+  }, [user, isAdmin, loading, router]);
+
+  if (loading || user) return null;
+
   return (
     <div className="min-h-[calc(100svh-3.5rem)] flex flex-col">
       {/* Background */}
