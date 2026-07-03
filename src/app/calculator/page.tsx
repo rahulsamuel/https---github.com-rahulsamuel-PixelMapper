@@ -28,8 +28,9 @@ interface LedProduct {
     tileWidthMm: number;
     tileHeightMm: number;
     tileWeightKg: number;
-    maxPowerConsumption: number;
-    avgPowerConsumption: number;
+    wattsPerTile: number;
+    maxPowerWPerSqm: number | null;
+    avgPowerWPerSqm: number | null;
     [key: string]: any;
 }
 
@@ -129,11 +130,17 @@ export default function CalculatorPage() {
 
         // Power Consumption
         const screenAreaM2 = (widthMm / 1000) * (heightMm / 1000);
-        const totalMaxPower = totalTiles * selectedProduct.maxPowerConsumption;
-        const totalAvgPower = totalTiles * selectedProduct.avgPowerConsumption;
 
-        const maxPowerPerM2 = screenAreaM2 > 0 ? totalMaxPower / screenAreaM2 : 0;
-        const avgPowerPerM2 = screenAreaM2 > 0 ? totalAvgPower / screenAreaM2 : 0;
+        // Use per-sqm values if available, otherwise derive from wattsPerTile
+        const maxPowerPerM2 = selectedProduct.maxPowerWPerSqm != null
+            ? selectedProduct.maxPowerWPerSqm
+            : (screenAreaM2 > 0 ? (totalTiles * selectedProduct.wattsPerTile) / screenAreaM2 : 0);
+        const avgPowerPerM2 = selectedProduct.avgPowerWPerSqm != null
+            ? selectedProduct.avgPowerWPerSqm
+            : maxPowerPerM2 * 0.4;
+
+        const totalMaxPower = maxPowerPerM2 * screenAreaM2;
+        const totalAvgPower = avgPowerPerM2 * screenAreaM2;
 
         // Current Draw
         const vNum = parseInt(voltage.replace('v', ''));
