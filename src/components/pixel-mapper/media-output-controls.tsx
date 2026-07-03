@@ -50,7 +50,6 @@ export function MediaOutputControls() {
 
   const [customWidth, setCustomWidth] = useState("1920");
   const [customHeight, setCustomHeight] = useState("1080");
-  const [activePreset, setActivePreset] = useState<PresetKey>('content');
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editingGroupName, setEditingGroupName] = useState('');
 
@@ -63,16 +62,24 @@ export function MediaOutputControls() {
     return { totalWidth: 0, totalHeight: 0 };
   }, [activeConfig]);
 
+  // Derive active preset from persisted lastRasterArgs so it survives tab switches
+  const activePreset = useMemo((): PresetKey => {
+    const args = currentScreen.lastRasterArgs;
+    if (!args?.outputWidth && !args?.outputHeight) return 'content';
+    if (args.outputWidth === 1920 && args.outputHeight === 1080) return 'hd';
+    if (args.outputWidth === 3840 && args.outputHeight === 2160) return '4k-uhd';
+    if (args.outputWidth === 4096 && args.outputHeight === 2160) return '4k-dci';
+    return 'custom';
+  }, [currentScreen.lastRasterArgs]);
+
   const anyTileTooBig = (width: number, height: number) =>
     screens.some(s => s.dimensions.tileWidth > width || s.dimensions.tileHeight > height);
 
-  const handlePreset = (preset: PresetKey, filename: string, w?: number, h?: number) => {
-    setActivePreset(preset);
+  const handlePreset = (filename: string, w?: number, h?: number) => {
     generateRasterMap(filename, w, h);
   };
 
   const handleCustomGenerate = () => {
-    setActivePreset('custom');
     generateRasterMap('raster-map-custom.png', parseInt(customWidth), parseInt(customHeight));
   };
 
@@ -173,7 +180,7 @@ export function MediaOutputControls() {
         <p className="text-sm text-muted-foreground pb-2">Generate for the active raster output.</p>
         <div className="space-y-2">
           <Button
-            onClick={() => handlePreset('content', 'raster-map-content.png')}
+            onClick={() => handlePreset('raster-map-content.png')}
             variant={activePreset === 'content' ? 'default' : 'outline'}
             className="w-full"
           >
@@ -181,7 +188,7 @@ export function MediaOutputControls() {
             Fit to All Screens ({totalWidth}x{totalHeight})
           </Button>
           <Button
-            onClick={() => handlePreset('hd', 'raster-map-hd.png', 1920, 1080)}
+            onClick={() => handlePreset('raster-map-hd.png', 1920, 1080)}
             variant={activePreset === 'hd' ? 'default' : 'outline'}
             className="w-full"
             disabled={anyTileTooBig(1920, 1080)}
@@ -189,7 +196,7 @@ export function MediaOutputControls() {
             HD (1920x1080)
           </Button>
           <Button
-            onClick={() => handlePreset('4k-uhd', 'raster-map-4k-uhd.png', 3840, 2160)}
+            onClick={() => handlePreset('raster-map-4k-uhd.png', 3840, 2160)}
             variant={activePreset === '4k-uhd' ? 'default' : 'outline'}
             className="w-full"
             disabled={anyTileTooBig(3840, 2160)}
@@ -197,7 +204,7 @@ export function MediaOutputControls() {
             4K UHD (3840x2160)
           </Button>
           <Button
-            onClick={() => handlePreset('4k-dci', 'raster-map-4k-dci.png', 4096, 2160)}
+            onClick={() => handlePreset('raster-map-4k-dci.png', 4096, 2160)}
             variant={activePreset === '4k-dci' ? 'default' : 'outline'}
             className="w-full"
             disabled={anyTileTooBig(4096, 2160)}
