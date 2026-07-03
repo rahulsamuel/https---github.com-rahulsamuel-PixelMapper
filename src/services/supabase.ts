@@ -181,32 +181,29 @@ export async function updateLedProduct(id: string, data: LedProductData) {
       watts_per_tile: data.wattsPerTile,
       updated_at: new Date().toISOString(),
     };
-    const opt = <K extends keyof LedProductData>(key: K, col: string) => {
-      if (data[key] !== undefined) payload[col] = data[key] ?? null;
-    };
-    opt('pixelPitchMm', 'pixel_pitch_mm');
-    opt('tileWidthMm', 'tile_width_mm');
-    opt('tileHeightMm', 'tile_height_mm');
-    opt('tileDepthMm', 'tile_depth_mm');
-    opt('tileWeightKg', 'tile_weight_kg');
-    opt('maxPowerWPerSqm', 'max_power_w_per_sqm');
-    opt('avgPowerWPerSqm', 'avg_power_w_per_sqm');
-    opt('maxBrightnessNit', 'max_brightness_nit');
-    opt('refreshRateHz', 'refresh_rate_hz');
-    opt('grayscaleBit', 'grayscale_bit');
-    opt('contrastRatio', 'contrast_ratio');
-    opt('colorTemperatureK', 'color_temperature_k');
-    opt('viewingAngleH', 'viewing_angle_h');
-    opt('viewingAngleV', 'viewing_angle_v');
-    opt('driveMode', 'drive_mode');
-    opt('ledType', 'led_type');
-    opt('ipRating', 'ip_rating');
-    opt('certification', 'certification');
-    opt('applicationIndoor', 'application_indoor');
-    opt('applicationOutdoor', 'application_outdoor');
-    opt('applicationFloor', 'application_floor');
-    opt('productImageUrl', 'product_image_url');
-    opt('specSheetUrl', 'spec_sheet_url');
+    if (data.pixelPitchMm !== undefined) payload['pixel_pitch_mm'] = data.pixelPitchMm ?? null;
+    if (data.tileWidthMm !== undefined) payload['tile_width_mm'] = data.tileWidthMm ?? null;
+    if (data.tileHeightMm !== undefined) payload['tile_height_mm'] = data.tileHeightMm ?? null;
+    if (data.tileDepthMm !== undefined) payload['tile_depth_mm'] = data.tileDepthMm ?? null;
+    if (data.tileWeightKg !== undefined) payload['tile_weight_kg'] = data.tileWeightKg ?? null;
+    if (data.maxPowerWPerSqm !== undefined) payload['max_power_w_per_sqm'] = data.maxPowerWPerSqm ?? null;
+    if (data.avgPowerWPerSqm !== undefined) payload['avg_power_w_per_sqm'] = data.avgPowerWPerSqm ?? null;
+    if (data.maxBrightnessNit !== undefined) payload['max_brightness_nit'] = data.maxBrightnessNit ?? null;
+    if (data.refreshRateHz !== undefined) payload['refresh_rate_hz'] = data.refreshRateHz ?? null;
+    if (data.grayscaleBit !== undefined) payload['grayscale_bit'] = data.grayscaleBit ?? null;
+    if (data.contrastRatio !== undefined) payload['contrast_ratio'] = data.contrastRatio ?? null;
+    if (data.colorTemperatureK !== undefined) payload['color_temperature_k'] = data.colorTemperatureK ?? null;
+    if (data.viewingAngleH !== undefined) payload['viewing_angle_h'] = data.viewingAngleH ?? null;
+    if (data.viewingAngleV !== undefined) payload['viewing_angle_v'] = data.viewingAngleV ?? null;
+    if (data.driveMode !== undefined) payload['drive_mode'] = data.driveMode ?? null;
+    if (data.ledType !== undefined) payload['led_type'] = data.ledType ?? null;
+    if (data.ipRating !== undefined) payload['ip_rating'] = data.ipRating ?? null;
+    if (data.certification !== undefined) payload['certification'] = data.certification ?? null;
+    if (data.applicationIndoor !== undefined) payload['application_indoor'] = data.applicationIndoor ?? false;
+    if (data.applicationOutdoor !== undefined) payload['application_outdoor'] = data.applicationOutdoor ?? false;
+    if (data.applicationFloor !== undefined) payload['application_floor'] = data.applicationFloor ?? false;
+    if (data.productImageUrl !== undefined) payload['product_image_url'] = data.productImageUrl ?? null;
+    if (data.specSheetUrl !== undefined) payload['spec_sheet_url'] = data.specSheetUrl ?? null;
 
     const { error } = await supabase
       .from("led_products")
