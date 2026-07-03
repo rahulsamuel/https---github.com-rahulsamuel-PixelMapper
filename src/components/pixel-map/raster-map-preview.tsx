@@ -6,10 +6,11 @@ import { useMemo } from 'react';
 import { cn } from "@/lib/utils";
 
 export function RasterMapPreview() {
-  const { 
+  const {
     rasterMapConfig,
     zoom,
     rasterMapRef,
+    rasterBgColor,
   } = usePixelMap();
 
   const checkeredBg = useMemo(() => ({
@@ -56,15 +57,15 @@ export function RasterMapPreview() {
   return (
      <div>
         <div style={{ width: totalWidth * zoom, height: totalHeight * zoom }}>
-          <div 
+          <div
             ref={rasterMapRef}
-            className="relative bg-background shadow-lg border"
-            style={{ 
-                width: totalWidth, 
+            className="relative shadow-lg border"
+            style={{
+                width: totalWidth,
                 height: totalHeight,
                 transform: `scale(${zoom})`,
                 transformOrigin: 'top left',
-                ...checkeredBg,
+                backgroundColor: rasterBgColor,
                 boxSizing: 'content-box',
                 overflow: 'hidden',
             }}

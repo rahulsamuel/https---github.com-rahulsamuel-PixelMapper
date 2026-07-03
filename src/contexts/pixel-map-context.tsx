@@ -77,7 +77,7 @@ interface ScreenArrangement {
   activeBounds: ActiveBounds;
 }
 
-interface RasterMapConfig {
+export interface RasterMapConfig {
   slices: RasterSlice[];
   totalWidth: number;
   totalHeight: number;
@@ -96,7 +96,7 @@ interface RasterArgs {
   outputHeight?: number;
 }
 
-interface Screen {
+export interface Screen {
   id: string;
   name: string;
   dimensions: Dimensions;
@@ -225,6 +225,9 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   rasterMapConfig: RasterMapConfig | null;
   setRasterMapConfig: Dispatch<SetStateAction<RasterMapConfig | null>>;
   setRasterOffset: Dispatch<SetStateAction<{ x: number; y: number; }>>;
+  updateScreenById: (screenId: string, updater: (s: Screen) => Screen) => void;
+  rasterBgColor: string;
+  setRasterBgColor: Dispatch<SetStateAction<string>>;
   setWiringPortConfig: Dispatch<SetStateAction<string>>;
   setDataPortStartNumber: Dispatch<SetStateAction<number>>;
   setShowDataLabels: (value: boolean) => void;
@@ -399,6 +402,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [currentScreenId, setCurrentScreenId] = useState<string>(screens[0].id);
   const [activeTab, setActiveTab] = useState('grid');
   const [rasterMapConfig, setRasterMapConfig] = useState<RasterMapConfig | null>(null);
+  const [rasterBgColor, setRasterBgColor] = useState('#000000');
   const [products, setProducts] = useState<LedProduct[]>([]);
   const [isManualPowerModalOpen, setIsManualPowerModalOpen] = useState(false);
   const [selectedTileForPower, setSelectedTileForPower] = useState<number | null>(null);
@@ -433,6 +437,10 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
   const currentScreen = useMemo(() => screens.find(s => s.id === currentScreenId) || screens[0], [screens, currentScreenId]);
   
+  const updateScreenById = useCallback((screenId: string, updater: (s: Screen) => Screen) => {
+    setScreens(prevScreens => prevScreens.map(s => s.id === screenId ? updater(s) : s));
+  }, []);
+
   const updateCurrentScreen = useCallback((updater: (screen: Screen) => Screen) => {
     setScreens(prevScreens => prevScreens.map(s => s.id === currentScreenId ? updater(s) : s));
   }, [currentScreenId]);
@@ -1371,13 +1379,13 @@ const handleRightHalfTileChange = (add: boolean) => {
     const masterCtx = fullContentCanvas.getContext('2d');
     if (!masterCtx) return;
 
-    masterCtx.fillStyle = 'black';
+    masterCtx.fillStyle = rasterBgColor;
     masterCtx.fillRect(0, 0, fullContentCanvas.width, fullContentCanvas.height);
 
     for (const arrangement of screenArrangement) {
         const screen = screens.find(s => s.id === arrangement.screenId);
         if (!screen) continue;
-        
+
         const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds);
         if (screenCanvas) {
             masterCtx.drawImage(screenCanvas, arrangement.x, arrangement.y);
@@ -1415,7 +1423,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         resolutionType,
         screenArrangement,
     });
-  }, [screens, currentScreen.lastRasterArgs, createScreenContentCanvas]);
+  }, [screens, currentScreen.lastRasterArgs, createScreenContentCanvas, rasterBgColor]);
 
 
   useEffect(() => {
@@ -1445,13 +1453,13 @@ const handleRightHalfTileChange = (add: boolean) => {
     const masterCtx = masterCanvas.getContext('2d');
     if (!masterCtx) return null;
 
-    masterCtx.fillStyle = 'black';
+    masterCtx.fillStyle = rasterBgColor;
     masterCtx.fillRect(0, 0, masterCanvas.width, masterCanvas.height);
 
     for (const arrangement of screenArrangement) {
         const screen = screens.find(s => s.id === arrangement.screenId);
         if (!screen) continue;
-        
+
         const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds);
         if (screenCanvas) {
             masterCtx.drawImage(screenCanvas, arrangement.x, arrangement.y);
@@ -1459,7 +1467,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     }
 
     return masterCanvas;
-  }, [rasterMapConfig, screens, createScreenContentCanvas]);
+  }, [rasterMapConfig, screens, createScreenContentCanvas, rasterBgColor]);
 
 
   const downloadRasterSlices = useCallback(() => {
@@ -1502,8 +1510,8 @@ const handleRightHalfTileChange = (add: boolean) => {
         const outputCtx = outputCanvas.getContext('2d');
         if (!outputCtx) continue;
         
-        outputCtx.fillStyle = 'black';
-        outputCtx.fillRect(0,0, outputCanvas.width, outputCanvas.height);
+        outputCtx.fillStyle = rasterBgColor;
+        outputCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
         
         outputCtx.drawImage(
             masterContentCanvas,
@@ -2286,6 +2294,9 @@ const handleRightHalfTileChange = (add: boolean) => {
     setRasterMapConfig,
     rasterOffset: currentScreen.rasterOffset,
     setRasterOffset,
+    updateScreenById,
+    rasterBgColor,
+    setRasterBgColor,
     wiringPortConfig: currentScreen.wiringPortConfig,
     setWiringPortConfig,
     dataPortStartNumber: currentScreen.dataPortStartNumber,
