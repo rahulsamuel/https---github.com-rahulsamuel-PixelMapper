@@ -1,5 +1,4 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import Anthropic from "npm:@anthropic-ai/sdk@0.32.1";
 import { createClient } from "npm:@supabase/supabase-js@2.39.0";
 
 const corsHeaders = {
@@ -40,17 +39,50 @@ For EACH product variant found, extract these fields (use null if not found):
 
 IMPORTANT NOTES:
 - If a panel has multiple size options (e.g. 500x500mm and 1000x500mm), create a separate entry for each size.
-- For panel resolution: if spec shows "384x192/192x192", these are two sizes - split them.
+- For panel resolution: if spec shows "384x192/192x192", these are two sizes — split them.
 - Power in W/m² is PER SQUARE METER, not per tile.
-- Return ONLY valid JSON, no markdown, no explanation.
+- Return ONLY valid JSON with no markdown fences or explanation.
 
 Return format:
 {
   "products": [
-    { ...all fields above... },
-    ...
+    { ...all fields above... }
   ]
 }`;
+
+// ─── Gemini REST helper ───────────────────────────────────────────────────────
+
+async function callGemini(
+  apiKey: string,
+  parts: Record<string, unknown>[]
+): Promise<string> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const body = {
+    contents: [{ parts }],
+    generationConfig: {
+      responseMimeType: "application/json",
+      temperature: 0.1,
+      maxOutputTokens: 8192,
+    },
+  };
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gemini API error (${res.status}): ${err}`);
+  }
+
+  const json = await res.json();
+  const text = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  return text;
+}
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
 
 function extractImageUrls(html: string, baseUrl: string): string[] {
   const urls: string[] = [];
@@ -58,31 +90,46 @@ function extractImageUrls(html: string, baseUrl: string): string[] {
   let match;
   while ((match = imgRegex.exec(html)) !== null) {
     const src = match[1];
-    if (!src || src.startsWith('data:')) continue;
+    if (!src || src.startsWith("data:")) continue;
     try {
-      const absolute = src.startsWith('http') ? src : new URL(src, baseUrl).href;
-      if (absolute.match(/\.(jpg|jpeg|png|webp)(\?|$)/i)) {
-        urls.push(absolute);
-      }
-    } catch {
-      // skip invalid URLs
-    }
+      const absolute = src.startsWith("http") ? src : new URL(src, baseUrl).href;
+      if (absolute.match(/\.(jpg|jpeg|png|webp)(\?|$)/i)) urls.push(absolute);
+    } catch { /* skip */ }
   }
   return [...new Set(urls)].slice(0, 10);
 }
 
 function stripHtml(html: string): string {
   return html
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/\s{2,}/g, ' ')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s{2,}/g, " ")
     .trim()
     .substring(0, 60000);
+}
+
+function parseJsonResponse(text: string): Record<string, unknown>[] {
+  try {
+    // Strip markdown fences if present
+    const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+    const parsed = JSON.parse(cleaned);
+    return Array.isArray(parsed.products) ? parsed.products : [];
+  } catch {
+    // Try to find JSON object in the text
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+      try {
+        const parsed = JSON.parse(match[0]);
+        return Array.isArray(parsed.products) ? parsed.products : [];
+      } catch { /* fall through */ }
+    }
+    return [];
+  }
 }
 
 async function storeImage(
@@ -93,22 +140,22 @@ async function storeImage(
   try {
     const resp = await fetch(imageUrl);
     if (!resp.ok) return null;
-    const contentType = resp.headers.get('content-type') || 'image/jpeg';
-    if (!contentType.startsWith('image/')) return null;
+    const contentType = resp.headers.get("content-type") || "image/jpeg";
+    if (!contentType.startsWith("image/")) return null;
     const buffer = await resp.arrayBuffer();
-    if (buffer.byteLength < 1000) return null; // skip tiny images (icons)
+    if (buffer.byteLength < 1000) return null;
 
-    const ext = contentType.split('/')[1]?.split(';')[0] || 'jpg';
-    const path = `${Date.now()}-${filename}.${ext}`;
+    const ext = contentType.split("/")[1]?.split(";")[0] || "jpg";
+    const path = `${Date.now()}-${filename.replace(/[^a-z0-9]/gi, "-").toLowerCase()}.${ext}`;
 
     const { error } = await supabase.storage
-      .from('product-images')
+      .from("product-images")
       .upload(path, buffer, { contentType, upsert: false });
 
-    if (error) return null;
+    if (error) return imageUrl; // Fall back to original URL if storage fails
 
     const { data: { publicUrl } } = supabase.storage
-      .from('product-images')
+      .from("product-images")
       .getPublicUrl(path);
 
     return publicUrl;
@@ -117,27 +164,24 @@ async function storeImage(
   }
 }
 
-function parseClaudeResponse(text: string): Record<string, unknown>[] {
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return [];
-  const parsed = JSON.parse(jsonMatch[0]);
-  return Array.isArray(parsed.products) ? parsed.products : [];
-}
+// ─── Main handler ─────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
-  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!anthropicKey) {
+  const geminiKey = Deno.env.get("GOOGLE_AI_API_KEY");
+  if (!geminiKey) {
     return new Response(
-      JSON.stringify({ error: "ANTHROPIC_API_KEY is not configured. Please add it as a Supabase secret." }),
+      JSON.stringify({
+        error:
+          "GOOGLE_AI_API_KEY is not configured. Get a free key at aistudio.google.com, then add it as a Supabase Edge Function secret.",
+      }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  const anthropic = new Anthropic({ apiKey: anthropicKey });
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -148,7 +192,7 @@ Deno.serve(async (req: Request) => {
     let products: Record<string, unknown>[] = [];
 
     if (contentType.includes("multipart/form-data")) {
-      // File upload path
+      // ── File upload path ──────────────────────────────────────────────────
       const formData = await req.formData();
       const file = formData.get("file") as File | null;
       if (!file) {
@@ -161,43 +205,19 @@ Deno.serve(async (req: Request) => {
       const arrayBuffer = await file.arrayBuffer();
       const uint8 = new Uint8Array(arrayBuffer);
       let binary = "";
-      for (let i = 0; i < uint8.length; i++) {
-        binary += String.fromCharCode(uint8[i]);
-      }
+      for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
       const base64 = btoa(binary);
-      const mediaType = file.type || "application/pdf";
+      const mimeType = (file.type || "application/pdf") as string;
 
-      let messageContent: Anthropic.MessageParam["content"];
+      const parts: Record<string, unknown>[] = [
+        { inlineData: { mimeType, data: base64 } },
+        { text: EXTRACTION_PROMPT },
+      ];
 
-      if (mediaType === "application/pdf") {
-        messageContent = [
-          {
-            type: "document" as const,
-            source: { type: "base64" as const, media_type: "application/pdf" as const, data: base64 },
-          },
-          { type: "text" as const, text: EXTRACTION_PROMPT },
-        ];
-      } else {
-        const imgMediaType = mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
-        messageContent = [
-          {
-            type: "image" as const,
-            source: { type: "base64" as const, media_type: imgMediaType, data: base64 },
-          },
-          { type: "text" as const, text: EXTRACTION_PROMPT },
-        ];
-      }
-
-      const response = await anthropic.messages.create({
-        model: "claude-3-5-sonnet-20241022",
-        max_tokens: 4096,
-        messages: [{ role: "user", content: messageContent }],
-      });
-
-      const text = response.content[0].type === "text" ? response.content[0].text : "";
-      products = parseClaudeResponse(text);
+      const responseText = await callGemini(geminiKey, parts);
+      products = parseJsonResponse(responseText);
     } else {
-      // URL path
+      // ── URL path ──────────────────────────────────────────────────────────
       const body = await req.json();
       const { url } = body as { url: string };
 
@@ -208,7 +228,6 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      // Fetch the page
       const pageResp = await fetch(url, {
         headers: { "User-Agent": "Mozilla/5.0 (compatible; MapMyLED/1.0)" },
       });
@@ -223,66 +242,42 @@ Deno.serve(async (req: Request) => {
       const urlContentType = pageResp.headers.get("content-type") || "";
 
       if (urlContentType.includes("application/pdf")) {
-        // URL points directly to a PDF
+        // URL points to a PDF — send inline
         const pdfBuffer = await pageResp.arrayBuffer();
         const uint8 = new Uint8Array(pdfBuffer);
         let binary = "";
-        for (let i = 0; i < uint8.length; i++) {
-          binary += String.fromCharCode(uint8[i]);
-        }
+        for (let i = 0; i < uint8.length; i++) binary += String.fromCharCode(uint8[i]);
         const base64 = btoa(binary);
 
-        const response = await anthropic.messages.create({
-          model: "claude-3-5-sonnet-20241022",
-          max_tokens: 4096,
-          messages: [{
-            role: "user",
-            content: [
-              {
-                type: "document" as const,
-                source: { type: "base64" as const, media_type: "application/pdf" as const, data: base64 },
-              },
-              { type: "text" as const, text: EXTRACTION_PROMPT },
-            ],
-          }],
-        });
+        const parts: Record<string, unknown>[] = [
+          { inlineData: { mimeType: "application/pdf", data: base64 } },
+          { text: EXTRACTION_PROMPT },
+        ];
 
-        const text = response.content[0].type === "text" ? response.content[0].text : "";
-        products = parseClaudeResponse(text);
+        const responseText = await callGemini(geminiKey, parts);
+        products = parseJsonResponse(responseText);
       } else {
-        // HTML page
+        // HTML page — extract text and send to Gemini
         const html = await pageResp.text();
         const pageText = stripHtml(html);
         const imageUrls = extractImageUrls(html, url);
 
-        const prompt = `${EXTRACTION_PROMPT}\n\nPage URL: ${url}\n\nPage text content:\n${pageText}`;
+        const prompt = `${EXTRACTION_PROMPT}\n\nPage URL: ${url}\n\nPage content:\n${pageText}`;
+        const responseText = await callGemini(geminiKey, [{ text: prompt }]);
+        products = parseJsonResponse(responseText);
 
-        const response = await anthropic.messages.create({
-          model: "claude-3-5-sonnet-20241022",
-          max_tokens: 4096,
-          messages: [{ role: "user", content: prompt }],
-        });
-
-        const responseText = response.content[0].type === "text" ? response.content[0].text : "";
-        products = parseClaudeResponse(responseText);
-
-        // Try to find and store product images
+        // Try to save the first matching image per product
         if (imageUrls.length > 0 && products.length > 0) {
           for (let i = 0; i < products.length; i++) {
-            const product = products[i];
-            if (!product.productImageUrl) {
-              const imgUrl = imageUrls[i] || imageUrls[0];
+            if (!products[i].productImageUrl) {
+              const imgUrl = imageUrls[i] ?? imageUrls[0];
               if (imgUrl) {
-                const storedUrl = await storeImage(
+                const stored = await storeImage(
                   supabase,
                   imgUrl,
-                  String(product.productName || `product-${i}`).replace(/[^a-z0-9]/gi, '-').toLowerCase()
+                  String(products[i].productName ?? `product-${i}`)
                 );
-                if (storedUrl) {
-                  products[i] = { ...product, productImageUrl: storedUrl };
-                } else {
-                  products[i] = { ...product, productImageUrl: imgUrl };
-                }
+                if (stored) products[i] = { ...products[i], productImageUrl: stored };
               }
             }
           }

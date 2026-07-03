@@ -229,8 +229,8 @@ function InputStep({ onParsed }: { onParsed: (products: ParsedProduct[], source:
       const json = await res.json();
       if (!res.ok || json.error) {
         const msg: string = json.error || `Request failed (${res.status})`;
-        if (msg.includes('ANTHROPIC_API_KEY')) {
-          setError('AI parsing requires an Anthropic API key. Please add ANTHROPIC_API_KEY as a Supabase Edge Function secret.');
+        if (msg.includes('GOOGLE_AI_API_KEY')) {
+          setError('AI parsing requires a Google AI key. Get one free at aistudio.google.com, then add it as GOOGLE_AI_API_KEY in your Supabase Edge Function secrets.');
         } else {
           setError(msg);
         }
