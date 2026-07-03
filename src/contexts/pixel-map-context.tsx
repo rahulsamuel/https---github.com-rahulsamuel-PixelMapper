@@ -70,11 +70,18 @@ interface RasterSlice {
 
 interface ScreenArrangement {
   screenId: string;
+  screenName: string;
   x: number;
   y: number;
   width: number;
   height: number;
   activeBounds: ActiveBounds;
+  showScreenName: boolean;
+  screenNameLabelPosition: string;
+  screenNameLabelFontSize: number;
+  screenNameLabelColor: string;
+  screenNameLabelColorMode: string;
+  showSliceOffsetLabels: boolean;
 }
 
 export interface RasterMapConfig {
@@ -1286,6 +1293,32 @@ const handleRightHalfTileChange = (add: boolean) => {
         }
         currentDrawY += rowPixelHeight;
     }
+
+    // Draw screen name overlay
+    if (screen.showScreenName && screen.name) {
+        const fontSize = screen.screenNameLabelFontSize;
+        const color = screen.screenNameLabelColorMode === 'auto'
+            ? '#ffffff'
+            : screen.screenNameLabelColor;
+        masterCtx.fillStyle = color;
+        masterCtx.font = `bold ${fontSize}px sans-serif`;
+        masterCtx.textAlign = 'center';
+        masterCtx.textBaseline = 'middle';
+        const pos = screen.screenNameLabelPosition;
+        let tx = contentWidth / 2;
+        let ty = contentHeight / 2;
+        const pad = fontSize * 0.6;
+        if (pos === 'top-left') { tx = pad; ty = pad; masterCtx.textAlign = 'left'; }
+        else if (pos === 'top-right') { tx = contentWidth - pad; ty = pad; masterCtx.textAlign = 'right'; }
+        else if (pos === 'bottom-left') { tx = pad; ty = contentHeight - pad; masterCtx.textAlign = 'left'; }
+        else if (pos === 'bottom-right') { tx = contentWidth - pad; ty = contentHeight - pad; masterCtx.textAlign = 'right'; }
+        // Shadow for readability
+        masterCtx.shadowColor = 'rgba(0,0,0,0.8)';
+        masterCtx.shadowBlur = fontSize * 0.3;
+        masterCtx.fillText(screen.name, tx, ty);
+        masterCtx.shadowBlur = 0;
+    }
+
     return masterCanvas;
   }, []);
 
@@ -1337,11 +1370,18 @@ const handleRightHalfTileChange = (add: boolean) => {
 
         screenArrangement.push({
             screenId: screen.id,
+            screenName: screen.name,
             x: screen.rasterOffset.x,
             y: screen.rasterOffset.y,
             width: contentWidth,
             height: contentHeight,
             activeBounds: screenActiveBounds,
+            showScreenName: screen.showScreenName,
+            screenNameLabelPosition: screen.screenNameLabelPosition,
+            screenNameLabelFontSize: screen.screenNameLabelFontSize,
+            screenNameLabelColor: screen.screenNameLabelColor,
+            screenNameLabelColorMode: screen.screenNameLabelColorMode,
+            showSliceOffsetLabels: screen.showSliceOffsetLabels,
         });
 
         if (screen.rasterOffset.x + contentWidth > totalContentWidth) {

@@ -33,10 +33,7 @@ export function MediaOutputControls() {
     generateRasterMap,
     screens,
     rasterMapConfig,
-    setRasterOffset,
     calculateAndApplyOptimalOffset,
-    showSliceOffsetLabels,
-    setShowSliceOffsetLabels,
     currentScreen,
     updateScreenById,
     rasterBgColor,
@@ -163,14 +160,6 @@ export function MediaOutputControls() {
             className="w-10 h-8 p-0.5 cursor-pointer border-border rounded"
           />
         </div>
-      </div>
-
-      <Separator />
-
-      {/* Show content offsets (global) */}
-      <div className="flex items-center justify-between">
-        <Label htmlFor="show-slice-offsets-raster">Show Content Offsets</Label>
-        <Switch id="show-slice-offsets-raster" checked={showSliceOffsetLabels} onCheckedChange={setShowSliceOffsetLabels} />
       </div>
 
       <Separator />
