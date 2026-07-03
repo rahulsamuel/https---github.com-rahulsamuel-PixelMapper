@@ -1,5 +1,3 @@
-"use server";
-
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export type LedProductData = {
