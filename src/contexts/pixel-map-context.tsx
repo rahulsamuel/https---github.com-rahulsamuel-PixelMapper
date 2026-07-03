@@ -59,6 +59,11 @@ type LabelColorMode = 'single' | 'auto';
 type ResolutionType = 'content' | 'hd' | '4k-uhd' | '4k-dci' | 'custom';
 type ProcessorType = 'Brompton' | 'Novastar' | 'Helios';
 
+export interface RasterGroup {
+  id: string;
+  name: string;
+}
+
 export interface RasterSlice {
   key: string;
   filename: string;
@@ -149,6 +154,7 @@ export interface Screen {
   dataLabelColor: string;
   powerLabelColor: string;
   showSliceOffsetLabels: boolean;
+  rasterGroupId: string;
   topHalfTile: boolean;
   bottomHalfTile: boolean;
   leftHalfTile: boolean;
@@ -231,7 +237,15 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setActiveTab: Dispatch<SetStateAction<string>>;
   activeBounds: ActiveBounds | null;
   rasterMapConfig: RasterMapConfig | null;
-  setRasterMapConfig: Dispatch<SetStateAction<RasterMapConfig | null>>;
+  setRasterMapConfig: (config: RasterMapConfig | null) => void;
+  rasterMapConfigs: Record<string, RasterMapConfig>;
+  rasterGroups: RasterGroup[];
+  setRasterGroups: Dispatch<SetStateAction<RasterGroup[]>>;
+  activeRasterGroupId: string;
+  setActiveRasterGroupId: Dispatch<SetStateAction<string>>;
+  addRasterGroup: () => string;
+  renameRasterGroup: (id: string, name: string) => void;
+  deleteRasterGroup: (id: string) => void;
   setRasterOffset: Dispatch<SetStateAction<{ x: number; y: number; }>>;
   updateScreenById: (screenId: string, updater: (s: Screen) => Screen) => void;
   rasterBgColor: string;
@@ -376,6 +390,7 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     dataLabelColor: '#22c55e',
     powerLabelColor: '#ef4444',
     showSliceOffsetLabels: true,
+    rasterGroupId: 'raster-1',
     topHalfTile: false,
     bottomHalfTile: false,
     leftHalfTile: false,
@@ -409,8 +424,16 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
   const [currentScreenId, setCurrentScreenId] = useState<string>(screens[0].id);
   const [activeTab, setActiveTab] = useState('grid');
-  const [rasterMapConfig, setRasterMapConfig] = useState<RasterMapConfig | null>(null);
+  const [rasterMapConfigs, setRasterMapConfigs] = useState<Record<string, RasterMapConfig>>({});
+  const [rasterGroups, setRasterGroups] = useState<RasterGroup[]>([{ id: 'raster-1', name: 'Raster 1' }]);
+  const [activeRasterGroupId, setActiveRasterGroupId] = useState<string>('raster-1');
   const [rasterBgColor, setRasterBgColor] = useState('#000000');
+  // Derived: the config for the currently viewed raster group (backward-compat alias)
+  const rasterMapConfig = rasterMapConfigs[activeRasterGroupId] ?? null;
+  const setRasterMapConfig = (config: RasterMapConfig | null) => {
+    if (config === null) setRasterMapConfigs({});
+    else setRasterMapConfigs(prev => ({ ...prev, [activeRasterGroupId]: config }));
+  };
   const [products, setProducts] = useState<LedProduct[]>([]);
   const [isManualPowerModalOpen, setIsManualPowerModalOpen] = useState(false);
   const [selectedTileForPower, setSelectedTileForPower] = useState<number | null>(null);
@@ -551,6 +574,30 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setPowerLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, powerLabelColor: typeof updater === 'function' ? updater(s.powerLabelColor) : updater }));
   const setShowSliceOffsetLabels = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showSliceOffsetLabels: typeof updater === 'function' ? updater(s.showSliceOffsetLabels) : updater }));
   const setProcessorType = (updater: SetStateAction<ProcessorType>) => updateCurrentScreen(s => ({ ...s, processorType: typeof updater === 'function' ? updater(s.processorType) : updater }));
+
+  const addRasterGroup = useCallback(() => {
+    const newId = `raster-${Date.now()}`;
+    const newGroup: RasterGroup = { id: newId, name: `Raster ${rasterGroups.length + 1}` };
+    setRasterGroups(prev => [...prev, newGroup]);
+    setActiveRasterGroupId(newId);
+    // Assign current screen to new group
+    updateCurrentScreen(s => ({ ...s, rasterGroupId: newId }));
+    return newId;
+  }, [rasterGroups.length, updateCurrentScreen]);
+
+  const renameRasterGroup = useCallback((id: string, name: string) => {
+    setRasterGroups(prev => prev.map(g => g.id === id ? { ...g, name } : g));
+  }, []);
+
+  const deleteRasterGroup = useCallback((id: string) => {
+    if (rasterGroups.length <= 1) return;
+    const fallbackId = rasterGroups.find(g => g.id !== id)?.id ?? 'raster-1';
+    setRasterGroups(prev => prev.filter(g => g.id !== id));
+    // Move screens in deleted group to fallback
+    setScreens(prev => prev.map(s => s.rasterGroupId === id ? { ...s, rasterGroupId: fallbackId } : s));
+    setRasterMapConfigs(prev => { const next = { ...prev }; delete next[id]; return next; });
+    if (activeRasterGroupId === id) setActiveRasterGroupId(fallbackId);
+  }, [rasterGroups, activeRasterGroupId]);
   const setShowModules = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showModules: typeof updater === 'function' ? updater(s.showModules) : updater }));
   const setModuleBorderColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, moduleBorderColor: typeof updater === 'function' ? updater(s.moduleBorderColor) : updater }));
   const setRandomizeModuleColors = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, randomizeModuleColors: typeof updater === 'function' ? updater(s.randomizeModuleColors) : updater }));
@@ -636,15 +683,16 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
   const wiringData = useMemo(() => {
     if (!currentScreen) return [];
+    const currentScreenGroupConfig = rasterMapConfigs[currentScreen.rasterGroupId ?? 'raster-1'] ?? null;
     return getWiringData({
-      dimensions: { ...currentScreen.dimensions, screenHeight: effectiveScreenHeight, screenWidth: effectiveScreenWidth }, 
-      tiles: currentScreen.tiles, 
-      wiringPortConfig: currentScreen.wiringPortConfig, 
+      dimensions: { ...currentScreen.dimensions, screenHeight: effectiveScreenHeight, screenWidth: effectiveScreenWidth },
+      tiles: currentScreen.tiles,
+      wiringPortConfig: currentScreen.wiringPortConfig,
       dataPortStartNumber: currentScreen.dataPortStartNumber,
-      wiringPattern: currentScreen.wiringPattern, 
-      powerWiringPattern: currentScreen.powerWiringPattern, 
-      rasterMapConfig, 
-      tilesPerPowerString: currentScreen.tilesPerPowerString, 
+      wiringPattern: currentScreen.wiringPattern,
+      powerWiringPattern: currentScreen.powerWiringPattern,
+      rasterMapConfig: currentScreenGroupConfig,
+      tilesPerPowerString: currentScreen.tilesPerPowerString,
       topHalfTile: currentScreen.topHalfTile,
       bottomHalfTile: currentScreen.bottomHalfTile,
       leftHalfTile: currentScreen.leftHalfTile,
@@ -652,7 +700,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       processorType: currentScreen.processorType,
       screenId: currentScreen.id
     })
-  }, [currentScreen, effectiveScreenHeight, effectiveScreenWidth, rasterMapConfig]);
+  }, [currentScreen, effectiveScreenHeight, effectiveScreenWidth, rasterMapConfigs]);
 
 
   const zoom = currentScreen.zoomLevels[activeTab as keyof typeof currentScreen.zoomLevels] || 1;
@@ -842,12 +890,14 @@ const handleRightHalfTileChange = (add: boolean) => {
   }, [currentScreen, effectiveScreenWidth, effectiveScreenHeight]);
 
   const sliceOffsetLabels = useMemo(() => {
-    if (!rasterMapConfig || !activeBounds || !rasterMapConfig.slices.length || !currentScreen.rasterOffset || !currentScreen.wiringPattern) {
+    const currentGroupConfig = rasterMapConfigs[currentScreen.rasterGroupId ?? 'raster-1'] ?? null;
+    if (!currentGroupConfig || !activeBounds || !currentGroupConfig.slices.length || !currentScreen.rasterOffset || !currentScreen.wiringPattern) {
       return [];
     }
 
     const { tileHeight, tileWidth } = currentScreen.dimensions;
-    const { slices, outputWidth, outputHeight } = rasterMapConfig;
+    const { slices, outputWidth, outputHeight } = currentGroupConfig;
+    const rasterMapConfig = currentGroupConfig;
     
     const newLabels = Array(effectiveScreenWidth * effectiveScreenHeight).fill('');
     const activeTileIndices = currentScreen.tiles.map((_, i) => i).filter(i => !currentScreen.tiles[i].deleted);
@@ -922,7 +972,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     });
 
     return newLabels;
-  }, [currentScreen, rasterMapConfig, activeBounds, effectiveScreenWidth, effectiveScreenHeight, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile]);
+  }, [currentScreen, rasterMapConfigs, activeBounds, effectiveScreenWidth, effectiveScreenHeight, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile]);
 
   const applyManualPowerWiring = useCallback((args: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; }) => {
     updateCurrentScreen(screen => {
@@ -1323,23 +1373,18 @@ const handleRightHalfTileChange = (add: boolean) => {
     return masterCanvas;
   }, []);
 
-  const regenerateRasterPreview = useCallback(() => {
-    if (!currentScreen.lastRasterArgs) {
-        setRasterMapConfig(null);
-        return;
-    }
-    const { filename, outputWidth, outputHeight } = currentScreen.lastRasterArgs;
+  const buildRasterConfigForGroup = useCallback((groupId: string, filename: string, outputWidth?: number, outputHeight?: number): RasterMapConfig | null => {
+    const groupScreens = screens.filter(s => (s.rasterGroupId ?? 'raster-1') === groupId);
 
     const screenArrangement: ScreenArrangement[] = [];
     let totalContentWidth = 0;
     let totalContentHeight = 0;
 
-    for (const screen of screens) {
+    for (const screen of groupScreens) {
         const activeTiles = screen.tiles.map((t, i) => ({...t, index: i})).filter(t => !t.deleted);
         if (activeTiles.length === 0) continue;
 
         let minX = screen.dimensions.screenWidth, minY = Infinity, maxX = -1, maxY = -1;
-        
         const currentEffectiveScreenWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
 
         activeTiles.forEach(tile => {
@@ -1360,7 +1405,7 @@ const handleRightHalfTileChange = (add: boolean) => {
             const isLeftHalf = screen.leftHalfTile && x === 0;
             const isRightHalf = screen.rightHalfTile && x === (screenEffectiveWidth - 1);
             return (isLeftHalf || isRightHalf) ? screen.dimensions.tileWidth / 2 : screen.dimensions.tileWidth;
-        }).reduce((a,b) => a + b, 0);
+        }).reduce((a, b) => a + b, 0);
 
         const contentHeight = Array.from({ length: maxY - minY + 1 }, (_, i) => {
             const y = minY + i;
@@ -1386,47 +1431,47 @@ const handleRightHalfTileChange = (add: boolean) => {
         });
 
         if (screen.rasterOffset.x + contentWidth > totalContentWidth) {
-          totalContentWidth = screen.rasterOffset.x + contentWidth;
+            totalContentWidth = screen.rasterOffset.x + contentWidth;
         }
         if (screen.rasterOffset.y + contentHeight > totalContentHeight) {
-          totalContentHeight = screen.rasterOffset.y + contentHeight;
+            totalContentHeight = screen.rasterOffset.y + contentHeight;
         }
     }
 
+    if (screenArrangement.length === 0) return null;
+
     const finalOutputWidth = outputWidth || totalContentWidth;
     const finalOutputHeight = outputHeight || totalContentHeight;
-    
+
     let resolutionType: ResolutionType = 'content';
     if (outputWidth === 1920 && outputHeight === 1080) resolutionType = 'hd';
     else if (outputWidth === 3840 && outputHeight === 2160) resolutionType = '4k-uhd';
     else if (outputWidth === 4096 && outputHeight === 2160) resolutionType = '4k-dci';
-    else if(outputWidth && outputHeight) resolutionType = 'custom';
+    else if (outputWidth && outputHeight) resolutionType = 'custom';
 
     const slices: RasterSlice[] = [];
     const baseFilename = filename.replace('.png', '');
 
     const effectiveTotalContentWidth = screenArrangement.reduce((max, s) => Math.max(max, s.x + s.width), 0);
     const effectiveTotalContentHeight = screenArrangement.reduce((max, s) => Math.max(max, s.y + s.height), 0);
-    
+
     const numCols = Math.ceil(effectiveTotalContentWidth / finalOutputWidth);
     const numRows = Math.ceil(effectiveTotalContentHeight / finalOutputHeight);
-
     const totalPreviewWidth = numCols * finalOutputWidth;
     const totalPreviewHeight = numRows * finalOutputHeight;
 
     const fullContentCanvas = document.createElement('canvas');
-    fullContentCanvas.width = effectiveTotalContentWidth;
-    fullContentCanvas.height = effectiveTotalContentHeight;
+    fullContentCanvas.width = Math.max(1, effectiveTotalContentWidth);
+    fullContentCanvas.height = Math.max(1, effectiveTotalContentHeight);
     const masterCtx = fullContentCanvas.getContext('2d');
-    if (!masterCtx) return;
+    if (!masterCtx) return null;
 
     masterCtx.fillStyle = rasterBgColor;
     masterCtx.fillRect(0, 0, fullContentCanvas.width, fullContentCanvas.height);
 
     for (const arrangement of screenArrangement) {
-        const screen = screens.find(s => s.id === arrangement.screenId);
+        const screen = groupScreens.find(s => s.id === arrangement.screenId);
         if (!screen) continue;
-
         const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds);
         if (screenCanvas) {
             masterCtx.drawImage(screenCanvas, arrangement.x, arrangement.y);
@@ -1439,20 +1484,14 @@ const handleRightHalfTileChange = (add: boolean) => {
         for (let col = 0; col < numCols; col++) {
             const sliceX = col * finalOutputWidth;
             const sliceY = row * finalOutputHeight;
-            
-            const sliceFilename = (numCols > 1 || numRows > 1) ? `${baseFilename}-R${row + 1}-C${col + 1}.png` : `${baseFilename}.png`;
-            slices.push({
-                key: `${row}-${col}`,
-                filename: sliceFilename,
-                x: sliceX,
-                y: sliceY,
-                width: finalOutputWidth,
-                height: finalOutputHeight
-            });
+            const sliceFilename = (numCols > 1 || numRows > 1)
+                ? `${baseFilename}-R${row + 1}-C${col + 1}.png`
+                : `${baseFilename}.png`;
+            slices.push({ key: `${row}-${col}`, filename: sliceFilename, x: sliceX, y: sliceY, width: finalOutputWidth, height: finalOutputHeight });
         }
     }
 
-    setRasterMapConfig({
+    return {
         slices,
         totalWidth: totalPreviewWidth,
         totalHeight: totalPreviewHeight,
@@ -1463,8 +1502,23 @@ const handleRightHalfTileChange = (add: boolean) => {
         previewImage,
         resolutionType,
         screenArrangement,
-    });
-  }, [screens, currentScreen.lastRasterArgs, createScreenContentCanvas, rasterBgColor]);
+    };
+  }, [screens, createScreenContentCanvas, rasterBgColor]);
+
+  const regenerateRasterPreview = useCallback(() => {
+    if (!currentScreen.lastRasterArgs) {
+        setRasterMapConfigs({});
+        return;
+    }
+    const { filename, outputWidth, outputHeight } = currentScreen.lastRasterArgs;
+
+    const newConfigs: Record<string, RasterMapConfig> = {};
+    for (const group of rasterGroups) {
+        const config = buildRasterConfigForGroup(group.id, filename, outputWidth, outputHeight);
+        if (config) newConfigs[group.id] = config;
+    }
+    setRasterMapConfigs(newConfigs);
+  }, [currentScreen.lastRasterArgs, rasterGroups, buildRasterConfigForGroup]);
 
 
   useEffect(() => {
@@ -2435,6 +2489,14 @@ const handleRightHalfTileChange = (add: boolean) => {
     activeBounds,
     rasterMapConfig,
     setRasterMapConfig,
+    rasterMapConfigs,
+    rasterGroups,
+    setRasterGroups,
+    activeRasterGroupId,
+    setActiveRasterGroupId,
+    addRasterGroup,
+    renameRasterGroup,
+    deleteRasterGroup,
     rasterOffset: currentScreen.rasterOffset,
     setRasterOffset,
     updateScreenById,

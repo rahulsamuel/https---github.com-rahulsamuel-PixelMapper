@@ -2,8 +2,9 @@
 "use client";
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
+import type { Screen, RasterMapConfig, RasterGroup } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
-import { FileOutput, RotateCcw } from "lucide-react";
+import { FileOutput, RotateCcw, Plus, Trash2, Pencil, Check, X } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -33,6 +34,13 @@ export function MediaOutputControls() {
     generateRasterMap,
     screens,
     rasterMapConfig,
+    rasterMapConfigs,
+    rasterGroups,
+    activeRasterGroupId,
+    setActiveRasterGroupId,
+    addRasterGroup,
+    renameRasterGroup,
+    deleteRasterGroup,
     calculateAndApplyOptimalOffset,
     currentScreen,
     updateScreenById,
@@ -43,13 +51,17 @@ export function MediaOutputControls() {
   const [customWidth, setCustomWidth] = useState("1920");
   const [customHeight, setCustomHeight] = useState("1080");
   const [activePreset, setActivePreset] = useState<PresetKey>('content');
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editingGroupName, setEditingGroupName] = useState('');
+
+  const activeConfig = rasterMapConfigs[activeRasterGroupId] ?? null;
 
   const { totalWidth, totalHeight } = useMemo(() => {
-    if (rasterMapConfig?.screenArrangement) {
-      return { totalWidth: rasterMapConfig.contentWidth, totalHeight: rasterMapConfig.contentHeight };
+    if (activeConfig?.screenArrangement) {
+      return { totalWidth: activeConfig.contentWidth, totalHeight: activeConfig.contentHeight };
     }
     return { totalWidth: 0, totalHeight: 0 };
-  }, [rasterMapConfig]);
+  }, [activeConfig]);
 
   const anyTileTooBig = (width: number, height: number) =>
     screens.some(s => s.dimensions.tileWidth > width || s.dimensions.tileHeight > height);
@@ -64,12 +76,101 @@ export function MediaOutputControls() {
     generateRasterMap('raster-map-custom.png', parseInt(customWidth), parseInt(customHeight));
   };
 
+  const startEditGroup = (group: RasterGroup) => {
+    setEditingGroupId(group.id);
+    setEditingGroupName(group.name);
+  };
+
+  const commitEditGroup = () => {
+    if (editingGroupId && editingGroupName.trim()) {
+      renameRasterGroup(editingGroupId, editingGroupName.trim());
+    }
+    setEditingGroupId(null);
+  };
+
+  const screensInGroup = (groupId: string) =>
+    screens.filter(s => (s.rasterGroupId ?? 'raster-1') === groupId);
+
   return (
     <div className="space-y-4">
+      {/* Raster Groups management */}
+      <div>
+        <div className="flex items-center justify-between pb-1">
+          <Label className="font-semibold">Raster Outputs</Label>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-xs gap-1"
+            onClick={() => addRasterGroup()}
+          >
+            <Plus className="h-3 w-3" />
+            Add Raster
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground pb-2">Group screens into separate raster outputs.</p>
+        <div className="space-y-1.5">
+          {rasterGroups.map(group => {
+            const isActive = group.id === activeRasterGroupId;
+            const isEditing = editingGroupId === group.id;
+            const count = screensInGroup(group.id).length;
+            return (
+              <div
+                key={group.id}
+                className={cn(
+                  "flex items-center gap-2 rounded-md border px-2.5 py-1.5 cursor-pointer transition-colors",
+                  isActive ? "border-primary bg-primary/10" : "border-border hover:border-primary/40"
+                )}
+                onClick={() => !isEditing && setActiveRasterGroupId(group.id)}
+              >
+                {isEditing ? (
+                  <>
+                    <Input
+                      value={editingGroupName}
+                      onChange={e => setEditingGroupName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') commitEditGroup();
+                        if (e.key === 'Escape') setEditingGroupId(null);
+                        e.stopPropagation();
+                      }}
+                      className="h-6 text-xs flex-1"
+                      autoFocus
+                      onClick={e => e.stopPropagation()}
+                    />
+                    <button onClick={e => { e.stopPropagation(); commitEditGroup(); }} className="text-primary"><Check className="h-3.5 w-3.5" /></button>
+                    <button onClick={e => { e.stopPropagation(); setEditingGroupId(null); }} className="text-muted-foreground"><X className="h-3.5 w-3.5" /></button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-xs font-medium flex-1 truncate">{group.name}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">{count} screen{count !== 1 ? 's' : ''}</span>
+                    <button
+                      onClick={e => { e.stopPropagation(); startEditGroup(group); }}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    {rasterGroups.length > 1 && (
+                      <button
+                        onClick={e => { e.stopPropagation(); deleteRasterGroup(group.id); }}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <Separator />
+
       {/* Preset buttons */}
       <div>
         <Label className="font-semibold">Raster Map Generation</Label>
-        <p className="text-sm text-muted-foreground pb-2">Create raster maps for media servers from presets.</p>
+        <p className="text-sm text-muted-foreground pb-2">Generate for the active raster output.</p>
         <div className="space-y-2">
           <Button
             onClick={() => handlePreset('content', 'raster-map-content.png')}
@@ -167,15 +268,16 @@ export function MediaOutputControls() {
       {/* Per-screen controls */}
       <div>
         <Label className="font-semibold">Screen Settings</Label>
-        <p className="text-sm text-muted-foreground pb-2">Configure each screen's position, name, and offset.</p>
+        <p className="text-sm text-muted-foreground pb-2">Configure each screen&apos;s position, name, and raster assignment.</p>
         <div className="space-y-4">
           {screens.map(screen => (
             <ScreenRasterControls
               key={screen.id}
               screen={screen}
+              rasterGroups={rasterGroups}
               updateScreenById={updateScreenById}
               isCurrentScreen={screen.id === currentScreen.id}
-              rasterMapConfig={rasterMapConfig}
+              rasterMapConfig={rasterMapConfigs[screen.rasterGroupId ?? 'raster-1'] ?? null}
               calculateAndApplyOptimalOffset={screen.id === currentScreen.id ? calculateAndApplyOptimalOffset : undefined}
             />
           ))}
@@ -187,15 +289,17 @@ export function MediaOutputControls() {
 
 function ScreenRasterControls({
   screen,
+  rasterGroups,
   updateScreenById,
   isCurrentScreen,
   rasterMapConfig,
   calculateAndApplyOptimalOffset,
 }: {
-  screen: import('@/contexts/pixel-map-context').Screen;
-  updateScreenById: (id: string, updater: (s: import('@/contexts/pixel-map-context').Screen) => import('@/contexts/pixel-map-context').Screen) => void;
+  screen: Screen;
+  rasterGroups: RasterGroup[];
+  updateScreenById: (id: string, updater: (s: Screen) => Screen) => void;
   isCurrentScreen: boolean;
-  rasterMapConfig: import('@/contexts/pixel-map-context').RasterMapConfig | null;
+  rasterMapConfig: RasterMapConfig | null;
   calculateAndApplyOptimalOffset?: () => void;
 }) {
   const [localOffsetX, setLocalOffsetX] = useState(screen.rasterOffset.x);
@@ -210,6 +314,8 @@ function ScreenRasterControls({
     updateScreenById(screen.id, s => ({ ...s, rasterOffset: { x: localOffsetX, y: localOffsetY } }));
   };
 
+  const assignedGroupName = rasterGroups.find(g => g.id === (screen.rasterGroupId ?? 'raster-1'))?.name ?? 'Raster 1';
+
   return (
     <div className={cn(
       "rounded-lg border p-3 space-y-3",
@@ -219,6 +325,26 @@ function ScreenRasterControls({
         <span className="font-medium text-sm truncate">{screen.name}</span>
         {isCurrentScreen && <span className="text-xs text-primary font-medium shrink-0">Active</span>}
       </div>
+
+      {/* Raster group assignment */}
+      {rasterGroups.length > 1 && (
+        <div className="space-y-1">
+          <Label className="text-xs">Raster Output</Label>
+          <Select
+            value={screen.rasterGroupId ?? 'raster-1'}
+            onValueChange={val => updateScreenById(screen.id, s => ({ ...s, rasterGroupId: val }))}
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder={assignedGroupName} />
+            </SelectTrigger>
+            <SelectContent>
+              {rasterGroups.map(g => (
+                <SelectItem key={g.id} value={g.id} className="text-xs">{g.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {/* Offset */}
       <div className="flex items-center gap-2">

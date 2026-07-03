@@ -11,6 +11,10 @@ import { Button } from "@/components/ui/button";
 export function RasterMapPreview() {
   const {
     rasterMapConfig,
+    rasterMapConfigs,
+    rasterGroups,
+    activeRasterGroupId,
+    setActiveRasterGroupId,
     zoom,
     rasterMapRef,
     rasterBgColor,
@@ -19,7 +23,9 @@ export function RasterMapPreview() {
     downloadRasterSlices,
   } = usePixelMap();
 
-  if (!rasterMapConfig) {
+  const hasAnyConfig = Object.keys(rasterMapConfigs).length > 0;
+
+  if (!hasAnyConfig) {
     return (
       <div className="flex h-full w-full items-center justify-center text-muted-foreground p-4">
         <div className="text-center">
@@ -30,7 +36,27 @@ export function RasterMapPreview() {
     );
   }
 
-  const { totalWidth, totalHeight, previewImage, slices, resolutionType, contentWidth, contentHeight, screenArrangement } = rasterMapConfig;
+  // Show tabs only when there are multiple groups
+  const groupsWithConfig = rasterGroups.filter(g => rasterMapConfigs[g.id]);
+  const showTabs = groupsWithConfig.length > 1;
+
+  // Use the active group's config, falling back to first available
+  const displayGroupId = rasterMapConfigs[activeRasterGroupId]
+    ? activeRasterGroupId
+    : groupsWithConfig[0]?.id ?? activeRasterGroupId;
+  const displayConfig = rasterMapConfigs[displayGroupId] ?? null;
+
+  if (!displayConfig) {
+    return (
+      <div className="flex h-full w-full items-center justify-center text-muted-foreground p-4">
+        <div className="text-center">
+          <p className="text-sm">No screens assigned to this raster output.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { totalWidth, totalHeight, previewImage, slices, resolutionType, contentWidth, contentHeight, screenArrangement } = displayConfig;
 
   // Per-screen tile offset labels: { screenId -> { tileIndex -> label } }
   const tileOffsetsByScreen = useMemo(() => {
@@ -40,7 +66,7 @@ export function RasterMapPreview() {
       if (!arrangement.showSliceOffsetLabels) continue;
 
       const screen = screens.find(s => s.id === arrangement.screenId);
-      if (!screen || !rasterMapConfig.slices.length) continue;
+      if (!screen || !displayConfig.slices.length) continue;
 
       const { tileWidth, tileHeight } = screen.dimensions;
       const effW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
@@ -80,7 +106,7 @@ export function RasterMapPreview() {
 
       tilesBySlice.forEach((sliceIndices, sliceKey) => {
         if (!sliceIndices.length) return;
-        const slice = rasterMapConfig.slices.find(s => s.key === sliceKey);
+        const slice = displayConfig.slices.find(s => s.key === sliceKey);
         if (!slice) return;
         const firstIndex = sliceIndices[0];
         const tx = firstIndex % effW;
@@ -118,7 +144,7 @@ export function RasterMapPreview() {
     }
 
     return result;
-  }, [rasterMapConfig, screens, screenArrangement]);
+  }, [displayConfig, screens, screenArrangement]);
 
   const getSliceBorderColor = () => {
     switch (resolutionType) {
@@ -134,6 +160,29 @@ export function RasterMapPreview() {
 
   return (
     <div className="space-y-2">
+      {/* Raster group tabs */}
+      {showTabs && (
+        <div className="flex items-center gap-1 flex-wrap px-1">
+          {groupsWithConfig.map(g => (
+            <button
+              key={g.id}
+              onClick={() => setActiveRasterGroupId(g.id)}
+              className={cn(
+                "px-3 py-1 rounded text-xs font-medium transition-colors border",
+                g.id === displayGroupId
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-primary/50"
+              )}
+            >
+              {g.name}
+              <span className="ml-1.5 opacity-60">
+                {rasterMapConfigs[g.id]?.screenArrangement.length ?? 0}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {hasMultipleSlices && (
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
