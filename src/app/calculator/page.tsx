@@ -3,7 +3,6 @@
 
 import dynamic from 'next/dynamic';
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -174,37 +173,35 @@ export default function CalculatorPage() {
     };
 
     return (
-        <div className="container mx-auto p-4 sm:p-6 md:p-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                <div>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Input Parameters</CardTitle>
-                            <CardDescription>
-                                Enter the details of your LED setup to calculate power and data.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <CalculatorForm 
-                                products={products}
-                                formState={formState}
-                                onFormChange={handleFormChange}
-                                selectedProduct={selectedProduct}
-                            />
-                        </CardContent>
-                    </Card>
-                    <div className="mt-4">
-                        <Link href="/add-led">
-                            <Button variant="outline" className="w-full">
-                                <PlusCircle className="mr-2" />
-                                Add New LED Product
-                            </Button>
-                        </Link>
+        <div className="h-[calc(100svh-3.5rem)] flex overflow-hidden">
+            {/* Left sidebar */}
+            <div className="w-80 flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden">
+                <div className="flex-shrink-0 px-4 pt-4 pb-2 border-b">
+                    <h2 className="font-semibold text-sm">Input Parameters</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Enter your LED setup details.</p>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                    <div className="p-4 space-y-0">
+                        <CalculatorForm
+                            products={products}
+                            formState={formState}
+                            onFormChange={handleFormChange}
+                            selectedProduct={selectedProduct}
+                        />
+                        <div className="pt-4">
+                            <Link href="/add-led">
+                                <Button variant="outline" className="w-full" size="sm">
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Add New LED Product
+                                </Button>
+                            </Link>
+                        </div>
                     </div>
                 </div>
-                <div>
-                    {results ? <ResultsDisplay results={results} formState={formState} /> : <ResultsDisplaySkeleton />}
-                </div>
+            </div>
+            {/* Main content */}
+            <div className="flex-1 overflow-auto p-6">
+                {results ? <ResultsDisplay results={results} formState={formState} /> : <ResultsDisplaySkeleton />}
             </div>
         </div>
     );

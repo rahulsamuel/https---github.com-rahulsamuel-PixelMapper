@@ -107,37 +107,35 @@ export default function PowerDataPage() {
 
 
     return (
-        <div className="container mx-auto max-w-4xl p-4 sm:p-6 md:p-8">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Power & Data Load Calculator</CardTitle>
-                    <CardDescription>
-                        Calculate the maximum number of LED tiles a single power circuit or data port can support.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Input Side */}
-                    <div className="space-y-6">
+        <div className="h-[calc(100svh-3.5rem)] flex overflow-hidden">
+            {/* Left sidebar */}
+            <div className="w-80 flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden">
+                <div className="flex-shrink-0 px-4 pt-4 pb-2 border-b">
+                    <h2 className="font-semibold text-sm">Input Parameters</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Configure power circuit and data port settings.</p>
+                </div>
+                <div className="flex-1 overflow-y-auto">
+                    <div className="p-4 space-y-5">
                         <div>
-                            <h3 className="font-semibold text-lg mb-2">LED Product</h3>
-                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="led-manufacturer">Manufacturer</Label>
-                                  <Select onValueChange={handleManufacturerChange} value={selectedManufacturer}>
-                                    <SelectTrigger id="led-manufacturer"><SelectValue placeholder="Select..." /></SelectTrigger>
-                                    <SelectContent>
-                                      {manufacturers.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                                    </SelectContent>
-                                  </Select>
+                            <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-3">LED Product</h3>
+                            <div className="space-y-3">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="led-manufacturer" className="text-xs">Manufacturer</Label>
+                                    <Select onValueChange={handleManufacturerChange} value={selectedManufacturer}>
+                                        <SelectTrigger id="led-manufacturer"><SelectValue placeholder="Select..." /></SelectTrigger>
+                                        <SelectContent>
+                                            {manufacturers.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
-                                <div className="space-y-2">
-                                  <Label htmlFor="led-product">Product</Label>
-                                  <Select onValueChange={setSelectedProductId} value={selectedProductId ?? ''} disabled={!selectedManufacturer}>
-                                    <SelectTrigger id="led-product"><SelectValue placeholder="Select..." /></SelectTrigger>
-                                    <SelectContent>
-                                      {availableProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.productName}</SelectItem>)}
-                                    </SelectContent>
-                                  </Select>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="led-product" className="text-xs">Product</Label>
+                                    <Select onValueChange={setSelectedProductId} value={selectedProductId ?? ''} disabled={!selectedManufacturer}>
+                                        <SelectTrigger id="led-product"><SelectValue placeholder="Select..." /></SelectTrigger>
+                                        <SelectContent>
+                                            {availableProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.productName}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
                         </div>
@@ -145,10 +143,10 @@ export default function PowerDataPage() {
                         <Separator />
 
                         <div>
-                            <h3 className="font-semibold text-lg mb-2">Power Circuit</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="circuit-voltage">Voltage</Label>
+                            <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-3">Power Circuit</h3>
+                            <div className="space-y-3">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="circuit-voltage" className="text-xs">Voltage</Label>
                                     <Select value={circuitVoltage} onValueChange={setCircuitVoltage}>
                                         <SelectTrigger id="circuit-voltage"><SelectValue /></SelectTrigger>
                                         <SelectContent>
@@ -160,24 +158,24 @@ export default function PowerDataPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="circuit-amperage">Amperage</Label>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="circuit-amperage" className="text-xs">Amperage (A)</Label>
                                     <Input id="circuit-amperage" type="number" value={circuitAmperage} onChange={e => setCircuitAmperage(e.target.value)} />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="safety-margin">Margin (%)</Label>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="safety-margin" className="text-xs">Safety Margin (%)</Label>
                                     <Input id="safety-margin" type="number" value={safetyMargin} onChange={e => setSafetyMargin(e.target.value)} />
                                 </div>
                             </div>
                         </div>
 
                         <Separator />
-                        
+
                         <div>
-                            <h3 className="font-semibold text-lg mb-2">Data Port</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="processor-type">Processor Type</Label>
+                            <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-3">Data Port</h3>
+                            <div className="space-y-3">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="processor-type" className="text-xs">Processor Type</Label>
                                     <Select value={processor} onValueChange={(v) => setProcessor(v as ProcessorType)}>
                                         <SelectTrigger id="processor-type"><SelectValue /></SelectTrigger>
                                         <SelectContent>
@@ -187,8 +185,8 @@ export default function PowerDataPage() {
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="refresh-rate">Refresh Rate (Hz)</Label>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="refresh-rate" className="text-xs">Refresh Rate (Hz)</Label>
                                     <Select value={refreshRate} onValueChange={setRefreshRate}>
                                         <SelectTrigger id="refresh-rate"><SelectValue /></SelectTrigger>
                                         <SelectContent>
@@ -200,35 +198,37 @@ export default function PowerDataPage() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
 
-                    </div>
-                    {/* Results Side */}
-                    <div className="space-y-8">
-                        <Card className="bg-muted/30 text-center">
-                            <CardHeader>
-                                <CardTitle className="text-muted-foreground">Max Tiles per Power Circuit</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-6xl font-bold">{maxTilesPerPowerCircuit}</p>
-                                <p className="text-sm text-muted-foreground">
-                                    Based on a {circuitAmperage}A @ {circuitVoltage}V circuit with a {safetyMargin}% safety margin.
-                                </p>
-                            </CardContent>
-                        </Card>
-                        <Card className="bg-muted/30 text-center">
-                            <CardHeader>
-                                <CardTitle className="text-muted-foreground">Max Tiles per Data Port</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-6xl font-bold">{maxTilesPerDataPort}</p>
-                                <p className="text-sm text-muted-foreground">
-                                    Based on a {processor} processor port at {refreshRate}Hz.
-                                </p>
-                            </CardContent>
-                        </Card>
-                    </div>
-                </CardContent>
-            </Card>
+            {/* Main content */}
+            <div className="flex-1 overflow-auto p-6 flex items-center justify-center">
+                <div className="w-full max-w-2xl space-y-6">
+                    <Card className="bg-muted/30 text-center">
+                        <CardHeader>
+                            <CardTitle className="text-muted-foreground">Max Tiles per Power Circuit</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-7xl font-bold tracking-tight">{maxTilesPerPowerCircuit}</p>
+                            <p className="text-sm text-muted-foreground mt-2">
+                                Based on a {circuitAmperage}A @ {circuitVoltage}V circuit with a {safetyMargin}% safety margin.
+                            </p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-muted/30 text-center">
+                        <CardHeader>
+                            <CardTitle className="text-muted-foreground">Max Tiles per Data Port</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-7xl font-bold tracking-tight">{maxTilesPerDataPort}</p>
+                            <p className="text-sm text-muted-foreground mt-2">
+                                Based on a {processor} processor port at {refreshRate}Hz.
+                            </p>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
         </div>
     );
 }
