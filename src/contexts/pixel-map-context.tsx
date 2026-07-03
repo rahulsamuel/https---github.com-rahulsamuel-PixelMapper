@@ -87,6 +87,8 @@ interface ScreenArrangement {
   screenNameLabelColor: string;
   screenNameLabelColorMode: string;
   showSliceOffsetLabels: boolean;
+  showResolution: boolean;
+  resolutionLabelPosition: string;
 }
 
 export interface RasterMapConfig {
@@ -1383,10 +1385,32 @@ const handleRightHalfTileChange = (add: boolean) => {
         else if (pos === 'top-right') { tx = contentWidth - pad; ty = pad; masterCtx.textAlign = 'right'; }
         else if (pos === 'bottom-left') { tx = pad; ty = contentHeight - pad; masterCtx.textAlign = 'left'; }
         else if (pos === 'bottom-right') { tx = contentWidth - pad; ty = contentHeight - pad; masterCtx.textAlign = 'right'; }
-        // Shadow for readability
         masterCtx.shadowColor = 'rgba(0,0,0,0.8)';
         masterCtx.shadowBlur = fontSize * 0.3;
         masterCtx.fillText(screen.name, tx, ty);
+        masterCtx.shadowBlur = 0;
+    }
+
+    // Draw resolution overlay
+    if (screen.showResolution) {
+        const fontSize = screen.resolutionLabelFontSize ?? 32;
+        const color = (screen.resolutionLabelColorMode ?? 'auto') === 'auto' ? '#ffffff' : (screen.resolutionLabelColor ?? '#ffffff');
+        masterCtx.fillStyle = color;
+        masterCtx.font = `bold ${fontSize}px sans-serif`;
+        masterCtx.textBaseline = 'middle';
+        const pos = screen.resolutionLabelPosition ?? 'bottom-right';
+        const resText = `${contentWidth} x ${contentHeight}px`;
+        let tx = contentWidth / 2;
+        let ty = contentHeight / 2;
+        const pad = fontSize * 0.6;
+        masterCtx.textAlign = 'center';
+        if (pos === 'top-left') { tx = pad; ty = pad; masterCtx.textAlign = 'left'; }
+        else if (pos === 'top-right') { tx = contentWidth - pad; ty = pad; masterCtx.textAlign = 'right'; }
+        else if (pos === 'bottom-left') { tx = pad; ty = contentHeight - pad; masterCtx.textAlign = 'left'; }
+        else if (pos === 'bottom-right') { tx = contentWidth - pad; ty = contentHeight - pad; masterCtx.textAlign = 'right'; }
+        masterCtx.shadowColor = 'rgba(0,0,0,0.8)';
+        masterCtx.shadowBlur = fontSize * 0.3;
+        masterCtx.fillText(resText, tx, ty);
         masterCtx.shadowBlur = 0;
     }
 
@@ -1448,6 +1472,8 @@ const handleRightHalfTileChange = (add: boolean) => {
             screenNameLabelColor: screen.screenNameLabelColor,
             screenNameLabelColorMode: screen.screenNameLabelColorMode,
             showSliceOffsetLabels: screen.showSliceOffsetLabels,
+            showResolution: screen.showResolution ?? false,
+            resolutionLabelPosition: screen.resolutionLabelPosition ?? 'bottom-right',
         });
 
         if (screen.rasterOffset.x + contentWidth > totalContentWidth) {

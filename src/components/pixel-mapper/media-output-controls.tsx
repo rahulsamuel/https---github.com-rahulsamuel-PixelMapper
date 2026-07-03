@@ -445,6 +445,36 @@ function ScreenRasterControls({
           className="scale-90"
         />
       </div>
+
+      {/* Show resolution overlay */}
+      <div className="flex items-center justify-between">
+        <Label className="text-xs">Show Resolution</Label>
+        <Switch
+          checked={screen.showResolution ?? false}
+          onCheckedChange={val => updateScreenById(screen.id, s => ({ ...s, showResolution: val }))}
+          className="scale-90"
+        />
+      </div>
+      {(screen.showResolution) && (
+        <div className="space-y-1">
+          <Label className="text-xs">Resolution Position</Label>
+          <Select
+            value={screen.resolutionLabelPosition ?? 'bottom-right'}
+            onValueChange={val =>
+              updateScreenById(screen.id, s => ({ ...s, resolutionLabelPosition: val as any }))
+            }
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LABEL_POSITIONS.map(p => (
+                <SelectItem key={p.value} value={p.value} className="text-xs">{p.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
     </div>
   );
 }
