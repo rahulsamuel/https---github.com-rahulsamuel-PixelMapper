@@ -44,6 +44,16 @@ export function LabelControls() {
     setScreenNameLabelColor,
     screenNameLabelColorMode,
     setScreenNameLabelColorMode,
+    showResolution,
+    setShowResolution,
+    resolutionLabelPosition,
+    setResolutionLabelPosition,
+    resolutionLabelFontSize,
+    setResolutionLabelFontSize,
+    resolutionLabelColor,
+    setResolutionLabelColor,
+    resolutionLabelColorMode,
+    setResolutionLabelColorMode,
   } = usePixelMap();
 
   return (
@@ -238,6 +248,84 @@ export function LabelControls() {
                             step={1}
                             value={[screenNameLabelFontSize]}
                             onValueChange={(value) => setScreenNameLabelFontSize(value[0])}
+                        />
+                    </div>
+                </div>
+            )}
+        </div>
+
+        <Separator />
+
+        <div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="show-resolution">Show Resolution</Label>
+              <Switch
+                id="show-resolution"
+                checked={showResolution}
+                onCheckedChange={setShowResolution}
+              />
+            </div>
+            {showResolution && (
+                <div className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="resolution-position">Position</Label>
+                        <Select
+                            value={resolutionLabelPosition}
+                            onValueChange={(value) => setResolutionLabelPosition(value as any)}
+                        >
+                            <SelectTrigger id="resolution-position"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="top-left">Top Left</SelectItem>
+                                <SelectItem value="top-right">Top Right</SelectItem>
+                                <SelectItem value="center">Center</SelectItem>
+                                <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                                <SelectItem value="bottom-right">Bottom Right</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="resolution-color-mode">Color Mode</Label>
+                        <Select
+                            value={resolutionLabelColorMode}
+                            onValueChange={(v) => setResolutionLabelColorMode(v as any)}
+                        >
+                            <SelectTrigger id="resolution-color-mode"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="single">Single Color</SelectItem>
+                                <SelectItem value="auto">Automatic (B&W)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    {resolutionLabelColorMode === 'single' && (
+                        <div className="space-y-2">
+                            <Label htmlFor="resolution-color">Color</Label>
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    id="resolution-color"
+                                    type="color"
+                                    value={resolutionLabelColor}
+                                    onChange={(e) => setResolutionLabelColor(e.target.value)}
+                                    className="w-14 p-1"
+                                />
+                                <Input
+                                    type="text"
+                                    value={resolutionLabelColor}
+                                    onChange={(e) => setResolutionLabelColor(e.target.value)}
+                                    placeholder="#ffffff"
+                                    className="font-mono"
+                                />
+                            </div>
+                        </div>
+                    )}
+                    <div className="space-y-2">
+                        <Label htmlFor="resolution-font-size">Font Size: {resolutionLabelFontSize}px</Label>
+                        <Slider
+                            id="resolution-font-size"
+                            min={12}
+                            max={256}
+                            step={1}
+                            value={[resolutionLabelFontSize]}
+                            onValueChange={(value) => setResolutionLabelFontSize(value[0])}
                         />
                     </div>
                 </div>

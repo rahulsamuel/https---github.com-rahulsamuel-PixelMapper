@@ -154,6 +154,11 @@ export interface Screen {
   dataLabelColor: string;
   powerLabelColor: string;
   showSliceOffsetLabels: boolean;
+  showResolution: boolean;
+  resolutionLabelPosition: LabelPosition;
+  resolutionLabelFontSize: number;
+  resolutionLabelColor: string;
+  resolutionLabelColorMode: LabelColorMode;
   rasterGroupId: string;
   topHalfTile: boolean;
   bottomHalfTile: boolean;
@@ -230,6 +235,11 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setScreenNameLabelFontSize: Dispatch<SetStateAction<number>>;
   setScreenNameLabelColor: Dispatch<SetStateAction<string>>;
   setScreenNameLabelColorMode: Dispatch<SetStateAction<LabelColorMode>>;
+  setShowResolution: Dispatch<SetStateAction<boolean>>;
+  setResolutionLabelPosition: Dispatch<SetStateAction<LabelPosition>>;
+  setResolutionLabelFontSize: Dispatch<SetStateAction<number>>;
+  setResolutionLabelColor: Dispatch<SetStateAction<string>>;
+  setResolutionLabelColorMode: Dispatch<SetStateAction<LabelColorMode>>;
   setOnOffMode: Dispatch<SetStateAction<boolean>>;
   zoom: number;
   setZoom: (value: number | ((prev: number) => number), applyToAllTabs?: boolean) => void;
@@ -390,6 +400,11 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     dataLabelColor: '#22c55e',
     powerLabelColor: '#ef4444',
     showSliceOffsetLabels: true,
+    showResolution: false,
+    resolutionLabelPosition: 'bottom-right',
+    resolutionLabelFontSize: 32,
+    resolutionLabelColor: '#ffffff',
+    resolutionLabelColorMode: 'auto',
     rasterGroupId: 'raster-1',
     topHalfTile: false,
     bottomHalfTile: false,
@@ -573,6 +588,11 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setDataLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, dataLabelColor: typeof updater === 'function' ? updater(s.dataLabelColor) : updater }));
   const setPowerLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, powerLabelColor: typeof updater === 'function' ? updater(s.powerLabelColor) : updater }));
   const setShowSliceOffsetLabels = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showSliceOffsetLabels: typeof updater === 'function' ? updater(s.showSliceOffsetLabels) : updater }));
+  const setShowResolution = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showResolution: typeof updater === 'function' ? updater(s.showResolution ?? false) : updater }));
+  const setResolutionLabelPosition = (updater: SetStateAction<LabelPosition>) => updateCurrentScreen(s => ({ ...s, resolutionLabelPosition: typeof updater === 'function' ? updater(s.resolutionLabelPosition ?? 'bottom-right') : updater }));
+  const setResolutionLabelFontSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, resolutionLabelFontSize: typeof updater === 'function' ? updater(s.resolutionLabelFontSize ?? 32) : updater }));
+  const setResolutionLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, resolutionLabelColor: typeof updater === 'function' ? updater(s.resolutionLabelColor ?? '#ffffff') : updater }));
+  const setResolutionLabelColorMode = (updater: SetStateAction<LabelColorMode>) => updateCurrentScreen(s => ({ ...s, resolutionLabelColorMode: typeof updater === 'function' ? updater(s.resolutionLabelColorMode ?? 'auto') : updater }));
   const setProcessorType = (updater: SetStateAction<ProcessorType>) => updateCurrentScreen(s => ({ ...s, processorType: typeof updater === 'function' ? updater(s.processorType) : updater }));
 
   const addRasterGroup = useCallback(() => {
@@ -2480,6 +2500,16 @@ const handleRightHalfTileChange = (add: boolean) => {
     setScreenNameLabelColor,
     screenNameLabelColorMode: currentScreen.screenNameLabelColorMode,
     setScreenNameLabelColorMode,
+    showResolution: currentScreen.showResolution ?? false,
+    setShowResolution,
+    resolutionLabelPosition: currentScreen.resolutionLabelPosition ?? 'bottom-right',
+    setResolutionLabelPosition,
+    resolutionLabelFontSize: currentScreen.resolutionLabelFontSize ?? 32,
+    setResolutionLabelFontSize,
+    resolutionLabelColor: currentScreen.resolutionLabelColor ?? '#ffffff',
+    setResolutionLabelColor,
+    resolutionLabelColorMode: currentScreen.resolutionLabelColorMode ?? 'auto',
+    setResolutionLabelColorMode,
     onOffMode: currentScreen.onOffMode,
     setOnOffMode,
     zoom,

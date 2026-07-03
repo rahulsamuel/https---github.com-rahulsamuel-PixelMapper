@@ -27,6 +27,11 @@ export function LedGrid() {
     screenNameLabelFontSize,
     screenNameLabelColor,
     screenNameLabelColorMode,
+    showResolution,
+    resolutionLabelPosition,
+    resolutionLabelFontSize,
+    resolutionLabelColor,
+    resolutionLabelColorMode,
     zoom,
     onOffMode,
     sliceOffsetLabels,
@@ -109,6 +114,12 @@ export function LedGrid() {
   const currentScreenNameLabelColor = screenNameLabelColorMode === 'auto'
     ? isColorDark(averageBackgroundColor) ? '#FFFFFF' : '#000000'
     : screenNameLabelColor;
+
+  const currentResolutionLabelColor = resolutionLabelColorMode === 'auto'
+    ? isColorDark(averageBackgroundColor) ? '#FFFFFF' : '#000000'
+    : resolutionLabelColor;
+
+  const resolutionText = `${totalGridPixelWidth} x ${totalGridPixelHeight}px`;
 
 
   return (
@@ -229,6 +240,29 @@ export function LedGrid() {
                  }}
             >
                 {currentScreen.name}
+            </div>
+        )}
+        {showResolution && (
+            <div
+                className={cn(
+                    "absolute font-bold pointer-events-none drop-shadow-lg z-30",
+                    {
+                        'top-4 left-4': resolutionLabelPosition === 'top-left',
+                        'top-4 right-4 text-right': resolutionLabelPosition === 'top-right',
+                        'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center': resolutionLabelPosition === 'center',
+                        'bottom-4 left-4': resolutionLabelPosition === 'bottom-left',
+                        'bottom-4 right-4 text-right': resolutionLabelPosition === 'bottom-right',
+                    }
+                )}
+                style={{
+                    fontSize: `${resolutionLabelFontSize * zoom}px`,
+                    color: currentResolutionLabelColor,
+                    left: resolutionLabelPosition.includes('center') ? '50%' : (resolutionLabelPosition.includes('left') ? '1rem' : undefined),
+                    right: resolutionLabelPosition.includes('right') ? '1rem' : undefined,
+                    transform: resolutionLabelPosition === 'center' ? 'translate(-50%, -50%)' : undefined,
+                }}
+            >
+                {resolutionText}
             </div>
         )}
       </div>
