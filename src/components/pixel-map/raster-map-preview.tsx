@@ -23,46 +23,19 @@ export function RasterMapPreview() {
     downloadRasterSlices,
   } = usePixelMap();
 
-  const hasAnyConfig = Object.keys(rasterMapConfigs).length > 0;
-
-  if (!hasAnyConfig) {
-    return (
-      <div className="flex h-full w-full items-center justify-center text-muted-foreground p-4">
-        <div className="text-center">
-          <h3 className="text-lg font-semibold">Raster Map Preview</h3>
-          <p className="text-sm">Generate a raster map from the &quot;Media Output&quot; panel to see the preview here.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show tabs only when there are multiple groups
   const groupsWithConfig = rasterGroups.filter(g => rasterMapConfigs[g.id]);
   const showTabs = groupsWithConfig.length > 1;
-
-  // Use the active group's config, falling back to first available
   const displayGroupId = rasterMapConfigs[activeRasterGroupId]
     ? activeRasterGroupId
     : groupsWithConfig[0]?.id ?? activeRasterGroupId;
   const displayConfig = rasterMapConfigs[displayGroupId] ?? null;
 
-  if (!displayConfig) {
-    return (
-      <div className="flex h-full w-full items-center justify-center text-muted-foreground p-4">
-        <div className="text-center">
-          <p className="text-sm">No screens assigned to this raster output.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const { totalWidth, totalHeight, previewImage, slices, resolutionType, contentWidth, contentHeight, screenArrangement } = displayConfig;
-
-  // Per-screen tile offset labels: { screenId -> { tileIndex -> label } }
+  // Per-screen tile offset labels — must be called unconditionally (hook rules)
   const tileOffsetsByScreen = useMemo(() => {
     const result = new Map<string, { x: number; y: number; tileX: number; tileY: number; label: string }[]>();
+    if (!displayConfig) return result;
 
-    for (const arrangement of screenArrangement) {
+    for (const arrangement of displayConfig.screenArrangement) {
       if (!arrangement.showSliceOffsetLabels) continue;
 
       const screen = screens.find(s => s.id === arrangement.screenId);
@@ -72,7 +45,7 @@ export function RasterMapPreview() {
       const effW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
       const effH = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
       const ab = arrangement.activeBounds;
-      const { outputWidth, outputHeight } = rasterMapConfig;
+      const { outputWidth, outputHeight } = displayConfig;
 
       const items: { x: number; y: number; tileX: number; tileY: number; label: string }[] = [];
 
@@ -144,7 +117,31 @@ export function RasterMapPreview() {
     }
 
     return result;
-  }, [displayConfig, screens, screenArrangement]);
+  }, [displayConfig, screens]);
+
+  // Early returns after all hooks
+  if (!displayConfig) {
+    const hasAnyConfig = Object.keys(rasterMapConfigs).length > 0;
+    if (!hasAnyConfig) {
+      return (
+        <div className="flex h-full w-full items-center justify-center text-muted-foreground p-4">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold">Raster Map Preview</h3>
+            <p className="text-sm">Generate a raster map from the &quot;Media Output&quot; panel to see the preview here.</p>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="flex h-full w-full items-center justify-center text-muted-foreground p-4">
+        <div className="text-center">
+          <p className="text-sm">No screens assigned to this raster output.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { totalWidth, totalHeight, previewImage, slices, resolutionType, contentWidth, contentHeight, screenArrangement } = displayConfig;
 
   const getSliceBorderColor = () => {
     switch (resolutionType) {
