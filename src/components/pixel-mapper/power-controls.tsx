@@ -31,6 +31,8 @@ export function PowerControls() {
     setPowerArrowGap,
     powerLabelSize,
     setPowerLabelSize,
+    powerLabelColor,
+    setPowerLabelColor,
   } = usePixelMap();
 
   return (
@@ -72,9 +74,22 @@ export function PowerControls() {
         <Label htmlFor="show-power-labels">Show Power Path</Label>
         <Switch id="show-power-labels" checked={showPowerLabels} onCheckedChange={setShowPowerLabels} />
       </div>
-       <div className="space-y-2">
+      <div className="space-y-2">
         <Label htmlFor="power-label-size">Label Size: {powerLabelSize}px</Label>
         <Slider id="power-label-size" min={10} max={200} step={1} value={[powerLabelSize]} onValueChange={(v) => setPowerLabelSize(v[0])} />
+      </div>
+      <div className="flex items-center justify-between">
+        <Label htmlFor="power-label-color">Power Label Color</Label>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full border border-border" style={{ backgroundColor: powerLabelColor }} />
+          <Input
+            id="power-label-color"
+            type="color"
+            value={powerLabelColor}
+            onChange={(e) => setPowerLabelColor(e.target.value)}
+            className="w-10 h-8 p-0.5 cursor-pointer border-border rounded"
+          />
+        </div>
       </div>
        <div className="space-y-2">
         <Label htmlFor="power-arrowhead-size">Arrowhead Size: {powerArrowheadSize}</Label>

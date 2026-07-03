@@ -139,6 +139,8 @@ interface Screen {
   isWiringMirrored: boolean;
   dataLabelSize: number;
   powerLabelSize: number;
+  dataLabelColor: string;
+  powerLabelColor: string;
   showSliceOffsetLabels: boolean;
   topHalfTile: boolean;
   bottomHalfTile: boolean;
@@ -242,6 +244,8 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setTilesPerPowerString: Dispatch<SetStateAction<string>>;
   setDataLabelSize: Dispatch<SetStateAction<number>>;
   setPowerLabelSize: Dispatch<SetStateAction<number>>;
+  setDataLabelColor: Dispatch<SetStateAction<string>>;
+  setPowerLabelColor: Dispatch<SetStateAction<string>>;
   calculateAndApplyOptimalOffset: () => void;
   setShowSliceOffsetLabels: Dispatch<SetStateAction<boolean>>;
   handleTopHalfTileChange: (add: boolean) => void;
@@ -358,6 +362,8 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     isWiringMirrored: false,
     dataLabelSize: 100,
     powerLabelSize: 100,
+    dataLabelColor: '#22c55e',
+    powerLabelColor: '#ef4444',
     showSliceOffsetLabels: true,
     topHalfTile: false,
     bottomHalfTile: false,
@@ -525,6 +531,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setIsWiringMirrored = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, isWiringMirrored: typeof updater === 'function' ? updater(s.isWiringMirrored) : updater }));
   const setDataLabelSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, dataLabelSize: typeof updater === 'function' ? updater(s.dataLabelSize) : updater }));
   const setPowerLabelSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, powerLabelSize: typeof updater === 'function' ? updater(s.powerLabelSize) : updater }));
+  const setDataLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, dataLabelColor: typeof updater === 'function' ? updater(s.dataLabelColor) : updater }));
+  const setPowerLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, powerLabelColor: typeof updater === 'function' ? updater(s.powerLabelColor) : updater }));
   const setShowSliceOffsetLabels = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showSliceOffsetLabels: typeof updater === 'function' ? updater(s.showSliceOffsetLabels) : updater }));
   const setProcessorType = (updater: SetStateAction<ProcessorType>) => updateCurrentScreen(s => ({ ...s, processorType: typeof updater === 'function' ? updater(s.processorType) : updater }));
   const setShowModules = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showModules: typeof updater === 'function' ? updater(s.showModules) : updater }));
@@ -1593,31 +1601,10 @@ const handleRightHalfTileChange = (add: boolean) => {
         : xPosOfMinX;
     const sy = yPosOfMinY;
 
-    const computedStyle = getComputedStyle(document.documentElement);
-    const dataWiringColor = `hsl(${computedStyle.getPropertyValue('--data-wiring').trim()})`;
-    const powerWiringColor = `hsl(${computedStyle.getPropertyValue('--power-wiring').trim()})`;
-
     const svgs = node.querySelectorAll('svg');
     const modifications: Array<{el: Element, attr: string, originalValue: string | null}> = [];
-
-    svgs.forEach(svg => {
-        const elementsToModify = svg.querySelectorAll('[stroke*="--data-wiring"], [fill*="--data-wiring"], [stroke*="--power-wiring"], [fill*="--power-wiring"]');
-
-        elementsToModify.forEach(el => {
-            const stroke = el.getAttribute('stroke');
-            if (stroke) {
-                modifications.push({ el, attr: 'stroke', originalValue: stroke });
-                if (stroke.includes('--data-wiring')) el.setAttribute('stroke', dataWiringColor);
-                if (stroke.includes('--power-wiring')) el.setAttribute('stroke', powerWiringColor);
-            }
-            const fill = el.getAttribute('fill');
-            if (fill) {
-                modifications.push({ el, attr: 'fill', originalValue: fill });
-                if (fill.includes('--data-wiring')) el.setAttribute('fill', dataWiringColor);
-                if (fill.includes('--power-wiring')) el.setAttribute('fill', powerWiringColor);
-            }
-        });
-    });
+    // No CSS variable substitution needed — colors are already inline styles
+    void svgs; void modifications;
 
     toPng(node, {
       cacheBust: true,
@@ -2096,7 +2083,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     };
 
     if (screen.showDataLabels) {
-      const dataColor = `hsl(${computedStyle.getPropertyValue('--data-wiring').trim()})`;
+      const dataColor = screen.dataLabelColor;
       screenWiringData.forEach(({ x, y, nextTile, isDeleted }) => {
         if (isDeleted || !nextTile) return;
         if (x < screenActiveBounds.minX || x > screenActiveBounds.maxX || y < screenActiveBounds.minY || y > screenActiveBounds.maxY) return;
@@ -2111,7 +2098,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     }
     
     if (screen.showPowerLabels) {
-        const powerColor = `hsl(${computedStyle.getPropertyValue('--power-wiring').trim()})`;
+        const powerColor = screen.powerLabelColor;
         screenWiringData.forEach(({ x, y, nextPowerTile, isDeleted }) => {
             if (isDeleted || !nextPowerTile) return;
             if (x < screenActiveBounds.minX || x > screenActiveBounds.maxX || y < screenActiveBounds.minY || y > screenActiveBounds.maxY) return;
@@ -2150,16 +2137,16 @@ const handleRightHalfTileChange = (add: boolean) => {
            labelsToDraw.push({
                label: backupLabel || dataLabel,
                size: screen.dataLabelSize,
-               bgColor: backupLabel ? `hsl(${computedStyle.getPropertyValue('--destructive').trim()})` : `hsl(${computedStyle.getPropertyValue('--data-wiring').trim()})`,
-               fgColor: backupLabel ? `hsl(${computedStyle.getPropertyValue('--destructive-foreground').trim()})` : `hsl(${computedStyle.getPropertyValue('--data-wiring-foreground').trim()})`,
+               bgColor: backupLabel ? `hsl(${computedStyle.getPropertyValue('--destructive').trim()})` : screen.dataLabelColor,
+               fgColor: backupLabel ? `hsl(${computedStyle.getPropertyValue('--destructive-foreground').trim()})` : '#ffffff',
            });
         }
         if(screen.showPowerLabels && powerPortLabel) {
            labelsToDraw.push({
                label: powerPortLabel,
                size: screen.powerLabelSize,
-               bgColor: `hsl(${computedStyle.getPropertyValue('--power-wiring').trim()})`,
-               fgColor: `hsl(${computedStyle.getPropertyValue('--power-wiring-foreground').trim()})`,
+               bgColor: screen.powerLabelColor,
+               fgColor: '#ffffff',
            });
         }
 
@@ -2337,6 +2324,10 @@ const handleRightHalfTileChange = (add: boolean) => {
     setDataLabelSize,
     powerLabelSize: currentScreen.powerLabelSize,
     setPowerLabelSize,
+    dataLabelColor: currentScreen.dataLabelColor,
+    setDataLabelColor,
+    powerLabelColor: currentScreen.powerLabelColor,
+    setPowerLabelColor,
     calculateAndApplyOptimalOffset,
     showSliceOffsetLabels: currentScreen.showSliceOffsetLabels,
     setShowSliceOffsetLabels,

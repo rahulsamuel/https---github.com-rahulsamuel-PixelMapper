@@ -33,6 +33,8 @@ export function WiringDiagram() {
     borderColor,
     dataLabelSize,
     powerLabelSize,
+    dataLabelColor,
+    powerLabelColor,
     showSliceOffsetLabels,
     topHalfTile,
     bottomHalfTile,
@@ -187,11 +189,12 @@ export function WiringDiagram() {
                     >
                       {showDataLabels && (backupLabel || dataLabel) && (
                         <div 
-                          className={`rounded-full flex items-center justify-center font-bold z-10 ${backupLabel ? 'bg-destructive text-destructive-foreground' : 'bg-data-wiring text-data-wiring-foreground'}`}
+                          className={`rounded-full flex items-center justify-center font-bold z-10 ${backupLabel ? 'bg-destructive text-destructive-foreground' : ''}`}
                           style={{
                             width: `${dataLabelSize}px`,
                             height: `${dataLabelSize}px`,
                             fontSize: `${Math.max(8, dataLabelSize * 0.4)}px`,
+                            ...(backupLabel ? {} : { backgroundColor: dataLabelColor, color: '#ffffff' }),
                           }}
                         >
                           <span>{backupLabel || dataLabel}</span>
@@ -199,11 +202,13 @@ export function WiringDiagram() {
                       )}
                       {showPowerLabels && powerPortLabel && (
                          <div 
-                            className="bg-power-wiring text-power-wiring-foreground rounded-full flex items-center justify-center font-bold z-10"
+                            className="rounded-full flex items-center justify-center font-bold z-10"
                             style={{
                               width: `${powerLabelSize}px`,
                               height: `${powerLabelSize}px`,
                               fontSize: `${Math.max(8, powerLabelSize * 0.4)}px`,
+                              backgroundColor: powerLabelColor,
+                              color: '#ffffff',
                             }}
                          >
                             <span>{powerPortLabel}</span>
@@ -261,8 +266,8 @@ export function WiringDiagram() {
 
                 return (
                   <g key={`data-arrow-${x}-${y}`}>
-                    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="hsl(var(--data-wiring))" strokeWidth="3" />
-                     <polygon points={arrowheadPoints} fill="hsl(var(--data-wiring))" />
+                    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={dataLabelColor} strokeWidth="3" />
+                     <polygon points={arrowheadPoints} fill={dataLabelColor} />
                   </g>
                 );
               })}
@@ -307,8 +312,8 @@ export function WiringDiagram() {
 
                 return (
                   <g key={`power-arrow-${x}-${y}`}>
-                    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="hsl(var(--power-wiring))" strokeWidth="2" />
-                     <polygon points={arrowheadPoints} fill="hsl(var(--power-wiring))" />
+                    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={powerLabelColor} strokeWidth="2" />
+                     <polygon points={arrowheadPoints} fill={powerLabelColor} />
                   </g>
                 );
               })}

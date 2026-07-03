@@ -37,7 +37,11 @@ export function WiringControls() {
     showSliceOffsetLabels,
     setShowSliceOffsetLabels,
     processorType,
-    setProcessorType
+    setProcessorType,
+    dataLabelColor,
+    setDataLabelColor,
+    powerLabelColor,
+    setPowerLabelColor,
   } = usePixelMap();
 
   return (
@@ -110,6 +114,19 @@ export function WiringControls() {
       <div className="space-y-2">
         <Label htmlFor="data-label-size">Label Size: {dataLabelSize}px</Label>
         <Slider id="data-label-size" min={10} max={200} step={1} value={[dataLabelSize]} onValueChange={(v) => setDataLabelSize(v[0])} />
+      </div>
+      <div className="flex items-center justify-between">
+        <Label htmlFor="data-label-color">Data Label Color</Label>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full border border-border" style={{ backgroundColor: dataLabelColor }} />
+          <Input
+            id="data-label-color"
+            type="color"
+            value={dataLabelColor}
+            onChange={(e) => setDataLabelColor(e.target.value)}
+            className="w-10 h-8 p-0.5 cursor-pointer border-border rounded"
+          />
+        </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="arrowhead-size">Arrowhead Size: {arrowheadSize}</Label>
