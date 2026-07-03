@@ -119,7 +119,7 @@ export function LedGrid() {
     ? isColorDark(averageBackgroundColor) ? '#FFFFFF' : '#000000'
     : resolutionLabelColor;
 
-  const resolutionText = `${totalGridPixelWidth} x ${totalGridPixelHeight}px`;
+  const resolutionText = `Pixel: ${totalGridPixelWidth} x ${totalGridPixelHeight}`;
 
 
   return (
@@ -244,22 +244,22 @@ export function LedGrid() {
         )}
         {showResolution && (
             <div
-                className={cn(
-                    "absolute font-bold pointer-events-none drop-shadow-lg z-30",
-                    {
-                        'top-4 left-4': resolutionLabelPosition === 'top-left',
-                        'top-4 right-4 text-right': resolutionLabelPosition === 'top-right',
-                        'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center': resolutionLabelPosition === 'center',
-                        'bottom-4 left-4': resolutionLabelPosition === 'bottom-left',
-                        'bottom-4 right-4 text-right': resolutionLabelPosition === 'bottom-right',
-                    }
-                )}
+                className="absolute font-bold pointer-events-none drop-shadow-lg z-30"
                 style={{
                     fontSize: `${resolutionLabelFontSize * zoom}px`,
                     color: currentResolutionLabelColor,
-                    left: resolutionLabelPosition.includes('center') ? '50%' : (resolutionLabelPosition.includes('left') ? '1rem' : undefined),
-                    right: resolutionLabelPosition.includes('right') ? '1rem' : undefined,
-                    transform: resolutionLabelPosition === 'center' ? 'translate(-50%, -50%)' : undefined,
+                    top: resolutionLabelPosition.startsWith('top') ? '1rem' :
+                         resolutionLabelPosition === 'center' ? '50%' : undefined,
+                    bottom: resolutionLabelPosition.startsWith('bottom') ? '1rem' : undefined,
+                    left: resolutionLabelPosition === 'center' || resolutionLabelPosition === 'top-center' || resolutionLabelPosition === 'bottom-center'
+                        ? '50%'
+                        : resolutionLabelPosition.endsWith('left') ? '1rem' : undefined,
+                    right: resolutionLabelPosition.endsWith('right') ? '1rem' : undefined,
+                    transform: (resolutionLabelPosition === 'center' || resolutionLabelPosition === 'top-center' || resolutionLabelPosition === 'bottom-center')
+                        ? (resolutionLabelPosition === 'center' ? 'translate(-50%, -50%)' : 'translateX(-50%)')
+                        : undefined,
+                    textAlign: (resolutionLabelPosition === 'center' || resolutionLabelPosition === 'top-center' || resolutionLabelPosition === 'bottom-center')
+                        ? 'center' : resolutionLabelPosition.endsWith('right') ? 'right' : 'left',
                 }}
             >
                 {resolutionText}

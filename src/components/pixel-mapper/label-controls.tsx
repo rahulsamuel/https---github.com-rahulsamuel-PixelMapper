@@ -110,9 +110,11 @@ export function LabelControls() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="top-left">Top Left</SelectItem>
+              <SelectItem value="top-center">Top Center</SelectItem>
               <SelectItem value="top-right">Top Right</SelectItem>
               <SelectItem value="center">Center</SelectItem>
               <SelectItem value="bottom-left">Bottom Left</SelectItem>
+              <SelectItem value="bottom-center">Bottom Center</SelectItem>
               <SelectItem value="bottom-right">Bottom Right</SelectItem>
             </SelectContent>
           </Select>
@@ -198,9 +200,11 @@ export function LabelControls() {
                             <SelectTrigger id="screen-name-position"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="top-left">Top Left</SelectItem>
+                                <SelectItem value="top-center">Top Center</SelectItem>
                                 <SelectItem value="top-right">Top Right</SelectItem>
                                 <SelectItem value="center">Center</SelectItem>
                                 <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                                <SelectItem value="bottom-center">Bottom Center</SelectItem>
                                 <SelectItem value="bottom-right">Bottom Right</SelectItem>
                             </SelectContent>
                         </Select>
@@ -276,9 +280,11 @@ export function LabelControls() {
                             <SelectTrigger id="resolution-position"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="top-left">Top Left</SelectItem>
+                                <SelectItem value="top-center">Top Center</SelectItem>
                                 <SelectItem value="top-right">Top Right</SelectItem>
                                 <SelectItem value="center">Center</SelectItem>
                                 <SelectItem value="bottom-left">Bottom Left</SelectItem>
+                                <SelectItem value="bottom-center">Bottom Center</SelectItem>
                                 <SelectItem value="bottom-right">Bottom Right</SelectItem>
                             </SelectContent>
                         </Select>

@@ -54,7 +54,7 @@ interface ActiveBounds {
 
 type ActiveTool = 'delete' | 'label' | 'color' | 'power' | 'data';
 type LabelFormat = 'none' | 'sequential' | 'row-col' | 'dmx-style' | 'row-letter-col-number';
-type LabelPosition = 'top-left' | 'top-right' | 'center' | 'bottom-left' | 'bottom-right';
+type LabelPosition = 'top-left' | 'top-right' | 'top-center' | 'center' | 'bottom-left' | 'bottom-right' | 'bottom-center';
 type LabelColorMode = 'single' | 'auto';
 type ResolutionType = 'content' | 'hd' | '4k-uhd' | '4k-dci' | 'custom';
 type ProcessorType = 'Brompton' | 'Novastar' | 'Helios';
@@ -1399,14 +1399,16 @@ const handleRightHalfTileChange = (add: boolean) => {
         masterCtx.font = `bold ${fontSize}px sans-serif`;
         masterCtx.textBaseline = 'middle';
         const pos = screen.resolutionLabelPosition ?? 'bottom-right';
-        const resText = `${contentWidth} x ${contentHeight}px`;
+        const resText = `Pixel: ${contentWidth} x ${contentHeight}`;
+        const pad = fontSize * 0.6;
         let tx = contentWidth / 2;
         let ty = contentHeight / 2;
-        const pad = fontSize * 0.6;
         masterCtx.textAlign = 'center';
-        if (pos === 'top-left') { tx = pad; ty = pad; masterCtx.textAlign = 'left'; }
-        else if (pos === 'top-right') { tx = contentWidth - pad; ty = pad; masterCtx.textAlign = 'right'; }
-        else if (pos === 'bottom-left') { tx = pad; ty = contentHeight - pad; masterCtx.textAlign = 'left'; }
+        if (pos === 'top-left')      { tx = pad; ty = pad; masterCtx.textAlign = 'left'; }
+        else if (pos === 'top-center')   { tx = contentWidth / 2; ty = pad; }
+        else if (pos === 'top-right')    { tx = contentWidth - pad; ty = pad; masterCtx.textAlign = 'right'; }
+        else if (pos === 'bottom-left')  { tx = pad; ty = contentHeight - pad; masterCtx.textAlign = 'left'; }
+        else if (pos === 'bottom-center'){ tx = contentWidth / 2; ty = contentHeight - pad; }
         else if (pos === 'bottom-right') { tx = contentWidth - pad; ty = contentHeight - pad; masterCtx.textAlign = 'right'; }
         masterCtx.shadowColor = 'rgba(0,0,0,0.8)';
         masterCtx.shadowBlur = fontSize * 0.3;
