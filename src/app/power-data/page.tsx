@@ -86,7 +86,7 @@ export default function PowerDataPage() {
         const amperageNum = parseFloat(circuitAmperage) || 0;
         const marginNum = parseFloat(safetyMargin) / 100 || 0;
         const circuitCapacity = voltageNum * amperageNum * marginNum;
-        const maxPowerPerTile = selectedProduct.maxPowerConsumption || 0;
+        const maxPowerPerTile = (selectedProduct.wattsPerTile as number) || 0;
         const maxTilesPerPowerCircuit = maxPowerPerTile > 0 ? Math.floor(circuitCapacity / maxPowerPerTile) : 0;
 
         // Data Calculation
@@ -109,16 +109,16 @@ export default function PowerDataPage() {
     return (
         <div className="h-[calc(100svh-3.5rem)] flex overflow-hidden">
             {/* Left sidebar */}
-            <div className="w-80 flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden">
+            <div className="w-96 flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden">
                 <div className="flex-shrink-0 px-4 pt-4 pb-2 border-b">
                     <h2 className="font-semibold text-sm">Input Parameters</h2>
                     <p className="text-xs text-muted-foreground mt-0.5">Configure power circuit and data port settings.</p>
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                    <div className="p-4 space-y-5">
+                    <div className="p-4 space-y-4">
                         <div>
-                            <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-3">LED Product</h3>
-                            <div className="space-y-3">
+                            <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-2">LED Product</h3>
+                            <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1.5">
                                     <Label htmlFor="led-manufacturer" className="text-xs">Manufacturer</Label>
                                     <Select onValueChange={handleManufacturerChange} value={selectedManufacturer}>
@@ -143,8 +143,8 @@ export default function PowerDataPage() {
                         <Separator />
 
                         <div>
-                            <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-3">Power Circuit</h3>
-                            <div className="space-y-3">
+                            <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-2">Power Circuit</h3>
+                            <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1.5">
                                     <Label htmlFor="circuit-voltage" className="text-xs">Voltage</Label>
                                     <Select value={circuitVoltage} onValueChange={setCircuitVoltage}>
@@ -162,7 +162,7 @@ export default function PowerDataPage() {
                                     <Label htmlFor="circuit-amperage" className="text-xs">Amperage (A)</Label>
                                     <Input id="circuit-amperage" type="number" value={circuitAmperage} onChange={e => setCircuitAmperage(e.target.value)} />
                                 </div>
-                                <div className="space-y-1.5">
+                                <div className="space-y-1.5 col-span-2">
                                     <Label htmlFor="safety-margin" className="text-xs">Safety Margin (%)</Label>
                                     <Input id="safety-margin" type="number" value={safetyMargin} onChange={e => setSafetyMargin(e.target.value)} />
                                 </div>
@@ -172,8 +172,8 @@ export default function PowerDataPage() {
                         <Separator />
 
                         <div>
-                            <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-3">Data Port</h3>
-                            <div className="space-y-3">
+                            <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-2">Data Port</h3>
+                            <div className="grid grid-cols-2 gap-2">
                                 <div className="space-y-1.5">
                                     <Label htmlFor="processor-type" className="text-xs">Processor Type</Label>
                                     <Select value={processor} onValueChange={(v) => setProcessor(v as ProcessorType)}>
