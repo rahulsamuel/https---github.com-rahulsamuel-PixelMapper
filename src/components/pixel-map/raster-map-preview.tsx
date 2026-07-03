@@ -4,17 +4,9 @@
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import { useMemo } from 'react';
 import { cn } from "@/lib/utils";
+import { Download, Layers } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-function getLabelPosition(pos: string, width: number, height: number, fontSize: number) {
-  const pad = fontSize * 0.6;
-  switch (pos) {
-    case 'top-left':     return { top: pad, left: pad, transform: 'none', textAlign: 'left' as const };
-    case 'top-right':    return { top: pad, right: pad, transform: 'none', textAlign: 'right' as const };
-    case 'bottom-left':  return { bottom: pad, left: pad, transform: 'none', textAlign: 'left' as const };
-    case 'bottom-right': return { bottom: pad, right: pad, transform: 'none', textAlign: 'right' as const };
-    default:             return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center' as const };
-  }
-}
 
 export function RasterMapPreview() {
   const {
@@ -23,6 +15,8 @@ export function RasterMapPreview() {
     rasterMapRef,
     rasterBgColor,
     screens,
+    downloadSingleSlice,
+    downloadRasterSlices,
   } = usePixelMap();
 
   if (!rasterMapConfig) {
@@ -136,8 +130,22 @@ export function RasterMapPreview() {
     }
   };
 
+  const hasMultipleSlices = slices && slices.length > 1;
+
   return (
-    <div>
+    <div className="space-y-2">
+      {hasMultipleSlices && (
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Layers className="h-4 w-4" />
+            <span>{slices.length} raster slices — content spans multiple outputs</span>
+          </div>
+          <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={downloadRasterSlices}>
+            <Download className="h-3.5 w-3.5" />
+            Download All ({slices.length})
+          </Button>
+        </div>
+      )}
       <div style={{ width: totalWidth * zoom, height: totalHeight * zoom }}>
         <div
           ref={rasterMapRef}
@@ -166,7 +174,7 @@ export function RasterMapPreview() {
             <div
               key={slice.key}
               className={cn(
-                "absolute border-2 border-dashed flex items-center justify-center pointer-events-none z-10",
+                "absolute border-2 border-dashed z-10",
                 getSliceBorderColor()
               )}
               style={{
@@ -178,21 +186,29 @@ export function RasterMapPreview() {
               }}
             >
               <div
-                className="text-center p-2 rounded-md bg-background/80"
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center"
                 style={{
-                  transform: `scale(${Math.min(2, Math.max(0.5, 1 / zoom))})`,
+                  transform: `translate(-50%, -50%) scale(${Math.min(2, Math.max(0.5, 1 / zoom))})`,
                   transformOrigin: 'center center',
                 }}
               >
-                <p className="font-bold whitespace-nowrap">{slice.filename.split('/').pop()?.replace('.png', '').replace('raster-map-', '')}</p>
-                <p className="font-mono text-xs whitespace-nowrap">Size: {slice.width}x{slice.height}</p>
+                <div className="flex flex-col items-center gap-1 p-2 rounded-md bg-background/85">
+                  <p className="font-bold whitespace-nowrap text-sm">{slice.filename.split('/').pop()?.replace('.png', '').replace('raster-map-', '')}</p>
+                  <p className="font-mono text-xs whitespace-nowrap text-muted-foreground">Size: {slice.width}x{slice.height}</p>
+                  <button
+                    className="mt-1 flex items-center gap-1 text-xs bg-primary text-primary-foreground rounded px-2 py-1 hover:bg-primary/90 transition-colors"
+                    onClick={() => downloadSingleSlice(slice.key)}
+                  >
+                    <Download className="h-3 w-3" />
+                    Download
+                  </button>
+                </div>
               </div>
             </div>
           ))}
 
-          {/* Screen arrangement borders + overlays */}
+          {/* Screen arrangement borders + tile offset overlays */}
           {screenArrangement.map(sa => {
-            const labelPos = getLabelPosition(sa.screenNameLabelPosition, sa.width, sa.height, sa.screenNameLabelFontSize);
             const offsetItems = tileOffsetsByScreen.get(sa.screenId) ?? [];
 
             return (
@@ -207,24 +223,7 @@ export function RasterMapPreview() {
                   boxSizing: 'border-box',
                 }}
               >
-                {/* Screen name label */}
-                {sa.showScreenName && (
-                  <div
-                    className="absolute z-20 font-bold pointer-events-none"
-                    style={{
-                      fontSize: sa.screenNameLabelFontSize,
-                      color: sa.screenNameLabelColor,
-                      textShadow: '0 0 8px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.9)',
-                      lineHeight: 1,
-                      whiteSpace: 'nowrap',
-                      ...labelPos,
-                    }}
-                  >
-                    {sa.screenName}
-                  </div>
-                )}
-
-                {/* Tile offset labels */}
+                {/* Tile offset labels (HTML overlay only — screen names are drawn in canvas) */}
                 {offsetItems.map((item, i) => (
                   <div
                     key={i}

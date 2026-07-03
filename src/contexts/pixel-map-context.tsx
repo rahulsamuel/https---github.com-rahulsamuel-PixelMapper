@@ -59,7 +59,7 @@ type LabelColorMode = 'single' | 'auto';
 type ResolutionType = 'content' | 'hd' | '4k-uhd' | '4k-dci' | 'custom';
 type ProcessorType = 'Brompton' | 'Novastar' | 'Helios';
 
-interface RasterSlice {
+export interface RasterSlice {
   key: string;
   filename: string;
   x: number; 
@@ -210,6 +210,7 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   handleDownloadFullRaster: () => void;
   generateRasterMap: (filename: string, outputWidth?: number, outputHeight?: number) => void;
   downloadRasterSlices: () => void;
+  downloadSingleSlice: (sliceKey: string) => void;
   setActiveTool: Dispatch<SetStateAction<ActiveTool>>;
   setShowLabels: Dispatch<SetStateAction<boolean>>;
   setLabelFormat: Dispatch<SetStateAction<LabelFormat>>;
@@ -1485,7 +1486,7 @@ const handleRightHalfTileChange = (add: boolean) => {
   const createFullRasterCanvas = useCallback(() => {
     if (!rasterMapConfig) return null;
 
-    const { contentWidth, contentHeight, screenArrangement } = rasterMapConfig;
+    const { contentWidth, contentHeight, screenArrangement, slices, outputWidth, outputHeight } = rasterMapConfig;
 
     const masterCanvas = document.createElement('canvas');
     masterCanvas.width = contentWidth;
@@ -1503,6 +1504,77 @@ const handleRightHalfTileChange = (add: boolean) => {
         const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds);
         if (screenCanvas) {
             masterCtx.drawImage(screenCanvas, arrangement.x, arrangement.y);
+        }
+
+        // Draw tile offset labels if enabled for this screen
+        if (arrangement.showSliceOffsetLabels && slices.length > 0) {
+            const { tileWidth, tileHeight } = screen.dimensions;
+            const effW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+            const effH = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+            const ab = arrangement.activeBounds;
+
+            const tilesBySlice = new Map<string, number[]>();
+            screen.tiles.forEach((tile, index) => {
+                if (tile.deleted) return;
+                const tx = index % effW;
+                const ty = Math.floor(index / effW);
+                if (tx < ab.minX || tx > ab.maxX || ty < ab.minY || ty > ab.maxY) return;
+
+                let tcy = 0;
+                for (let i = ab.minY; i < ty; i++) {
+                    const isTop = screen.topHalfTile && i === 0;
+                    const isBot = screen.bottomHalfTile && i === effH - 1;
+                    tcy += (isTop || isBot) ? tileHeight / 2 : tileHeight;
+                }
+                let tcx = 0;
+                for (let i = ab.minX; i < tx; i++) {
+                    const isL = screen.leftHalfTile && i === 0;
+                    const isR = screen.rightHalfTile && i === effW - 1;
+                    tcx += (isL || isR) ? tileWidth / 2 : tileWidth;
+                }
+
+                const absX = tcx + arrangement.x;
+                const absY = tcy + arrangement.y;
+                const sliceKey = `${Math.floor(absY / outputHeight)}-${Math.floor(absX / outputWidth)}`;
+                if (!tilesBySlice.has(sliceKey)) tilesBySlice.set(sliceKey, []);
+                tilesBySlice.get(sliceKey)!.push(index);
+            });
+
+            tilesBySlice.forEach((sliceIndices, sliceKey) => {
+                if (!sliceIndices.length) return;
+                const slice = slices.find(s => s.key === sliceKey);
+                if (!slice) return;
+                const firstIndex = sliceIndices[0];
+                const tx = firstIndex % effW;
+                const ty = Math.floor(firstIndex / effW);
+
+                let tcy = 0;
+                for (let i = ab.minY; i < ty; i++) {
+                    const isTop = screen.topHalfTile && i === 0;
+                    const isBot = screen.bottomHalfTile && i === effH - 1;
+                    tcy += (isTop || isBot) ? tileHeight / 2 : tileHeight;
+                }
+                let tcx = 0;
+                for (let i = ab.minX; i < tx; i++) {
+                    const isL = screen.leftHalfTile && i === 0;
+                    const isR = screen.rightHalfTile && i === effW - 1;
+                    tcx += (isL || isR) ? tileWidth / 2 : tileWidth;
+                }
+
+                const absX = tcx + arrangement.x;
+                const absY = tcy + arrangement.y;
+                const label = `(${absX - slice.x},${absY - slice.y})`;
+
+                const fontSize = Math.max(12, Math.min(24, tileWidth * 0.12));
+                masterCtx.fillStyle = 'rgba(0,0,0,0.65)';
+                const textW = masterCtx.measureText(label).width + 8;
+                masterCtx.fillRect(absX + 2, absY + 2, textW, fontSize + 6);
+                masterCtx.fillStyle = '#ffffff';
+                masterCtx.font = `bold ${fontSize}px monospace`;
+                masterCtx.textAlign = 'left';
+                masterCtx.textBaseline = 'top';
+                masterCtx.fillText(label, absX + 6, absY + 5);
+            });
         }
     }
 
@@ -1562,7 +1634,37 @@ const handleRightHalfTileChange = (add: boolean) => {
         downloadCanvas(outputCanvas, slice.filename);
     }
   }, [rasterMapConfig, createFullRasterCanvas, subscriptionStatus, toast]);
-  
+
+  const downloadSingleSlice = useCallback((sliceKey: string) => {
+    if (!rasterMapConfig) return;
+    const slice = rasterMapConfig.slices.find(s => s.key === sliceKey);
+    if (!slice) return;
+
+    const masterContentCanvas = createFullRasterCanvas();
+    if (!masterContentCanvas) return;
+
+    const outputCanvas = document.createElement('canvas');
+    outputCanvas.width = slice.width;
+    outputCanvas.height = slice.height;
+    const outputCtx = outputCanvas.getContext('2d');
+    if (!outputCtx) return;
+
+    outputCtx.fillStyle = rasterBgColor;
+    outputCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+    outputCtx.drawImage(masterContentCanvas, -slice.x, -slice.y);
+
+    try {
+        const dataUrl = outputCanvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = slice.filename;
+        link.href = dataUrl;
+        link.click();
+        trackEvent('download', { type: 'raster-slice', filename: slice.filename, thumbnail: dataUrl });
+    } catch (err) {
+        console.error('Could not generate raster slice.', err);
+    }
+  }, [rasterMapConfig, createFullRasterCanvas, rasterBgColor]);
+
   const addWatermark = (dataUrl: string): Promise<string> => {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -2297,6 +2399,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     handleDownloadFullRaster,
     generateRasterMap,
     downloadRasterSlices,
+    downloadSingleSlice,
     activeTool: currentScreen.activeTool,
     setActiveTool,
     showLabels: currentScreen.showLabels,
