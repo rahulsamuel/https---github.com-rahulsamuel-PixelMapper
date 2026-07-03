@@ -2,23 +2,115 @@
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
-export async function addLedProduct(data: {
+export type LedProductData = {
   manufacturer: string;
   productName: string;
   tileWidthPx: number;
   tileHeightPx: number;
   wattsPerTile: number;
-  createdBy: string;
-}) {
+  // Extended spec fields
+  pixelPitchMm?: number | null;
+  tileWidthMm?: number | null;
+  tileHeightMm?: number | null;
+  tileDepthMm?: number | null;
+  tileWeightKg?: number | null;
+  maxPowerWPerSqm?: number | null;
+  avgPowerWPerSqm?: number | null;
+  maxBrightnessNit?: number | null;
+  refreshRateHz?: number | null;
+  grayscaleBit?: number | null;
+  contrastRatio?: string | null;
+  colorTemperatureK?: number | null;
+  viewingAngleH?: number | null;
+  viewingAngleV?: number | null;
+  driveMode?: string | null;
+  ledType?: string | null;
+  ipRating?: string | null;
+  certification?: string | null;
+  applicationIndoor?: boolean;
+  applicationOutdoor?: boolean;
+  applicationFloor?: boolean;
+  productImageUrl?: string | null;
+  specSheetUrl?: string | null;
+};
+
+export type LedProduct = LedProductData & {
+  id: string;
+  createdBy: string | null;
+  createdAt: string;
+};
+
+function mapRow(product: Record<string, unknown>): LedProduct {
+  return {
+    id: product.id as string,
+    manufacturer: product.manufacturer as string,
+    productName: product.product_name as string,
+    tileWidthPx: product.tile_width_px as number,
+    tileHeightPx: product.tile_height_px as number,
+    wattsPerTile: product.watts_per_tile as number,
+    pixelPitchMm: product.pixel_pitch_mm as number | null,
+    tileWidthMm: product.tile_width_mm as number | null,
+    tileHeightMm: product.tile_height_mm as number | null,
+    tileDepthMm: product.tile_depth_mm as number | null,
+    tileWeightKg: product.tile_weight_kg as number | null,
+    maxPowerWPerSqm: product.max_power_w_per_sqm as number | null,
+    avgPowerWPerSqm: product.avg_power_w_per_sqm as number | null,
+    maxBrightnessNit: product.max_brightness_nit as number | null,
+    refreshRateHz: product.refresh_rate_hz as number | null,
+    grayscaleBit: product.grayscale_bit as number | null,
+    contrastRatio: product.contrast_ratio as string | null,
+    colorTemperatureK: product.color_temperature_k as number | null,
+    viewingAngleH: product.viewing_angle_h as number | null,
+    viewingAngleV: product.viewing_angle_v as number | null,
+    driveMode: product.drive_mode as string | null,
+    ledType: product.led_type as string | null,
+    ipRating: product.ip_rating as string | null,
+    certification: product.certification as string | null,
+    applicationIndoor: (product.application_indoor as boolean) ?? false,
+    applicationOutdoor: (product.application_outdoor as boolean) ?? false,
+    applicationFloor: (product.application_floor as boolean) ?? false,
+    productImageUrl: product.product_image_url as string | null,
+    specSheetUrl: product.spec_sheet_url as string | null,
+    createdBy: product.created_by as string | null,
+    createdAt: product.created_at as string,
+  };
+}
+
+export async function addLedProduct(data: LedProductData & { createdBy?: string }) {
   try {
     const supabase = getSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { error } = await supabase.from("led_products").insert({
       manufacturer: data.manufacturer,
       product_name: data.productName,
       tile_width_px: data.tileWidthPx,
       tile_height_px: data.tileHeightPx,
       watts_per_tile: data.wattsPerTile,
-      created_by: data.createdBy,
+      pixel_pitch_mm: data.pixelPitchMm ?? null,
+      tile_width_mm: data.tileWidthMm ?? null,
+      tile_height_mm: data.tileHeightMm ?? null,
+      tile_depth_mm: data.tileDepthMm ?? null,
+      tile_weight_kg: data.tileWeightKg ?? null,
+      max_power_w_per_sqm: data.maxPowerWPerSqm ?? null,
+      avg_power_w_per_sqm: data.avgPowerWPerSqm ?? null,
+      max_brightness_nit: data.maxBrightnessNit ?? null,
+      refresh_rate_hz: data.refreshRateHz ?? null,
+      grayscale_bit: data.grayscaleBit ?? null,
+      contrast_ratio: data.contrastRatio ?? null,
+      color_temperature_k: data.colorTemperatureK ?? null,
+      viewing_angle_h: data.viewingAngleH ?? null,
+      viewing_angle_v: data.viewingAngleV ?? null,
+      drive_mode: data.driveMode ?? null,
+      led_type: data.ledType ?? null,
+      ip_rating: data.ipRating ?? null,
+      certification: data.certification ?? null,
+      application_indoor: data.applicationIndoor ?? false,
+      application_outdoor: data.applicationOutdoor ?? false,
+      application_floor: data.applicationFloor ?? false,
+      product_image_url: data.productImageUrl ?? null,
+      spec_sheet_url: data.specSheetUrl ?? null,
+      created_by: user?.id ?? null,
     });
 
     if (error) {
@@ -44,19 +136,7 @@ export async function getLedProducts() {
       return { data: [], error: error.message };
     }
 
-    return {
-      data: data.map((product) => ({
-        id: product.id,
-        manufacturer: product.manufacturer,
-        productName: product.product_name,
-        tileWidthPx: product.tile_width_px,
-        tileHeightPx: product.tile_height_px,
-        wattsPerTile: product.watts_per_tile,
-        createdBy: product.created_by,
-        createdAt: product.created_at,
-      })),
-      error: null,
-    };
+    return { data: (data as Record<string, unknown>[]).map(mapRow), error: null };
   } catch (e) {
     const error = e instanceof Error ? e.message : "An unknown error occurred";
     return { data: [], error };
@@ -80,47 +160,57 @@ export async function getLedProductById(id: string) {
       return { data: null, error: "Product not found" };
     }
 
-    return {
-      data: {
-        id: data.id,
-        manufacturer: data.manufacturer,
-        productName: data.product_name,
-        tileWidthPx: data.tile_width_px,
-        tileHeightPx: data.tile_height_px,
-        wattsPerTile: data.watts_per_tile,
-        createdBy: data.created_by,
-        createdAt: data.created_at,
-      },
-      error: null,
-    };
+    return { data: mapRow(data as Record<string, unknown>), error: null };
   } catch (e) {
     const error = e instanceof Error ? e.message : "An unknown error occurred";
     return { data: null, error };
   }
 }
 
-export async function updateLedProduct(
-  id: string,
-  data: {
-    manufacturer: string;
-    productName: string;
-    tileWidthPx: number;
-    tileHeightPx: number;
-    wattsPerTile: number;
-  }
-) {
+export async function updateLedProduct(id: string, data: LedProductData) {
   try {
     const supabase = getSupabaseServerClient();
+
+    // Build update payload — only include fields that are explicitly provided (not undefined)
+    // so partial updates don't overwrite existing spec data with nulls.
+    const payload: Record<string, unknown> = {
+      manufacturer: data.manufacturer,
+      product_name: data.productName,
+      tile_width_px: data.tileWidthPx,
+      tile_height_px: data.tileHeightPx,
+      watts_per_tile: data.wattsPerTile,
+      updated_at: new Date().toISOString(),
+    };
+    const opt = <K extends keyof LedProductData>(key: K, col: string) => {
+      if (data[key] !== undefined) payload[col] = data[key] ?? null;
+    };
+    opt('pixelPitchMm', 'pixel_pitch_mm');
+    opt('tileWidthMm', 'tile_width_mm');
+    opt('tileHeightMm', 'tile_height_mm');
+    opt('tileDepthMm', 'tile_depth_mm');
+    opt('tileWeightKg', 'tile_weight_kg');
+    opt('maxPowerWPerSqm', 'max_power_w_per_sqm');
+    opt('avgPowerWPerSqm', 'avg_power_w_per_sqm');
+    opt('maxBrightnessNit', 'max_brightness_nit');
+    opt('refreshRateHz', 'refresh_rate_hz');
+    opt('grayscaleBit', 'grayscale_bit');
+    opt('contrastRatio', 'contrast_ratio');
+    opt('colorTemperatureK', 'color_temperature_k');
+    opt('viewingAngleH', 'viewing_angle_h');
+    opt('viewingAngleV', 'viewing_angle_v');
+    opt('driveMode', 'drive_mode');
+    opt('ledType', 'led_type');
+    opt('ipRating', 'ip_rating');
+    opt('certification', 'certification');
+    opt('applicationIndoor', 'application_indoor');
+    opt('applicationOutdoor', 'application_outdoor');
+    opt('applicationFloor', 'application_floor');
+    opt('productImageUrl', 'product_image_url');
+    opt('specSheetUrl', 'spec_sheet_url');
+
     const { error } = await supabase
       .from("led_products")
-      .update({
-        manufacturer: data.manufacturer,
-        product_name: data.productName,
-        tile_width_px: data.tileWidthPx,
-        tile_height_px: data.tileHeightPx,
-        watts_per_tile: data.wattsPerTile,
-        updated_at: new Date().toISOString(),
-      })
+      .update(payload)
       .eq("id", id);
 
     if (error) {
@@ -153,7 +243,7 @@ export async function deleteLedProduct(id: string) {
 export async function savePixelMapProject(data: {
   userId: string;
   projectName: string;
-  projectData: any;
+  projectData: unknown;
   projectId?: string;
 }) {
   try {
@@ -211,13 +301,13 @@ export async function getUserPixelMapProjects(userId: string) {
     }
 
     return {
-      data: data.map((project) => ({
-        id: project.id,
-        userId: project.user_id,
-        projectName: project.project_name,
+      data: (data as Record<string, unknown>[]).map((project) => ({
+        id: project.id as string,
+        userId: project.user_id as string,
+        projectName: project.project_name as string,
         projectData: project.project_data,
-        createdAt: project.created_at,
-        updatedAt: project.updated_at,
+        createdAt: project.created_at as string,
+        updatedAt: project.updated_at as string,
       })),
       error: null,
     };
