@@ -1,10 +1,11 @@
 'use client';
 
 import { useDrop, useDrag } from 'react-dnd';
-import type { EquipmentItem, RackItem } from '@/lib/rack-data';
+import type { EquipmentItem, RackItem, RackSide } from '@/lib/rack-data';
 import { cn } from '@/lib/utils';
 import { useRef, useState } from 'react';
-import { Trash2, Server, Zap, Network, Package, Tv, HelpCircle } from 'lucide-react';
+import { Trash2, Server, Zap, Network, Package, Tv, HelpCircle, Download } from 'lucide-react';
+import { toPng } from 'html-to-image';
 
 const RU_HEIGHT = 32; // px per rack unit
 
@@ -17,25 +18,51 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   other: HelpCircle,
 };
 
-function ScrewHole() {
+// Visual config per side
+const SIDE_CONFIG = {
+  front: {
+    borderColor: '#52525b',       // zinc-600
+    railBg: '#27272a',            // zinc-800
+    bodyBg: '#09090b',            // zinc-950
+    enclosureBg: '#18181b',       // zinc-900
+    label: 'FRONT',
+    labelColor: '#6ee7b7',        // emerald-300
+    indicatorColor: '#34d399',    // emerald-400
+  },
+  rear: {
+    borderColor: '#b45309',       // amber-700
+    railBg: '#3b1f00',            // dark amber
+    bodyBg: '#1c0f00',            // very dark amber
+    enclosureBg: '#271500',       // dark amber
+    label: 'REAR',
+    labelColor: '#fcd34d',        // amber-300
+    indicatorColor: '#fbbf24',    // amber-400
+  },
+};
+
+function ScrewHole({ side }: { side: RackSide }) {
   return (
-    <div className="w-3 h-3 rounded-full border border-zinc-600 bg-zinc-800 flex items-center justify-center">
-      <div className="w-1 h-1 rounded-full bg-zinc-600" />
+    <div className="w-3 h-3 rounded-full flex items-center justify-center"
+      style={{ border: `1px solid ${side === 'rear' ? '#78350f' : '#3f3f46'}`, background: side === 'rear' ? '#451a03' : '#27272a' }}>
+      <div className="w-1 h-1 rounded-full" style={{ background: side === 'rear' ? '#78350f' : '#52525b' }} />
     </div>
   );
 }
 
-function RailColumn({ totalRu }: { totalRu: number }) {
+function RailColumn({ totalRu, side }: { totalRu: number; side: RackSide }) {
   return (
-    <div className="w-7 flex-shrink-0 bg-zinc-800 border-x border-zinc-700 flex flex-col">
+    <div
+      className="w-7 flex-shrink-0 flex flex-col"
+      style={{ background: SIDE_CONFIG[side].railBg, borderLeft: `1px solid ${SIDE_CONFIG[side].borderColor}30`, borderRight: `1px solid ${SIDE_CONFIG[side].borderColor}30` }}
+    >
       {Array.from({ length: totalRu }).map((_, i) => (
         <div
           key={i}
-          className="flex flex-col items-center justify-evenly flex-shrink-0 border-b border-zinc-700/50"
-          style={{ height: RU_HEIGHT }}
+          className="flex flex-col items-center justify-evenly flex-shrink-0"
+          style={{ height: RU_HEIGHT, borderBottom: `1px solid ${SIDE_CONFIG[side].borderColor}20` }}
         >
-          <ScrewHole />
-          <ScrewHole />
+          <ScrewHole side={side} />
+          <ScrewHole side={side} />
         </div>
       ))}
     </div>
@@ -45,16 +72,19 @@ function RailColumn({ totalRu }: { totalRu: number }) {
 function EquipmentBlock({
   rackId,
   item,
+  activeSide,
   onRemove,
   onMove,
 }: {
   rackId: number;
   item: RackItem;
+  activeSide: RackSide;
   onRemove: (rackId: number, instanceId: string) => void;
   onMove: (rackId: number, item: RackItem, newRu: number) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState(false);
+  const cfg = SIDE_CONFIG[activeSide];
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'rack-item',
@@ -65,11 +95,11 @@ function EquipmentBlock({
   const [, drop] = useDrop(() => ({
     accept: 'rack-item',
     hover: (draggedItem: RackItem & { rackId: number }, monitor) => {
-      if (!ref.current || draggedItem.instanceId === item.instanceId || draggedItem.rackId !== rackId) return;
+      if (!ref.current || draggedItem.instanceId === item.instanceId || draggedItem.rackId !== rackId || draggedItem.side !== item.side) return;
       const rect = ref.current.getBoundingClientRect();
-      const clientOffset = monitor.getClientOffset();
-      if (!clientOffset) return;
-      const relY = clientOffset.y - rect.top;
+      const offset = monitor.getClientOffset();
+      if (!offset) return;
+      const relY = offset.y - rect.top;
       const ruOffset = Math.round(relY / RU_HEIGHT);
       const newTopRu = item.ru - ruOffset;
       if (draggedItem.ru !== newTopRu) onMove(rackId, draggedItem, newTopRu);
@@ -88,50 +118,46 @@ function EquipmentBlock({
       onMouseLeave={() => setHovered(false)}
       style={{
         height: item.equipment.ru * RU_HEIGHT,
-        top: 0,
         position: 'absolute',
-        left: 0,
-        right: 0,
+        left: 0, right: 0, top: 0,
         opacity: isDragging ? 0.3 : 1,
         cursor: 'grab',
       }}
-      className="group rounded-sm overflow-hidden shadow-md border border-black/30"
+      className="group rounded-sm overflow-hidden shadow-md"
+      style2={{ border: '1px solid rgba(0,0,0,0.4)' }}
     >
-      {/* Equipment face */}
       <div
         className="absolute inset-0 flex items-center px-3 gap-2"
         style={{
-          background: `linear-gradient(135deg, ${color}dd 0%, ${color}99 100%)`,
+          background: `linear-gradient(135deg, ${color}ee 0%, ${color}99 100%)`,
+          borderLeft: `3px solid ${cfg.indicatorColor}`,
         }}
       >
-        {/* Left indicator strip */}
         <div className="flex flex-col gap-1 flex-shrink-0">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.8)]" />
+          <div
+            className="w-1.5 h-1.5 rounded-full shadow-sm"
+            style={{ background: cfg.indicatorColor, boxShadow: `0 0 5px ${cfg.indicatorColor}` }}
+          />
           {item.equipment.ru >= 2 && (
-            <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+            <div className="w-1.5 h-1.5 rounded-full bg-white/15" />
           )}
         </div>
-        {/* Name & info */}
         <div className="flex-1 min-w-0">
           <p className="font-bold text-white text-xs leading-tight truncate drop-shadow">{item.equipment.name}</p>
           {item.equipment.model && item.equipment.ru >= 2 && (
-            <p className="text-white/70 text-xs leading-tight truncate">{item.equipment.model}</p>
+            <p className="text-white/60 text-xs leading-tight truncate">{item.equipment.model}</p>
           )}
         </div>
-        {/* RU badge */}
-        <div className="flex-shrink-0 flex flex-col items-end gap-1">
-          <span className="text-xs font-mono text-white/60">{item.equipment.ru}U</span>
+        <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+          <span className="text-xs font-mono text-white/50">{item.equipment.ru}U</span>
           {item.equipment.wattage ? (
-            <span className="text-xs font-mono text-white/50">{item.equipment.wattage}W</span>
+            <span className="text-xs font-mono text-white/40">{item.equipment.wattage}W</span>
           ) : null}
         </div>
-        {/* Icon */}
-        <Icon className="h-4 w-4 text-white/40 flex-shrink-0" />
+        <Icon className="h-4 w-4 text-white/30 flex-shrink-0" />
       </div>
-
-      {/* Delete button */}
       <button
-        onClick={(e) => { e.stopPropagation(); onRemove(rackId, item.instanceId); }}
+        onClick={e => { e.stopPropagation(); onRemove(rackId, item.instanceId); }}
         className={cn(
           'absolute top-1 right-1 w-5 h-5 rounded flex items-center justify-center transition-opacity',
           'bg-black/40 hover:bg-red-500/80 text-white/70 hover:text-white',
@@ -150,6 +176,7 @@ function RackSlot({
   onDrop,
   item,
   rackId,
+  activeSide,
   onRemove,
   onMove,
 }: {
@@ -158,6 +185,7 @@ function RackSlot({
   onDrop: (item: EquipmentItem) => void;
   item?: RackItem;
   rackId: number;
+  activeSide: RackSide;
   onRemove: (rackId: number, instanceId: string) => void;
   onMove: (rackId: number, item: RackItem, newRu: number) => void;
 }) {
@@ -174,18 +202,19 @@ function RackSlot({
   return (
     <div
       ref={drop}
-      className={cn(
-        'relative border-b border-zinc-700/40 flex-shrink-0 flex items-center',
-        isOver && canDrop && 'bg-primary/20',
-      )}
-      style={{ height: RU_HEIGHT }}
+      className="relative flex-shrink-0 flex items-center"
+      style={{
+        height: RU_HEIGHT,
+        borderBottom: '1px solid rgba(255,255,255,0.04)',
+        background: isOver && canDrop ? 'rgba(99,102,241,0.15)' : undefined,
+      }}
     >
       {isOver && canDrop && (
-        <div className="absolute inset-0 border-2 border-primary/60 pointer-events-none z-10" />
+        <div className="absolute inset-0 border-2 border-indigo-400/60 pointer-events-none z-10" />
       )}
       {item && (
         <div className="absolute inset-0 z-20">
-          <EquipmentBlock rackId={rackId} item={item} onRemove={onRemove} onMove={onMove} />
+          <EquipmentBlock rackId={rackId} item={item} activeSide={activeSide} onRemove={onRemove} onMove={onMove} />
         </div>
       )}
     </div>
@@ -197,6 +226,7 @@ export function Rack({
   name,
   ru,
   items,
+  activeSide,
   onDrop,
   onMove,
   onRemove,
@@ -208,7 +238,8 @@ export function Rack({
   name: string;
   ru: number;
   items: RackItem[];
-  onDrop: (rackId: number, item: EquipmentItem, targetRu: number) => void;
+  activeSide: RackSide;
+  onDrop: (rackId: number, item: EquipmentItem, targetRu: number, side: RackSide) => void;
   onMove: (rackId: number, item: RackItem, newRu: number) => void;
   onRemove: (rackId: number, instanceId: string) => void;
   onDelete: (rackId: number) => void;
@@ -217,51 +248,50 @@ export function Rack({
 }) {
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(name);
+  const enclosureRef = useRef<HTMLDivElement>(null);
 
-  const usedRu = items.reduce((sum, i) => sum + i.equipment.ru, 0);
+  const sideItems = items.filter(i => i.side === activeSide);
+  const usedRu = sideItems.reduce((sum, i) => sum + i.equipment.ru, 0);
   const freeRu = ru - usedRu;
-  const totalPower = items.reduce((sum, i) => sum + (i.equipment.wattage ?? 0), 0);
+  const totalPower = sideItems.reduce((sum, i) => sum + (i.equipment.wattage ?? 0), 0);
 
-  // Build a map of top RU -> item for slots that START at that RU
   const itemByTopRu = new Map<number, RackItem>();
-  items.forEach(item => { itemByTopRu.set(item.ru, item); });
+  sideItems.forEach(item => { itemByTopRu.set(item.ru, item); });
 
   const occupiedRus = new Set<number>();
-  items.forEach(item => {
+  sideItems.forEach(item => {
     for (let i = 0; i < item.equipment.ru; i++) {
       occupiedRus.add(item.ru - i);
     }
   });
 
+  const cfg = SIDE_CONFIG[activeSide];
+
   const [, dropRef] = useDrop(() => ({
     accept: ['equipment', 'rack-item'],
-    drop: (dragged: (EquipmentItem | RackItem) & { rackId?: number }, monitor) => {
+    drop: (dragged: (EquipmentItem | RackItem) & { rackId?: number; side?: RackSide }, monitor) => {
       if (monitor.didDrop()) return;
       const offset = monitor.getClientOffset();
-      const el = document.getElementById(`rack-body-${id}`);
+      const el = document.getElementById(`rack-body-${id}-${activeSide}`);
       if (!el || !offset) return;
-
       const rect = el.getBoundingClientRect();
       const relY = offset.y - rect.top;
-      // RU 1 = bottom, so we invert
-      const fromTop = Math.floor(relY / RU_HEIGHT); // 0-indexed from top
-      const targetRu = ru - fromTop; // convert to 1-indexed from bottom
-
+      const fromTop = Math.floor(relY / RU_HEIGHT);
+      const targetRu = ru - fromTop;
       const itemHeight = 'equipment' in dragged ? dragged.equipment.ru : dragged.ru;
       const clamped = Math.max(1, Math.min(ru - itemHeight + 1, targetRu));
-
       if ('instanceId' in dragged) {
         if (dragged.rackId !== id) {
           onRemove(dragged.rackId!, dragged.instanceId);
-          onDrop(id, dragged.equipment, clamped);
+          onDrop(id, dragged.equipment, clamped, activeSide);
         } else {
           onMove(id, dragged, clamped);
         }
       } else {
-        onDrop(id, dragged, clamped);
+        onDrop(id, dragged, clamped, activeSide);
       }
     },
-  }), [id, ru, onDrop, onMove, onRemove]);
+  }), [id, ru, activeSide, onDrop, onMove, onRemove]);
 
   const commitName = () => {
     setEditingName(false);
@@ -269,19 +299,35 @@ export function Rack({
     else setNameValue(name);
   };
 
+  const downloadPng = async () => {
+    if (!enclosureRef.current) return;
+    try {
+      const dataUrl = await toPng(enclosureRef.current, { cacheBust: true, pixelRatio: 2 });
+      const a = document.createElement('a');
+      a.download = `${name.replace(/\s+/g, '-').toLowerCase()}-${activeSide}.png`;
+      a.href = dataUrl;
+      a.click();
+    } catch (e) {
+      console.error('Download failed', e);
+    }
+  };
+
   return (
-    <div className="flex-shrink-0 flex flex-col" style={{ width: 320 }}>
+    <div className="flex-shrink-0 flex flex-col" style={{ width: 340 }}>
       {/* Rack header */}
       <div className="mb-2">
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center justify-between gap-1 mb-1">
           {editingName ? (
             <input
               autoFocus
               value={nameValue}
               onChange={e => setNameValue(e.target.value)}
               onBlur={commitName}
-              onKeyDown={e => { if (e.key === 'Enter') commitName(); if (e.key === 'Escape') { setEditingName(false); setNameValue(name); } }}
-              className="flex-1 bg-transparent border-b border-primary text-sm font-semibold outline-none mr-2"
+              onKeyDown={e => {
+                if (e.key === 'Enter') commitName();
+                if (e.key === 'Escape') { setEditingName(false); setNameValue(name); }
+              }}
+              className="flex-1 bg-transparent border-b border-primary text-sm font-semibold outline-none"
             />
           ) : (
             <button
@@ -292,62 +338,64 @@ export function Rack({
               {name}
             </button>
           )}
-          <button
-            onClick={() => onDelete(id)}
-            className="text-muted-foreground hover:text-destructive transition-colors ml-2 flex-shrink-0"
-            title="Delete rack"
-          >
+          <button onClick={downloadPng} className="text-muted-foreground hover:text-foreground transition-colors" title="Download PNG">
+            <Download className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={() => onDelete(id)} className="text-muted-foreground hover:text-destructive transition-colors" title="Delete rack">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
-
-        {/* Stats row */}
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span>
-            <span className="font-mono text-foreground">{usedRu}</span>/{ru}U used
-          </span>
+          <span><span className="font-mono text-foreground">{usedRu}</span>/{ru}U used</span>
           <span className="text-muted-foreground/40">|</span>
           <span className={cn('font-mono', freeRu === 0 ? 'text-destructive' : 'text-emerald-500')}>{freeRu}U free</span>
           {totalPower > 0 && (
-            <>
-              <span className="text-muted-foreground/40">|</span>
-              <span className="font-mono text-amber-500">{totalPower}W</span>
-            </>
+            <><span className="text-muted-foreground/40">|</span><span className="font-mono text-amber-500">{totalPower}W</span></>
           )}
           <select
             value={ru}
             onChange={e => onResize(id, Number(e.target.value))}
             className="ml-auto text-xs bg-transparent border border-border rounded px-1 py-0 h-5 cursor-pointer"
           >
-            {[8, 12, 16, 20, 24, 32, 42].map(n => (
-              <option key={n} value={n}>{n}U</option>
-            ))}
+            {[8, 12, 16, 20, 24, 32, 42].map(n => <option key={n} value={n}>{n}U</option>)}
           </select>
         </div>
       </div>
 
       {/* Rack enclosure */}
       <div
-        className="rounded-sm border-2 border-zinc-600 bg-zinc-900 overflow-hidden shadow-xl"
-        style={{ boxShadow: '0 0 0 1px rgba(0,0,0,0.5), inset 0 2px 4px rgba(0,0,0,0.5)' }}
+        ref={enclosureRef}
+        className="rounded-sm overflow-hidden shadow-xl"
+        style={{
+          border: `2px solid ${cfg.borderColor}`,
+          background: cfg.enclosureBg,
+          boxShadow: `0 0 0 1px rgba(0,0,0,0.6), inset 0 2px 4px rgba(0,0,0,0.5)`,
+        }}
       >
-        {/* Top cap */}
-        <div className="h-3 bg-zinc-700 border-b border-zinc-600 flex items-center px-2">
+        {/* Top cap with side label */}
+        <div
+          className="h-5 flex items-center justify-between px-2"
+          style={{ background: cfg.railBg, borderBottom: `1px solid ${cfg.borderColor}50` }}
+        >
           <div className="flex gap-1">
-            <div className="w-8 h-1.5 rounded-sm bg-zinc-600" />
-            <div className="w-4 h-1.5 rounded-sm bg-zinc-600" />
+            <div className="w-6 h-1.5 rounded-sm" style={{ background: `${cfg.borderColor}80` }} />
+            <div className="w-3 h-1.5 rounded-sm" style={{ background: `${cfg.borderColor}50` }} />
           </div>
+          <span className="text-xs font-bold font-mono tracking-widest" style={{ color: cfg.labelColor }}>
+            {cfg.label}
+          </span>
+          <div className="w-2 h-2 rounded-full" style={{ background: cfg.indicatorColor, boxShadow: `0 0 4px ${cfg.indicatorColor}` }} />
         </div>
 
-        {/* Main body */}
+        {/* Body */}
         <div className="flex">
-          {/* Left RU numbers */}
-          <div className="w-6 flex-shrink-0 flex flex-col bg-zinc-850">
+          {/* RU numbers */}
+          <div className="w-6 flex-shrink-0 flex flex-col" style={{ background: cfg.enclosureBg }}>
             {Array.from({ length: ru }, (_, i) => ru - i).map(ruNum => (
               <div
                 key={ruNum}
-                className="flex items-center justify-center text-zinc-500 font-mono flex-shrink-0 border-b border-zinc-700/30"
-                style={{ height: RU_HEIGHT, fontSize: 9 }}
+                className="flex items-center justify-center font-mono flex-shrink-0"
+                style={{ height: RU_HEIGHT, fontSize: 9, color: `${cfg.borderColor}99`, borderBottom: `1px solid ${cfg.borderColor}20` }}
               >
                 {ruNum}
               </div>
@@ -355,10 +403,15 @@ export function Rack({
           </div>
 
           {/* Left rail */}
-          <RailColumn totalRu={ru} />
+          <RailColumn totalRu={ru} side={activeSide} />
 
           {/* Equipment area */}
-          <div id={`rack-body-${id}`} ref={dropRef} className="flex-1 relative bg-zinc-950">
+          <div
+            id={`rack-body-${id}-${activeSide}`}
+            ref={dropRef}
+            className="flex-1 relative"
+            style={{ background: cfg.bodyBg }}
+          >
             {Array.from({ length: ru }, (_, i) => ru - i).map(ruNum => {
               const topItem = itemByTopRu.get(ruNum);
               return (
@@ -366,9 +419,10 @@ export function Rack({
                   key={ruNum}
                   ruNum={ruNum}
                   isOccupied={occupiedRus.has(ruNum)}
-                  onDrop={item => onDrop(id, item, ruNum)}
+                  onDrop={item => onDrop(id, item, ruNum, activeSide)}
                   item={topItem}
                   rackId={id}
+                  activeSide={activeSide}
                   onRemove={onRemove}
                   onMove={onMove}
                 />
@@ -377,11 +431,11 @@ export function Rack({
           </div>
 
           {/* Right rail */}
-          <RailColumn totalRu={ru} />
+          <RailColumn totalRu={ru} side={activeSide} />
         </div>
 
         {/* Bottom cap */}
-        <div className="h-3 bg-zinc-700 border-t border-zinc-600" />
+        <div className="h-3" style={{ background: cfg.railBg, borderTop: `1px solid ${cfg.borderColor}50` }} />
       </div>
     </div>
   );

@@ -312,6 +312,110 @@ export async function getUserPixelMapProjects(userId: string) {
   }
 }
 
+// ──────────────────────────────────────────────
+// Rack Equipment Library
+// ──────────────────────────────────────────────
+
+export type RackEquipmentType = 'processor' | 'power' | 'network' | 'utility' | 'media' | 'other';
+export type MountableAt = 'front' | 'rear' | 'both';
+
+export interface RackEquipmentData {
+  name: string;
+  model: string | null;
+  ru: number;
+  type: RackEquipmentType;
+  color: string;
+  wattage: number | null;
+  mountableAt: MountableAt;
+  isActive: boolean;
+}
+
+export interface RackEquipment extends RackEquipmentData {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function mapRackEquipmentRow(row: Record<string, unknown>): RackEquipment {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    model: row.model as string | null,
+    ru: row.ru as number,
+    type: row.type as RackEquipmentType,
+    color: row.color as string,
+    wattage: row.wattage as number | null,
+    mountableAt: row.mountable_at as MountableAt,
+    isActive: row.is_active as boolean,
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+export async function getRackEquipmentLibrary(includeInactive = false) {
+  try {
+    const supabase = getSupabaseServerClient();
+    let query = supabase.from('rack_equipment_library').select('*').order('type').order('name');
+    if (!includeInactive) query = query.eq('is_active', true);
+    const { data, error } = await query;
+    if (error) return { data: [], error: error.message };
+    return { data: (data as Record<string, unknown>[]).map(mapRackEquipmentRow), error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Unknown error' };
+  }
+}
+
+export async function addRackEquipment(data: RackEquipmentData) {
+  try {
+    const supabase = getSupabaseServerClient();
+    const { error } = await supabase.from('rack_equipment_library').insert({
+      name: data.name,
+      model: data.model ?? null,
+      ru: data.ru,
+      type: data.type,
+      color: data.color,
+      wattage: data.wattage ?? null,
+      mountable_at: data.mountableAt,
+      is_active: data.isActive,
+    });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
+  }
+}
+
+export async function updateRackEquipment(id: string, data: Partial<RackEquipmentData>) {
+  try {
+    const supabase = getSupabaseServerClient();
+    const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (data.name !== undefined) payload.name = data.name;
+    if (data.model !== undefined) payload.model = data.model ?? null;
+    if (data.ru !== undefined) payload.ru = data.ru;
+    if (data.type !== undefined) payload.type = data.type;
+    if (data.color !== undefined) payload.color = data.color;
+    if (data.wattage !== undefined) payload.wattage = data.wattage ?? null;
+    if (data.mountableAt !== undefined) payload.mountable_at = data.mountableAt;
+    if (data.isActive !== undefined) payload.is_active = data.isActive;
+    const { error } = await supabase.from('rack_equipment_library').update(payload).eq('id', id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
+  }
+}
+
+export async function deleteRackEquipment(id: string) {
+  try {
+    const supabase = getSupabaseServerClient();
+    const { error } = await supabase.from('rack_equipment_library').delete().eq('id', id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
+  }
+}
+
 export async function submitContactMessage(data: {
   name: string;
   email: string;

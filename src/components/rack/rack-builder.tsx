@@ -1,14 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Rack } from './rack';
 import { EquipmentSidebar } from './equipment-sidebar';
-import type { EquipmentItem, RackItem } from '@/lib/rack-data';
+import type { EquipmentItem, RackItem, RackSide } from '@/lib/rack-data';
 import { defaultEquipmentLibrary } from '@/lib/rack-data';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, LayoutGrid } from 'lucide-react';
+import { Plus, Trash2, LayoutGrid, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,6 +20,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { cn } from '@/lib/utils';
+import { toPng } from 'html-to-image';
 
 interface RackState {
   id: number;
@@ -28,18 +30,33 @@ interface RackState {
   items: RackItem[];
 }
 
+async function fetchEquipmentLibrary(): Promise<EquipmentItem[]> {
+  try {
+    const res = await fetch('/api/rack-equipment');
+    if (!res.ok) throw new Error('Failed to load');
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return defaultEquipmentLibrary;
+    return data;
+  } catch {
+    return defaultEquipmentLibrary;
+  }
+}
+
 export function RackBuilder() {
   const [racks, setRacks] = useState<RackState[]>([
     { id: 1, name: 'Main Rack', ru: 24, items: [] },
   ]);
   const [nextRackId, setNextRackId] = useState(2);
-  const [equipmentLibrary] = useState<EquipmentItem[]>(defaultEquipmentLibrary);
+  const [equipmentLibrary, setEquipmentLibrary] = useState<EquipmentItem[]>(defaultEquipmentLibrary);
+  const [activeSide, setActiveSide] = useState<RackSide>('front');
+  const canvasRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetchEquipmentLibrary().then(setEquipmentLibrary);
+  }, []);
 
   const addRack = () => {
-    setRacks(prev => [
-      ...prev,
-      { id: nextRackId, name: `Rack ${nextRackId}`, ru: 24, items: [] },
-    ]);
+    setRacks(prev => [...prev, { id: nextRackId, name: `Rack ${nextRackId}`, ru: 24, items: [] }]);
     setNextRackId(prev => prev + 1);
   };
 
@@ -54,7 +71,6 @@ export function RackBuilder() {
   const resizeRack = (rackId: number, ru: number) => {
     setRacks(prev => prev.map(r => {
       if (r.id !== rackId) return r;
-      // Remove items that no longer fit
       const validItems = r.items.filter(item => item.ru <= ru && item.ru - item.equipment.ru + 1 >= 1);
       return { ...r, ru, items: validItems };
     }));
@@ -64,13 +80,15 @@ export function RackBuilder() {
     setRacks(prev => prev.map(r => ({ ...r, items: [] })));
   };
 
-  const handleDrop = (rackId: number, item: EquipmentItem, targetRu: number) => {
+  const handleDrop = (rackId: number, item: EquipmentItem, targetRu: number, side: RackSide) => {
     setRacks(prev => prev.map(rack => {
       if (rack.id !== rackId) return rack;
-      if (targetRu + item.ru - 1 > rack.ru || targetRu < 1) return rack;
+      if (targetRu < 1 || targetRu + item.ru - 1 > rack.ru) return rack;
+      // Conflict check: only items on the same side conflict
+      const sideItems = rack.items.filter(i => i.side === side);
       for (let i = 0; i < item.ru; i++) {
         const checkRu = targetRu - i;
-        if (rack.items.some(existing =>
+        if (sideItems.some(existing =>
           existing.ru >= checkRu && existing.ru - existing.equipment.ru + 1 <= checkRu
         )) return rack;
       }
@@ -78,6 +96,7 @@ export function RackBuilder() {
         instanceId: crypto.randomUUID(),
         equipment: item,
         ru: targetRu,
+        side,
       };
       return { ...rack, items: [...rack.items, newItem].sort((a, b) => b.ru - a.ru) };
     }));
@@ -88,9 +107,10 @@ export function RackBuilder() {
       if (rack.id !== rackId) return rack;
       const others = rack.items.filter(i => i.instanceId !== item.instanceId);
       if (newRu < 1 || newRu + item.equipment.ru - 1 > rack.ru) return rack;
+      const sideOthers = others.filter(i => i.side === item.side);
       for (let i = 0; i < item.equipment.ru; i++) {
         const checkRu = newRu - i;
-        if (others.some(existing =>
+        if (sideOthers.some(existing =>
           existing.ru >= checkRu && existing.ru - existing.equipment.ru + 1 <= checkRu
         )) return rack;
       }
@@ -105,32 +125,74 @@ export function RackBuilder() {
     ));
   };
 
-  const totalItems = racks.reduce((sum, r) => sum + r.items.length, 0);
+  const downloadAll = async () => {
+    if (!canvasRef.current) return;
+    try {
+      const dataUrl = await toPng(canvasRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: '#0f0f0f' });
+      const a = document.createElement('a');
+      a.download = `rack-layout-${activeSide}.png`;
+      a.href = dataUrl;
+      a.click();
+    } catch (e) {
+      console.error('Download failed', e);
+    }
+  };
+
+  const totalItems = racks.reduce((sum, r) => sum + r.items.filter(i => i.side === activeSide).length, 0);
 
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex h-[calc(100svh-3.5rem)] overflow-hidden">
-        <EquipmentSidebar equipment={equipmentLibrary} />
+        <EquipmentSidebar equipment={equipmentLibrary} activeSide={activeSide} />
 
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Toolbar */}
-          <div className="flex-shrink-0 border-b bg-background px-5 py-2.5 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">
-                {racks.length} {racks.length === 1 ? 'rack' : 'racks'}
-              </span>
+          <div className="flex-shrink-0 border-b bg-background px-4 py-2 flex items-center gap-3">
+            {/* Side toggle */}
+            <div className="flex items-center rounded-md border overflow-hidden">
+              <button
+                onClick={() => setActiveSide('front')}
+                className={cn(
+                  'px-3 py-1 text-xs font-bold tracking-wider transition-colors flex items-center gap-1.5',
+                  activeSide === 'front'
+                    ? 'bg-emerald-950 text-emerald-400 border-r border-emerald-800'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted border-r border-border',
+                )}
+              >
+                <ChevronRight className="h-3 w-3" />
+                FRONT
+              </button>
+              <button
+                onClick={() => setActiveSide('rear')}
+                className={cn(
+                  'px-3 py-1 text-xs font-bold tracking-wider transition-colors flex items-center gap-1.5',
+                  activeSide === 'rear'
+                    ? 'bg-amber-950 text-amber-400'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+                )}
+              >
+                <ChevronLeft className="h-3 w-3" />
+                REAR
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span>{racks.length} {racks.length === 1 ? 'rack' : 'racks'}</span>
               {totalItems > 0 && (
-                <span className="text-xs text-muted-foreground">
-                  &middot; {totalItems} items placed
-                </span>
+                <span className="text-xs">&middot; {totalItems} items on {activeSide}</span>
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ml-auto">
+              <Button variant="outline" size="sm" onClick={downloadAll} title="Download all racks as PNG">
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                Download PNG
+              </Button>
+
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" disabled={totalItems === 0}>
+                  <Button variant="outline" size="sm" disabled={racks.every(r => r.items.length === 0)}>
                     <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                     Clear All
                   </Button>
@@ -139,7 +201,7 @@ export function RackBuilder() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Clear all racks?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This removes all equipment from every rack. This cannot be undone.
+                      This removes all equipment from every rack on both sides. This cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -162,7 +224,7 @@ export function RackBuilder() {
               <div className="h-full flex items-center justify-center">
                 <div className="text-center space-y-3">
                   <LayoutGrid className="h-10 w-10 text-muted-foreground/30 mx-auto" />
-                  <p className="text-muted-foreground text-sm">No racks yet.</p>
+                  <p className="text-muted-foreground text-sm">No racks. Click Add Rack to start.</p>
                   <Button onClick={addRack} size="sm">
                     <Plus className="mr-1.5 h-3.5 w-3.5" />
                     Add Rack
@@ -170,7 +232,7 @@ export function RackBuilder() {
                 </div>
               </div>
             ) : (
-              <div className="flex gap-8 p-8 items-start min-h-full">
+              <div ref={canvasRef} className="flex gap-8 p-8 items-start min-w-max min-h-full" style={{ background: '#0f0f0f' }}>
                 {racks.map(rack => (
                   <Rack
                     key={rack.id}
@@ -178,6 +240,7 @@ export function RackBuilder() {
                     name={rack.name}
                     ru={rack.ru}
                     items={rack.items}
+                    activeSide={activeSide}
                     onDrop={handleDrop}
                     onMove={moveItem}
                     onRemove={removeItem}
