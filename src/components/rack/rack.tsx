@@ -275,12 +275,13 @@ export function Rack({
   const [pendingResize, setPendingResize] = useState<number | null>(null);
 
   const cfg = SIDE_CONFIG[activeSide];
+  const otherSide: RackSide = activeSide === 'front' ? 'rear' : 'front';
+  const otherCfg = SIDE_CONFIG[otherSide];
   const sideItems = items.filter(i => i.side === activeSide);
+  const otherSideItems = items.filter(i => i.side === otherSide);
   const usedRu = sideItems.reduce((sum, i) => sum + i.equipment.ru, 0);
   const freeRu = ru - usedRu;
   const totalPower = sideItems.reduce((sum, i) => sum + (i.equipment.wattage ?? 0), 0);
-  const allItems = items;
-  const allSideItems = allItems.filter(i => i.side === activeSide);
 
   // Items that would be displaced on both sides if we resize to pendingResize
   const displacedItems = pendingResize != null
@@ -463,9 +464,25 @@ export function Rack({
             <div className="w-6 h-1.5 rounded-sm" style={{ background: `${cfg.borderColor}80` }} />
             <div className="w-3 h-1.5 rounded-sm" style={{ background: `${cfg.borderColor}50` }} />
           </div>
-          <span className="text-xs font-bold font-mono tracking-widest" style={{ color: cfg.labelColor }}>
-            {cfg.label}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold font-mono tracking-widest" style={{ color: cfg.labelColor }}>
+              {cfg.label}
+            </span>
+            {otherSideItems.length > 0 && (
+              <span
+                className="text-xs font-bold px-1 rounded"
+                style={{
+                  fontSize: 8,
+                  background: `${otherCfg.indicatorColor}30`,
+                  color: otherCfg.indicatorColor,
+                  border: `1px dashed ${otherCfg.indicatorColor}60`,
+                }}
+                title={`${otherSideItems.length} item${otherSideItems.length !== 1 ? 's' : ''} on ${otherSide} side`}
+              >
+                {otherSideItems.length} {otherSide.toUpperCase()[0]}
+              </span>
+            )}
+          </div>
           <div className="w-2 h-2 rounded-full" style={{ background: cfg.indicatorColor, boxShadow: `0 0 4px ${cfg.indicatorColor}` }} />
         </div>
 
@@ -492,6 +509,51 @@ export function Rack({
             className="flex-1 relative"
             style={{ background: cfg.bodyBg }}
           >
+            {/* Ghost items from the other side — non-interactive, faded */}
+            {otherSideItems.map(ghost => {
+              const fromTop = ru - ghost.ru;
+              if (fromTop < 0 || fromTop >= ru) return null;
+              return (
+                <div
+                  key={ghost.instanceId}
+                  className="absolute left-0 right-0 pointer-events-none"
+                  style={{
+                    top: fromTop * RU_HEIGHT,
+                    height: ghost.equipment.ru * RU_HEIGHT,
+                    zIndex: 5,
+                    opacity: 0.28,
+                  }}
+                >
+                  <div
+                    className="absolute inset-0 flex items-center px-2 gap-1.5 overflow-hidden rounded-sm"
+                    style={{
+                      background: `${ghost.equipment.color}35`,
+                      border: `1px dashed ${otherCfg.indicatorColor}80`,
+                      borderLeft: `2px dashed ${otherCfg.indicatorColor}`,
+                    }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-white text-xs leading-tight truncate"
+                        style={{ fontSize: 10 }}>
+                        {ghost.equipment.name}
+                      </p>
+                    </div>
+                    <span
+                      className="flex-shrink-0 font-bold rounded px-0.5"
+                      style={{
+                        fontSize: 8,
+                        background: otherCfg.indicatorColor,
+                        color: '#000',
+                        lineHeight: '14px',
+                      }}
+                    >
+                      {otherSide.toUpperCase()[0]}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+
             {Array.from({ length: ru }, (_, i) => ru - i).map(ruNum => {
               const topItem = itemByTopRu.get(ruNum);
               return (
