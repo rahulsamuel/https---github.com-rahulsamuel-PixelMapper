@@ -83,6 +83,20 @@ export function RackBuilder() {
     setRacks(prev => prev.map(r => ({ ...r, items: [] })));
   };
 
+  const renameItem = (rackId: number, instanceId: string, name: string) => {
+    setRacks(prev => prev.map(rack =>
+      rack.id !== rackId ? rack : {
+        ...rack,
+        items: rack.items.map(item =>
+          item.instanceId !== instanceId ? item : {
+            ...item,
+            customName: name || undefined,
+          }
+        ),
+      }
+    ));
+  };
+
   const handleDrop = (rackId: number, item: EquipmentItem, targetRu: number, side: RackSide) => {
     setRacks(prev => prev.map(rack => {
       if (rack.id !== rackId) return rack;
@@ -241,6 +255,7 @@ export function RackBuilder() {
                     onDelete={deleteRack}
                     onRename={renameRack}
                     onResize={resizeRack}
+                    onRenameItem={renameItem}
                   />
                 ))}
               </div>

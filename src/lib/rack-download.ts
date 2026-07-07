@@ -214,18 +214,22 @@ function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, side: Rac
     ctx.textAlign = 'right';
     ctx.fillText(`${item.equipment.ru}U`, equipX + EQUIP_W - 5, iy + 12);
 
-    // Name text
+    // Name text (custom name takes precedence)
+    const displayName = item.customName ?? item.equipment.name;
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 10px ui-monospace, monospace';
     ctx.textAlign = 'left';
     const nameY = ih > RU_H ? iy + RU_H / 2 - 2 : iy + RU_H / 2 + 3;
-    ctx.fillText(clipText(ctx, item.equipment.name, textMaxW), equipX + 20, nameY);
+    ctx.fillText(clipText(ctx, displayName, textMaxW), equipX + 20, nameY);
 
-    // Model text (only if 2U+)
-    if (item.equipment.ru >= 2 && item.equipment.model) {
-      ctx.fillStyle = 'rgba(255,255,255,0.45)';
-      ctx.font = '9px ui-monospace, monospace';
-      ctx.fillText(clipText(ctx, item.equipment.model, textMaxW), equipX + 20, iy + RU_H / 2 + 11);
+    // Model / original name below (only if 2U+ and name was customized)
+    if (item.equipment.ru >= 2) {
+      const subLabel = item.customName ? item.equipment.name : item.equipment.model;
+      if (subLabel) {
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.font = '9px ui-monospace, monospace';
+        ctx.fillText(clipText(ctx, subLabel, textMaxW), equipX + 20, iy + RU_H / 2 + 11);
+      }
     }
   });
 

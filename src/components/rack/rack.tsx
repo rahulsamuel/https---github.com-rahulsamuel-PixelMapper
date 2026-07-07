@@ -95,22 +95,31 @@ function EquipmentBlock({
   activeSide,
   onRemove,
   onMove,
+  onRenameItem,
 }: {
   rackId: number;
   item: RackItem;
   activeSide: RackSide;
   onRemove: (rackId: number, instanceId: string) => void;
   onMove: (rackId: number, item: RackItem, newRu: number) => void;
+  onRenameItem: (rackId: number, instanceId: string, name: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [hovered, setHovered] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
   const cfg = SIDE_CONFIG[activeSide];
+
+  const displayName = item.customName ?? item.equipment.name;
+  const isCustom = !!item.customName;
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'rack-item',
     item: { ...item, rackId },
+    canDrag: () => !isEditing,
     collect: monitor => ({ isDragging: !!monitor.isDragging() }),
-  }), [item, rackId]);
+  }), [item, rackId, isEditing]);
 
   const [, drop] = useDrop(() => ({
     accept: 'rack-item',
@@ -133,6 +142,32 @@ function EquipmentBlock({
 
   drag(drop(ref));
 
+  const startEditing = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditValue(displayName);
+    setIsEditing(true);
+    setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }, 0);
+  };
+
+  const commitEdit = () => {
+    setIsEditing(false);
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== item.equipment.name) {
+      onRenameItem(rackId, item.instanceId, trimmed);
+    } else if (!trimmed || trimmed === item.equipment.name) {
+      // Restore to original if blank or same as equipment name
+      onRenameItem(rackId, item.instanceId, '');
+    }
+  };
+
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setEditValue('');
+  };
+
   const Icon = TYPE_ICONS[item.equipment.type] ?? HelpCircle;
 
   return (
@@ -140,17 +175,21 @@ function EquipmentBlock({
       ref={ref}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onDoubleClick={startEditing}
       style={{
         height: item.equipment.ru * RU_HEIGHT,
         position: 'absolute',
         left: 0, right: 0, top: 0,
         opacity: isDragging ? 0.3 : 1,
-        cursor: 'grab',
-        border: '1px solid rgba(0,0,0,0.35)',
+        cursor: isEditing ? 'text' : 'grab',
+        border: isEditing
+          ? `1px solid ${cfg.indicatorColor}80`
+          : '1px solid rgba(0,0,0,0.35)',
         borderRadius: 2,
         overflow: 'hidden',
       }}
       className="group shadow-md"
+      title="Double-click to rename"
     >
       <div
         className="absolute inset-0 flex items-center px-3 gap-2"
@@ -166,30 +205,70 @@ function EquipmentBlock({
           />
           {item.equipment.ru >= 2 && <div className="w-1.5 h-1.5 rounded-full bg-white/15" />}
         </div>
+
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-white text-xs leading-tight truncate drop-shadow">{item.equipment.name}</p>
-          {item.equipment.model && item.equipment.ru >= 2 && (
-            <p className="text-white/60 text-xs leading-tight truncate">{item.equipment.model}</p>
+          {isEditing ? (
+            <input
+              ref={inputRef}
+              value={editValue}
+              onChange={e => setEditValue(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); commitEdit(); }
+                if (e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
+                e.stopPropagation();
+              }}
+              onClick={e => e.stopPropagation()}
+              className="w-full bg-black/30 text-white font-bold text-xs rounded px-1 py-0.5 outline-none border border-white/30 focus:border-white/60"
+              style={{ fontSize: 11 }}
+            />
+          ) : (
+            <>
+              <p className="font-bold text-white text-xs leading-tight truncate drop-shadow">
+                {displayName}
+                {isCustom && (
+                  <span className="ml-1 opacity-50 font-normal" style={{ fontSize: 9 }}>
+                    ✎
+                  </span>
+                )}
+              </p>
+              {!isCustom && item.equipment.model && item.equipment.ru >= 2 && (
+                <p className="text-white/60 text-xs leading-tight truncate">{item.equipment.model}</p>
+              )}
+              {isCustom && item.equipment.ru >= 2 && (
+                <p className="text-white/45 text-xs leading-tight truncate" style={{ fontSize: 9 }}>
+                  {item.equipment.name}
+                </p>
+              )}
+            </>
           )}
         </div>
-        <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
-          <span className="text-xs font-mono text-white/50">{item.equipment.ru}U</span>
-          {item.equipment.wattage ? (
-            <span className="text-xs font-mono text-white/35">{item.equipment.wattage}W</span>
-          ) : null}
-        </div>
-        <Icon className="h-4 w-4 text-white/25 flex-shrink-0" />
-      </div>
-      <button
-        onClick={e => { e.stopPropagation(); onRemove(rackId, item.instanceId); }}
-        className={cn(
-          'absolute top-1 right-1 w-5 h-5 rounded flex items-center justify-center transition-opacity',
-          'bg-black/40 hover:bg-red-500/80 text-white/70 hover:text-white',
-          hovered ? 'opacity-100' : 'opacity-0',
+
+        {!isEditing && (
+          <>
+            <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+              <span className="text-xs font-mono text-white/50">{item.equipment.ru}U</span>
+              {item.equipment.wattage ? (
+                <span className="text-xs font-mono text-white/35">{item.equipment.wattage}W</span>
+              ) : null}
+            </div>
+            <Icon className="h-4 w-4 text-white/25 flex-shrink-0" />
+          </>
         )}
-      >
-        <Trash2 className="h-2.5 w-2.5" />
-      </button>
+      </div>
+
+      {!isEditing && (
+        <button
+          onClick={e => { e.stopPropagation(); onRemove(rackId, item.instanceId); }}
+          className={cn(
+            'absolute top-1 right-1 w-5 h-5 rounded flex items-center justify-center transition-opacity',
+            'bg-black/40 hover:bg-red-500/80 text-white/70 hover:text-white',
+            hovered ? 'opacity-100' : 'opacity-0',
+          )}
+        >
+          <Trash2 className="h-2.5 w-2.5" />
+        </button>
+      )}
     </div>
   );
 }
@@ -203,6 +282,7 @@ function RackSlot({
   activeSide,
   onRemove,
   onMove,
+  onRenameItem,
 }: {
   ruNum: number;
   isOccupied: boolean;
@@ -212,6 +292,7 @@ function RackSlot({
   activeSide: RackSide;
   onRemove: (rackId: number, instanceId: string) => void;
   onMove: (rackId: number, item: RackItem, newRu: number) => void;
+  onRenameItem: (rackId: number, instanceId: string, name: string) => void;
 }) {
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: 'equipment',
@@ -238,7 +319,14 @@ function RackSlot({
       )}
       {item && (
         <div className="absolute inset-0 z-20">
-          <EquipmentBlock rackId={rackId} item={item} activeSide={activeSide} onRemove={onRemove} onMove={onMove} />
+          <EquipmentBlock
+            rackId={rackId}
+            item={item}
+            activeSide={activeSide}
+            onRemove={onRemove}
+            onMove={onMove}
+            onRenameItem={onRenameItem}
+          />
         </div>
       )}
     </div>
@@ -257,6 +345,7 @@ export function Rack({
   onDelete,
   onRename,
   onResize,
+  onRenameItem,
 }: {
   id: number;
   name: string;
@@ -269,6 +358,7 @@ export function Rack({
   onDelete: (rackId: number) => void;
   onRename: (rackId: number, name: string) => void;
   onResize: (rackId: number, ru: number, force?: boolean) => void;
+  onRenameItem: (rackId: number, instanceId: string, name: string) => void;
 }) {
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(name);
@@ -531,11 +621,12 @@ export function Rack({
                       border: `1px dashed ${otherCfg.indicatorColor}80`,
                       borderLeft: `2px dashed ${otherCfg.indicatorColor}`,
                     }}
+                    title={`${ghost.customName ?? ghost.equipment.name} (${otherSide} side)`}
                   >
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-white text-xs leading-tight truncate"
                         style={{ fontSize: 10 }}>
-                        {ghost.equipment.name}
+                        {ghost.customName ?? ghost.equipment.name}
                       </p>
                     </div>
                     <span
@@ -567,6 +658,7 @@ export function Rack({
                   activeSide={activeSide}
                   onRemove={onRemove}
                   onMove={onMove}
+                  onRenameItem={onRenameItem}
                 />
               );
             })}

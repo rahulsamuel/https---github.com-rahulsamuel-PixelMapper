@@ -17,8 +17,9 @@ export interface EquipmentItem {
 export interface RackItem {
   instanceId: string;
   equipment: EquipmentItem;
-  ru: number;       // Top-most RU this item occupies (1-indexed from bottom)
-  side: RackSide;   // Which physical side of the rack this is mounted on
+  ru: number;         // Top-most RU this item occupies (1-indexed from bottom)
+  side: RackSide;     // Which physical side of the rack this is mounted on
+  customName?: string; // User-defined label (overrides equipment.name for display)
 }
 
 export const EQUIPMENT_TYPE_COLORS: Record<EquipmentType, string> = {
