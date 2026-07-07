@@ -4,10 +4,20 @@ import { useDrop, useDrag } from 'react-dnd';
 import type { EquipmentItem, RackItem, RackSide } from '@/lib/rack-data';
 import { cn } from '@/lib/utils';
 import { useRef, useState } from 'react';
-import { Trash2, Server, Zap, Network, Package, Tv, HelpCircle, Download } from 'lucide-react';
-import { toPng } from 'html-to-image';
+import { Trash2, Server, Zap, Network, Package, Tv, HelpCircle, Download, Pencil, Check, X } from 'lucide-react';
+import { downloadRackPng } from '@/lib/rack-download';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
-const RU_HEIGHT = 32; // px per rack unit
+const RU_HEIGHT = 32;
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   processor: Server,
@@ -18,48 +28,58 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   other: HelpCircle,
 };
 
-// Visual config per side
 const SIDE_CONFIG = {
   front: {
-    borderColor: '#52525b',       // zinc-600
-    railBg: '#27272a',            // zinc-800
-    bodyBg: '#09090b',            // zinc-950
-    enclosureBg: '#18181b',       // zinc-900
+    borderColor: '#52525b',
+    railBg: '#27272a',
+    bodyBg: '#09090b',
+    enclosureBg: '#18181b',
     label: 'FRONT',
-    labelColor: '#6ee7b7',        // emerald-300
-    indicatorColor: '#34d399',    // emerald-400
+    labelColor: '#6ee7b7',
+    indicatorColor: '#34d399',
   },
   rear: {
-    borderColor: '#b45309',       // amber-700
-    railBg: '#3b1f00',            // dark amber
-    bodyBg: '#1c0f00',            // very dark amber
-    enclosureBg: '#271500',       // dark amber
+    borderColor: '#b45309',
+    railBg: '#3b1f00',
+    bodyBg: '#1c0f00',
+    enclosureBg: '#271500',
     label: 'REAR',
-    labelColor: '#fcd34d',        // amber-300
-    indicatorColor: '#fbbf24',    // amber-400
+    labelColor: '#fcd34d',
+    indicatorColor: '#fbbf24',
   },
 };
 
 function ScrewHole({ side }: { side: RackSide }) {
+  const isRear = side === 'rear';
   return (
-    <div className="w-3 h-3 rounded-full flex items-center justify-center"
-      style={{ border: `1px solid ${side === 'rear' ? '#78350f' : '#3f3f46'}`, background: side === 'rear' ? '#451a03' : '#27272a' }}>
-      <div className="w-1 h-1 rounded-full" style={{ background: side === 'rear' ? '#78350f' : '#52525b' }} />
+    <div
+      className="w-3 h-3 rounded-full flex items-center justify-center"
+      style={{
+        border: `1px solid ${isRear ? '#78350f' : '#3f3f46'}`,
+        background: isRear ? '#451a03' : '#27272a',
+      }}
+    >
+      <div className="w-1 h-1 rounded-full" style={{ background: isRear ? '#78350f' : '#52525b' }} />
     </div>
   );
 }
 
 function RailColumn({ totalRu, side }: { totalRu: number; side: RackSide }) {
+  const cfg = SIDE_CONFIG[side];
   return (
     <div
       className="w-7 flex-shrink-0 flex flex-col"
-      style={{ background: SIDE_CONFIG[side].railBg, borderLeft: `1px solid ${SIDE_CONFIG[side].borderColor}30`, borderRight: `1px solid ${SIDE_CONFIG[side].borderColor}30` }}
+      style={{
+        background: cfg.railBg,
+        borderLeft: `1px solid ${cfg.borderColor}30`,
+        borderRight: `1px solid ${cfg.borderColor}30`,
+      }}
     >
       {Array.from({ length: totalRu }).map((_, i) => (
         <div
           key={i}
           className="flex flex-col items-center justify-evenly flex-shrink-0"
-          style={{ height: RU_HEIGHT, borderBottom: `1px solid ${SIDE_CONFIG[side].borderColor}20` }}
+          style={{ height: RU_HEIGHT, borderBottom: `1px solid ${cfg.borderColor}20` }}
         >
           <ScrewHole side={side} />
           <ScrewHole side={side} />
@@ -95,7 +115,12 @@ function EquipmentBlock({
   const [, drop] = useDrop(() => ({
     accept: 'rack-item',
     hover: (draggedItem: RackItem & { rackId: number }, monitor) => {
-      if (!ref.current || draggedItem.instanceId === item.instanceId || draggedItem.rackId !== rackId || draggedItem.side !== item.side) return;
+      if (
+        !ref.current ||
+        draggedItem.instanceId === item.instanceId ||
+        draggedItem.rackId !== rackId ||
+        draggedItem.side !== item.side
+      ) return;
       const rect = ref.current.getBoundingClientRect();
       const offset = monitor.getClientOffset();
       if (!offset) return;
@@ -109,7 +134,6 @@ function EquipmentBlock({
   drag(drop(ref));
 
   const Icon = TYPE_ICONS[item.equipment.type] ?? HelpCircle;
-  const color = item.equipment.color;
 
   return (
     <div
@@ -122,25 +146,25 @@ function EquipmentBlock({
         left: 0, right: 0, top: 0,
         opacity: isDragging ? 0.3 : 1,
         cursor: 'grab',
+        border: '1px solid rgba(0,0,0,0.35)',
+        borderRadius: 2,
+        overflow: 'hidden',
       }}
-      className="group rounded-sm overflow-hidden shadow-md"
-      style2={{ border: '1px solid rgba(0,0,0,0.4)' }}
+      className="group shadow-md"
     >
       <div
         className="absolute inset-0 flex items-center px-3 gap-2"
         style={{
-          background: `linear-gradient(135deg, ${color}ee 0%, ${color}99 100%)`,
+          background: `linear-gradient(135deg, ${item.equipment.color}ee 0%, ${item.equipment.color}99 100%)`,
           borderLeft: `3px solid ${cfg.indicatorColor}`,
         }}
       >
         <div className="flex flex-col gap-1 flex-shrink-0">
           <div
-            className="w-1.5 h-1.5 rounded-full shadow-sm"
+            className="w-1.5 h-1.5 rounded-full"
             style={{ background: cfg.indicatorColor, boxShadow: `0 0 5px ${cfg.indicatorColor}` }}
           />
-          {item.equipment.ru >= 2 && (
-            <div className="w-1.5 h-1.5 rounded-full bg-white/15" />
-          )}
+          {item.equipment.ru >= 2 && <div className="w-1.5 h-1.5 rounded-full bg-white/15" />}
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-white text-xs leading-tight truncate drop-shadow">{item.equipment.name}</p>
@@ -151,10 +175,10 @@ function EquipmentBlock({
         <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
           <span className="text-xs font-mono text-white/50">{item.equipment.ru}U</span>
           {item.equipment.wattage ? (
-            <span className="text-xs font-mono text-white/40">{item.equipment.wattage}W</span>
+            <span className="text-xs font-mono text-white/35">{item.equipment.wattage}W</span>
           ) : null}
         </div>
-        <Icon className="h-4 w-4 text-white/30 flex-shrink-0" />
+        <Icon className="h-4 w-4 text-white/25 flex-shrink-0" />
       </div>
       <button
         onClick={e => { e.stopPropagation(); onRemove(rackId, item.instanceId); }}
@@ -202,7 +226,7 @@ function RackSlot({
   return (
     <div
       ref={drop}
-      className="relative flex-shrink-0 flex items-center"
+      className="relative flex-shrink-0"
       style={{
         height: RU_HEIGHT,
         borderBottom: '1px solid rgba(255,255,255,0.04)',
@@ -244,16 +268,24 @@ export function Rack({
   onRemove: (rackId: number, instanceId: string) => void;
   onDelete: (rackId: number) => void;
   onRename: (rackId: number, name: string) => void;
-  onResize: (rackId: number, ru: number) => void;
+  onResize: (rackId: number, ru: number, force?: boolean) => void;
 }) {
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(name);
-  const enclosureRef = useRef<HTMLDivElement>(null);
+  const [pendingResize, setPendingResize] = useState<number | null>(null);
 
+  const cfg = SIDE_CONFIG[activeSide];
   const sideItems = items.filter(i => i.side === activeSide);
   const usedRu = sideItems.reduce((sum, i) => sum + i.equipment.ru, 0);
   const freeRu = ru - usedRu;
   const totalPower = sideItems.reduce((sum, i) => sum + (i.equipment.wattage ?? 0), 0);
+  const allItems = items;
+  const allSideItems = allItems.filter(i => i.side === activeSide);
+
+  // Items that would be displaced on both sides if we resize to pendingResize
+  const displacedItems = pendingResize != null
+    ? items.filter(item => item.ru > pendingResize)
+    : [];
 
   const itemByTopRu = new Map<number, RackItem>();
   sideItems.forEach(item => { itemByTopRu.set(item.ru, item); });
@@ -264,8 +296,6 @@ export function Rack({
       occupiedRus.add(item.ru - i);
     }
   });
-
-  const cfg = SIDE_CONFIG[activeSide];
 
   const [, dropRef] = useDrop(() => ({
     accept: ['equipment', 'rack-item'],
@@ -299,62 +329,115 @@ export function Rack({
     else setNameValue(name);
   };
 
-  const downloadPng = async () => {
-    if (!enclosureRef.current) return;
-    try {
-      const dataUrl = await toPng(enclosureRef.current, { cacheBust: true, pixelRatio: 2 });
-      const a = document.createElement('a');
-      a.download = `${name.replace(/\s+/g, '-').toLowerCase()}-${activeSide}.png`;
-      a.href = dataUrl;
-      a.click();
-    } catch (e) {
-      console.error('Download failed', e);
+  const cancelName = () => {
+    setEditingName(false);
+    setNameValue(name);
+  };
+
+  const handleResizeChange = (newRu: number) => {
+    const wouldDisplace = items.filter(i => i.ru > newRu);
+    if (wouldDisplace.length > 0) {
+      setPendingResize(newRu);
+    } else {
+      onResize(id, newRu);
     }
+  };
+
+  const handleDownload = () => {
+    downloadRackPng(name, ru, items);
   };
 
   return (
     <div className="flex-shrink-0 flex flex-col" style={{ width: 340 }}>
+      {/* Resize confirmation dialog */}
+      <AlertDialog open={pendingResize !== null} onOpenChange={open => !open && setPendingResize(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Resize rack to {pendingResize}U?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>The following equipment will be removed because it no longer fits:</p>
+                <ul className="mt-2 space-y-1">
+                  {displacedItems.map(item => (
+                    <li key={item.instanceId} className="flex items-center gap-2 text-sm text-foreground">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.equipment.color }} />
+                      <span className="font-medium">{item.equipment.name}</span>
+                      <span className="text-muted-foreground">({item.side} · {item.equipment.ru}U at position {item.ru})</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-sm text-muted-foreground mt-2">Equipment that still fits will be kept.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingResize(null)}>Keep current size</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingResize !== null) onResize(id, pendingResize, true);
+                setPendingResize(null);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Resize &amp; remove {displacedItems.length} item{displacedItems.length !== 1 ? 's' : ''}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Rack header */}
       <div className="mb-2">
-        <div className="flex items-center justify-between gap-1 mb-1">
+        <div className="flex items-center gap-1 mb-1">
           {editingName ? (
-            <input
-              autoFocus
-              value={nameValue}
-              onChange={e => setNameValue(e.target.value)}
-              onBlur={commitName}
-              onKeyDown={e => {
-                if (e.key === 'Enter') commitName();
-                if (e.key === 'Escape') { setEditingName(false); setNameValue(name); }
-              }}
-              className="flex-1 bg-transparent border-b border-primary text-sm font-semibold outline-none"
-            />
+            <div className="flex items-center gap-1 flex-1">
+              <input
+                autoFocus
+                value={nameValue}
+                onChange={e => setNameValue(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') commitName();
+                  if (e.key === 'Escape') cancelName();
+                }}
+                className="flex-1 bg-transparent border-b border-primary text-sm font-semibold outline-none"
+              />
+              <button onClick={commitName} className="text-emerald-500 hover:text-emerald-400 transition-colors">
+                <Check className="h-3.5 w-3.5" />
+              </button>
+              <button onClick={cancelName} className="text-muted-foreground hover:text-foreground transition-colors">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
           ) : (
-            <button
-              onClick={() => setEditingName(true)}
-              className="text-sm font-semibold hover:text-primary transition-colors text-left truncate flex-1"
-              title="Click to rename"
-            >
-              {name}
-            </button>
+            <div className="flex items-center gap-1 flex-1 group/name min-w-0">
+              <span className="text-sm font-semibold truncate">{name}</span>
+              <button
+                onClick={() => setEditingName(true)}
+                className="opacity-0 group-hover/name:opacity-100 transition-opacity text-muted-foreground hover:text-primary flex-shrink-0"
+                title="Rename rack"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            </div>
           )}
-          <button onClick={downloadPng} className="text-muted-foreground hover:text-foreground transition-colors" title="Download PNG">
+          <button onClick={handleDownload} className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0 ml-auto" title="Download rack as PNG">
             <Download className="h-3.5 w-3.5" />
           </button>
-          <button onClick={() => onDelete(id)} className="text-muted-foreground hover:text-destructive transition-colors" title="Delete rack">
+          <button onClick={() => onDelete(id)} className="text-muted-foreground hover:text-destructive transition-colors flex-shrink-0" title="Delete rack">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+
+        {/* Stats row */}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span><span className="font-mono text-foreground">{usedRu}</span>/{ru}U used</span>
-          <span className="text-muted-foreground/40">|</span>
+          <span className="text-muted-foreground/40">·</span>
           <span className={cn('font-mono', freeRu === 0 ? 'text-destructive' : 'text-emerald-500')}>{freeRu}U free</span>
           {totalPower > 0 && (
-            <><span className="text-muted-foreground/40">|</span><span className="font-mono text-amber-500">{totalPower}W</span></>
+            <><span className="text-muted-foreground/40">·</span><span className="font-mono text-amber-500">{totalPower}W</span></>
           )}
           <select
             value={ru}
-            onChange={e => onResize(id, Number(e.target.value))}
+            onChange={e => handleResizeChange(Number(e.target.value))}
             className="ml-auto text-xs bg-transparent border border-border rounded px-1 py-0 h-5 cursor-pointer"
           >
             {[8, 12, 16, 20, 24, 32, 42].map(n => <option key={n} value={n}>{n}U</option>)}
@@ -364,7 +447,6 @@ export function Rack({
 
       {/* Rack enclosure */}
       <div
-        ref={enclosureRef}
         className="rounded-sm overflow-hidden shadow-xl"
         style={{
           border: `2px solid ${cfg.borderColor}`,
@@ -402,10 +484,8 @@ export function Rack({
             ))}
           </div>
 
-          {/* Left rail */}
           <RailColumn totalRu={ru} side={activeSide} />
 
-          {/* Equipment area */}
           <div
             id={`rack-body-${id}-${activeSide}`}
             ref={dropRef}
@@ -430,11 +510,9 @@ export function Rack({
             })}
           </div>
 
-          {/* Right rail */}
           <RailColumn totalRu={ru} side={activeSide} />
         </div>
 
-        {/* Bottom cap */}
         <div className="h-3" style={{ background: cfg.railBg, borderTop: `1px solid ${cfg.borderColor}50` }} />
       </div>
     </div>

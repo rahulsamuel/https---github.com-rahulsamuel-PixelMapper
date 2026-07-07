@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Rack } from './rack';
@@ -21,7 +21,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import { toPng } from 'html-to-image';
+import { downloadRackPng } from '@/lib/rack-download';
 
 interface RackState {
   id: number;
@@ -49,7 +49,6 @@ export function RackBuilder() {
   const [nextRackId, setNextRackId] = useState(2);
   const [equipmentLibrary, setEquipmentLibrary] = useState<EquipmentItem[]>(defaultEquipmentLibrary);
   const [activeSide, setActiveSide] = useState<RackSide>('front');
-  const canvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchEquipmentLibrary().then(setEquipmentLibrary);
@@ -68,10 +67,14 @@ export function RackBuilder() {
     setRacks(prev => prev.map(r => r.id === rackId ? { ...r, name } : r));
   };
 
-  const resizeRack = (rackId: number, ru: number) => {
+  // force=true skips the confirmation (already confirmed in Rack component)
+  const resizeRack = (rackId: number, ru: number, force?: boolean) => {
     setRacks(prev => prev.map(r => {
       if (r.id !== rackId) return r;
-      const validItems = r.items.filter(item => item.ru <= ru && item.ru - item.equipment.ru + 1 >= 1);
+      // When force=true, remove items that don't fit; otherwise Rack component handles the dialog
+      const validItems = force
+        ? r.items.filter(item => item.ru <= ru)
+        : r.items;
       return { ...r, ru, items: validItems };
     }));
   };
@@ -125,17 +128,8 @@ export function RackBuilder() {
     ));
   };
 
-  const downloadAll = async () => {
-    if (!canvasRef.current) return;
-    try {
-      const dataUrl = await toPng(canvasRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: '#0f0f0f' });
-      const a = document.createElement('a');
-      a.download = `rack-layout-${activeSide}.png`;
-      a.href = dataUrl;
-      a.click();
-    } catch (e) {
-      console.error('Download failed', e);
-    }
+  const downloadAll = () => {
+    racks.forEach(r => downloadRackPng(r.name, r.ru, r.items));
   };
 
   const totalItems = racks.reduce((sum, r) => sum + r.items.filter(i => i.side === activeSide).length, 0);
@@ -232,7 +226,7 @@ export function RackBuilder() {
                 </div>
               </div>
             ) : (
-              <div ref={canvasRef} className="flex gap-8 p-8 items-start min-w-max min-h-full" style={{ background: '#0f0f0f' }}>
+              <div className="flex gap-8 p-8 items-start min-w-max min-h-full" style={{ background: '#0f0f0f' }}>
                 {racks.map(rack => (
                   <Rack
                     key={rack.id}
