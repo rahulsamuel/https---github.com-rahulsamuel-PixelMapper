@@ -1,17 +1,163 @@
 
+export type EquipmentType = 'processor' | 'power' | 'network' | 'utility' | 'media' | 'other';
+
 export interface EquipmentItem {
   id: string;
   name: string;
   ru: number;
-  type: 'processor' | 'power' | 'network' | 'utility' | 'other';
-  image: {
-    front: string;
-    back: string;
-  }
+  type: EquipmentType;
+  color: string;
+  wattage?: number;
+  model?: string;
 }
 
 export interface RackItem {
   instanceId: string;
   equipment: EquipmentItem;
-  ru: number; // The top-most RU the item occupies
+  ru: number; // Top-most RU this item occupies (1-indexed from bottom)
 }
+
+export interface Rack {
+  id: number;
+  name: string;
+  ru: number;
+  items: RackItem[];
+}
+
+export const EQUIPMENT_TYPE_COLORS: Record<EquipmentType, string> = {
+  processor: '#3b82f6',
+  power: '#f59e0b',
+  network: '#10b981',
+  utility: '#64748b',
+  media: '#8b5cf6',
+  other: '#71717a',
+};
+
+export const EQUIPMENT_TYPE_LABELS: Record<EquipmentType, string> = {
+  processor: 'Processor',
+  power: 'Power',
+  network: 'Network',
+  utility: 'Utility',
+  media: 'Media Server',
+  other: 'Other',
+};
+
+export const defaultEquipmentLibrary: EquipmentItem[] = [
+  {
+    id: 'brompton-s8',
+    name: 'Brompton S8',
+    model: 'S8 Processor',
+    ru: 4,
+    type: 'processor',
+    color: EQUIPMENT_TYPE_COLORS.processor,
+    wattage: 200,
+  },
+  {
+    id: 'brompton-t1',
+    name: 'Brompton T1',
+    model: 'T1 Processor',
+    ru: 2,
+    type: 'processor',
+    color: EQUIPMENT_TYPE_COLORS.processor,
+    wattage: 120,
+  },
+  {
+    id: 'novastar-vx1000',
+    name: 'Novastar VX1000',
+    model: 'VX1000 Processor',
+    ru: 2,
+    type: 'processor',
+    color: EQUIPMENT_TYPE_COLORS.processor,
+    wattage: 150,
+  },
+  {
+    id: 'novastar-j6',
+    name: 'Novastar J6',
+    model: 'J6 All-in-One',
+    ru: 1,
+    type: 'processor',
+    color: EQUIPMENT_TYPE_COLORS.processor,
+    wattage: 80,
+  },
+  {
+    id: 'pdu-1u',
+    name: 'PDU 1U',
+    model: 'Power Distribution Unit',
+    ru: 1,
+    type: 'power',
+    color: EQUIPMENT_TYPE_COLORS.power,
+    wattage: 0,
+  },
+  {
+    id: 'pdu-2u',
+    name: 'PDU 2U',
+    model: 'Power Distribution Unit',
+    ru: 2,
+    type: 'power',
+    color: EQUIPMENT_TYPE_COLORS.power,
+    wattage: 0,
+  },
+  {
+    id: 'ups-2u',
+    name: 'UPS 2U',
+    model: 'Uninterruptible Power Supply',
+    ru: 2,
+    type: 'power',
+    color: EQUIPMENT_TYPE_COLORS.power,
+    wattage: 0,
+  },
+  {
+    id: 'network-switch-1u',
+    name: 'Network Switch',
+    model: '1U 24-Port Switch',
+    ru: 1,
+    type: 'network',
+    color: EQUIPMENT_TYPE_COLORS.network,
+    wattage: 30,
+  },
+  {
+    id: 'patch-panel-1u',
+    name: 'Patch Panel',
+    model: '1U 24-Port',
+    ru: 1,
+    type: 'network',
+    color: EQUIPMENT_TYPE_COLORS.network,
+    wattage: 0,
+  },
+  {
+    id: 'media-server-2u',
+    name: 'Media Server',
+    model: '2U Rack Server',
+    ru: 2,
+    type: 'media',
+    color: EQUIPMENT_TYPE_COLORS.media,
+    wattage: 350,
+  },
+  {
+    id: 'blank-1u',
+    name: 'Blank Panel 1U',
+    model: '1U Filler',
+    ru: 1,
+    type: 'utility',
+    color: EQUIPMENT_TYPE_COLORS.utility,
+    wattage: 0,
+  },
+  {
+    id: 'blank-2u',
+    name: 'Blank Panel 2U',
+    model: '2U Filler',
+    ru: 2,
+    type: 'utility',
+    color: EQUIPMENT_TYPE_COLORS.utility,
+    wattage: 0,
+  },
+  {
+    id: 'cable-manager-1u',
+    name: 'Cable Manager',
+    model: '1U Horizontal',
+    ru: 1,
+    type: 'utility',
+    color: EQUIPMENT_TYPE_COLORS.utility,
+    wattage: 0,
+  },
+];

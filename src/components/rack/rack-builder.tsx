@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -7,8 +6,9 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Rack } from './rack';
 import { EquipmentSidebar } from './equipment-sidebar';
 import type { EquipmentItem, RackItem } from '@/lib/rack-data';
+import { defaultEquipmentLibrary } from '@/lib/rack-data';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, LayoutGrid } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,147 +19,177 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+} from '@/components/ui/alert-dialog';
 
-const initialEquipment: EquipmentItem[] = [
-  { id: 'brompton-s8', name: 'Brompton S8 Processor', ru: 4, type: 'processor', image: { front: 'https://placehold.co/480x176/273a5e/d1d9e6?text=Front', back: 'https://placehold.co/480x176/273a5e/d1d9e6?text=Back' } },
-  { id: 'nova-pdu', name: 'Nova PDU', ru: 2, type: 'power', image: { front: 'https://placehold.co/480x88/273a5e/d1d9e6?text=Front', back: 'https://placehold.co/480x88/273a5e/d1d9e6?text=Back' } },
-  { id: 'generic-1u-blank', name: '1U Blank Panel', ru: 1, type: 'utility', image: { front: 'https://placehold.co/480x44/111/eee?text=Blank', back: 'https://placehold.co/480x44/111/eee?text=Blank' } },
-];
+interface RackState {
+  id: number;
+  name: string;
+  ru: number;
+  items: RackItem[];
+}
 
 export function RackBuilder() {
-  const [racks, setRacks] = useState([{ id: 1, name: 'Rack 1', ru: 24, items: [] as RackItem[] }]);
+  const [racks, setRacks] = useState<RackState[]>([
+    { id: 1, name: 'Main Rack', ru: 24, items: [] },
+  ]);
   const [nextRackId, setNextRackId] = useState(2);
-  const [equipmentLibrary, setEquipmentLibrary] = useState<EquipmentItem[]>(initialEquipment);
-  const [view, setView] = useState<'front' | 'back'>('front');
+  const [equipmentLibrary] = useState<EquipmentItem[]>(defaultEquipmentLibrary);
 
   const addRack = () => {
-    setRacks([...racks, { id: nextRackId, name: `Rack ${nextRackId}`, ru: 24, items: [] }]);
+    setRacks(prev => [
+      ...prev,
+      { id: nextRackId, name: `Rack ${nextRackId}`, ru: 24, items: [] },
+    ]);
     setNextRackId(prev => prev + 1);
   };
-  
+
+  const deleteRack = (rackId: number) => {
+    setRacks(prev => prev.filter(r => r.id !== rackId));
+  };
+
+  const renameRack = (rackId: number, name: string) => {
+    setRacks(prev => prev.map(r => r.id === rackId ? { ...r, name } : r));
+  };
+
+  const resizeRack = (rackId: number, ru: number) => {
+    setRacks(prev => prev.map(r => {
+      if (r.id !== rackId) return r;
+      // Remove items that no longer fit
+      const validItems = r.items.filter(item => item.ru <= ru && item.ru - item.equipment.ru + 1 >= 1);
+      return { ...r, ru, items: validItems };
+    }));
+  };
+
   const clearAllRacks = () => {
-      setRacks(racks.map(r => ({ ...r, items: [] })));
-  }
+    setRacks(prev => prev.map(r => ({ ...r, items: [] })));
+  };
 
   const handleDrop = (rackId: number, item: EquipmentItem, targetRu: number) => {
-    setRacks(prevRacks => prevRacks.map(rack => {
+    setRacks(prev => prev.map(rack => {
       if (rack.id !== rackId) return rack;
-
-      // Check if there is enough space
-      if (targetRu + item.ru - 1 > rack.ru) {
-        return rack; // Not enough space
-      }
-      // Check for conflicts
+      if (targetRu + item.ru - 1 > rack.ru || targetRu < 1) return rack;
       for (let i = 0; i < item.ru; i++) {
-        if (rack.items.some(existing => existing.ru <= targetRu + i && existing.ru + existing.equipment.ru -1 >= targetRu + i)) {
-          return rack; // Conflict
-        }
+        const checkRu = targetRu - i;
+        if (rack.items.some(existing =>
+          existing.ru >= checkRu && existing.ru - existing.equipment.ru + 1 <= checkRu
+        )) return rack;
       }
-
-      const newRackItem: RackItem = {
+      const newItem: RackItem = {
         instanceId: crypto.randomUUID(),
         equipment: item,
         ru: targetRu,
       };
-
-      return { ...rack, items: [...rack.items, newRackItem].sort((a, b) => b.ru - a.ru) };
+      return { ...rack, items: [...rack.items, newItem].sort((a, b) => b.ru - a.ru) };
     }));
   };
-  
+
   const moveItem = (rackId: number, item: RackItem, newRu: number) => {
-      setRacks(prevRacks => prevRacks.map(rack => {
-          if (rack.id !== rackId) return rack;
-
-          // Remove the item being moved
-          const otherItems = rack.items.filter(i => i.instanceId !== item.instanceId);
-
-          // Check if there is enough space
-          if (newRu < 1 || newRu + item.equipment.ru - 1 > rack.ru) {
-              return rack; // Not enough space or out of bounds
-          }
-           // Check for conflicts
-          for (let i = 0; i < item.equipment.ru; i++) {
-              if (otherItems.some(existing => existing.ru <= newRu + i && existing.ru + existing.equipment.ru -1 >= newRu + i)) {
-                  return rack; // Conflict
-              }
-          }
-
-          const movedItem = { ...item, ru: newRu };
-          return { ...rack, items: [...otherItems, movedItem].sort((a,b) => b.ru - a.ru) };
-      }));
-  }
+    setRacks(prev => prev.map(rack => {
+      if (rack.id !== rackId) return rack;
+      const others = rack.items.filter(i => i.instanceId !== item.instanceId);
+      if (newRu < 1 || newRu + item.equipment.ru - 1 > rack.ru) return rack;
+      for (let i = 0; i < item.equipment.ru; i++) {
+        const checkRu = newRu - i;
+        if (others.some(existing =>
+          existing.ru >= checkRu && existing.ru - existing.equipment.ru + 1 <= checkRu
+        )) return rack;
+      }
+      const moved = { ...item, ru: newRu };
+      return { ...rack, items: [...others, moved].sort((a, b) => b.ru - a.ru) };
+    }));
+  };
 
   const removeItem = (rackId: number, instanceId: string) => {
-    setRacks(prevRacks => prevRacks.map(rack => {
-      if (rack.id !== rackId) return rack;
-      return { ...rack, items: rack.items.filter(item => item.instanceId !== instanceId) };
-    }));
+    setRacks(prev => prev.map(rack =>
+      rack.id !== rackId ? rack : { ...rack, items: rack.items.filter(i => i.instanceId !== instanceId) }
+    ));
   };
+
+  const totalItems = racks.reduce((sum, r) => sum + r.items.length, 0);
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flex h-[calc(100vh-3.5rem)]">
+      <div className="flex h-[calc(100svh-3.5rem)] overflow-hidden">
         <EquipmentSidebar equipment={equipmentLibrary} />
-        <main className="flex-1 p-6 bg-muted/30 overflow-x-auto">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold">Rack Layout</h1>
-              <div className="flex items-center gap-2 rounded-lg bg-background p-1 border">
-                <Button size="sm" variant={view === 'front' ? 'secondary' : 'ghost'} onClick={() => setView('front')}>Front</Button>
-                <Button size="sm" variant={view === 'back' ? 'secondary' : 'ghost'} onClick={() => setView('back')}>Back</Button>
-              </div>
+
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Toolbar */}
+          <div className="flex-shrink-0 border-b bg-background px-5 py-2.5 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <LayoutGrid className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">
+                {racks.length} {racks.length === 1 ? 'rack' : 'racks'}
+              </span>
+              {totalItems > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  &middot; {totalItems} items placed
+                </span>
+              )}
             </div>
-             <div className="flex items-center gap-2">
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive" >
-                            <Trash2 className="mr-2" />
-                            Clear All
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This will remove all equipment from all racks. This action cannot be undone.
-                        </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={clearAllRacks}>Continue</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-                <Button onClick={addRack}><Plus className="mr-2" />Add Rack</Button>
+
+            <div className="flex items-center gap-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={totalItems === 0}>
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                    Clear All
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear all racks?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This removes all equipment from every rack. This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={clearAllRacks}>Clear All</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <Button size="sm" onClick={addRack}>
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Add Rack
+              </Button>
             </div>
           </div>
-          <div className="flex gap-8">
-            {racks.map(rack => (
-              <Rack
-                key={rack.id}
-                id={rack.id}
-                name={rack.name}
-                ru={rack.ru}
-                items={rack.items}
-                view={view}
-                onDrop={handleDrop}
-                onMove={moveItem}
-                onRemove={removeItem}
-              />
-            ))}
-            {racks.length === 0 && (
-                <Card className="w-96">
-                    <CardHeader><CardTitle>No Racks</CardTitle></CardHeader>
-                    <CardContent>
-                        <p className="text-muted-foreground mb-4">Click "Add Rack" to get started.</p>
-                         <Button onClick={addRack} className="w-full"><Plus className="mr-2" />Add Rack</Button>
-                    </CardContent>
-                </Card>
+
+          {/* Rack canvas */}
+          <div className="flex-1 overflow-auto bg-[#0f0f0f]">
+            {racks.length === 0 ? (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center space-y-3">
+                  <LayoutGrid className="h-10 w-10 text-muted-foreground/30 mx-auto" />
+                  <p className="text-muted-foreground text-sm">No racks yet.</p>
+                  <Button onClick={addRack} size="sm">
+                    <Plus className="mr-1.5 h-3.5 w-3.5" />
+                    Add Rack
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-8 p-8 items-start min-h-full">
+                {racks.map(rack => (
+                  <Rack
+                    key={rack.id}
+                    id={rack.id}
+                    name={rack.name}
+                    ru={rack.ru}
+                    items={rack.items}
+                    onDrop={handleDrop}
+                    onMove={moveItem}
+                    onRemove={removeItem}
+                    onDelete={deleteRack}
+                    onRename={renameRack}
+                    onResize={resizeRack}
+                  />
+                ))}
+              </div>
             )}
           </div>
-        </main>
+        </div>
       </div>
     </DndProvider>
   );
