@@ -188,7 +188,8 @@ export function WiringDiagram() {
                       className="flex flex-col items-center justify-center h-full w-full text-foreground relative"
                     >
                       {showDataLabels && (backupLabel || dataLabel) && (
-                        <div 
+                        <div
+                          data-wiring-type="data"
                           className={`rounded-full flex items-center justify-center font-bold z-10 ${backupLabel ? 'bg-destructive text-destructive-foreground' : ''}`}
                           style={{
                             width: `${dataLabelSize}px`,
@@ -201,7 +202,8 @@ export function WiringDiagram() {
                         </div>
                       )}
                       {showPowerLabels && powerPortLabel && (
-                         <div 
+                         <div
+                            data-wiring-type="power"
                             className="rounded-full flex items-center justify-center font-bold z-10"
                             style={{
                               width: `${powerLabelSize}px`,
@@ -265,7 +267,7 @@ export function WiringDiagram() {
                 const arrowheadPoints = `${tipX},${tipY} ${p2x},${p2y} ${p3x},${p3y}`;
 
                 return (
-                  <g key={`data-arrow-${x}-${y}`}>
+                  <g key={`data-arrow-${x}-${y}`} data-wiring-type="data">
                     <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={dataLabelColor} strokeWidth="3" />
                      <polygon points={arrowheadPoints} fill={dataLabelColor} />
                   </g>
@@ -311,7 +313,7 @@ export function WiringDiagram() {
                 const arrowheadPoints = `${tipX},${tipY} ${p2x},${p2y} ${p3x},${p3y}`;
 
                 return (
-                  <g key={`power-arrow-${x}-${y}`}>
+                  <g key={`power-arrow-${x}-${y}`} data-wiring-type="power">
                     <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={powerLabelColor} strokeWidth="2" />
                      <polygon points={arrowheadPoints} fill={powerLabelColor} />
                   </g>

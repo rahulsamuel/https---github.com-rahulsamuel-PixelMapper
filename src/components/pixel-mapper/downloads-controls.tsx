@@ -3,7 +3,9 @@
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, Type } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function DownloadsControls() {
@@ -18,6 +20,8 @@ export function DownloadsControls() {
         activeBounds,
         activeTab,
         screens,
+        includeTextOverlaysInDownload,
+        setIncludeTextOverlaysInDownload,
     } = usePixelMap();
 
     const isGridEmpty = !activeBounds;
@@ -71,6 +75,16 @@ export function DownloadsControls() {
     return (
         <TooltipProvider>
             <div className="space-y-2">
+                <div className="flex items-center justify-between px-1 py-1 border rounded-md bg-muted/30">
+                    <Label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                        <Type className="h-3.5 w-3.5" />
+                        Include text overlays
+                    </Label>
+                    <Switch
+                        checked={includeTextOverlaysInDownload}
+                        onCheckedChange={setIncludeTextOverlaysInDownload}
+                    />
+                </div>
                 {pngDownloadDisabled ? (
                     <Tooltip>
                         <TooltipTrigger asChild>

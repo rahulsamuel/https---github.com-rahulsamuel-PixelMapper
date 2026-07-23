@@ -234,6 +234,8 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setBorderColor: Dispatch<SetStateAction<string>>;
   handleDownloadPng: (filename?: string) => void;
   isPngDownloading: boolean;
+  includeTextOverlaysInDownload: boolean;
+  setIncludeTextOverlaysInDownload: Dispatch<SetStateAction<boolean>>;
   handleDownloadWiringDiagram: () => void;
   handleDownloadCompositeWiringDiagram: () => void;
   handleDownloadFullRaster: () => void;
@@ -477,6 +479,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [isManualDataModalOpen, setIsManualDataModalOpen] = useState(false);
   const [selectedTileForData, setSelectedTileForData] = useState<number | null>(null);
   const [isPngDownloading, setIsPngDownloading] = useState(false);
+  const [includeTextOverlaysInDownload, setIncludeTextOverlaysInDownload] = useState(true);
 
   // Deliverables State
   const [projectNumber, setProjectNumber] = useState("");
@@ -617,6 +620,45 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setResolutionLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, resolutionLabelColor: typeof updater === 'function' ? updater(s.resolutionLabelColor ?? '#ffffff') : updater }));
   const setResolutionLabelColorMode = (updater: SetStateAction<LabelColorMode>) => updateCurrentScreen(s => ({ ...s, resolutionLabelColorMode: typeof updater === 'function' ? updater(s.resolutionLabelColorMode ?? 'auto') : updater }));
   const setProcessorType = (updater: SetStateAction<ProcessorType>) => updateCurrentScreen(s => ({ ...s, processorType: typeof updater === 'function' ? updater(s.processorType) : updater }));
+
+  const drawTextOverlaysOnCtx = useCallback((
+    ctx: CanvasRenderingContext2D,
+    overlays: TextOverlay[],
+    canvasWidth: number,
+    canvasHeight: number,
+    offsetX: number = 0,
+    offsetY: number = 0,
+  ) => {
+    for (const overlay of overlays) {
+      if (!overlay.text) continue;
+      const x = overlay.x + offsetX;
+      const y = overlay.y + offsetY;
+      if (x > canvasWidth || y > canvasHeight) continue;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.translate(overlay.fontSize / 2, overlay.fontSize / 2);
+      ctx.rotate((overlay.rotation * Math.PI) / 180);
+      ctx.translate(-overlay.fontSize / 2, -overlay.fontSize / 2);
+
+      ctx.font = `bold ${overlay.fontSize}px sans-serif`;
+      ctx.textBaseline = 'top';
+      ctx.textAlign = 'left';
+
+      if (overlay.showBackground) {
+        const textWidth = ctx.measureText(overlay.text).width;
+        ctx.fillStyle = overlay.backgroundColor;
+        ctx.fillRect(-4, -4, textWidth + 16, overlay.fontSize + 8);
+      }
+
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = overlay.fontSize * 0.2;
+      ctx.fillStyle = overlay.colorMode === 'auto' ? '#FFFFFF' : overlay.color;
+      ctx.fillText(overlay.text, 4, 0);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+    }
+  }, []);
 
   const addTextOverlay = useCallback(() => {
     updateCurrentScreen(s => {
@@ -1223,7 +1265,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, color: undefined })));
   }, [setTiles]);
 
-  const createScreenContentCanvas = useCallback((screen: Screen, screenActiveBounds: ActiveBounds | null) => {
+  const createScreenContentCanvas = useCallback((screen: Screen, screenActiveBounds: ActiveBounds | null, drawOverlays: boolean = false) => {
     if (!screenActiveBounds) return null;
 
     const screenLabels = (() => {
@@ -1396,8 +1438,13 @@ const handleRightHalfTileChange = (add: boolean) => {
         masterCtx.shadowBlur = 0;
     }
 
+    // Draw text overlays
+    if (drawOverlays && screen.textOverlays) {
+      drawTextOverlaysOnCtx(masterCtx, screen.textOverlays, contentWidth, contentHeight);
+    }
+
     return masterCanvas;
-  }, []);
+  }, [drawTextOverlaysOnCtx]);
 
   const handleDownloadPng = useCallback((filename?: string) => {
     if (!activeBounds) {
@@ -1408,7 +1455,7 @@ const handleRightHalfTileChange = (add: boolean) => {
 
     setTimeout(() => {
       try {
-        const canvas = createScreenContentCanvas(currentScreen, activeBounds);
+        const canvas = createScreenContentCanvas(currentScreen, activeBounds, includeTextOverlaysInDownload);
         if (!canvas) {
           setIsPngDownloading(false);
           return;
@@ -1443,7 +1490,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         setIsPngDownloading(false);
       }
     }, 50);
-  }, [activeBounds, currentScreen, createScreenContentCanvas, subscriptionStatus]);
+  }, [activeBounds, currentScreen, createScreenContentCanvas, subscriptionStatus, includeTextOverlaysInDownload]);
 
   const buildRasterConfigForGroup = useCallback((groupId: string, filename: string, outputWidth?: number, outputHeight?: number): RasterMapConfig | null => {
     const groupScreens = screens.filter(s => (s.rasterGroupId ?? 'raster-1') === groupId);
@@ -1758,10 +1805,19 @@ const handleRightHalfTileChange = (add: boolean) => {
             -slice.x, 
             -slice.y
         );
+
+        if (includeTextOverlaysInDownload) {
+          const allOverlays = screens.flatMap(s => (s.textOverlays ?? []).map(o => ({
+            ...o,
+            x: o.x + (rasterMapConfig.screenArrangement.find(a => a.screenId === s.id)?.x ?? 0) - slice.x,
+            y: o.y + (rasterMapConfig.screenArrangement.find(a => a.screenId === s.id)?.y ?? 0) - slice.y,
+          })));
+          drawTextOverlaysOnCtx(outputCtx, allOverlays, slice.width, slice.height);
+        }
         
         downloadCanvas(outputCanvas, slice.filename);
     }
-  }, [rasterMapConfig, createFullRasterCanvas, subscriptionStatus, toast]);
+  }, [rasterMapConfig, createFullRasterCanvas, subscriptionStatus, toast, includeTextOverlaysInDownload, screens, drawTextOverlaysOnCtx, rasterBgColor]);
 
   const downloadSingleSlice = useCallback((sliceKey: string) => {
     if (!rasterMapConfig) return;
@@ -1781,6 +1837,15 @@ const handleRightHalfTileChange = (add: boolean) => {
     outputCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
     outputCtx.drawImage(masterContentCanvas, -slice.x, -slice.y);
 
+    if (includeTextOverlaysInDownload) {
+      const allOverlays = screens.flatMap(s => (s.textOverlays ?? []).map(o => ({
+        ...o,
+        x: o.x + (rasterMapConfig.screenArrangement.find(a => a.screenId === s.id)?.x ?? 0) - slice.x,
+        y: o.y + (rasterMapConfig.screenArrangement.find(a => a.screenId === s.id)?.y ?? 0) - slice.y,
+      })));
+      drawTextOverlaysOnCtx(outputCtx, allOverlays, slice.width, slice.height);
+    }
+
     try {
         const dataUrl = outputCanvas.toDataURL('image/png');
         const link = document.createElement('a');
@@ -1791,7 +1856,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     } catch (err) {
         console.error('Could not generate raster slice.', err);
     }
-  }, [rasterMapConfig, createFullRasterCanvas, rasterBgColor]);
+  }, [rasterMapConfig, createFullRasterCanvas, rasterBgColor, includeTextOverlaysInDownload, screens, drawTextOverlaysOnCtx]);
 
   const addWatermark = (dataUrl: string): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -1826,7 +1891,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     });
   };
 
-  const handleDownloadWiringDiagram = useCallback(() => {
+  const handleDownloadWiringDiagram = useCallback(async () => {
     if (wiringDiagramRef.current === null || !activeBounds) {
       toast({
         title: "Download Failed",
@@ -1836,8 +1901,9 @@ const handleRightHalfTileChange = (add: boolean) => {
       return;
     }
 
-    const node = wiringDiagramRef.current;
-    
+    const node = wiringDiagramRef.current as HTMLElement;
+    const screenName = (currentScreen.name || "Screen").replace(/[^a-zA-Z0-9_-]/g, '_');
+
     const contentPixelHeight = (() => {
         if (!activeBounds) return 0;
         let height = 0;
@@ -1859,13 +1925,13 @@ const handleRightHalfTileChange = (add: boolean) => {
         }
         return width;
     })();
-    
+
     let yPosOfMinY = 0;
     for (let i = 0; i < activeBounds.minY; i++) {
         const isTopHalfRow = topHalfTile && i === 0;
         yPosOfMinY += isTopHalfRow ? dimensions.tileHeight / 2 : dimensions.tileHeight;
     }
-    
+
     let xPosOfMinX = 0;
     for (let i = 0; i < activeBounds.minX; i++) {
         const isLeftHalfCol = leftHalfTile && i === 0;
@@ -1874,64 +1940,85 @@ const handleRightHalfTileChange = (add: boolean) => {
 
     const cropWidth = contentPixelWidth;
     const cropHeight = contentPixelHeight;
-    const sx = currentScreen.isWiringMirrored 
-        ? xPosOfMinX
-        : xPosOfMinX;
+    const sx = xPosOfMinX;
     const sy = yPosOfMinY;
 
-    const svgs = node.querySelectorAll('svg');
-    const modifications: Array<{el: Element, attr: string, originalValue: string | null}> = [];
-    // No CSS variable substitution needed — colors are already inline styles
-    void svgs; void modifications;
-
-    toPng(node, {
-      cacheBust: true,
-      backgroundColor: '#ffffff',
-      pixelRatio: 1,
-      width: cropWidth,
-      height: cropHeight,
-      style: {
-        transform: `translate(-${sx}px, -${sy}px) scale(1)`,
-      }
-    })
-      .then((dataUrl) => {
-        if (subscriptionStatus === 'trial') {
-            return addWatermark(dataUrl);
-        }
-        return dataUrl;
-      })
-      .then((dataUrl) => {
-        const downloadFilename = `wiring-diagram${currentScreen.isWiringMirrored ? '-mirrored' : ''}.png`;
-        const link = document.createElement("a");
-        link.download = downloadFilename;
-        link.href = dataUrl;
-        link.click();
-        
-        toast({
-          title: "Download Started",
-          description: "Your wiring diagram is being downloaded.",
-        });
-
-        trackEvent('download', { type: 'wiring-diagram', filename: downloadFilename, thumbnail: dataUrl });
-      })
-      .catch((err) => {
-        console.error("Failed to generate wiring diagram image", err);
-        toast({
-          title: "Download Failed",
-          description: "Could not generate the wiring diagram image.",
-          variant: "destructive",
-        });
-      })
-      .finally(() => {
-        modifications.forEach(({ el, attr, originalValue }) => {
-            if (originalValue) {
-                el.setAttribute(attr, originalValue);
-            } else {
-                el.removeAttribute(attr);
-            }
-        });
+    const setWiringVisibility = (type: 'data' | 'power' | 'both') => {
+      const allElements = node.querySelectorAll('[data-wiring-type]');
+      allElements.forEach(el => {
+        const elType = el.getAttribute('data-wiring-type');
+        const shouldShow = type === 'both' || type === elType;
+        (el as HTMLElement).style.visibility = shouldShow ? '' : 'hidden';
       });
-  }, [wiringDiagramRef, currentScreen.isWiringMirrored, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, subscriptionStatus]);
+    };
+
+    const generateAndDownload = async (type: 'data' | 'power', isMirrored: boolean, filename: string) => {
+      setWiringVisibility(type);
+      try {
+        const dataUrl = await toPng(node, {
+          cacheBust: true,
+          backgroundColor: '#ffffff',
+          pixelRatio: 1,
+          width: cropWidth,
+          height: cropHeight,
+          style: {
+            transform: `translate(-${sx}px, -${sy}px) scale(${isMirrored ? -1 : 1}, 1)`,
+          },
+        });
+
+        let finalDataUrl = dataUrl;
+        if (subscriptionStatus === 'trial') {
+          finalDataUrl = await addWatermark(dataUrl);
+        }
+
+        if (includeTextOverlaysInDownload && currentScreen.textOverlays?.length) {
+          const img = new Image();
+          img.src = finalDataUrl;
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = reject;
+            setTimeout(() => resolve(), 5000);
+          });
+          const overlayCanvas = document.createElement('canvas');
+          overlayCanvas.width = img.width || cropWidth;
+          overlayCanvas.height = img.height || cropHeight;
+          const octx = overlayCanvas.getContext('2d');
+          if (octx) {
+            octx.drawImage(img, 0, 0);
+            drawTextOverlaysOnCtx(octx, currentScreen.textOverlays, cropWidth, cropHeight);
+            finalDataUrl = overlayCanvas.toDataURL('image/png');
+          }
+        }
+
+        const link = document.createElement("a");
+        link.download = filename;
+        link.href = finalDataUrl;
+        link.click();
+        trackEvent('download', { type: 'wiring-diagram', filename, thumbnail: finalDataUrl });
+      } finally {
+        setWiringVisibility('both');
+      }
+    };
+
+    try {
+      await generateAndDownload('data', false, `DATA_WIRING_${screenName}_FRONT_VIEW.png`);
+      await generateAndDownload('data', true,  `DATA_WIRING_${screenName}_REAR_VIEW.png`);
+      await generateAndDownload('power', false, `POWER_WIRING_${screenName}_FRONT_VIEW.png`);
+      await generateAndDownload('power', true,  `POWER_WIRING_${screenName}_REAR_VIEW.png`);
+
+      toast({
+        title: "Downloads Started",
+        description: "4 wiring diagrams are downloading (Data + Power, Front + Rear views).",
+      });
+    } catch (err) {
+      console.error("Failed to generate wiring diagram image", err);
+      toast({
+        title: "Download Failed",
+        description: "Could not generate one or more wiring diagram images.",
+        variant: "destructive",
+      });
+    }
+  }, [wiringDiagramRef, currentScreen.name, currentScreen.textOverlays, drawTextOverlaysOnCtx, includeTextOverlaysInDownload, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, subscriptionStatus]);
 
   const handleDownloadFullRaster = useCallback(() => {
     if (subscriptionStatus !== 'pro') {
@@ -1962,17 +2049,43 @@ const handleRightHalfTileChange = (add: boolean) => {
       width: totalWidth,
       height: totalHeight,
     })
-      .then((dataUrl) => {
+      .then(async (dataUrl) => {
+        let finalDataUrl = dataUrl;
+        if (includeTextOverlaysInDownload) {
+          const allOverlays = screens.flatMap(s => (s.textOverlays ?? []).map(o => ({
+            ...o,
+            x: o.x + (rasterMapConfig.screenArrangement.find(a => a.screenId === s.id)?.x ?? 0),
+            y: o.y + (rasterMapConfig.screenArrangement.find(a => a.screenId === s.id)?.y ?? 0),
+          })));
+          if (allOverlays.length) {
+            const img = new Image();
+            img.src = dataUrl;
+            await new Promise<void>((resolve, reject) => {
+              img.onload = () => resolve();
+              img.onerror = reject;
+              setTimeout(() => resolve(), 5000);
+            });
+            const overlayCanvas = document.createElement('canvas');
+            overlayCanvas.width = img.width || totalWidth;
+            overlayCanvas.height = img.height || totalHeight;
+            const octx = overlayCanvas.getContext('2d');
+            if (octx) {
+              octx.drawImage(img, 0, 0);
+              drawTextOverlaysOnCtx(octx, allOverlays, totalWidth, totalHeight);
+              finalDataUrl = overlayCanvas.toDataURL('image/png');
+            }
+          }
+        }
         const link = document.createElement("a");
         link.download = downloadFilename;
-        link.href = dataUrl;
+        link.href = finalDataUrl;
         link.click();
         
         toast({
           title: "Download Started",
           description: "Your full raster map is being downloaded.",
         });
-        trackEvent('download', { type: 'full-raster-map', filename: downloadFilename, thumbnail: dataUrl });
+        trackEvent('download', { type: 'full-raster-map', filename: downloadFilename, thumbnail: finalDataUrl });
       })
       .catch((err) => {
         console.error("Failed to generate full raster map image", err);
@@ -1984,7 +2097,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       })
       .finally(() => {
       });
-  }, [rasterMapRef, rasterMapConfig, toast, subscriptionStatus]);
+  }, [rasterMapRef, rasterMapConfig, toast, subscriptionStatus, includeTextOverlaysInDownload, screens, drawTextOverlaysOnCtx]);
 
 
   const getProjectData = useCallback((): ProjectData => {
@@ -2524,6 +2637,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     setBorderColor,
     handleDownloadPng,
     isPngDownloading,
+    includeTextOverlaysInDownload,
+    setIncludeTextOverlaysInDownload,
     handleDownloadWiringDiagram,
     handleDownloadCompositeWiringDiagram,
     handleDownloadFullRaster,

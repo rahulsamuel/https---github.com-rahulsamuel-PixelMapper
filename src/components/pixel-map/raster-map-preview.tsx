@@ -256,6 +256,8 @@ export function RasterMapPreview() {
           {/* Screen arrangement borders + tile offset overlays */}
           {screenArrangement.map(sa => {
             const offsetItems = tileOffsetsByScreen.get(sa.screenId) ?? [];
+            const screen = screens.find(s => s.id === sa.screenId);
+            const screenOverlays = screen?.textOverlays ?? [];
 
             return (
               <div
@@ -294,6 +296,35 @@ export function RasterMapPreview() {
                     >
                       {item.label}
                     </span>
+                  </div>
+                ))}
+
+                {/* Text overlays */}
+                {screenOverlays.map(overlay => (
+                  <div
+                    key={overlay.id}
+                    className="absolute z-20 pointer-events-none"
+                    style={{
+                      left: overlay.x,
+                      top: overlay.y,
+                      transform: `rotate(${overlay.rotation}deg)`,
+                      transformOrigin: 'center',
+                    }}
+                  >
+                    <div
+                      className="font-bold whitespace-nowrap"
+                      style={{
+                        fontSize: `${overlay.fontSize}px`,
+                        color: overlay.colorMode === 'auto' ? '#FFFFFF' : overlay.color,
+                        fontWeight: overlay.fontWeight,
+                        backgroundColor: overlay.showBackground ? overlay.backgroundColor : 'transparent',
+                        padding: overlay.showBackground ? '4px 10px' : '0',
+                        borderRadius: overlay.showBackground ? '4px' : '0',
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {overlay.text || ' '}
+                    </div>
                   </div>
                 ))}
               </div>
