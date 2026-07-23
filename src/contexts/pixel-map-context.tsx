@@ -1955,18 +1955,35 @@ const handleRightHalfTileChange = (add: boolean) => {
     const generateAndDownload = async (type: 'data' | 'power', isMirrored: boolean, filename: string) => {
       setWiringVisibility(type);
       try {
-        const dataUrl = await toPng(node, {
+        const rawDataUrl = await toPng(node, {
           cacheBust: true,
           backgroundColor: '#ffffff',
           pixelRatio: 1,
           width: cropWidth,
           height: cropHeight,
           style: {
-            transform: isMirrored
-              ? `translate(${cropWidth + sx}px, -${sy}px) scale(-1, 1)`
-              : `translate(-${sx}px, -${sy}px)`,
+            transform: `translate(-${sx}px, -${sy}px)`,
           },
         });
+
+        // If rear/mirrored view, flip the captured image horizontally on a canvas
+        // so text and arrows remain readable in the output PNG.
+        const dataUrl = isMirrored
+          ? await new Promise<string>((resolve) => {
+              const img = new Image();
+              img.onload = () => {
+                const c = document.createElement('canvas');
+                c.width = img.width;
+                c.height = img.height;
+                const ctx = c.getContext('2d')!;
+                ctx.translate(img.width, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(img, 0, 0);
+                resolve(c.toDataURL('image/png'));
+              };
+              img.src = rawDataUrl;
+            })
+          : rawDataUrl;
 
         let finalDataUrl = dataUrl;
         if (subscriptionStatus === 'trial') {
