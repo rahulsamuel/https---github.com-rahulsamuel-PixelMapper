@@ -275,7 +275,7 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setPowerArrowheadSize: Dispatch<SetStateAction<number>>;
   setPowerArrowheadLength: Dispatch<SetStateAction<number>>;
   setPowerArrowGap: Dispatch<SetStateAction<number>>;
-  exportProject: () => void;
+  exportProject: (projectName?: string) => void;
   importProject: (file: File) => void;
   setBrushColor: Dispatch<SetStateAction<string>>;
   setIsWiringMirrored: Dispatch<SetStateAction<boolean>>;
@@ -1977,14 +1977,15 @@ const handleRightHalfTileChange = (add: boolean) => {
     if (data.imageFormat) setImageFormat(data.imageFormat);
   }, []);
 
-  const exportProject = useCallback(() => {
+  const exportProject = useCallback((projectName?: string) => {
     const projectData: ProjectData = getProjectData();
 
     const jsonString = JSON.stringify(projectData, null, 2);
     const blob = new Blob([jsonString], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    const filename = "mapmyled-project.json";
+    const safeName = (projectName || "Untitled Project").replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `${safeName}.json`;
     link.download = filename;
     link.href = url;
     document.body.appendChild(link);

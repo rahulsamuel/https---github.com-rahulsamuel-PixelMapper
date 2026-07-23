@@ -60,6 +60,8 @@ export function PixelMapActions() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [projectToLoad, setProjectToLoad] = useState<CloudProject | null>(null);
   const [showLoadConfirm, setShowLoadConfirm] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [exportFileName, setExportFileName] = useState("");
 
   const loadUserProjects = useCallback(async () => {
     if (!user) return;
@@ -78,6 +80,18 @@ export function PixelMapActions() {
       loadUserProjects();
     }
   }, [user, showProjectsDialog, loadUserProjects]);
+
+  const handleExportClick = () => {
+    setExportFileName(projectName === "Untitled Project" ? "" : projectName);
+    setShowExportDialog(true);
+  };
+
+  const confirmExport = () => {
+    const name = exportFileName.trim() || "Untitled Project";
+    setProjectName(name);
+    exportProject(name);
+    setShowExportDialog(false);
+  };
 
   const handleImportClick = () => {
     importInputRef.current?.click();
@@ -150,7 +164,7 @@ export function PixelMapActions() {
     <div className="space-y-3">
       {/* Local export / import */}
       <div className="grid grid-cols-2 gap-2">
-        <Button onClick={exportProject} variant="outline" size="sm">
+        <Button onClick={handleExportClick} variant="outline" size="sm">
           <Download className="mr-2 h-3.5 w-3.5" />
           Export
         </Button>
@@ -249,7 +263,7 @@ export function PixelMapActions() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel onClick={exportProject}>
+            <AlertDialogCancel onClick={handleExportClick}>
               <Download className="mr-2 h-4 w-4" />
               Export First
             </AlertDialogCancel>
@@ -331,7 +345,7 @@ export function PixelMapActions() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={exportProject}>
+            <AlertDialogCancel onClick={handleExportClick}>
               <Download className="mr-2 h-4 w-4" />
               Export Current
             </AlertDialogCancel>
@@ -365,6 +379,44 @@ export function PixelMapActions() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Export filename dialog */}
+      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5 text-primary" />
+              Export Project
+            </DialogTitle>
+            <DialogDescription>
+              Enter a name for your project file. It will be saved as a .json file.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Input
+              autoFocus
+              value={exportFileName}
+              onChange={(e) => setExportFileName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") confirmExport();
+              }}
+              placeholder="Enter project name"
+              className="text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              File will be saved as: <span className="font-mono font-medium">{(exportFileName.trim() || "Untitled_Project").replace(/[^a-zA-Z0-9_-]/g, "_")}.json</span>
+            </p>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowExportDialog(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={confirmExport}>
+              <Download className="mr-2 h-3.5 w-3.5" />
+              Export
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
