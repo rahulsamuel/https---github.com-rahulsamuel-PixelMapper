@@ -53,9 +53,12 @@ import { Input } from "@/components/ui/input";
 import { DownloadsControls } from "../pixel-mapper/downloads-controls";
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/auth-context";
+import { PresenceBar } from "./presence-bar";
+import { RemoteCursors } from "./remote-cursors";
+import type { PresenceUser } from "@/hooks/use-presence";
 
 
-export function PixelMapLayout() {
+export function PixelMapLayout({ onlineUsers = [], onShareClick }: { onlineUsers?: PresenceUser[]; onShareClick?: () => void }) {
   const { 
     screens,
     currentScreen,
@@ -67,7 +70,8 @@ export function PixelMapLayout() {
     duplicateScreen,
     zoom, setZoom, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels,
     isManualPowerModalOpen, setIsManualPowerModalOpen, selectedTileForPower, applyManualPowerWiring,
-    isManualDataModalOpen, setIsManualDataModalOpen, selectedTileForData, applyManualDataWiring
+    isManualDataModalOpen, setIsManualDataModalOpen, selectedTileForData, applyManualDataWiring,
+    isSyncing,
    } = usePixelMap();
   const viewportRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -77,6 +81,11 @@ export function PixelMapLayout() {
   const [screenToDelete, setScreenToDelete] = useState<string | null>(null);
   const [hasAutoFitted, setHasAutoFitted] = useState(false);
   const [toolPanelOpen, setToolPanelOpen] = useState(true);
+  const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!isSyncing) setLastSyncAt(Date.now());
+  }, [isSyncing]);
 
   const dimensions = currentScreen.dimensions;
   
@@ -533,13 +542,21 @@ export function PixelMapLayout() {
                      </Button>
                    </>
                  )}
+                 <Separator orientation="vertical" className="h-6 mx-1" />
+                 <PresenceBar
+                   onlineUsers={onlineUsers}
+                   isSyncing={isSyncing}
+                   lastSyncAt={lastSyncAt}
+                   onShareClick={onShareClick ?? (() => {})}
+                 />
                </div>
              </div>
            </header>
           <div className="flex-1 overflow-auto bg-muted/20" ref={viewportRef}>
               <TabsContent value="grid" className="mt-0 p-8">
-                <div className="inline-block" style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
+                <div className="inline-block relative" style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
                   <LedGrid />
+                  <RemoteCursors onlineUsers={onlineUsers} />
                 </div>
               </TabsContent>
               <TabsContent value="wiring" className="mt-0 p-8">

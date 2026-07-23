@@ -45,13 +45,12 @@ import {
 } from "@/lib/cloud-projects";
 
 export function PixelMapActions() {
-  const { exportProject, importProject, getProjectData, loadProjectData } = usePixelMap();
+  const { exportProject, importProject, getProjectData, loadProjectData, setActiveProjectId, projectName, setProjectName } = usePixelMap();
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  const [projectName, setProjectName] = useState("Untitled Project");
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [cloudProjects, setCloudProjects] = useState<CloudProject[]>([]);
@@ -110,12 +109,13 @@ export function PixelMapActions() {
     }
     setIsSaving(true);
     const projectData = getProjectData();
-    const { success, error } = await saveCloudProject(user.id, projectName, projectData);
+    const { success, error, projectId } = await saveCloudProject(user.id, projectName, projectData);
     setIsSaving(false);
     if (!success) {
       toast({ title: "Save Failed", description: error ?? "Unknown error.", variant: "destructive" });
       return;
     }
+    if (projectId) setActiveProjectId(projectId);
     toast({ title: "Saved to Cloud", description: `"${projectName}" saved successfully.` });
     if (showProjectsDialog) loadUserProjects();
   };
@@ -133,6 +133,7 @@ export function PixelMapActions() {
     if (!projectToLoad) return;
     loadProjectData(projectToLoad.projectData);
     setProjectName(projectToLoad.projectName);
+    setActiveProjectId(projectToLoad.id ?? null);
     setShowLoadConfirm(false);
     setShowProjectsDialog(false);
     setProjectToLoad(null);

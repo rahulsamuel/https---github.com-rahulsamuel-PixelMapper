@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isColorDark } from "@/lib/utils";
 import { getProducts } from "@/app/calculator/actions";
 import { useAuth } from "./auth-context";
+import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 
 interface LedProduct {
     id: string;
@@ -350,6 +351,12 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setImageFormat: Dispatch<SetStateAction<string>>;
   getProjectData: () => ProjectData;
   loadProjectData: (data: ProjectData) => void;
+  activeProjectId: string | null;
+  setActiveProjectId: (id: string | null) => void;
+  scheduleSave: () => void;
+  isSyncing: boolean;
+  projectName: string;
+  setProjectName: (name: string) => void;
 }
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
@@ -457,7 +464,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const nextIdCounter = useRef(1);
 
-  useAuth();
+  const { user } = useAuth();
   const subscriptionStatus = 'pro';
 
   const [screens, setScreens] = useState<Screen[]>(() => {
@@ -488,6 +495,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [selectionRect, setSelectionRect] = useState<{ startX: number; startY: number; endX: number; endY: number } | null>(null);
   const [selectedTileIds, setSelectedTileIds] = useState<number[]>([]);
   const dragStateRef = useRef<{ startX: number; startY: number; active: boolean } | null>(null);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [projectName, setProjectName] = useState("Untitled Project");
 
   // Deliverables State
   const [projectNumber, setProjectNumber] = useState("");
@@ -2706,6 +2715,16 @@ const handleRightHalfTileChange = (add: boolean) => {
 
   }, [rasterMapConfig, screens, createScreenWiringCanvas, subscriptionStatus, toast]);
 
+  const { scheduleSave, isSyncing } = useRealtimeSync({
+    projectId: activeProjectId,
+    userId: user?.id ?? null,
+    getProjectData,
+    loadProjectData,
+  });
+
+  useEffect(() => {
+    if (activeProjectId) scheduleSave();
+  }, [activeProjectId, screens, scheduleSave]);
 
   const value: PixelMapState = {
     appState,
@@ -2846,6 +2865,12 @@ const handleRightHalfTileChange = (add: boolean) => {
     importProject,
     getProjectData,
     loadProjectData,
+    activeProjectId,
+    setActiveProjectId,
+    scheduleSave,
+    isSyncing,
+    projectName,
+    setProjectName,
     brushColor: currentScreen.brushColor,
     setBrushColor,
     isWiringMirrored: currentScreen.isWiringMirrored,
