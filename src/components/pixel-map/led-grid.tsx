@@ -2,9 +2,10 @@
 
 "use client";
 
-import { usePixelMap } from "@/contexts/pixel-map-context";
+import { usePixelMap, type TextOverlay } from "@/contexts/pixel-map-context";
 import { cn, isColorDark } from "@/lib/utils";
-import { useMemo } from "react";
+import { useMemo, useRef, useCallback, useState } from "react";
+import { Trash2 } from "lucide-react";
 
 export function LedGrid() {
   const {
@@ -46,6 +47,8 @@ export function LedGrid() {
     moduleBorderColor,
     randomizeModuleColors,
     currentScreen,
+    updateTextOverlay,
+    removeTextOverlay,
   } = usePixelMap();
 
   const { totalGridPixelWidth, totalGridPixelHeight } = useMemo(() => {
@@ -120,7 +123,6 @@ export function LedGrid() {
     : resolutionLabelColor;
 
   const resolutionText = `Pixel: ${totalGridPixelWidth} x ${totalGridPixelHeight}`;
-
 
   return (
     <div>
@@ -264,6 +266,125 @@ export function LedGrid() {
             >
                 {resolutionText}
             </div>
+        )}
+        {(currentScreen.textOverlays ?? []).map((overlay) => (
+          <DraggableTextOverlay
+            key={overlay.id}
+            overlay={overlay}
+            zoom={zoom}
+            gridWidth={totalGridPixelWidth}
+            gridHeight={totalGridPixelHeight}
+            averageBgColor={averageBackgroundColor}
+            onUpdate={updateTextOverlay}
+            onRemove={removeTextOverlay}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DraggableTextOverlay({
+  overlay,
+  zoom,
+  gridWidth,
+  gridHeight,
+  averageBgColor,
+  onUpdate,
+  onRemove,
+}: {
+  overlay: TextOverlay;
+  zoom: number;
+  gridWidth: number;
+  gridHeight: number;
+  averageBgColor: string;
+  onUpdate: (id: string, updates: Partial<TextOverlay>) => void;
+  onRemove: (id: string) => void;
+}) {
+  const dragRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+
+  const currentColor =
+    overlay.colorMode === 'auto'
+      ? isColorDark(averageBgColor) ? '#FFFFFF' : '#000000'
+      : overlay.color;
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    dragState.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      origX: overlay.x,
+      origY: overlay.y,
+    };
+    setIsDragging(true);
+  }, [overlay.x, overlay.y]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragState.current || !isDragging) return;
+    const dx = (e.clientX - dragState.current.startX) / zoom;
+    const dy = (e.clientY - dragState.current.startY) / zoom;
+    const newX = Math.max(0, Math.min(gridWidth - 20, dragState.current.origX + dx));
+    const newY = Math.max(0, Math.min(gridHeight - 10, dragState.current.origY + dy));
+    onUpdate(overlay.id, { x: newX, y: newY });
+  }, [isDragging, zoom, gridWidth, gridHeight, overlay.id, onUpdate]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    dragState.current = null;
+    setIsDragging(false);
+  }, []);
+
+  return (
+    <div
+      ref={dragRef}
+      className="absolute z-40 select-none"
+      style={{
+        left: `${overlay.x * zoom}px`,
+        top: `${overlay.y * zoom}px`,
+        cursor: isDragging ? 'grabbing' : 'grab',
+        touchAction: 'none',
+      }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div
+        className="relative group"
+        style={{
+          transform: `rotate(${overlay.rotation}deg)`,
+          transformOrigin: 'center',
+        }}
+      >
+        <div
+          className="font-bold whitespace-nowrap drop-shadow-lg"
+          style={{
+            fontSize: `${overlay.fontSize * zoom}px`,
+            color: currentColor,
+            fontWeight: overlay.fontWeight,
+            backgroundColor: overlay.showBackground ? overlay.backgroundColor : 'transparent',
+            padding: overlay.showBackground ? '4px 10px' : '0',
+            borderRadius: overlay.showBackground ? '4px' : '0',
+            lineHeight: 1.2,
+          }}
+        >
+          {overlay.text || ' '}
+        </div>
+        {(isHovered || isDragging) && (
+          <button
+            className="absolute -top-3 -right-3 w-6 h-6 rounded-full bg-destructive text-white flex items-center justify-center shadow-lg hover:bg-destructive/90 transition-colors z-50"
+            onPointerDown={(e) => { e.stopPropagation(); }}
+            onClick={(e) => { e.stopPropagation(); onRemove(overlay.id); }}
+            title="Delete text"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         )}
       </div>
     </div>

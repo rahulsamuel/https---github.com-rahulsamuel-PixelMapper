@@ -59,6 +59,20 @@ type LabelColorMode = 'single' | 'auto';
 type ResolutionType = 'content' | 'hd' | '4k-uhd' | '4k-dci' | 'custom';
 type ProcessorType = 'Brompton' | 'Novastar' | 'Helios';
 
+export interface TextOverlay {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  fontSize: number;
+  color: string;
+  colorMode: LabelColorMode;
+  fontWeight: number;
+  rotation: number;
+  backgroundColor: string;
+  showBackground: boolean;
+}
+
 export interface RasterGroup {
   id: string;
   name: string;
@@ -169,6 +183,7 @@ export interface Screen {
   processorType: ProcessorType;
   selectedProductId: string | null;
   nextTileId: number;
+  textOverlays: TextOverlay[];
   showModules: boolean;
   moduleBorderColor: string;
   randomizeModuleColors: boolean;
@@ -243,6 +258,9 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setResolutionLabelFontSize: Dispatch<SetStateAction<number>>;
   setResolutionLabelColor: Dispatch<SetStateAction<string>>;
   setResolutionLabelColorMode: Dispatch<SetStateAction<LabelColorMode>>;
+  addTextOverlay: () => void;
+  updateTextOverlay: (id: string, updates: Partial<TextOverlay>) => void;
+  removeTextOverlay: (id: string) => void;
   setOnOffMode: Dispatch<SetStateAction<boolean>>;
   zoom: number;
   setZoom: (value: number | ((prev: number) => number), applyToAllTabs?: boolean) => void;
@@ -416,6 +434,7 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     processorType: 'Brompton',
     selectedProductId: 'custom',
     nextTileId: idCounter + initialTiles.length,
+    textOverlays: [],
     showModules: false,
     moduleBorderColor: "#000000",
     randomizeModuleColors: false,
@@ -598,6 +617,39 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setResolutionLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, resolutionLabelColor: typeof updater === 'function' ? updater(s.resolutionLabelColor ?? '#ffffff') : updater }));
   const setResolutionLabelColorMode = (updater: SetStateAction<LabelColorMode>) => updateCurrentScreen(s => ({ ...s, resolutionLabelColorMode: typeof updater === 'function' ? updater(s.resolutionLabelColorMode ?? 'auto') : updater }));
   const setProcessorType = (updater: SetStateAction<ProcessorType>) => updateCurrentScreen(s => ({ ...s, processorType: typeof updater === 'function' ? updater(s.processorType) : updater }));
+
+  const addTextOverlay = useCallback(() => {
+    updateCurrentScreen(s => {
+      const newOverlay: TextOverlay = {
+        id: crypto.randomUUID(),
+        text: 'New Text',
+        x: 20,
+        y: 20,
+        fontSize: 48,
+        color: '#ffffff',
+        colorMode: 'single',
+        fontWeight: 700,
+        rotation: 0,
+        backgroundColor: '#000000',
+        showBackground: false,
+      };
+      return { ...s, textOverlays: [...(s.textOverlays ?? []), newOverlay] };
+    });
+  }, [updateCurrentScreen]);
+
+  const updateTextOverlay = useCallback((id: string, updates: Partial<TextOverlay>) => {
+    updateCurrentScreen(s => ({
+      ...s,
+      textOverlays: (s.textOverlays ?? []).map(o => o.id === id ? { ...o, ...updates } : o),
+    }));
+  }, [updateCurrentScreen]);
+
+  const removeTextOverlay = useCallback((id: string) => {
+    updateCurrentScreen(s => ({
+      ...s,
+      textOverlays: (s.textOverlays ?? []).filter(o => o.id !== id),
+    }));
+  }, [updateCurrentScreen]);
 
   const addRasterGroup = useCallback(() => {
     const newId = `raster-${Date.now()}`;
@@ -2514,6 +2566,9 @@ const handleRightHalfTileChange = (add: boolean) => {
     setResolutionLabelColor,
     resolutionLabelColorMode: currentScreen.resolutionLabelColorMode ?? 'auto',
     setResolutionLabelColorMode,
+    addTextOverlay,
+    updateTextOverlay,
+    removeTextOverlay,
     onOffMode: currentScreen.onOffMode,
     setOnOffMode,
     zoom,

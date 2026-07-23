@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -15,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Plus, Trash2, Type } from "lucide-react";
 
 export function LabelControls() {
   const {
@@ -54,6 +56,10 @@ export function LabelControls() {
     setResolutionLabelColor,
     resolutionLabelColorMode,
     setResolutionLabelColorMode,
+    currentScreen,
+    addTextOverlay,
+    updateTextOverlay,
+    removeTextOverlay,
   } = usePixelMap();
 
   return (
@@ -336,6 +342,137 @@ export function LabelControls() {
                     </div>
                 </div>
             )}
+        </div>
+
+        <Separator />
+
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <Label className="flex items-center gap-1.5">
+              <Type className="h-3.5 w-3.5" />
+              Text Overlays
+            </Label>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7"
+              onClick={addTextOverlay}
+            >
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Add Text
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Drag text on the grid to reposition. Hover over text to delete it.
+          </p>
+          {(currentScreen.textOverlays ?? []).length === 0 ? (
+            <p className="text-xs text-muted-foreground italic text-center py-4">
+              No text overlays yet. Click "Add Text" to create one.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {(currentScreen.textOverlays ?? []).map((overlay) => (
+                <div key={overlay.id} className="border rounded-lg p-3 space-y-2.5 bg-muted/20">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={overlay.text}
+                      onChange={(e) => updateTextOverlay(overlay.id, { text: e.target.value })}
+                      placeholder="Enter text"
+                      className="h-8 text-sm flex-1"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => removeTextOverlay(overlay.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Font Size: {overlay.fontSize}px</Label>
+                    <Slider
+                      min={12}
+                      max={256}
+                      step={1}
+                      value={[overlay.fontSize]}
+                      onValueChange={(v) => updateTextOverlay(overlay.id, { fontSize: v[0] })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Rotation: {overlay.rotation}°</Label>
+                    <Slider
+                      min={-180}
+                      max={180}
+                      step={1}
+                      value={[overlay.rotation]}
+                      onValueChange={(v) => updateTextOverlay(overlay.id, { rotation: v[0] })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Color Mode</Label>
+                    <Select
+                      value={overlay.colorMode}
+                      onValueChange={(v) => updateTextOverlay(overlay.id, { colorMode: v as any })}
+                    >
+                      <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="single">Single Color</SelectItem>
+                        <SelectItem value="auto">Automatic (B&W)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {overlay.colorMode === 'single' && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Color</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="color"
+                          value={overlay.color}
+                          onChange={(e) => updateTextOverlay(overlay.id, { color: e.target.value })}
+                          className="w-14 p-1 h-8"
+                        />
+                        <Input
+                          type="text"
+                          value={overlay.color}
+                          onChange={(e) => updateTextOverlay(overlay.id, { color: e.target.value })}
+                          placeholder="#ffffff"
+                          className="font-mono h-8 text-sm flex-1"
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground">Background</Label>
+                    <Switch
+                      checked={overlay.showBackground}
+                      onCheckedChange={(v) => updateTextOverlay(overlay.id, { showBackground: v })}
+                    />
+                  </div>
+                  {overlay.showBackground && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Background Color</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="color"
+                          value={overlay.backgroundColor}
+                          onChange={(e) => updateTextOverlay(overlay.id, { backgroundColor: e.target.value })}
+                          className="w-14 p-1 h-8"
+                        />
+                        <Input
+                          type="text"
+                          value={overlay.backgroundColor}
+                          onChange={(e) => updateTextOverlay(overlay.id, { backgroundColor: e.target.value })}
+                          placeholder="#000000"
+                          className="font-mono h-8 text-sm flex-1"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
   );
