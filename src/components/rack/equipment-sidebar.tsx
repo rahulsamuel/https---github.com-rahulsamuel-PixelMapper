@@ -37,7 +37,7 @@ function DraggableEquipment({ item, activeSide }: { item: EquipmentItem; activeS
 
   return (
     <div
-      ref={drag}
+      ref={drag as unknown as React.Ref<HTMLDivElement>}
       className={cn(
         'group flex items-center gap-2 p-2 rounded-md border bg-card transition-all',
         allowed

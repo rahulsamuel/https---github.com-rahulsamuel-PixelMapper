@@ -306,7 +306,7 @@ function RackSlot({
 
   return (
     <div
-      ref={drop}
+      ref={drop as unknown as React.Ref<HTMLDivElement>}
       className="relative flex-shrink-0"
       style={{
         height: RU_HEIGHT,
@@ -595,7 +595,7 @@ export function Rack({
 
           <div
             id={`rack-body-${id}-${activeSide}`}
-            ref={dropRef}
+            ref={dropRef as unknown as React.Ref<HTMLDivElement>}
             className="flex-1 relative"
             style={{ background: cfg.bodyBg }}
           >

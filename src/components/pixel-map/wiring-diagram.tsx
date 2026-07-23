@@ -132,7 +132,7 @@ export function WiringDiagram() {
               }
             }
 
-            const tileStyle = {
+            const tileStyle: React.CSSProperties = {
               top: yPos,
               width: tileWidth,
               height: tileHeight,

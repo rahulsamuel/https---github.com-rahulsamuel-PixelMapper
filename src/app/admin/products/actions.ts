@@ -4,7 +4,7 @@
 import { deleteLedProduct } from '@/services/supabase';
 import { revalidatePath } from 'next/cache';
 
-export async function deleteProduct(productId: string) {
+export async function deleteProduct(productId: string, _formData: FormData): Promise<void> {
   try {
     const { success } = await deleteLedProduct(productId);
     if (!success) {
@@ -14,8 +14,5 @@ export async function deleteProduct(productId: string) {
     revalidatePath('/calculator');
   } catch (error) {
     console.error('Failed to delete product:', error);
-    return {
-      message: 'Failed to delete product.',
-    };
   }
 }

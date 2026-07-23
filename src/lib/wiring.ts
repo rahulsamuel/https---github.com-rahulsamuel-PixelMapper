@@ -396,6 +396,8 @@ interface GetWiringDataArgs {
     rasterMapConfig?: RasterMapConfig | null;
     topHalfTile: boolean;
     bottomHalfTile: boolean;
+    leftHalfTile: boolean;
+    rightHalfTile: boolean;
     screenId: string;
 }
 
@@ -437,7 +439,7 @@ export function getWiringData({
       const processedDataIndices = new Set<number>();
       allTilesData.forEach((startTileInfo, startTileGridIndex) => {
           const startTile = tiles[startTileGridIndex];
-          if (startTile.isDeleted || !startTile.dataCircuit || processedDataIndices.has(startTileGridIndex)) return;
+          if (startTile.deleted || !startTile.dataCircuit || processedDataIndices.has(startTileGridIndex)) return;
           
           const { tileCount, pattern, mainLabel, backupLabel } = startTile.dataCircuit;
           if (tileCount === 0) return;
@@ -520,7 +522,7 @@ export function getWiringData({
       const processedPowerIndices = new Set<number>();
       allTilesData.forEach((startTileInfo, startTileGridIndex) => {
           const startTile = tiles[startTileGridIndex];
-          if (startTile.isDeleted || !startTile.powerCircuit || processedPowerIndices.has(startTileGridIndex)) return;
+          if (startTile.deleted || !startTile.powerCircuit || processedPowerIndices.has(startTileGridIndex)) return;
 
           const { tileCount, pattern } = startTile.powerCircuit;
           if (tileCount === 0) return;

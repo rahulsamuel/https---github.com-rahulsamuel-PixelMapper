@@ -465,7 +465,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const nextIdCounter = useRef(1);
 
   const { user } = useAuth();
-  const subscriptionStatus = 'pro';
+  const subscriptionStatus = 'pro' as 'pro' | 'trial';
 
   const [screens, setScreens] = useState<Screen[]>(() => {
     const initialScreen = createNewScreen("Default Screen", nextIdCounter.current);
@@ -2054,7 +2054,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       });
     };
 
-    const generateAndDownload = async (type: 'data' | 'power', isMirrored: boolean, filename: string) => {
+    const generateAndDownload = async (type: 'data' | 'power' | 'both', isMirrored: boolean, filename: string) => {
       setWiringVisibility(type);
       try {
         // The wiring diagram component already renders the mirrored (rear view)
@@ -2460,7 +2460,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     ctx.fillStyle = computedStyle.getPropertyValue('--background').trim() || '#FFFFFF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const rowData = [];
+    const rowData: { yPos: number; height: number }[] = [];
     let currentY = 0;
     for (let i = 0; i < screenEffectiveHeight; i++) {
         const isTopHalfRow = screen.topHalfTile && i === 0;
@@ -2932,6 +2932,9 @@ const handleRightHalfTileChange = (add: boolean) => {
     setAudioFormat,
     imageFormat,
     setImageFormat,
+    lastRasterArgs: currentScreen.lastRasterArgs,
+    rasterGroupId: currentScreen.rasterGroupId,
+    textOverlays: currentScreen.textOverlays,
   };
 
   return (
