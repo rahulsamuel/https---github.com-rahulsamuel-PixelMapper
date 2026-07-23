@@ -24,7 +24,6 @@ import { ColorToolControls } from "../pixel-mapper/color-tool-controls";
 import { ManualPowerWiringModal } from "../pixel-mapper/manual-power-wiring-modal";
 import { ManualDataWiringModal } from "../pixel-mapper/manual-data-wiring-modal";
 import { DeliverablesView } from "./deliverables-view";
-import { Led3DView } from "./led-3d-view";
 import { ProjectDetailsControls } from "../pixel-mapper/project-details-controls";
 import {
   Accordion,
@@ -511,7 +510,6 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick }: { onlineUsers
                 <TabsList>
                   <TabsTrigger value="grid">LED Grid</TabsTrigger>
                   <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
-                  <TabsTrigger value="3d">3D Preview</TabsTrigger>
                   <TabsTrigger value="raster">Raster Map</TabsTrigger>
                   <TabsTrigger value="deliverables">Deliverables</TabsTrigger>
                 </TabsList>
@@ -565,9 +563,6 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick }: { onlineUsers
                 <div className="inline-block" style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>
                   <WiringDiagram />
                 </div>
-              </TabsContent>
-              <TabsContent value="3d" className="mt-0 h-full">
-                <Led3DView />
               </TabsContent>
               <TabsContent value="raster" className="mt-0 p-8">
                  <div className="inline-block" style={{ width: (rasterMapConfig?.totalWidth ?? 0) * zoom, height: (rasterMapConfig?.totalHeight ?? 0) * zoom }}>
