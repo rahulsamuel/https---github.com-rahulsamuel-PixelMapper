@@ -2000,25 +2000,34 @@ const handleRightHalfTileChange = (add: boolean) => {
       }
     };
 
+    const wiringType: 'data' | 'power' | 'both' =
+      currentScreen.showDataLabels && currentScreen.showPowerLabels ? 'both'
+      : currentScreen.showDataLabels ? 'data'
+      : currentScreen.showPowerLabels ? 'power'
+      : 'both';
+    const isMirrored = currentScreen.isWiringMirrored;
+    const typeLabel = currentScreen.showDataLabels && !currentScreen.showPowerLabels ? 'DATA_'
+      : !currentScreen.showDataLabels && currentScreen.showPowerLabels ? 'POWER_'
+      : '';
+    const viewLabel = isMirrored ? 'REAR_VIEW' : 'FRONT_VIEW';
+    const filename = `${typeLabel}WIRING_${screenName}_${viewLabel}.png`;
+
     try {
-      await generateAndDownload('data', false, `DATA_WIRING_${screenName}_FRONT_VIEW.png`);
-      await generateAndDownload('data', true,  `DATA_WIRING_${screenName}_REAR_VIEW.png`);
-      await generateAndDownload('power', false, `POWER_WIRING_${screenName}_FRONT_VIEW.png`);
-      await generateAndDownload('power', true,  `POWER_WIRING_${screenName}_REAR_VIEW.png`);
+      await generateAndDownload(wiringType, isMirrored, filename);
 
       toast({
-        title: "Downloads Started",
-        description: "4 wiring diagrams are downloading (Data + Power, Front + Rear views).",
+        title: "Download Started",
+        description: "Your wiring diagram is downloading.",
       });
     } catch (err) {
       console.error("Failed to generate wiring diagram image", err);
       toast({
         title: "Download Failed",
-        description: "Could not generate one or more wiring diagram images.",
+        description: "Could not generate the wiring diagram image.",
         variant: "destructive",
       });
     }
-  }, [wiringDiagramRef, currentScreen.name, currentScreen.textOverlays, drawTextOverlaysOnCtx, includeTextOverlaysInDownload, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, subscriptionStatus]);
+  }, [wiringDiagramRef, currentScreen.name, currentScreen.textOverlays, currentScreen.showDataLabels, currentScreen.showPowerLabels, currentScreen.isWiringMirrored, drawTextOverlaysOnCtx, includeTextOverlaysInDownload, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, subscriptionStatus]);
 
   const handleDownloadFullRaster = useCallback(() => {
     if (subscriptionStatus !== 'pro') {
