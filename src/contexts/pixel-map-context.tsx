@@ -2256,6 +2256,38 @@ const handleRightHalfTileChange = (add: boolean) => {
     if (data.imageFormat) setImageFormat(data.imageFormat);
   }, []);
 
+  const AUTOSAVE_KEY = 'pixel-mapper-autosave';
+  const hasRestoredRef = useRef(false);
+  useEffect(() => {
+    if (hasRestoredRef.current) return;
+    hasRestoredRef.current = true;
+    try {
+      const saved = localStorage.getItem(AUTOSAVE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved) as ProjectData;
+        if (data.screens && data.screens.length > 0) {
+          loadProjectData(data);
+        }
+      }
+    } catch {
+      // ignore corrupt autosave data
+    }
+  }, [loadProjectData]);
+
+  const localSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    localSaveTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(getProjectData()));
+      } catch {
+        // storage full or unavailable
+      }
+    }, 1000);
+    return () => {
+      if (localSaveTimerRef.current) clearTimeout(localSaveTimerRef.current);
+    };
+  }, [getProjectData]);
+
   const exportProject = useCallback((projectName?: string) => {
     const projectData: ProjectData = getProjectData();
 
