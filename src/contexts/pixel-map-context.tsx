@@ -1962,7 +1962,9 @@ const handleRightHalfTileChange = (add: boolean) => {
           width: cropWidth,
           height: cropHeight,
           style: {
-            transform: `translate(-${sx}px, -${sy}px) scale(${isMirrored ? -1 : 1}, 1)`,
+            transform: isMirrored
+              ? `translate(${cropWidth + sx}px, -${sy}px) scale(-1, 1)`
+              : `translate(-${sx}px, -${sy}px)`,
           },
         });
 
