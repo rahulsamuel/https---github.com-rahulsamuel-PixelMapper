@@ -3,12 +3,13 @@
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function DownloadsControls() {
     const {
         handleDownloadPng,
+    isPngDownloading,
         handleDownloadWiringDiagram,
         handleDownloadCompositeWiringDiagram,
         downloadRasterSlices,
@@ -83,9 +84,13 @@ export function DownloadsControls() {
                         <TooltipContent><p>{pngTooltip}</p></TooltipContent>
                     </Tooltip>
                 ) : (
-                    <Button size="sm" onClick={() => handleDownloadPng('pixel-map-grid.png')} variant="outline" className="w-full justify-start">
-                        <Download className="mr-2" />
-                        Download Grid as PNG
+                    <Button size="sm" onClick={() => handleDownloadPng()} disabled={isPngDownloading} variant="outline" className="w-full justify-start">
+                        {isPngDownloading ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="mr-2" />
+                        )}
+                        {isPngDownloading ? "Generating PNG..." : "Download Grid as PNG"}
                     </Button>
                 )}
                 

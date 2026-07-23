@@ -217,7 +217,8 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setTileColorTwo: Dispatch<SetStateAction<string>>;
   setBorderWidth: Dispatch<SetStateAction<number>>;
   setBorderColor: Dispatch<SetStateAction<string>>;
-  handleDownloadPng: (filename: string) => void;
+  handleDownloadPng: (filename?: string) => void;
+  isPngDownloading: boolean;
   handleDownloadWiringDiagram: () => void;
   handleDownloadCompositeWiringDiagram: () => void;
   handleDownloadFullRaster: () => void;
@@ -456,6 +457,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [selectedTileForPower, setSelectedTileForPower] = useState<number | null>(null);
   const [isManualDataModalOpen, setIsManualDataModalOpen] = useState(false);
   const [selectedTileForData, setSelectedTileForData] = useState<number | null>(null);
+  const [isPngDownloading, setIsPngDownloading] = useState(false);
 
   // Deliverables State
   const [projectNumber, setProjectNumber] = useState("");
@@ -1169,80 +1171,6 @@ const handleRightHalfTileChange = (add: boolean) => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, color: undefined })));
   }, [setTiles]);
 
-  const handleDownloadPng = useCallback((filename: string) => {
-    if (gridRef.current === null || !activeBounds) {
-      return;
-    }
-
-    const node = gridRef.current;
-    
-    let yPosOfMinY = 0;
-    for (let i = 0; i < activeBounds.minY; i++) {
-        const isTopHalfRow = topHalfTile && i === 0;
-        yPosOfMinY += isTopHalfRow ? dimensions.tileHeight / 2 : dimensions.tileHeight;
-    }
-
-    const contentPixelHeight = (() => {
-        if (!activeBounds) return 0;
-        let height = 0;
-        for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
-          const isTopHalf = topHalfTile && y === 0;
-          const isBottomHalf = bottomHalfTile && y === (effectiveScreenHeight - 1);
-          height += (isTopHalf || isBottomHalf) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
-        }
-        return height;
-      })();
-      
-    const contentPixelWidth = (() => {
-      if (!activeBounds) return 0;
-      let width = 0;
-      for (let x = activeBounds.minX; x <= activeBounds.maxX; x++) {
-          const isLeftHalf = leftHalfTile && x === 0;
-          const isRightHalf = rightHalfTile && x === (effectiveScreenWidth - 1);
-          width += (isLeftHalf || isRightHalf) ? dimensions.tileWidth / 2 : dimensions.tileWidth;
-      }
-      return width;
-    })();
-    
-    let xPosOfMinX = 0;
-    for (let i = 0; i < activeBounds.minX; i++) {
-        const isLeftHalfCol = leftHalfTile && i === 0;
-        xPosOfMinX += isLeftHalfCol ? dimensions.tileWidth / 2 : dimensions.tileWidth;
-    }
-
-    const cropWidth = contentPixelWidth;
-    const cropHeight = contentPixelHeight;
-    const sx = xPosOfMinX;
-    const sy = yPosOfMinY;
-
-    toPng(node, {
-        cacheBust: true,
-        backgroundColor: '#ffffff',
-        pixelRatio: 1,
-        width: cropWidth,
-        height: cropHeight,
-        style: {
-          transform: `translate(-${sx}px, -${sy}px) scale(1)`,
-        }
-    })
-      .then((dataUrl) => {
-        if (subscriptionStatus === 'trial') {
-            return addWatermark(dataUrl);
-        }
-        return dataUrl;
-      })
-      .then((dataUrl) => {
-        const link = document.createElement("a");
-        link.download = filename;
-        link.href = dataUrl;
-        link.click();
-        trackEvent('download', { type: 'grid-png', filename, thumbnail: dataUrl });
-      })
-      .catch((err) => {
-        console.error("Could not generate PNG.", err);
-      });
-  }, [gridRef, activeBounds, dimensions, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, subscriptionStatus]);
-
   const createScreenContentCanvas = useCallback((screen: Screen, screenActiveBounds: ActiveBounds | null) => {
     if (!screenActiveBounds) return null;
 
@@ -1418,6 +1346,52 @@ const handleRightHalfTileChange = (add: boolean) => {
 
     return masterCanvas;
   }, []);
+
+  const handleDownloadPng = useCallback((filename?: string) => {
+    if (!activeBounds) {
+      return;
+    }
+
+    setIsPngDownloading(true);
+
+    setTimeout(() => {
+      try {
+        const canvas = createScreenContentCanvas(currentScreen, activeBounds);
+        if (!canvas) {
+          setIsPngDownloading(false);
+          return;
+        }
+
+        const contentPixelWidth = canvas.width;
+        const contentPixelHeight = canvas.height;
+
+        const safeName = (currentScreen.name || 'screen').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const autoFilename = `PIXEL_MAP_${safeName}_${contentPixelWidth}x${contentPixelHeight}.png`;
+        const finalFilename = filename || autoFilename;
+
+        const applyWatermarkAndDownload = (dataUrl: string) => {
+          const link = document.createElement("a");
+          link.download = finalFilename;
+          link.href = dataUrl;
+          link.click();
+          trackEvent('download', { type: 'grid-png', filename: finalFilename, thumbnail: dataUrl });
+        };
+
+        const dataUrl = canvas.toDataURL('image/png');
+        if (subscriptionStatus === 'trial') {
+          addWatermark(dataUrl).then(applyWatermarkAndDownload).catch((err) => {
+            console.error("Could not generate PNG.", err);
+          }).finally(() => setIsPngDownloading(false));
+        } else {
+          applyWatermarkAndDownload(dataUrl);
+          setIsPngDownloading(false);
+        }
+      } catch (err) {
+        console.error("Could not generate PNG.", err);
+        setIsPngDownloading(false);
+      }
+    }, 50);
+  }, [activeBounds, currentScreen, createScreenContentCanvas, subscriptionStatus]);
 
   const buildRasterConfigForGroup = useCallback((groupId: string, filename: string, outputWidth?: number, outputHeight?: number): RasterMapConfig | null => {
     const groupScreens = screens.filter(s => (s.rasterGroupId ?? 'raster-1') === groupId);
@@ -2496,6 +2470,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     borderColor: currentScreen.borderColor,
     setBorderColor,
     handleDownloadPng,
+    isPngDownloading,
     handleDownloadWiringDiagram,
     handleDownloadCompositeWiringDiagram,
     handleDownloadFullRaster,
