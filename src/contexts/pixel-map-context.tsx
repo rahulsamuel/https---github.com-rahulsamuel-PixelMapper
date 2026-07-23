@@ -224,6 +224,11 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   sliceOffsetLabels: string[];
   wiringData: WiringInfo[];
   handleTileClick: (tileId: number) => void;
+  selectionRect: { startX: number; startY: number; endX: number; endY: number } | null;
+  selectedTileIds: number[];
+  handleGridMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
+  handleGridMouseMove: (e: React.MouseEvent<HTMLDivElement>) => void;
+  handleGridMouseUp: () => void;
   restoreDeletedTiles: () => void;
   resetAllColors: () => void;
   deletedCount: number;
@@ -480,6 +485,9 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [selectedTileForData, setSelectedTileForData] = useState<number | null>(null);
   const [isPngDownloading, setIsPngDownloading] = useState(false);
   const [includeTextOverlaysInDownload, setIncludeTextOverlaysInDownload] = useState(true);
+  const [selectionRect, setSelectionRect] = useState<{ startX: number; startY: number; endX: number; endY: number } | null>(null);
+  const [selectedTileIds, setSelectedTileIds] = useState<number[]>([]);
+  const dragStateRef = useRef<{ startX: number; startY: number; active: boolean } | null>(null);
 
   // Deliverables State
   const [projectNumber, setProjectNumber] = useState("");
@@ -1256,6 +1264,91 @@ const handleRightHalfTileChange = (add: boolean) => {
             break;
     }
   }, [currentScreen.activeTool, currentScreen.powerWiringPattern, currentScreen.wiringPattern, currentScreen.brushColor, currentScreen.tiles, toast, applyManualPowerWiring, applyManualDataWiring]);
+
+  const handleGridMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (currentScreen.activeTool !== 'delete' && currentScreen.activeTool !== 'color') return;
+    if (e.button !== 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / zoom;
+    const y = (e.clientY - rect.top) / zoom;
+    dragStateRef.current = { startX: x, startY: y, active: true };
+    setSelectionRect({ startX: x, startY: y, endX: x, endY: y });
+    setSelectedTileIds([]);
+  }, [currentScreen.activeTool, zoom]);
+
+  const handleGridMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!dragStateRef.current?.active) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / zoom;
+    const y = (e.clientY - rect.top) / zoom;
+    setSelectionRect(prev => prev ? { ...prev, endX: x, endY: y } : null);
+  }, [zoom]);
+
+  const handleGridMouseUp = useCallback(() => {
+    if (!dragStateRef.current?.active) return;
+    dragStateRef.current.active = false;
+    const sr = selectionRect;
+    if (!sr) return;
+    setSelectionRect(null);
+
+    const minX = Math.min(sr.startX, sr.endX);
+    const maxX = Math.max(sr.startX, sr.endX);
+    const minY = Math.min(sr.startY, sr.endY);
+    const maxY = Math.max(sr.startY, sr.endY);
+
+    // Only treat as selection if drag was more than a few pixels
+    if (Math.abs(sr.endX - sr.startX) < 4 && Math.abs(sr.endY - sr.startY) < 4) {
+      setSelectedTileIds([]);
+      return;
+    }
+
+    // Compute pixel positions of each column/row to find which tiles overlap
+    let colX = 0;
+    const colRanges: { x: number; w: number }[] = [];
+    for (let i = 0; i < effectiveScreenWidth; i++) {
+      const isLeftHalf = leftHalfTile && i === 0;
+      const isRightHalf = rightHalfTile && i === effectiveScreenWidth - 1;
+      const w = (isLeftHalf || isRightHalf) ? dimensions.tileWidth / 2 : dimensions.tileWidth;
+      colRanges.push({ x: colX, w });
+      colX += w;
+    }
+    let rowY = 0;
+    const rowRanges: { y: number; h: number }[] = [];
+    for (let i = 0; i < effectiveScreenHeight; i++) {
+      const isTopHalf = topHalfTile && i === 0;
+      const isBottomHalf = bottomHalfTile && i === effectiveScreenHeight - 1;
+      const h = (isTopHalf || isBottomHalf) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
+      rowRanges.push({ y: rowY, h });
+      rowY += h;
+    }
+
+    const ids: number[] = [];
+    for (let y = 0; y < effectiveScreenHeight; y++) {
+      for (let x = 0; x < effectiveScreenWidth; x++) {
+        const col = colRanges[x];
+        const row = rowRanges[y];
+        const tileLeft = col.x;
+        const tileRight = col.x + col.w;
+        const tileTop = row.y;
+        const tileBottom = row.y + row.h;
+        if (tileRight > minX && tileLeft < maxX && tileBottom > minY && tileTop < maxY) {
+ const index = y * effectiveScreenWidth + x;
+          const tile = currentScreen.tiles[index];
+          if (tile) ids.push(tile.id);
+        }
+      }
+    }
+
+    setSelectedTileIds(ids);
+
+    if (ids.length === 0) return;
+
+    if (currentScreen.activeTool === 'delete') {
+      setTiles(prev => prev.map(tile => ids.includes(tile.id) ? { ...tile, deleted: !tile.deleted } : tile));
+    } else if (currentScreen.activeTool === 'color') {
+      setTiles(prev => prev.map(tile => ids.includes(tile.id) ? { ...tile, color: currentScreen.brushColor, deleted: false } : tile));
+    }
+  }, [selectionRect, effectiveScreenWidth, effectiveScreenHeight, leftHalfTile, rightHalfTile, topHalfTile, bottomHalfTile, dimensions, currentScreen.activeTool, currentScreen.brushColor, currentScreen.tiles, setTiles]);
 
   const restoreDeletedTiles = useCallback(() => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, deleted: false })));
@@ -2635,6 +2728,11 @@ const handleRightHalfTileChange = (add: boolean) => {
     sliceOffsetLabels,
     wiringData,
     handleTileClick,
+    selectionRect,
+    selectedTileIds,
+    handleGridMouseDown,
+    handleGridMouseMove,
+    handleGridMouseUp,
     restoreDeletedTiles,
     resetAllColors,
     deletedCount,

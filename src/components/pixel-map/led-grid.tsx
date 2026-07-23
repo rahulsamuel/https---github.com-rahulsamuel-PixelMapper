@@ -49,6 +49,12 @@ export function LedGrid() {
     currentScreen,
     updateTextOverlay,
     removeTextOverlay,
+    activeTool,
+    selectionRect,
+    selectedTileIds,
+    handleGridMouseDown,
+    handleGridMouseMove,
+    handleGridMouseUp,
   } = usePixelMap();
 
   const { totalGridPixelWidth, totalGridPixelHeight } = useMemo(() => {
@@ -124,10 +130,20 @@ export function LedGrid() {
 
   const resolutionText = `Pixel: ${totalGridPixelWidth} x ${totalGridPixelHeight}`;
 
+  const isSelectionMode = activeTool === 'delete' || activeTool === 'color';
+
   return (
     <div>
       <div style={{ width: totalGridPixelWidth * zoom, height: totalGridPixelHeight * zoom }} className="relative">
-        <div ref={gridRef} style={gridStyle} className="bg-muted">
+        <div
+          ref={gridRef}
+          style={gridStyle}
+          className="bg-muted"
+          onMouseDown={isSelectionMode ? handleGridMouseDown : undefined}
+          onMouseMove={isSelectionMode ? handleGridMouseMove : undefined}
+          onMouseUp={isSelectionMode ? handleGridMouseUp : undefined}
+          onMouseLeave={isSelectionMode ? handleGridMouseUp : undefined}
+        >
           {tiles.map((tile, index) => {
             const x = index % effectiveScreenWidth;
             const y = Math.floor(index / effectiveScreenWidth);
@@ -171,9 +187,10 @@ export function LedGrid() {
                 key={tile.id}
                 onClick={() => handleTileClick(tile.id)}
                 className={cn(
-                  'relative rounded-none transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:z-10'
+                  'relative rounded-none transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:z-10',
+                  selectedTileIds.includes(tile.id) && 'ring-2 ring-blue-500 z-10'
                 )}
-                style={tileDynamicStyle}
+                style={{ ...tileDynamicStyle, cursor: isSelectionMode ? 'crosshair' : undefined }}
                 aria-label={`Tile ${index + 1}`}
               >
                 {showModules && !tile.deleted && (
@@ -220,6 +237,19 @@ export function LedGrid() {
             );
           })}
         </div>
+        {selectionRect && (
+          <div
+            className="absolute pointer-events-none z-50"
+            style={{
+              left: Math.min(selectionRect.startX, selectionRect.endX) * zoom,
+              top: Math.min(selectionRect.startY, selectionRect.endY) * zoom,
+              width: Math.abs(selectionRect.endX - selectionRect.startX) * zoom,
+              height: Math.abs(selectionRect.endY - selectionRect.startY) * zoom,
+              backgroundColor: 'rgba(59, 130, 246, 0.15)',
+              border: '1px solid rgba(59, 130, 246, 0.8)',
+            }}
+          />
+        )}
         {showScreenName && (
             <div
                 className={cn(
