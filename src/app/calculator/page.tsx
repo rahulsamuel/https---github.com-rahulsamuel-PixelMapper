@@ -117,30 +117,31 @@ export default function CalculatorPage() {
         const totalTiles = screenWidthTiles * screenHeightTiles;
 
         // Physical Dimensions
-        const widthMm = screenWidthTiles * selectedProduct.tileWidthMm;
-        const heightMm = screenHeightTiles * selectedProduct.tileHeightMm;
+        const widthMm = screenWidthTiles * (selectedProduct.tileWidthMm ?? 0);
+        const heightMm = screenHeightTiles * (selectedProduct.tileHeightMm ?? 0);
         const widthIn = widthMm / 25.4;
         const heightIn = heightMm / 25.4;
         const widthFt = widthIn / 12;
         const heightFt = heightIn / 12;
 
         // Total Weight
-        const totalWeightKg = totalTiles * selectedProduct.tileWeightKg;
+        const totalWeightKg = totalTiles * (selectedProduct.tileWeightKg ?? 0);
         const totalWeightLbs = totalWeightKg * 2.20462;
 
         // Power Consumption
         const screenAreaM2 = (widthMm / 1000) * (heightMm / 1000);
 
         // Use per-sqm values if available, otherwise derive from wattsPerTile
+        const totalTilesPower = totalTiles * (selectedProduct.wattsPerTile ?? 0);
         const maxPowerPerM2 = selectedProduct.maxPowerWPerSqm != null
             ? selectedProduct.maxPowerWPerSqm
-            : (screenAreaM2 > 0 ? (totalTiles * selectedProduct.wattsPerTile) / screenAreaM2 : 0);
+            : (screenAreaM2 > 0 ? totalTilesPower / screenAreaM2 : 0);
         const avgPowerPerM2 = selectedProduct.avgPowerWPerSqm != null
             ? selectedProduct.avgPowerWPerSqm
             : maxPowerPerM2 * 0.4;
 
-        const totalMaxPower = maxPowerPerM2 * screenAreaM2;
-        const totalAvgPower = avgPowerPerM2 * screenAreaM2;
+        const totalMaxPower = screenAreaM2 > 0 ? maxPowerPerM2 * screenAreaM2 : totalTilesPower;
+        const totalAvgPower = screenAreaM2 > 0 ? avgPowerPerM2 * screenAreaM2 : totalTilesPower * 0.4;
 
         // Current Draw
         const vNum = parseInt(voltage.replace('v', ''));
@@ -173,10 +174,13 @@ export default function CalculatorPage() {
     }, [calculateResults]);
 
     const handleFormChange = (field: keyof FormState, value: any) => {
-        setFormState(prevState => ({
-            ...prevState,
-            [field]: value,
-        }));
+        setFormState(prevState => {
+            const next = { ...prevState, [field]: value };
+            if (field === 'voltage' && value === '110v') {
+                next.phase = 'single-phase';
+            }
+            return next;
+        });
     };
 
     return (

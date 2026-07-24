@@ -135,11 +135,17 @@ export function CalculatorForm({ products, formState, onFormChange, selectedProd
       </div>
       
       <div className="space-y-3">
-        <Label>Phase Configuration</Label>
+        <div className="flex items-center gap-2">
+          <Label>Phase Configuration</Label>
+          {formState.voltage === '110v' && (
+            <span className="text-xs text-muted-foreground">(110V is single phase only)</span>
+          )}
+        </div>
         <RadioGroup 
           value={formState.phase}
           onValueChange={(v) => onFormChange('phase', v)}
           className="grid grid-cols-2 gap-2"
+          disabled={formState.voltage === '110v'}
         >
             <div>
                 <RadioGroupItem value="single-phase" id="single-phase" className="peer sr-only" />
