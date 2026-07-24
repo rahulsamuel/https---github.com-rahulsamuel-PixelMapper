@@ -433,8 +433,6 @@ export function ProcessorAdmin({ processors: initial }: Props) {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const router = useRouter();
 
-  useEffect(() => { setProcessors(initial); }, [initial]);
-
   const manufacturers = useMemo(
     () => [...new Set(processors.map(p => p.manufacturer))].sort(),
     [processors]
