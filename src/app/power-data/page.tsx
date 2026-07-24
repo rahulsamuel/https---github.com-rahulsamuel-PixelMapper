@@ -70,7 +70,7 @@ export default function PowerDataPage() {
     if (first) setSelectedProcessorId(first.id);
   };
 
-  const { maxTilesPerPowerCircuit, maxTilesPerDataPort, circuitWatts, tileWatts, pixelsPerPort, pixelsPerTile } = useMemo(() => {
+  const { maxTilesPerPowerCircuit, maxTilesPerDataPort, maxTilesPerSubPort, circuitWatts, tileWatts, pixelsPerPort, pixelsPerSubPort, pixelsPerTile, hasDistribution } = useMemo(() => {
     // Power
     const v = parseFloat(circuitVoltage) || 0;
     const a = parseFloat(circuitAmperage) || 0;
@@ -88,7 +88,13 @@ export default function PowerDataPage() {
     const pixelsPerPort = rateHz > baseHz ? Math.floor(rawPxPerPort * (baseHz / rateHz)) : rawPxPerPort;
     const maxTilesPerDataPort = pixelsPerTile > 0 && pixelsPerPort > 0 ? Math.floor(pixelsPerPort / pixelsPerTile) : 0;
 
-    return { maxTilesPerPowerCircuit, maxTilesPerDataPort, circuitWatts, tileWatts, pixelsPerPort, pixelsPerTile };
+    // Distribution (e.g. XD box splits 1 × 10G port into 10 × 1G ports)
+    const dist = selectedProcessor?.distributionPerPort ?? 1;
+    const hasDistribution = dist > 1;
+    const pixelsPerSubPort = hasDistribution ? Math.floor(pixelsPerPort / dist) : pixelsPerPort;
+    const maxTilesPerSubPort = pixelsPerTile > 0 && pixelsPerSubPort > 0 ? Math.floor(pixelsPerSubPort / pixelsPerTile) : 0;
+
+    return { maxTilesPerPowerCircuit, maxTilesPerDataPort, maxTilesPerSubPort, circuitWatts, tileWatts, pixelsPerPort, pixelsPerSubPort, pixelsPerTile, hasDistribution };
   }, [selectedProduct, selectedProcessor, circuitVoltage, circuitAmperage, safetyMargin, refreshRate]);
 
   return (
@@ -202,6 +208,7 @@ export default function PowerDataPage() {
               {selectedProcessor && (
                 <p className="text-[10px] text-muted-foreground mt-1.5">
                   {selectedProcessor.outputPortCount} ports · {pixelsPerPort.toLocaleString()} px/port @ {refreshRate}Hz
+                  {hasDistribution && ` · ×${selectedProcessor.distributionPerPort} ${selectedProcessor.distributionUnitName ?? ''}`}
                 </p>
               )}
             </div>
@@ -241,24 +248,54 @@ export default function PowerDataPage() {
           {/* Data result */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base text-muted-foreground">Max Tiles per Data Port</CardTitle>
+              <CardTitle className="text-base text-muted-foreground">
+                Max Tiles per Data Port{hasDistribution ? ` (${selectedProcessor?.distributionUnitName ?? 'Distribution Box'})` : ''}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-7xl font-bold tracking-tight tabular-nums">{maxTilesPerDataPort}</p>
-              <div className="mt-3 pt-3 border-t grid grid-cols-3 gap-3 text-xs text-muted-foreground">
-                <div>
-                  <p className="font-medium text-foreground">{selectedProcessor ? `${selectedProcessor.manufacturer} ${selectedProcessor.modelName}` : '—'}</p>
-                  <p>Processor</p>
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">{pixelsPerPort.toLocaleString()}</p>
-                  <p>Pixels per port</p>
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">{pixelsPerTile.toLocaleString()}</p>
-                  <p>Pixels per tile</p>
-                </div>
-              </div>
+              {hasDistribution ? (
+                <>
+                  <div className="flex items-baseline gap-4">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Per 10G Output Port</p>
+                      <p className="text-5xl font-bold tracking-tight tabular-nums">{maxTilesPerDataPort}</p>
+                    </div>
+                    <div className="text-2xl text-muted-foreground font-light">÷ {selectedProcessor?.distributionPerPort}</div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Per 1G Sub-Port</p>
+                      <p className="text-5xl font-bold tracking-tight tabular-nums text-primary">{maxTilesPerSubPort}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t grid grid-cols-2 gap-3 text-xs text-muted-foreground">
+                    <div>
+                      <p className="font-medium text-foreground">{pixelsPerPort.toLocaleString()} px</p>
+                      <p>Pixels per 10G port</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{pixelsPerSubPort.toLocaleString()} px</p>
+                      <p>Pixels per 1G sub-port</p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-7xl font-bold tracking-tight tabular-nums">{maxTilesPerDataPort}</p>
+                  <div className="mt-3 pt-3 border-t grid grid-cols-3 gap-3 text-xs text-muted-foreground">
+                    <div>
+                      <p className="font-medium text-foreground">{selectedProcessor ? `${selectedProcessor.manufacturer} ${selectedProcessor.modelName}` : '—'}</p>
+                      <p>Processor</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{pixelsPerPort.toLocaleString()}</p>
+                      <p>Pixels per port</p>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{pixelsPerTile.toLocaleString()}</p>
+                      <p>Pixels per tile</p>
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 

@@ -23,6 +23,8 @@ const schema = z.object({
   widthMm: z.coerce.number().positive().optional(),
   heightMm: z.coerce.number().positive().optional(),
   notes: z.string().optional(),
+  distributionPerPort: z.coerce.number().min(1).default(1),
+  distributionUnitName: z.string().optional(),
   specSheetUrl: z.string().url().optional().or(z.literal('')),
   productImageUrl: z.string().url().optional().or(z.literal('')),
   isActive: z.boolean().default(true),
@@ -40,7 +42,7 @@ function rawFromFormData(formData: FormData): Record<string, unknown> {
   for (const f of optionals) {
     if (raw[f] === '' || raw[f] === undefined) delete raw[f];
   }
-  for (const f of ['inputTypes','notes','powerInput','specSheetUrl','productImageUrl']) {
+  for (const f of ['inputTypes','notes','powerInput','specSheetUrl','productImageUrl','distributionUnitName']) {
     if (raw[f] === '') delete raw[f];
   }
   return raw;
@@ -73,6 +75,8 @@ export async function addProcessorAction(
     widthMm: d.widthMm ?? null,
     heightMm: d.heightMm ?? null,
     notes: d.notes ?? null,
+    distributionPerPort: d.distributionPerPort,
+    distributionUnitName: d.distributionUnitName ?? null,
     specSheetUrl: d.specSheetUrl || null,
     productImageUrl: d.productImageUrl || null,
     isActive: d.isActive,
@@ -111,6 +115,8 @@ export async function updateProcessorAction(
     widthMm: d.widthMm ?? null,
     heightMm: d.heightMm ?? null,
     notes: d.notes ?? null,
+    distributionPerPort: d.distributionPerPort,
+    distributionUnitName: d.distributionUnitName ?? null,
     specSheetUrl: d.specSheetUrl || null,
     productImageUrl: d.productImageUrl || null,
     isActive: d.isActive,

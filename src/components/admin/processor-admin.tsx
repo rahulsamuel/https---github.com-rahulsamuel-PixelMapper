@@ -42,6 +42,7 @@ const EMPTY: Partial<Processor> = {
   maxInputResolutionW: undefined, maxInputResolutionH: undefined, inputTypes: '',
   rackUnits: 2, weightKg: undefined, powerWatts: undefined, powerInput: '',
   depthMm: undefined, widthMm: undefined, heightMm: undefined,
+  distributionPerPort: 1, distributionUnitName: '',
   notes: '', specSheetUrl: '', productImageUrl: '', isActive: true,
 };
 
@@ -158,6 +159,8 @@ function ProcessorForm({
       depthMm: n(p.depthMm),
       widthMm: n(p.widthMm),
       heightMm: n(p.heightMm),
+      distributionPerPort: n(p.distributionPerPort) ?? prev.distributionPerPort,
+      distributionUnitName: s(p.distributionUnitName) || prev.distributionUnitName,
       notes: s(p.notes) || prev.notes,
     }));
     setParsedOptions([]);
@@ -291,6 +294,36 @@ function ProcessorForm({
                 />
               </div>
               {numInput('Base Refresh Rate (Hz)', 'baseRefreshRateHz')}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Port Distribution */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Port Distribution</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Distribution per Port</Label>
+                <Input
+                  name="distributionPerPort"
+                  type="number"
+                  min={1}
+                  value={(vals.distributionPerPort as number | undefined) ?? 1}
+                  onChange={e => set('distributionPerPort', Math.max(1, Number(e.target.value)))}
+                />
+                <p className="text-[10px] text-muted-foreground">How many 1G sub-ports each output port splits into (e.g. 10 for XD box). Use 1 if no distribution unit.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Distribution Unit Name</Label>
+                <Input
+                  name="distributionUnitName"
+                  placeholder="e.g. Tessera XD"
+                  value={(vals.distributionUnitName as string | undefined) ?? ''}
+                  onChange={e => set('distributionUnitName', e.target.value)}
+                />
+                <p className="text-[10px] text-muted-foreground">Name of the fiber/distribution box used to split each port.</p>
+              </div>
             </div>
           </div>
 
@@ -511,13 +544,14 @@ export function ProcessorAdmin({ processors: initial }: Props) {
               <th className="text-right font-semibold px-4 py-2.5 cursor-pointer select-none hover:bg-muted/70" onClick={() => toggleSort('totalPixelCapacity')}>Total Pixels {sortKey === 'totalPixelCapacity' && (sortDir === 'asc' ? '↑' : '↓')}</th>
               <th className="text-right font-semibold px-4 py-2.5 cursor-pointer select-none hover:bg-muted/70" onClick={() => toggleSort('outputPortCount')}>Ports {sortKey === 'outputPortCount' && (sortDir === 'asc' ? '↑' : '↓')}</th>
               <th className="text-right font-semibold px-4 py-2.5">px / Port</th>
+              <th className="text-right font-semibold px-4 py-2.5">Distribution</th>
               <th className="text-center font-semibold px-4 py-2.5">Status</th>
               <th className="px-4 py-2.5" />
             </tr>
           </thead>
           <tbody className="divide-y">
             {filtered.length === 0 && (
-              <tr><td colSpan={7} className="text-center py-10 text-muted-foreground">No processors match your filters.</td></tr>
+              <tr><td colSpan={8} className="text-center py-10 text-muted-foreground">No processors match your filters.</td></tr>
             )}
             {filtered.map(p => (
               <tr key={p.id} className="hover:bg-muted/30 transition-colors">
@@ -526,6 +560,13 @@ export function ProcessorAdmin({ processors: initial }: Props) {
                 <td className="px-4 py-3 text-right tabular-nums">{p.totalPixelCapacity.toLocaleString()}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{p.outputPortCount}</td>
                 <td className="px-4 py-3 text-right tabular-nums">{p.pixelsPerPort.toLocaleString()}</td>
+                <td className="px-4 py-3 text-right">
+                  {p.distributionPerPort > 1 ? (
+                    <span className="text-xs">×{p.distributionPerPort} {p.distributionUnitName ? `(${p.distributionUnitName})` : ''}</span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-center">
                   <Badge variant={p.isActive ? 'default' : 'secondary'}>{p.isActive ? 'Active' : 'Hidden'}</Badge>
                 </td>

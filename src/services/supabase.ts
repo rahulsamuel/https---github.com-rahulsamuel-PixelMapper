@@ -437,6 +437,8 @@ export interface ProcessorData {
   depthMm: number | null;
   widthMm: number | null;
   heightMm: number | null;
+  distributionPerPort: number;
+  distributionUnitName: string | null;
   notes: string | null;
   specSheetUrl: string | null;
   productImageUrl: string | null;
@@ -468,6 +470,8 @@ function mapProcessorRow(row: Record<string, unknown>): Processor {
     depthMm: row.depth_mm != null ? Number(row.depth_mm) : null,
     widthMm: row.width_mm != null ? Number(row.width_mm) : null,
     heightMm: row.height_mm != null ? Number(row.height_mm) : null,
+    distributionPerPort: Number(row.distribution_per_port ?? 1),
+    distributionUnitName: row.distribution_unit_name as string | null,
     notes: row.notes as string | null,
     specSheetUrl: row.spec_sheet_url as string | null,
     productImageUrl: row.product_image_url as string | null,
@@ -525,6 +529,8 @@ export async function addProcessor(data: ProcessorData) {
       notes: data.notes ?? null,
       spec_sheet_url: data.specSheetUrl ?? null,
       product_image_url: data.productImageUrl ?? null,
+      distribution_per_port: data.distributionPerPort ?? 1,
+      distribution_unit_name: data.distributionUnitName ?? null,
       is_active: data.isActive,
     });
     if (error) return { success: false, error: error.message };
@@ -557,6 +563,8 @@ export async function updateProcessor(id: string, data: Partial<ProcessorData>) 
     if (data.notes !== undefined) payload.notes = data.notes ?? null;
     if (data.specSheetUrl !== undefined) payload.spec_sheet_url = data.specSheetUrl ?? null;
     if (data.productImageUrl !== undefined) payload.product_image_url = data.productImageUrl ?? null;
+    if (data.distributionPerPort !== undefined) payload.distribution_per_port = data.distributionPerPort;
+    if (data.distributionUnitName !== undefined) payload.distribution_unit_name = data.distributionUnitName ?? null;
     if (data.isActive !== undefined) payload.is_active = data.isActive;
     const { error } = await supabase.from('processor_library').update(payload).eq('id', id);
     if (error) return { success: false, error: error.message };
