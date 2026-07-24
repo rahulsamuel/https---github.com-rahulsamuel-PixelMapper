@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useActionState, useEffect, useRef, useCallback } from 'react';
+import { useState, useActionState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -25,7 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, Sparkles, Link2, Upload, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Pencil, Trash2, Sparkles, Link2, Upload, Loader2, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
 import { addProcessorAction, updateProcessorAction, deleteProcessorAction } from '@/app/admin/processors/actions';
 import type { ProcessorFormState } from '@/app/admin/processors/actions';
 import type { Processor } from '@/services/supabase';
@@ -390,6 +391,45 @@ export function ProcessorAdmin({ processors: initial }: Props) {
   const [editing, setEditing] = useState<Processor | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Processor | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [search, setSearch] = useState('');
+  const [manufacturerFilter, setManufacturerFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortKey, setSortKey] = useState<'manufacturer' | 'modelName' | 'totalPixelCapacity' | 'outputPortCount'>('manufacturer');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const manufacturers = useMemo(
+    () => [...new Set(initial.map(p => p.manufacturer))].sort(),
+    [initial]
+  );
+
+  const filtered = useMemo(() => {
+    let result = initial;
+    if (manufacturerFilter !== 'all') result = result.filter(p => p.manufacturer === manufacturerFilter);
+    if (statusFilter !== 'all') result = result.filter(p => statusFilter === 'active' ? p.isActive : !p.isActive);
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      result = result.filter(p =>
+        p.manufacturer.toLowerCase().includes(q) ||
+        p.modelName.toLowerCase().includes(q)
+      );
+    }
+    result = [...result].sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === 'manufacturer') cmp = a.manufacturer.localeCompare(b.manufacturer);
+      else if (sortKey === 'modelName') cmp = a.modelName.localeCompare(b.modelName);
+      else if (sortKey === 'totalPixelCapacity') cmp = a.totalPixelCapacity - b.totalPixelCapacity;
+      else if (sortKey === 'outputPortCount') cmp = a.outputPortCount - b.outputPortCount;
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+    return result;
+  }, [initial, search, manufacturerFilter, statusFilter, sortKey, sortDir]);
+
+  const hasActiveFilters = search !== '' || manufacturerFilter !== 'all' || statusFilter !== 'all';
+  const clearFilters = () => { setSearch(''); setManufacturerFilter('all'); setStatusFilter('all'); };
+  const toggleSort = (key: typeof sortKey) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  };
 
   const openAdd = () => { setEditing(null); setDialogOpen(true); };
   const openEdit = (p: Processor) => { setEditing(p); setDialogOpen(true); };
@@ -420,24 +460,66 @@ export function ProcessorAdmin({ processors: initial }: Props) {
         </Button>
       </div>
 
+      {/* Search + Filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by manufacturer or model name…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <Select value={manufacturerFilter} onValueChange={setManufacturerFilter}>
+          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Manufacturer" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Manufacturers</SelectItem>
+            {manufacturers.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[120px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="hidden">Hidden</SelectItem>
+          </SelectContent>
+        </Select>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs">
+            <X className="w-3.5 h-3.5 mr-1" /> Clear
+          </Button>
+        )}
+      </div>
+
+      <div className="text-xs text-muted-foreground">
+        Showing {filtered.length} of {initial.length} processors
+      </div>
+
       <div className="border rounded-lg overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 border-b">
             <tr>
-              <th className="text-left font-semibold px-4 py-2.5">Manufacturer</th>
-              <th className="text-left font-semibold px-4 py-2.5">Model</th>
-              <th className="text-right font-semibold px-4 py-2.5">Total Pixels</th>
-              <th className="text-right font-semibold px-4 py-2.5">Ports</th>
+              <th className="text-left font-semibold px-4 py-2.5 cursor-pointer select-none hover:bg-muted/70" onClick={() => toggleSort('manufacturer')}>Manufacturer {sortKey === 'manufacturer' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+              <th className="text-left font-semibold px-4 py-2.5 cursor-pointer select-none hover:bg-muted/70" onClick={() => toggleSort('modelName')}>Model {sortKey === 'modelName' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+              <th className="text-right font-semibold px-4 py-2.5 cursor-pointer select-none hover:bg-muted/70" onClick={() => toggleSort('totalPixelCapacity')}>Total Pixels {sortKey === 'totalPixelCapacity' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+              <th className="text-right font-semibold px-4 py-2.5 cursor-pointer select-none hover:bg-muted/70" onClick={() => toggleSort('outputPortCount')}>Ports {sortKey === 'outputPortCount' && (sortDir === 'asc' ? '↑' : '↓')}</th>
               <th className="text-right font-semibold px-4 py-2.5">px / Port</th>
               <th className="text-center font-semibold px-4 py-2.5">Status</th>
               <th className="px-4 py-2.5" />
             </tr>
           </thead>
           <tbody className="divide-y">
-            {processors.length === 0 && (
-              <tr><td colSpan={7} className="text-center py-10 text-muted-foreground">No processors yet.</td></tr>
+            {filtered.length === 0 && (
+              <tr><td colSpan={7} className="text-center py-10 text-muted-foreground">No processors match your filters.</td></tr>
             )}
-            {processors.map(p => (
+            {filtered.map(p => (
               <tr key={p.id} className="hover:bg-muted/30 transition-colors">
                 <td className="px-4 py-3 font-medium">{p.manufacturer}</td>
                 <td className="px-4 py-3">{p.modelName}</td>

@@ -71,11 +71,19 @@ export function GlobalHeader() {
                   )}
                   {pathname.startsWith('/admin') && (
                     <div className="flex items-center gap-1">
-                      <Link href="/admin/products">
-                        <Button variant={pathname.startsWith('/admin/products') ? 'secondary' : 'ghost'} size="sm" className="h-8 px-3 text-sm gap-1.5">
-                          LED Products
-                        </Button>
-                      </Link>
+                      <div className="flex items-center gap-0.5 px-1.5 py-1 rounded-lg bg-muted/60">
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mr-1 pl-1">LED</span>
+                        <Link href="/admin/products">
+                          <Button variant={pathname.startsWith('/admin/products') || pathname.startsWith('/admin/add-led') ? 'secondary' : 'ghost'} size="sm" className="h-7 px-2.5 text-xs gap-1.5">
+                            Products
+                          </Button>
+                        </Link>
+                        <Link href="/admin/processors">
+                          <Button variant={pathname.startsWith('/admin/processors') ? 'secondary' : 'ghost'} size="sm" className="h-7 px-2.5 text-xs gap-1.5">
+                            Processors
+                          </Button>
+                        </Link>
+                      </div>
                       <Link href="/admin/rack-equipment">
                         <Button variant={pathname.startsWith('/admin/rack-equipment') ? 'secondary' : 'ghost'} size="sm" className="h-8 px-3 text-sm gap-1.5">
                           Rack Equipment
