@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useActionState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -91,12 +92,13 @@ export function LedProductAdmin({ products }: Props) {
   };
 
   const DeleteButton = ({ productId }: { productId: string }) => {
+    const router = useRouter();
     const [open, setOpen] = useState(false);
     const action = deleteProductAction.bind(null, productId);
     const [state, formAction, pending] = useActionState(action, { success: false, message: '' });
 
     useEffect(() => {
-      if (state.success) window.location.reload();
+      if (state.success) router.refresh();
       else if (state.message) setOpen(false);
     }, [state]);
 

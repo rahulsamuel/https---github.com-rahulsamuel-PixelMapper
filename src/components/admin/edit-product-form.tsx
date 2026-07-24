@@ -2,6 +2,7 @@
 'use client';
 
 import { useActionState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -67,6 +68,7 @@ export function EditProductForm({ product }: { product: any }) {
   const updateProductActionWithId = updateProductAction.bind(null, product.id);
   const [state, formAction] = useActionState(updateProductActionWithId, initialState);
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -95,6 +97,7 @@ export function EditProductForm({ product }: { product: any }) {
           title: 'Success!',
           description: state.message,
         });
+        router.push('/admin/products');
       } else if (state.errors) {
         toast({
           title: 'Error',

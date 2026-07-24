@@ -2,7 +2,6 @@
 'use server';
 
 import { updateLedProduct } from '@/services/supabase';
-import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 const formSchema = z.object({
@@ -62,10 +61,6 @@ export async function updateProductAction(productId: string, prevState: FormStat
     if (!success) {
       throw new Error(error || 'Failed to update product');
     }
-
-    revalidatePath('/admin/products');
-    revalidatePath(`/admin/products/${productId}/edit`);
-    revalidatePath('/calculator');
 
     return {
       success: true,

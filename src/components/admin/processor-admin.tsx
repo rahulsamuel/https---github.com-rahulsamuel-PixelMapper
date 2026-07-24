@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useActionState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -430,14 +431,17 @@ export function ProcessorAdmin({ processors: initial }: Props) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortKey, setSortKey] = useState<'manufacturer' | 'modelName' | 'totalPixelCapacity' | 'outputPortCount'>('manufacturer');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const router = useRouter();
+
+  useEffect(() => { setProcessors(initial); }, [initial]);
 
   const manufacturers = useMemo(
-    () => [...new Set(initial.map(p => p.manufacturer))].sort(),
-    [initial]
+    () => [...new Set(processors.map(p => p.manufacturer))].sort(),
+    [processors]
   );
 
   const filtered = useMemo(() => {
-    let result = initial;
+    let result = processors;
     if (manufacturerFilter !== 'all') result = result.filter(p => p.manufacturer === manufacturerFilter);
     if (statusFilter !== 'all') result = result.filter(p => statusFilter === 'active' ? p.isActive : !p.isActive);
     if (search.trim()) {
@@ -456,7 +460,7 @@ export function ProcessorAdmin({ processors: initial }: Props) {
       return sortDir === 'asc' ? cmp : -cmp;
     });
     return result;
-  }, [initial, search, manufacturerFilter, statusFilter, sortKey, sortDir]);
+  }, [processors, search, manufacturerFilter, statusFilter, sortKey, sortDir]);
 
   const hasActiveFilters = search !== '' || manufacturerFilter !== 'all' || statusFilter !== 'all';
   const clearFilters = () => { setSearch(''); setManufacturerFilter('all'); setStatusFilter('all'); };
@@ -470,8 +474,8 @@ export function ProcessorAdmin({ processors: initial }: Props) {
   const closeDialog = useCallback(() => {
     setDialogOpen(false);
     setEditing(null);
-    window.location.reload();
-  }, []);
+    router.refresh();
+  }, [router]);
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -537,7 +541,7 @@ export function ProcessorAdmin({ processors: initial }: Props) {
       </div>
 
       <div className="text-xs text-muted-foreground">
-        Showing {filtered.length} of {initial.length} processors
+        Showing {filtered.length} of {processors.length} processors
       </div>
 
       <div className="border rounded-lg overflow-hidden">
