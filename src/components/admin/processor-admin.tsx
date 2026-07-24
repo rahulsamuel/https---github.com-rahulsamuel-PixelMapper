@@ -424,6 +424,7 @@ export function ProcessorAdmin({ processors: initial }: Props) {
   const [editing, setEditing] = useState<Processor | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Processor | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [manufacturerFilter, setManufacturerFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -475,9 +476,13 @@ export function ProcessorAdmin({ processors: initial }: Props) {
   async function handleDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
-    await deleteProcessorAction(deleteTarget.id);
-    setProcessors(prev => prev.filter(p => p.id !== deleteTarget.id));
-    setDeleteTarget(null);
+    const result = await deleteProcessorAction(deleteTarget.id);
+    if (result.success) {
+      setProcessors(prev => prev.filter(p => p.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } else {
+      setDeleteError(result.message);
+    }
     setDeleting(false);
   }
 
@@ -575,7 +580,7 @@ export function ProcessorAdmin({ processors: initial }: Props) {
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(p)}>
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setDeleteTarget(p)}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => { setDeleteTarget(p); setDeleteError(null); }}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
@@ -607,6 +612,9 @@ export function ProcessorAdmin({ processors: initial }: Props) {
               This will permanently remove <strong>{deleteTarget?.manufacturer} {deleteTarget?.modelName}</strong> from the library. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {deleteError && (
+            <p className="text-sm text-destructive">{deleteError}</p>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useActionState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -92,7 +92,14 @@ export function LedProductAdmin({ products }: Props) {
 
   const DeleteButton = ({ productId }: { productId: string }) => {
     const [open, setOpen] = useState(false);
-    const deleteProduct = deleteProductAction.bind(null, productId);
+    const action = deleteProductAction.bind(null, productId);
+    const [state, formAction, pending] = useActionState(action, { success: false, message: '' });
+
+    useEffect(() => {
+      if (state.success) window.location.reload();
+      else if (state.message) setOpen(false);
+    }, [state]);
+
     return (
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogTrigger asChild>
@@ -107,10 +114,15 @@ export function LedProductAdmin({ products }: Props) {
               This action cannot be undone. The product will be permanently removed from the database.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {state.message && !state.success && (
+            <p className="text-sm text-destructive">{state.message}</p>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <form action={deleteProduct}>
-              <AlertDialogAction type="submit">Delete</AlertDialogAction>
+            <form action={formAction}>
+              <AlertDialogAction type="submit" disabled={pending}>
+                {pending ? 'Deleting…' : 'Delete'}
+              </AlertDialogAction>
             </form>
           </AlertDialogFooter>
         </AlertDialogContent>
