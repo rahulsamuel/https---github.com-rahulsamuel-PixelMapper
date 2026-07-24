@@ -3,7 +3,6 @@
 import { addProcessor, updateProcessor, deleteProcessor } from '@/services/supabase';
 import type { ProcessorData } from '@/services/supabase';
 import { z } from 'zod';
-import { revalidatePath } from 'next/cache';
 
 const schema = z.object({
   manufacturer: z.string().min(2).transform(v => v.trim()),
@@ -83,7 +82,6 @@ export async function addProcessorAction(
   };
   const { success, error } = await addProcessor(payload);
   if (!success) return { success: false, message: `Failed to save: ${error}` };
-  revalidatePath('/admin/processors');
   return { success: true, message: 'Processor added successfully.' };
 }
 
@@ -122,13 +120,11 @@ export async function updateProcessorAction(
     isActive: d.isActive,
   });
   if (!success) return { success: false, message: `Failed to update: ${error}` };
-  revalidatePath('/admin/processors');
   return { success: true, message: 'Processor updated.' };
 }
 
 export async function deleteProcessorAction(id: string): Promise<{ success: boolean; message: string }> {
   const { success, error } = await deleteProcessor(id);
   if (!success) return { success: false, message: `Failed to delete: ${error}` };
-  revalidatePath('/admin/processors');
   return { success: true, message: 'Processor deleted.' };
 }
