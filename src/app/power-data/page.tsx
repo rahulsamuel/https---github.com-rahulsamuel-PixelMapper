@@ -1,234 +1,269 @@
-
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getProducts } from '@/app/calculator/actions';
+import { useState, useMemo, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { getProducts } from '@/app/calculator/actions';
+import { getProcessorsAction } from './actions';
+import type { Processor } from '@/services/supabase';
 
 interface LedProduct {
-    id: string;
-    manufacturer: string;
-    productName: string;
-    tileWidthPx: number;
-    tileHeightPx: number;
-    maxPowerConsumption: number;
-    [key: string]: any;
+  id: string;
+  manufacturer: string;
+  productName: string;
+  tileWidthPx: number;
+  tileHeightPx: number;
+  wattsPerTile: number;
+  maxPowerWPerSqm: number | null;
+  [key: string]: unknown;
 }
 
-type ProcessorType = 'Brompton' | 'Novastar' | 'Helios';
-
-const PROCESSOR_CAPACITIES: Record<ProcessorType, number> = {
-    'Brompton': 525000, // 4K processor has 4 ports, each supports 525k pixels at 60Hz
-    'Novastar': 650000, // Standard port for many Novastar processors
-    'Helios': 524288,   // 8 ports each with this capacity
-};
-
-const REFRESH_RATES = ['23.98', '24', '25', '29.97', '30', '48', '50', '59.94', '60', '72', '75', '90', '100', '120', '144'];
-
+const REFRESH_RATES = ['23.98','24','25','29.97','30','48','50','59.94','60','72','75','90','100','120','144'];
 
 export default function PowerDataPage() {
-    const [products, setProducts] = useState<LedProduct[]>([]);
-    const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-    const [circuitVoltage, setCircuitVoltage] = useState('110');
-    const [circuitAmperage, setCircuitAmperage] = useState('20');
-    const [safetyMargin, setSafetyMargin] = useState('80');
-    const [processor, setProcessor] = useState<ProcessorType>('Brompton');
-    const [refreshRate, setRefreshRate] = useState('60');
+  const [products, setProducts] = useState<LedProduct[]>([]);
+  const [processors, setProcessors] = useState<Processor[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [selectedProcessorId, setSelectedProcessorId] = useState<string>('');
+  const [circuitVoltage, setCircuitVoltage] = useState('208');
+  const [circuitAmperage, setCircuitAmperage] = useState('20');
+  const [safetyMargin, setSafetyMargin] = useState('80');
+  const [refreshRate, setRefreshRate] = useState('60');
 
-    useEffect(() => {
-        async function fetchProducts() {
-            const { data, error } = await getProducts();
-            if (data && data.length > 0) {
-                setProducts(data as LedProduct[]);
-                if (!selectedProductId) {
-                    setSelectedProductId(data[0].id);
-                }
-            }
-            if (error) {
-                console.error("Failed to fetch LED products:", error);
-            }
-        }
-        fetchProducts();
-    }, [selectedProductId]);
-    
-    const selectedProduct = useMemo(() => {
-        return products.find(p => p.id === selectedProductId);
-    }, [products, selectedProductId]);
+  useEffect(() => {
+    getProducts().then(({ data }) => {
+      if (data?.length) {
+        setProducts(data as LedProduct[]);
+        setSelectedProductId(data[0].id);
+      }
+    });
+    getProcessorsAction().then(({ data }) => {
+      if (data?.length) {
+        setProcessors(data as Processor[]);
+        setSelectedProcessorId(data[0].id);
+      }
+    });
+  }, []);
 
-    const manufacturers = useMemo(() => {
-        return [...new Set(products.map(p => p.manufacturer))];
-    }, [products]);
+  const manufacturers = useMemo(() => [...new Set(products.map(p => p.manufacturer))], [products]);
 
-    const selectedManufacturer = useMemo(() => {
-        return selectedProduct?.manufacturer ?? '';
-    }, [selectedProduct]);
+  const selectedProduct = useMemo(() => products.find(p => p.id === selectedProductId), [products, selectedProductId]);
+  const selectedProcessor = useMemo(() => processors.find(p => p.id === selectedProcessorId), [processors, selectedProcessorId]);
 
-    const availableProducts = useMemo(() => {
-        return products.filter(p => p.manufacturer === selectedManufacturer);
-    }, [products, selectedManufacturer]);
+  const selectedManufacturer = selectedProduct?.manufacturer ?? '';
+  const availableProducts = useMemo(() => products.filter(p => p.manufacturer === selectedManufacturer), [products, selectedManufacturer]);
 
-    const handleManufacturerChange = (value: string) => {
-        const firstProductOfNewManufacturer = products.find(p => p.manufacturer === value);
-        if (firstProductOfNewManufacturer) {
-            setSelectedProductId(firstProductOfNewManufacturer.id);
-        }
-    };
-    
-    const { maxTilesPerPowerCircuit, maxTilesPerDataPort } = useMemo(() => {
-        if (!selectedProduct) return { maxTilesPerPowerCircuit: 0, maxTilesPerDataPort: 0 };
+  const processorManufacturers = useMemo(() => [...new Set(processors.map(p => p.manufacturer))], [processors]);
+  const selectedProcessorManufacturer = selectedProcessor?.manufacturer ?? '';
+  const availableProcessors = useMemo(() => processors.filter(p => p.manufacturer === selectedProcessorManufacturer), [processors, selectedProcessorManufacturer]);
 
-        // Power Calculation
-        const voltageNum = parseFloat(circuitVoltage) || 0;
-        const amperageNum = parseFloat(circuitAmperage) || 0;
-        const marginNum = parseFloat(safetyMargin) / 100 || 0;
-        const circuitCapacity = voltageNum * amperageNum * marginNum;
-        const maxPowerPerTile = (selectedProduct.wattsPerTile as number) || 0;
-        const maxTilesPerPowerCircuit = maxPowerPerTile > 0 ? Math.floor(circuitCapacity / maxPowerPerTile) : 0;
+  const handleManufacturerChange = (val: string) => {
+    const first = products.find(p => p.manufacturer === val);
+    if (first) setSelectedProductId(first.id);
+  };
 
-        // Data Calculation
-        const pixelsPerTile = (selectedProduct.tileWidthPx || 0) * (selectedProduct.tileHeightPx || 0);
-        let portCapacity = PROCESSOR_CAPACITIES[processor];
-        const rateHz = parseFloat(refreshRate);
+  const handleProcessorManufacturerChange = (val: string) => {
+    const first = processors.find(p => p.manufacturer === val);
+    if (first) setSelectedProcessorId(first.id);
+  };
 
-        // Brompton capacity is affected by refresh rate
-        if (processor === 'Brompton' && rateHz > 60) {
-            portCapacity = portCapacity / (rateHz / 60);
-        }
+  const { maxTilesPerPowerCircuit, maxTilesPerDataPort, circuitWatts, tileWatts, pixelsPerPort, pixelsPerTile } = useMemo(() => {
+    // Power
+    const v = parseFloat(circuitVoltage) || 0;
+    const a = parseFloat(circuitAmperage) || 0;
+    const margin = parseFloat(safetyMargin) / 100 || 0;
+    const circuitWatts = v * a * margin;
+    const tileWatts = Number(selectedProduct?.wattsPerTile ?? 0);
+    const maxTilesPerPowerCircuit = tileWatts > 0 ? Math.floor(circuitWatts / tileWatts) : 0;
 
-        const maxTilesPerDataPort = pixelsPerTile > 0 ? Math.floor(portCapacity / pixelsPerTile) : 0;
-        
-        return { maxTilesPerPowerCircuit, maxTilesPerDataPort };
+    // Data
+    const pixelsPerTile = (Number(selectedProduct?.tileWidthPx) || 0) * (Number(selectedProduct?.tileHeightPx) || 0);
+    const baseHz = selectedProcessor?.baseRefreshRateHz ?? 60;
+    const rateHz = parseFloat(refreshRate) || 60;
+    const rawPxPerPort = selectedProcessor?.pixelsPerPort ?? 0;
+    // Scale capacity if refresh rate exceeds base
+    const pixelsPerPort = rateHz > baseHz ? Math.floor(rawPxPerPort * (baseHz / rateHz)) : rawPxPerPort;
+    const maxTilesPerDataPort = pixelsPerTile > 0 && pixelsPerPort > 0 ? Math.floor(pixelsPerPort / pixelsPerTile) : 0;
 
-    }, [selectedProduct, circuitVoltage, circuitAmperage, safetyMargin, processor, refreshRate]);
+    return { maxTilesPerPowerCircuit, maxTilesPerDataPort, circuitWatts, tileWatts, pixelsPerPort, pixelsPerTile };
+  }, [selectedProduct, selectedProcessor, circuitVoltage, circuitAmperage, safetyMargin, refreshRate]);
 
-
-    return (
-        <div className="h-[calc(100svh-3.5rem)] flex overflow-hidden">
-            {/* Left sidebar */}
-            <div className="w-96 flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden">
-                <div className="flex-shrink-0 px-4 pt-4 pb-2 border-b">
-                    <h2 className="font-semibold text-sm">Input Parameters</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">Configure power circuit and data port settings.</p>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                    <div className="p-4 space-y-4">
-                        <div>
-                            <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-2">LED Product</h3>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="led-manufacturer" className="text-xs">Manufacturer</Label>
-                                    <Select onValueChange={handleManufacturerChange} value={selectedManufacturer}>
-                                        <SelectTrigger id="led-manufacturer"><SelectValue placeholder="Select..." /></SelectTrigger>
-                                        <SelectContent>
-                                            {manufacturers.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="led-product" className="text-xs">Product</Label>
-                                    <Select onValueChange={setSelectedProductId} value={selectedProductId ?? ''} disabled={!selectedManufacturer}>
-                                        <SelectTrigger id="led-product"><SelectValue placeholder="Select..." /></SelectTrigger>
-                                        <SelectContent>
-                                            {availableProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.productName}</SelectItem>)}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <Separator />
-
-                        <div>
-                            <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-2">Power Circuit</h3>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="circuit-voltage" className="text-xs">Voltage</Label>
-                                    <Select value={circuitVoltage} onValueChange={setCircuitVoltage}>
-                                        <SelectTrigger id="circuit-voltage"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="110">110V</SelectItem>
-                                            <SelectItem value="120">120V</SelectItem>
-                                            <SelectItem value="208">208V</SelectItem>
-                                            <SelectItem value="230">230V</SelectItem>
-                                            <SelectItem value="240">240V</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="circuit-amperage" className="text-xs">Amperage (A)</Label>
-                                    <Input id="circuit-amperage" type="number" value={circuitAmperage} onChange={e => setCircuitAmperage(e.target.value)} />
-                                </div>
-                                <div className="space-y-1.5 col-span-2">
-                                    <Label htmlFor="safety-margin" className="text-xs">Safety Margin (%)</Label>
-                                    <Input id="safety-margin" type="number" value={safetyMargin} onChange={e => setSafetyMargin(e.target.value)} />
-                                </div>
-                            </div>
-                        </div>
-
-                        <Separator />
-
-                        <div>
-                            <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-2">Data Port</h3>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="processor-type" className="text-xs">Processor Type</Label>
-                                    <Select value={processor} onValueChange={(v) => setProcessor(v as ProcessorType)}>
-                                        <SelectTrigger id="processor-type"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Brompton">Brompton</SelectItem>
-                                            <SelectItem value="Novastar">Novastar</SelectItem>
-                                            <SelectItem value="Helios">Helios</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="refresh-rate" className="text-xs">Refresh Rate (Hz)</Label>
-                                    <Select value={refreshRate} onValueChange={setRefreshRate}>
-                                        <SelectTrigger id="refresh-rate"><SelectValue /></SelectTrigger>
-                                        <SelectContent>
-                                            {REFRESH_RATES.map(rate => (
-                                                <SelectItem key={rate} value={rate}>{rate} Hz</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Main content */}
-            <div className="flex-1 overflow-auto p-6 flex items-center justify-center">
-                <div className="w-full max-w-2xl space-y-6">
-                    <Card className="bg-muted/30 text-center">
-                        <CardHeader>
-                            <CardTitle className="text-muted-foreground">Max Tiles per Power Circuit</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-7xl font-bold tracking-tight">{maxTilesPerPowerCircuit}</p>
-                            <p className="text-sm text-muted-foreground mt-2">
-                                Based on a {circuitAmperage}A @ {circuitVoltage}V circuit with a {safetyMargin}% safety margin.
-                            </p>
-                        </CardContent>
-                    </Card>
-                    <Card className="bg-muted/30 text-center">
-                        <CardHeader>
-                            <CardTitle className="text-muted-foreground">Max Tiles per Data Port</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-7xl font-bold tracking-tight">{maxTilesPerDataPort}</p>
-                            <p className="text-sm text-muted-foreground mt-2">
-                                Based on a {processor} processor port at {refreshRate}Hz.
-                            </p>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+  return (
+    <div className="h-[calc(100svh-3.5rem)] flex overflow-hidden">
+      {/* Left sidebar */}
+      <div className="w-80 flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden">
+        <div className="flex-shrink-0 px-4 pt-4 pb-2 border-b">
+          <h2 className="font-semibold text-sm">Input Parameters</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Configure power circuit and data port settings.</p>
         </div>
-    );
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 space-y-4">
+
+            {/* LED Product */}
+            <div>
+              <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-2">LED Product</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Manufacturer</Label>
+                  <Select value={selectedManufacturer} onValueChange={handleManufacturerChange}>
+                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                    <SelectContent>
+                      {manufacturers.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Product</Label>
+                  <Select value={selectedProductId} onValueChange={setSelectedProductId} disabled={!selectedManufacturer}>
+                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                    <SelectContent>
+                      {availableProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.productName}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {selectedProduct && (
+                <p className="text-[10px] text-muted-foreground mt-1.5">
+                  {Number(selectedProduct.tileWidthPx)}×{Number(selectedProduct.tileHeightPx)} px · {tileWatts}W/tile
+                </p>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Power Circuit */}
+            <div>
+              <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-2">Power Circuit</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Voltage</Label>
+                  <Select value={circuitVoltage} onValueChange={setCircuitVoltage}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="110">110V</SelectItem>
+                      <SelectItem value="120">120V</SelectItem>
+                      <SelectItem value="208">208V</SelectItem>
+                      <SelectItem value="230">230V</SelectItem>
+                      <SelectItem value="240">240V</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Amperage (A)</Label>
+                  <Input type="number" value={circuitAmperage} onChange={e => setCircuitAmperage(e.target.value)} />
+                </div>
+                <div className="space-y-1.5 col-span-2">
+                  <Label className="text-xs">Safety Margin (%)</Label>
+                  <Input type="number" value={safetyMargin} onChange={e => setSafetyMargin(e.target.value)} />
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1.5">
+                Usable circuit capacity: {Math.round(circuitWatts)}W
+              </p>
+            </div>
+
+            <Separator />
+
+            {/* Processor / Data */}
+            <div>
+              <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-2">Data Port</h3>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Manufacturer</Label>
+                  <Select value={selectedProcessorManufacturer} onValueChange={handleProcessorManufacturerChange}>
+                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                    <SelectContent>
+                      {processorManufacturers.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Processor</Label>
+                  <Select value={selectedProcessorId} onValueChange={setSelectedProcessorId} disabled={!selectedProcessorManufacturer}>
+                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
+                    <SelectContent>
+                      {availableProcessors.map(p => <SelectItem key={p.id} value={p.id}>{p.modelName}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5 col-span-2">
+                  <Label className="text-xs">Refresh Rate (Hz)</Label>
+                  <Select value={refreshRate} onValueChange={setRefreshRate}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {REFRESH_RATES.map(r => <SelectItem key={r} value={r}>{r} Hz</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {selectedProcessor && (
+                <p className="text-[10px] text-muted-foreground mt-1.5">
+                  {selectedProcessor.outputPortCount} ports · {pixelsPerPort.toLocaleString()} px/port @ {refreshRate}Hz
+                </p>
+              )}
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 overflow-auto p-6">
+        <div className="max-w-2xl mx-auto space-y-4">
+
+          {/* Power result */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base text-muted-foreground">Max Tiles per Power Circuit</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-7xl font-bold tracking-tight tabular-nums">{maxTilesPerPowerCircuit}</p>
+              <div className="mt-3 pt-3 border-t grid grid-cols-3 gap-3 text-xs text-muted-foreground">
+                <div>
+                  <p className="font-medium text-foreground">{circuitVoltage}V · {circuitAmperage}A</p>
+                  <p>Circuit rating</p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">{safetyMargin}%</p>
+                  <p>Safety margin</p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">{tileWatts}W</p>
+                  <p>Watts per tile</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Data result */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base text-muted-foreground">Max Tiles per Data Port</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-7xl font-bold tracking-tight tabular-nums">{maxTilesPerDataPort}</p>
+              <div className="mt-3 pt-3 border-t grid grid-cols-3 gap-3 text-xs text-muted-foreground">
+                <div>
+                  <p className="font-medium text-foreground">{selectedProcessor ? `${selectedProcessor.manufacturer} ${selectedProcessor.modelName}` : '—'}</p>
+                  <p>Processor</p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">{pixelsPerPort.toLocaleString()}</p>
+                  <p>Pixels per port</p>
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">{pixelsPerTile.toLocaleString()}</p>
+                  <p>Pixels per tile</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+        </div>
+      </div>
+    </div>
+  );
 }

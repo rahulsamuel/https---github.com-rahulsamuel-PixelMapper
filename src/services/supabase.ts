@@ -416,6 +416,167 @@ export async function deleteRackEquipment(id: string) {
   }
 }
 
+// ──────────────────────────────────────────────
+// Processor Library
+// ──────────────────────────────────────────────
+
+export interface ProcessorData {
+  manufacturer: string;
+  modelName: string;
+  totalPixelCapacity: number;
+  outputPortCount: number;
+  pixelsPerPort: number;
+  baseRefreshRateHz: number;
+  maxInputResolutionW: number | null;
+  maxInputResolutionH: number | null;
+  inputTypes: string | null;
+  rackUnits: number;
+  weightKg: number | null;
+  powerWatts: number | null;
+  powerInput: string | null;
+  depthMm: number | null;
+  widthMm: number | null;
+  heightMm: number | null;
+  notes: string | null;
+  specSheetUrl: string | null;
+  productImageUrl: string | null;
+  isActive: boolean;
+}
+
+export interface Processor extends ProcessorData {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function mapProcessorRow(row: Record<string, unknown>): Processor {
+  return {
+    id: row.id as string,
+    manufacturer: row.manufacturer as string,
+    modelName: row.model_name as string,
+    totalPixelCapacity: Number(row.total_pixel_capacity),
+    outputPortCount: Number(row.output_port_count),
+    pixelsPerPort: Number(row.pixels_per_port),
+    baseRefreshRateHz: Number(row.base_refresh_rate_hz),
+    maxInputResolutionW: row.max_input_resolution_w != null ? Number(row.max_input_resolution_w) : null,
+    maxInputResolutionH: row.max_input_resolution_h != null ? Number(row.max_input_resolution_h) : null,
+    inputTypes: row.input_types as string | null,
+    rackUnits: Number(row.rack_units),
+    weightKg: row.weight_kg != null ? Number(row.weight_kg) : null,
+    powerWatts: row.power_watts != null ? Number(row.power_watts) : null,
+    powerInput: row.power_input as string | null,
+    depthMm: row.depth_mm != null ? Number(row.depth_mm) : null,
+    widthMm: row.width_mm != null ? Number(row.width_mm) : null,
+    heightMm: row.height_mm != null ? Number(row.height_mm) : null,
+    notes: row.notes as string | null,
+    specSheetUrl: row.spec_sheet_url as string | null,
+    productImageUrl: row.product_image_url as string | null,
+    isActive: row.is_active as boolean,
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+export async function getProcessors(includeInactive = false) {
+  try {
+    const supabase = getSupabaseServerClient();
+    let q = supabase.from('processor_library').select('*').order('manufacturer').order('model_name');
+    if (!includeInactive) q = q.eq('is_active', true);
+    const { data, error } = await q;
+    if (error) return { data: [], error: error.message };
+    return { data: (data as Record<string, unknown>[]).map(mapProcessorRow), error: null };
+  } catch (e) {
+    return { data: [], error: e instanceof Error ? e.message : 'Unknown error' };
+  }
+}
+
+export async function getProcessorById(id: string) {
+  try {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase.from('processor_library').select('*').eq('id', id).maybeSingle();
+    if (error) return { data: null, error: error.message };
+    if (!data) return { data: null, error: 'Processor not found' };
+    return { data: mapProcessorRow(data as Record<string, unknown>), error: null };
+  } catch (e) {
+    return { data: null, error: e instanceof Error ? e.message : 'Unknown error' };
+  }
+}
+
+export async function addProcessor(data: ProcessorData) {
+  try {
+    const supabase = getSupabaseServerClient();
+    const { error } = await supabase.from('processor_library').insert({
+      manufacturer: data.manufacturer,
+      model_name: data.modelName,
+      total_pixel_capacity: data.totalPixelCapacity,
+      output_port_count: data.outputPortCount,
+      pixels_per_port: data.pixelsPerPort,
+      base_refresh_rate_hz: data.baseRefreshRateHz,
+      max_input_resolution_w: data.maxInputResolutionW ?? null,
+      max_input_resolution_h: data.maxInputResolutionH ?? null,
+      input_types: data.inputTypes ?? null,
+      rack_units: data.rackUnits,
+      weight_kg: data.weightKg ?? null,
+      power_watts: data.powerWatts ?? null,
+      power_input: data.powerInput ?? null,
+      depth_mm: data.depthMm ?? null,
+      width_mm: data.widthMm ?? null,
+      height_mm: data.heightMm ?? null,
+      notes: data.notes ?? null,
+      spec_sheet_url: data.specSheetUrl ?? null,
+      product_image_url: data.productImageUrl ?? null,
+      is_active: data.isActive,
+    });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
+  }
+}
+
+export async function updateProcessor(id: string, data: Partial<ProcessorData>) {
+  try {
+    const supabase = getSupabaseServerClient();
+    const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (data.manufacturer !== undefined) payload.manufacturer = data.manufacturer;
+    if (data.modelName !== undefined) payload.model_name = data.modelName;
+    if (data.totalPixelCapacity !== undefined) payload.total_pixel_capacity = data.totalPixelCapacity;
+    if (data.outputPortCount !== undefined) payload.output_port_count = data.outputPortCount;
+    if (data.pixelsPerPort !== undefined) payload.pixels_per_port = data.pixelsPerPort;
+    if (data.baseRefreshRateHz !== undefined) payload.base_refresh_rate_hz = data.baseRefreshRateHz;
+    if (data.maxInputResolutionW !== undefined) payload.max_input_resolution_w = data.maxInputResolutionW ?? null;
+    if (data.maxInputResolutionH !== undefined) payload.max_input_resolution_h = data.maxInputResolutionH ?? null;
+    if (data.inputTypes !== undefined) payload.input_types = data.inputTypes ?? null;
+    if (data.rackUnits !== undefined) payload.rack_units = data.rackUnits;
+    if (data.weightKg !== undefined) payload.weight_kg = data.weightKg ?? null;
+    if (data.powerWatts !== undefined) payload.power_watts = data.powerWatts ?? null;
+    if (data.powerInput !== undefined) payload.power_input = data.powerInput ?? null;
+    if (data.depthMm !== undefined) payload.depth_mm = data.depthMm ?? null;
+    if (data.widthMm !== undefined) payload.width_mm = data.widthMm ?? null;
+    if (data.heightMm !== undefined) payload.height_mm = data.heightMm ?? null;
+    if (data.notes !== undefined) payload.notes = data.notes ?? null;
+    if (data.specSheetUrl !== undefined) payload.spec_sheet_url = data.specSheetUrl ?? null;
+    if (data.productImageUrl !== undefined) payload.product_image_url = data.productImageUrl ?? null;
+    if (data.isActive !== undefined) payload.is_active = data.isActive;
+    const { error } = await supabase.from('processor_library').update(payload).eq('id', id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
+  }
+}
+
+export async function deleteProcessor(id: string) {
+  try {
+    const supabase = getSupabaseServerClient();
+    const { error } = await supabase.from('processor_library').delete().eq('id', id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
+  }
+}
+
 export async function submitContactMessage(data: {
   name: string;
   email: string;
