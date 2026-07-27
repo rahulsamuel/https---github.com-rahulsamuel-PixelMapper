@@ -251,7 +251,7 @@ async function storeImage(
 ): Promise<string | null> {
   try {
     const resp = await fetch(imageUrl, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; MapMyLED/1.0)" },
+      headers: BROWSER_HEADERS,
       redirect: "follow",
     });
     if (!resp.ok) return null;
@@ -287,6 +287,107 @@ function uint8ToBase64(uint8: Uint8Array): string {
     binary += String.fromCharCode(...chunk);
   }
   return btoa(binary);
+}
+
+// Realistic browser headers to avoid 403 blocks from WAFs / Cloudflare / bot filters
+const BROWSER_HEADERS: Record<string, string> = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  "Accept":
+    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/pdf;q=0.9",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Accept-Encoding": "gzip, deflate",
+  "Cache-Control": "no-cache",
+  "Pragma": "no-cache",
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "none",
+  "Sec-Fetch-User": "?1",
+  "Upgrade-Insecure-Requests": "1",
+  "sec-ch-ua": '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+  "sec-ch-ua-mobile": "?0",
+  "sec-ch-ua-platform": '"Windows"',
+};
+
+async function fetchPage(url: string): Promise<{ text: string; html: string; contentType: string; ok: boolean; status: number; statusText: string }> {
+  // First attempt with full Chrome browser headers
+  let resp = await fetch(url, {
+    headers: BROWSER_HEADERS,
+    redirect: "follow",
+  });
+
+  if (resp.ok) {
+    const contentType = resp.headers.get("content-type") || "text/html";
+    if (contentType.includes("application/pdf")) {
+      return { text: "", html: "", contentType, ok: true, status: resp.status, statusText: resp.statusText };
+    }
+    const html = await resp.text();
+    return { text: stripHtml(html), html, contentType, ok: true, status: resp.status, statusText: resp.statusText };
+  }
+
+  // Retry with Safari UA
+  if (resp.status === 403 || resp.status === 429) {
+    const retryHeaders = {
+      ...BROWSER_HEADERS,
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15",
+      "Referer": new URL(url).origin,
+      "sec-ch-ua": "",
+      "sec-ch-ua-platform": '"macOS"',
+    };
+    resp = await fetch(url, { headers: retryHeaders, redirect: "follow" });
+    if (resp.ok) {
+      const contentType = resp.headers.get("content-type") || "text/html";
+      if (contentType.includes("application/pdf")) {
+        return { text: "", html: "", contentType, ok: true, status: resp.status, statusText: resp.statusText };
+      }
+      const html = await resp.text();
+      return { text: stripHtml(html), html, contentType, ok: true, status: resp.status, statusText: resp.statusText };
+    }
+  }
+
+  // Retry with Firefox UA
+  if (resp.status === 403 || resp.status === 429) {
+    const ffHeaders = {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0",
+      "Accept": BROWSER_HEADERS["Accept"],
+      "Accept-Language": "en-US,en;q=0.9",
+      "Accept-Encoding": "gzip, deflate",
+      "Referer": new URL(url).origin,
+    };
+    resp = await fetch(url, { headers: ffHeaders, redirect: "follow" });
+    if (resp.ok) {
+      const contentType = resp.headers.get("content-type") || "text/html";
+      if (contentType.includes("application/pdf")) {
+        return { text: "", html: "", contentType, ok: true, status: resp.status, statusText: resp.statusText };
+      }
+      const html = await resp.text();
+      return { text: stripHtml(html), html, contentType, ok: true, status: resp.status, statusText: resp.statusText };
+    }
+  }
+
+  // Fallback: use Jina reader proxy to bypass bot protection
+  try {
+    const jinaUrl = `https://r.jina.ai/${url}`;
+    const jinaResp = await fetch(jinaUrl, {
+      headers: {
+        "Accept": "text/plain",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+      },
+      redirect: "follow",
+    });
+    if (jinaResp.ok) {
+      const text = await jinaResp.text();
+      if (text && text.length > 100) {
+        return { text: text.substring(0, 80000), html: "", contentType: "text/plain", ok: true, status: 200, statusText: "OK (via reader proxy)" };
+      }
+    }
+  } catch {
+    // Jina proxy failed — continue to return the original error
+  }
+
+  return { text: "", html: "", contentType: "", ok: false, status: resp.status, statusText: resp.statusText };
 }
 
 // ─── Main handler ─────────────────────────────────────────────────────────────
@@ -363,23 +464,21 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const pageResp = await fetch(url, {
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; MapMyLED/1.0)" },
-        redirect: "follow",
-      });
+      const pageResult = await fetchPage(url);
 
-      if (!pageResp.ok) {
+      if (!pageResult.ok) {
         return new Response(
-          JSON.stringify({ error: `Failed to fetch URL: ${pageResp.status} ${pageResp.statusText}` }),
+          JSON.stringify({
+            error: `Failed to fetch URL: ${pageResult.status} ${pageResult.statusText}. The website may be blocking automated requests. Try downloading the spec sheet PDF and uploading it as a file instead.`,
+          }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      const urlContentType = pageResp.headers.get("content-type") || "";
-
-      if (urlContentType.includes("application/pdf")) {
-        // URL points to a PDF — send inline
-        const pdfBuffer = await pageResp.arrayBuffer();
+      if (pageResult.contentType.includes("application/pdf")) {
+        // URL points to a PDF — re-fetch as buffer and send inline
+        const pdfResp = await fetch(url, { headers: BROWSER_HEADERS, redirect: "follow" });
+        const pdfBuffer = await pdfResp.arrayBuffer();
         const uint8 = new Uint8Array(pdfBuffer);
         const base64 = uint8ToBase64(uint8);
 
@@ -402,10 +501,11 @@ Deno.serve(async (req: Request) => {
           products = parseJsonResponse(retryText);
         }
       } else {
-        // HTML page — extract text and send to Gemini
-        const html = await pageResp.text();
-        const pageText = stripHtml(html);
-        imageUrls = extractImageUrls(html, url);
+        // HTML page (or reader-proxy text) — send text to Gemini
+        const pageText = pageResult.text;
+        if (pageResult.html) {
+          imageUrls = extractImageUrls(pageResult.html, url);
+        }
 
         const prompt = `${EXTRACTION_PROMPT}\n\nPage URL: ${url}\n\nPage content:\n${pageText}`;
         const responseText = await callGemini(geminiKey, [{ text: prompt }]);
