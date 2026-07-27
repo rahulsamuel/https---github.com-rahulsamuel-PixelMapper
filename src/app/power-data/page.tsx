@@ -39,13 +39,13 @@ export default function PowerDataPage() {
     getProductsAction().then(({ data }) => {
       if (data?.length) {
         setProducts(data as LedProduct[]);
-        setSelectedProductId(data[0].id);
+        setSelectedProductId(prev => prev && data.some(p => p.id === prev) ? prev : data[0].id);
       }
     });
     getProcessorsAction().then(({ data }) => {
       if (data?.length) {
         setProcessors(data as Processor[]);
-        setSelectedProcessorId(data[0].id);
+        setSelectedProcessorId(prev => prev && data.some(p => p.id === prev) ? prev : data[0].id);
       }
     });
   }, []);
