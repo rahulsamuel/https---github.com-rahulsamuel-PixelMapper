@@ -144,7 +144,7 @@ export function RackBuilder() {
   };
 
   const downloadAll = () => {
-    racks.forEach(r => downloadRackPng(r.name, r.ru, r.items));
+    racks.forEach(r => downloadRackPng(r.name, r.ru, r.items, showImages));
   };
 
   const totalItems = racks.reduce((sum, r) => sum + r.items.filter(i => i.side === activeSide).length, 0);

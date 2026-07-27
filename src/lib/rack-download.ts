@@ -91,14 +91,14 @@ async function preloadItemImages(items: RackItem[]): Promise<Map<string, HTMLIma
     for (const url of [item.equipment.frontImageUrl, item.equipment.rearImageUrl]) {
       if (!url || seen.has(url)) continue;
       seen.add(url);
-      tasks.push(loadImage(url).then(img => map.set(url, img)).catch(() => {}));
+      tasks.push(loadImage(url).then(img => { map.set(url, img); }).catch(() => {}));
     }
   }
   await Promise.all(tasks);
   return map;
 }
 
-async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, side: RackSide, ru: number, items: RackItem[], imageCache: Map<string, HTMLImageElement>) {
+async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, side: RackSide, ru: number, items: RackItem[], imageCache: Map<string, HTMLImageElement>, showImages: boolean) {
   const c = CFG[side];
   const sideItems = items.filter(i => i.side === side);
   const totalH = CAP_H + ru * RU_H + BOTTOM_CAP_H;
@@ -212,7 +212,7 @@ async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, sid
     const textMaxW = EQUIP_W - 54; // leave room for RU badge + icon
 
     // Gradient fill (or image if available)
-    const sideImageUrl = side === 'front' ? item.equipment.frontImageUrl : item.equipment.rearImageUrl;
+    const sideImageUrl = showImages ? (side === 'front' ? item.equipment.frontImageUrl : item.equipment.rearImageUrl) : null;
     const cachedImg = sideImageUrl ? imageCache.get(sideImageUrl) : null;
     if (cachedImg) {
       ctx.drawImage(cachedImg, equipX, iy, EQUIP_W, ih);
@@ -282,7 +282,7 @@ async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, sid
   ctx.stroke();
 }
 
-export async function downloadRackPng(rackName: string, ru: number, items: RackItem[]): Promise<void> {
+export async function downloadRackPng(rackName: string, ru: number, items: RackItem[], showImages = true): Promise<void> {
   const SCALE = 2; // retina
   const PAD = 32;
   const TITLE_H = 44;
@@ -339,9 +339,9 @@ export async function downloadRackPng(rackName: string, ru: number, items: RackI
   ctx.stroke();
 
   // Draw both rack sides
-  const imageCache = await preloadItemImages(items);
-  drawRack(ctx, frontX, bodyY, 'front', ru, items, imageCache);
-  drawRack(ctx, rearX, bodyY, 'rear', ru, items, imageCache);
+  const imageCache = showImages ? await preloadItemImages(items) : new Map<string, HTMLImageElement>();
+  drawRack(ctx, frontX, bodyY, 'front', ru, items, imageCache, showImages);
+  drawRack(ctx, rearX, bodyY, 'rear', ru, items, imageCache, showImages);
 
   // Trigger download via blob
   canvas.toBlob(blob => {
