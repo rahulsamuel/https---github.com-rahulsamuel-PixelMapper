@@ -100,7 +100,6 @@ async function preloadItemImages(items: RackItem[]): Promise<Map<string, HTMLIma
 
 async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, side: RackSide, ru: number, items: RackItem[], imageCache: Map<string, HTMLImageElement>, showImages: boolean) {
   const c = CFG[side];
-  const sideItems = items.filter(i => i.side === side);
   const totalH = CAP_H + ru * RU_H + BOTTOM_CAP_H;
   const equipX = x + RU_NUM_W + RAIL_W;
   const rightRailX = equipX + EQUIP_W;
@@ -205,6 +204,32 @@ async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, sid
   }
 
   // ─── EQUIPMENT ITEMS ───
+  const sideItems = items.filter(i => i.side === side);
+  const ghostItems = items.filter(i => i.side !== side);
+
+  // Draw ghost items first (items placed on the other side)
+  ghostItems.forEach(item => {
+    const fromTop = ru - item.ru;
+    const iy = y + CAP_H + fromTop * RU_H;
+    const ih = item.equipment.ru * RU_H;
+
+    // Ghost: faded color block, dashed border
+    ctx.fillStyle = rgba(item.equipment.color, 0.12);
+    ctx.fillRect(equipX, iy, EQUIP_W, ih);
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = rgba(item.equipment.color, 0.35);
+    ctx.lineWidth = 1;
+    ctx.strokeRect(equipX + 0.5, iy + 0.5, EQUIP_W - 1, ih - 1);
+    ctx.setLineDash([]);
+
+    // Ghost label
+    const displayName = item.customName ?? item.equipment.name;
+    ctx.fillStyle = rgba(item.equipment.color, 0.45);
+    ctx.font = '9px ui-monospace, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(clipText(ctx, displayName, EQUIP_W - 20), equipX + 10, iy + ih / 2 + 3);
+  });
+
   sideItems.forEach(item => {
     const fromTop = ru - item.ru;
     const iy = y + CAP_H + fromTop * RU_H;
