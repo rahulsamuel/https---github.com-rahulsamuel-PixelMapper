@@ -328,6 +328,8 @@ export interface RackEquipmentData {
   wattage: number | null;
   mountableAt: MountableAt;
   isActive: boolean;
+  frontImageUrl?: string | null;
+  rearImageUrl?: string | null;
 }
 
 export interface RackEquipment extends RackEquipmentData {
@@ -347,6 +349,8 @@ function mapRackEquipmentRow(row: Record<string, unknown>): RackEquipment {
     wattage: row.wattage as number | null,
     mountableAt: row.mountable_at as MountableAt,
     isActive: row.is_active as boolean,
+    frontImageUrl: (row.front_image_url as string | null) ?? null,
+    rearImageUrl: (row.rear_image_url as string | null) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   };
@@ -377,6 +381,8 @@ export async function addRackEquipment(data: RackEquipmentData) {
       wattage: data.wattage ?? null,
       mountable_at: data.mountableAt,
       is_active: data.isActive,
+      front_image_url: data.frontImageUrl ?? null,
+      rear_image_url: data.rearImageUrl ?? null,
     });
     if (error) return { success: false, error: error.message };
     return { success: true };
@@ -397,6 +403,8 @@ export async function updateRackEquipment(id: string, data: Partial<RackEquipmen
     if (data.wattage !== undefined) payload.wattage = data.wattage ?? null;
     if (data.mountableAt !== undefined) payload.mountable_at = data.mountableAt;
     if (data.isActive !== undefined) payload.is_active = data.isActive;
+    if (data.frontImageUrl !== undefined) payload.front_image_url = data.frontImageUrl ?? null;
+    if (data.rearImageUrl !== undefined) payload.rear_image_url = data.rearImageUrl ?? null;
     const { error } = await supabase.from('rack_equipment_library').update(payload).eq('id', id);
     if (error) return { success: false, error: error.message };
     return { success: true };

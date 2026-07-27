@@ -14,6 +14,8 @@ export async function GET() {
     color: item.color,
     wattage: item.wattage,
     mountableAt: item.mountableAt,
+    frontImageUrl: item.frontImageUrl,
+    rearImageUrl: item.rearImageUrl,
   }));
   return NextResponse.json(mapped);
 }

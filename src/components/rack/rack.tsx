@@ -169,6 +169,7 @@ function EquipmentBlock({
   };
 
   const Icon = TYPE_ICONS[item.equipment.type] ?? HelpCircle;
+  const sideImage = activeSide === 'front' ? item.equipment.frontImageUrl : item.equipment.rearImageUrl;
 
   return (
     <div
@@ -194,11 +195,32 @@ function EquipmentBlock({
       <div
         className="absolute inset-0 flex items-center px-3 gap-2"
         style={{
-          background: `linear-gradient(135deg, ${item.equipment.color}ee 0%, ${item.equipment.color}99 100%)`,
+          background: sideImage
+            ? undefined
+            : `linear-gradient(135deg, ${item.equipment.color}ee 0%, ${item.equipment.color}99 100%)`,
           borderLeft: `3px solid ${cfg.indicatorColor}`,
         }}
       >
-        <div className="flex flex-col gap-1 flex-shrink-0">
+        {sideImage && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={sideImage}
+              alt={displayName}
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ zIndex: 0 }}
+              draggable={false}
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                zIndex: 0,
+                background: 'linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 40%, rgba(0,0,0,0.1) 100%)',
+              }}
+            />
+          </>
+        )}
+        <div className="flex flex-col gap-1 flex-shrink-0 relative" style={{ zIndex: 1 }}>
           <div
             className="w-1.5 h-1.5 rounded-full"
             style={{ background: cfg.indicatorColor, boxShadow: `0 0 5px ${cfg.indicatorColor}` }}
@@ -206,7 +228,7 @@ function EquipmentBlock({
           {item.equipment.ru >= 2 && <div className="w-1.5 h-1.5 rounded-full bg-white/15" />}
         </div>
 
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 relative" style={{ zIndex: 1 }}>
           {isEditing ? (
             <input
               ref={inputRef}

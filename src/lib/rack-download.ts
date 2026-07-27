@@ -73,7 +73,32 @@ function clipText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   return out + '…';
 }
 
-function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, side: RackSide, ru: number, items: RackItem[]) {
+function loadImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+async function preloadItemImages(items: RackItem[]): Promise<Map<string, HTMLImageElement>> {
+  const map = new Map<string, HTMLImageElement>();
+  const seen = new Set<string>();
+  const tasks: Promise<void>[] = [];
+  for (const item of items) {
+    for (const url of [item.equipment.frontImageUrl, item.equipment.rearImageUrl]) {
+      if (!url || seen.has(url)) continue;
+      seen.add(url);
+      tasks.push(loadImage(url).then(img => map.set(url, img)).catch(() => {}));
+    }
+  }
+  await Promise.all(tasks);
+  return map;
+}
+
+async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, side: RackSide, ru: number, items: RackItem[], imageCache: Map<string, HTMLImageElement>) {
   const c = CFG[side];
   const sideItems = items.filter(i => i.side === side);
   const totalH = CAP_H + ru * RU_H + BOTTOM_CAP_H;
@@ -186,12 +211,24 @@ function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, side: Rac
     const ih = item.equipment.ru * RU_H;
     const textMaxW = EQUIP_W - 54; // leave room for RU badge + icon
 
-    // Gradient fill
-    const grad = ctx.createLinearGradient(equipX, iy, equipX + EQUIP_W, iy + ih);
-    grad.addColorStop(0, rgba(item.equipment.color, 0.93));
-    grad.addColorStop(1, rgba(item.equipment.color, 0.6));
-    ctx.fillStyle = grad;
-    ctx.fillRect(equipX, iy, EQUIP_W, ih);
+    // Gradient fill (or image if available)
+    const sideImageUrl = side === 'front' ? item.equipment.frontImageUrl : item.equipment.rearImageUrl;
+    const cachedImg = sideImageUrl ? imageCache.get(sideImageUrl) : null;
+    if (cachedImg) {
+      ctx.drawImage(cachedImg, equipX, iy, EQUIP_W, ih);
+      const overlay = ctx.createLinearGradient(equipX, iy, equipX + EQUIP_W, iy);
+      overlay.addColorStop(0, 'rgba(0,0,0,0.55)');
+      overlay.addColorStop(0.4, 'rgba(0,0,0,0.25)');
+      overlay.addColorStop(1, 'rgba(0,0,0,0.1)');
+      ctx.fillStyle = overlay;
+      ctx.fillRect(equipX, iy, EQUIP_W, ih);
+    } else {
+      const grad = ctx.createLinearGradient(equipX, iy, equipX + EQUIP_W, iy + ih);
+      grad.addColorStop(0, rgba(item.equipment.color, 0.93));
+      grad.addColorStop(1, rgba(item.equipment.color, 0.6));
+      ctx.fillStyle = grad;
+      ctx.fillRect(equipX, iy, EQUIP_W, ih);
+    }
 
     // Item border
     ctx.strokeStyle = 'rgba(0,0,0,0.35)';
@@ -302,8 +339,9 @@ export async function downloadRackPng(rackName: string, ru: number, items: RackI
   ctx.stroke();
 
   // Draw both rack sides
-  drawRack(ctx, frontX, bodyY, 'front', ru, items);
-  drawRack(ctx, rearX, bodyY, 'rear', ru, items);
+  const imageCache = await preloadItemImages(items);
+  drawRack(ctx, frontX, bodyY, 'front', ru, items, imageCache);
+  drawRack(ctx, rearX, bodyY, 'rear', ru, items, imageCache);
 
   // Trigger download via blob
   canvas.toBlob(blob => {

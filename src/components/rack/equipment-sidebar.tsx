@@ -48,6 +48,17 @@ function DraggableEquipment({ item, activeSide }: { item: EquipmentItem; activeS
       title={notAllowedLabel ? `This item is ${notAllowedLabel.toLowerCase()} — switch view to place it` : undefined}
     >
       <div className="w-1 self-stretch rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+      <div className="w-8 h-8 rounded flex-shrink-0 overflow-hidden border border-border/50 flex items-center justify-center bg-muted">
+        {(() => {
+          const img = activeSide === 'front' ? item.frontImageUrl : item.rearImageUrl;
+          return img ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={img} alt={item.name} className="w-full h-full object-cover" draggable={false} />
+          ) : (
+            <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${item.color}ee, ${item.color}99)` }} />
+          );
+        })()}
+      </div>
       <div className="flex-1 min-w-0">
         <p className="font-medium text-xs leading-tight truncate">{item.name}</p>
         <div className="flex items-center gap-1 mt-0.5">

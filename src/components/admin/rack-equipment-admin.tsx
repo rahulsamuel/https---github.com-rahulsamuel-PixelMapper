@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -36,8 +36,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Trash2, Plus, Package } from 'lucide-react';
+import { Pencil, Trash2, Plus, Package, Upload, X, ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ImageCropModal } from './image-crop-modal';
 
 const TYPE_LABELS: Record<RackEquipmentType, string> = {
   processor: 'Processor',
@@ -76,15 +77,111 @@ const TYPE_COLORS: Record<RackEquipmentType, string> = {
   other: '#71717a',
 };
 
+const STORAGE_BUCKET = 'rack-equipment-images';
+
+async function uploadEquipmentImage(equipmentId: string, side: 'front' | 'rear', dataUrl: string): Promise<string | null> {
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  const ext = blob.type === 'image/png' ? 'png' : 'jpg';
+  const path = `${equipmentId}-${side}.${ext}`;
+  const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(path, blob, { upsert: true, contentType: blob.type });
+  if (error) return null;
+  const { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+function ImageUploadField({
+  label,
+  imageUrl,
+  equipmentId,
+  side,
+  onUploaded,
+  onClear,
+}: {
+  label: string;
+  imageUrl: string | null;
+  equipmentId: string | null;
+  side: 'front' | 'rear';
+  onUploaded: (url: string) => void;
+  onClear: () => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const handleFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => setCropSrc(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropConfirm = useCallback(async (dataUrl: string) => {
+    setCropSrc(null);
+    if (!equipmentId) { onUploaded(dataUrl); return; }
+    setBusy(true);
+    try {
+      const url = await uploadEquipmentImage(equipmentId, side, dataUrl);
+      if (url) onUploaded(url);
+    } finally {
+      setBusy(false);
+    }
+  }, [equipmentId, side, onUploaded]);
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs">{label}</Label>
+      <div className="flex items-center gap-2">
+        <div
+          className="w-16 h-16 rounded-md border border-border overflow-hidden bg-muted flex items-center justify-center flex-shrink-0"
+        >
+          {imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageUrl} alt={label} className="w-full h-full object-cover" />
+          ) : (
+            <ImageIcon className="h-5 w-5 text-muted-foreground/40" />
+          )}
+        </div>
+        <div className="flex flex-col gap-1">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }}
+          />
+          <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={busy}>
+            <Upload className="h-3.5 w-3.5 mr-1" /> {imageUrl ? 'Replace' : 'Upload'}
+          </Button>
+          {imageUrl && (
+            <Button type="button" variant="ghost" size="sm" onClick={onClear} disabled={busy}>
+              <X className="h-3.5 w-3.5 mr-1" /> Remove
+            </Button>
+          )}
+        </div>
+      </div>
+      {busy && <p className="text-xs text-muted-foreground">Uploading...</p>}
+      <ImageCropModal
+        open={cropSrc !== null}
+        imageSrc={cropSrc}
+        aspectRatio={1.5}
+        onCancel={() => setCropSrc(null)}
+        onConfirm={handleCropConfirm}
+      />
+    </div>
+  );
+}
+
 // Keyed by editTarget.id (or 'new') so useForm fully remounts for each edit target
 function EquipmentForm({
   defaultValues,
+  editTarget,
   onSubmit,
   onCancel,
   loading,
 }: {
   defaultValues: FormValues;
-  onSubmit: (data: FormValues) => Promise<void>;
+  editTarget: RackEquipment | null;
+  onSubmit: (data: FormValues, frontImageUrl: string | null, rearImageUrl: string | null) => Promise<void>;
   onCancel: () => void;
   loading: boolean;
 }) {
@@ -97,8 +194,13 @@ function EquipmentForm({
   const selectedMountableAt = watch('mountableAt');
   const selectedIsActive = watch('isActive');
 
+  const [frontImageUrl, setFrontImageUrl] = useState<string | null>(editTarget?.frontImageUrl ?? null);
+  const [rearImageUrl, setRearImageUrl] = useState<string | null>(editTarget?.rearImageUrl ?? null);
+
+  const onFormSubmit = (data: FormValues) => onSubmit(data, frontImageUrl, rearImageUrl);
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1.5">
           <Label className="text-xs">Display Name *</Label>
@@ -174,6 +276,34 @@ function EquipmentForm({
           </Select>
         </div>
       </div>
+
+      <div className="border-t pt-3">
+        <p className="text-xs font-semibold text-muted-foreground mb-2">Equipment Images</p>
+        <div className="grid grid-cols-2 gap-3">
+          <ImageUploadField
+            label="Front Image"
+            imageUrl={frontImageUrl}
+            equipmentId={editTarget?.id ?? null}
+            side="front"
+            onUploaded={setFrontImageUrl}
+            onClear={() => setFrontImageUrl(null)}
+          />
+          <ImageUploadField
+            label="Rear Image"
+            imageUrl={rearImageUrl}
+            equipmentId={editTarget?.id ?? null}
+            side="rear"
+            onUploaded={setRearImageUrl}
+            onClear={() => setRearImageUrl(null)}
+          />
+        </div>
+        {!editTarget && (
+          <p className="text-xs text-amber-500/80 mt-2">
+            Save the equipment first, then upload images. (Images need a record to attach to.)
+          </p>
+        )}
+      </div>
+
       <DialogFooter>
         <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
         <Button type="submit" disabled={loading}>{loading ? 'Saving...' : 'Save'}</Button>
@@ -204,7 +334,7 @@ export function RackEquipmentAdmin({ equipment: initial }: { equipment: RackEqui
     isActive: item?.isActive ?? true,
   });
 
-  const handleSubmit = async (data: FormValues) => {
+  const handleSubmit = async (data: FormValues, frontImageUrl: string | null, rearImageUrl: string | null) => {
     setLoading(true);
     setError(null);
     try {
@@ -217,6 +347,8 @@ export function RackEquipmentAdmin({ equipment: initial }: { equipment: RackEqui
         wattage: data.wattage ?? null,
         mountable_at: data.mountableAt,
         is_active: data.isActive,
+        front_image_url: frontImageUrl,
+        rear_image_url: rearImageUrl,
         updated_at: new Date().toISOString(),
       };
 
@@ -238,6 +370,8 @@ export function RackEquipmentAdmin({ equipment: initial }: { equipment: RackEqui
           wattage: inserted.wattage,
           mountableAt: inserted.mountable_at as MountableAt,
           isActive: inserted.is_active,
+          frontImageUrl: inserted.front_image_url,
+          rearImageUrl: inserted.rear_image_url,
           createdAt: inserted.created_at,
           updatedAt: inserted.updated_at,
         }]);
@@ -250,7 +384,7 @@ export function RackEquipmentAdmin({ equipment: initial }: { equipment: RackEqui
         if (err) { setError(err.message); return; }
         setEquipment(prev => prev.map(e =>
           e.id === editTarget.id
-            ? { ...e, ...data, mountableAt: data.mountableAt, isActive: data.isActive, model: data.model || null }
+            ? { ...e, ...data, mountableAt: data.mountableAt, isActive: data.isActive, model: data.model || null, frontImageUrl, rearImageUrl }
             : e
         ));
       }
@@ -375,6 +509,7 @@ export function RackEquipmentAdmin({ equipment: initial }: { equipment: RackEqui
           <EquipmentForm
             key={editTarget?.id ?? 'new'}
             defaultValues={getDefaultValues(editTarget)}
+            editTarget={editTarget}
             onSubmit={handleSubmit}
             onCancel={closeDialog}
             loading={loading}

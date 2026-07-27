@@ -12,6 +12,8 @@ export interface EquipmentItem {
   color: string;
   wattage?: number | null;
   mountableAt?: MountableAt;
+  frontImageUrl?: string | null;
+  rearImageUrl?: string | null;
 }
 
 export interface RackItem {
