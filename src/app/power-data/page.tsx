@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { getProductsAction, getProcessorsAction } from './actions';
 import type { Processor } from '@/services/supabase';
+import { usePersistentState } from '@/hooks/use-persistent-state';
 
 interface LedProduct {
   id: string;
@@ -26,13 +27,13 @@ const BIT_DEPTHS = ['8', '10', '12'];
 export default function PowerDataPage() {
   const [products, setProducts] = useState<LedProduct[]>([]);
   const [processors, setProcessors] = useState<Processor[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState<string>('');
-  const [selectedProcessorId, setSelectedProcessorId] = useState<string>('');
-  const [circuitVoltage, setCircuitVoltage] = useState('208');
-  const [circuitAmperage, setCircuitAmperage] = useState('20');
-  const [safetyMargin, setSafetyMargin] = useState('80');
-  const [refreshRate, setRefreshRate] = useState('60');
-  const [bitDepth, setBitDepth] = useState('8');
+  const [selectedProductId, setSelectedProductId] = usePersistentState<string>('power-data:selectedProductId', '');
+  const [selectedProcessorId, setSelectedProcessorId] = usePersistentState<string>('power-data:selectedProcessorId', '');
+  const [circuitVoltage, setCircuitVoltage] = usePersistentState('power-data:circuitVoltage', '208');
+  const [circuitAmperage, setCircuitAmperage] = usePersistentState('power-data:circuitAmperage', '20');
+  const [safetyMargin, setSafetyMargin] = usePersistentState('power-data:safetyMargin', '80');
+  const [refreshRate, setRefreshRate] = usePersistentState('power-data:refreshRate', '60');
+  const [bitDepth, setBitDepth] = usePersistentState('power-data:bitDepth', '8');
 
   useEffect(() => {
     getProductsAction().then(({ data }) => {

@@ -3,9 +3,14 @@
 import { useDrag } from 'react-dnd';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import type { EquipmentItem, EquipmentType, RackSide } from '@/lib/rack-data';
-import { EQUIPMENT_TYPE_LABELS } from '@/lib/rack-data';
-import { Search, GripVertical } from 'lucide-react';
+import { EQUIPMENT_TYPE_LABELS, EQUIPMENT_TYPE_COLORS } from '@/lib/rack-data';
+import { supabase } from '@/lib/supabase/client';
+import { Search, GripVertical, Plus } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -77,17 +82,129 @@ function DraggableEquipment({ item, activeSide, showImages = true }: { item: Equ
   );
 }
 
+function AddEquipmentDialog({ open, onOpenChange, onAdded }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAdded: () => void;
+}) {
+  const [name, setName] = useState('');
+  const [model, setModel] = useState('');
+  const [ru, setRu] = useState('1');
+  const [type, setType] = useState<EquipmentType>('other');
+  const [color, setColor] = useState(EQUIPMENT_TYPE_COLORS.other);
+  const [wattage, setWattage] = useState('0');
+  const [mountableAt, setMountableAt] = useState<'front' | 'rear' | 'both'>('both');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const reset = () => {
+    setName(''); setModel(''); setRu('1'); setType('other');
+    setColor(EQUIPMENT_TYPE_COLORS.other); setWattage('0'); setMountableAt('both');
+    setError(null);
+  };
+
+  const handleSubmit = async () => {
+    if (!name.trim()) { setError('Name is required'); return; }
+    setLoading(true); setError(null);
+    try {
+      const { error: err } = await supabase.from('rack_equipment_library').insert({
+        name: name.trim(),
+        model: model.trim() || null,
+        ru: Math.max(1, Math.min(42, parseInt(ru) || 1)),
+        type,
+        color,
+        wattage: parseInt(wattage) || 0,
+        mountable_at: mountableAt,
+        is_active: true,
+      });
+      if (err) { setError(err.message); return; }
+      reset();
+      onOpenChange(false);
+      onAdded();
+    } catch {
+      setError('An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Custom Equipment</DialogTitle>
+        </DialogHeader>
+        {error && <p className="text-sm text-destructive bg-destructive/10 rounded px-3 py-2">{error}</p>}
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Display Name *</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Custom Switch" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Model / Description</Label>
+            <Input value={model} onChange={e => setModel(e.target.value)} placeholder="optional" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Type</Label>
+              <Select value={type} onValueChange={v => { setType(v as EquipmentType); setColor(EQUIPMENT_TYPE_COLORS[v as EquipmentType]); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {TYPE_ORDER.map(t => <SelectItem key={t} value={t}>{EQUIPMENT_TYPE_LABELS[t]}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Rack Units (U)</Label>
+              <Input type="number" min={1} max={42} value={ru} onChange={e => setRu(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Color</Label>
+              <div className="flex gap-2">
+                <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-10 h-9 rounded border border-input cursor-pointer p-0.5" />
+                <Input value={color} onChange={e => setColor(e.target.value)} className="flex-1" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Wattage (W)</Label>
+              <Input type="number" min={0} value={wattage} onChange={e => setWattage(e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Mount Position</Label>
+            <Select value={mountableAt} onValueChange={v => setMountableAt(v as 'front' | 'rear' | 'both')}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="front">Front only</SelectItem>
+                <SelectItem value="rear">Rear only</SelectItem>
+                <SelectItem value="both">Front & Rear</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={loading}>{loading ? 'Saving...' : 'Add Equipment'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function EquipmentSidebar({
   equipment,
   activeSide,
   showImages = true,
+  onEquipmentAdded,
 }: {
   equipment: EquipmentItem[];
   activeSide: RackSide;
   showImages?: boolean;
+  onEquipmentAdded?: () => void;
 }) {
   const [search, setSearch] = useState('');
   const [activeType, setActiveType] = useState<EquipmentType | 'all'>('all');
+  const [addOpen, setAddOpen] = useState(false);
 
   const filtered = useMemo(() => {
     return equipment.filter(item => {
@@ -197,10 +314,15 @@ export function EquipmentSidebar({
       </ScrollArea>
 
       <div className="flex-shrink-0 p-3 border-t">
-        <div className="rounded-md bg-muted/40 p-3 text-center">
-          <p className="text-xs font-medium text-muted-foreground">Custom Equipment</p>
-          <p className="text-xs text-muted-foreground/60 mt-0.5">Add via Admin → Rack Equipment</p>
-        </div>
+        <Button variant="outline" size="sm" className="w-full" onClick={() => setAddOpen(true)}>
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          Add Custom Equipment
+        </Button>
+        <AddEquipmentDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          onAdded={() => onEquipmentAdded?.()}
+        />
       </div>
     </aside>
   );

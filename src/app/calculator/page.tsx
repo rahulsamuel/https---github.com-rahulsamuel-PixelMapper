@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { getProducts } from './actions';
+import { usePersistentState } from '@/hooks/use-persistent-state';
 
 const CalculatorForm = dynamic(() => import('@/components/calculator/calculator-form').then(mod => mod.CalculatorForm), {
   ssr: false,
@@ -64,7 +65,7 @@ function greatestCommonDivisor(a: number, b: number): number {
 
 export default function CalculatorPage() {
     const [products, setProducts] = useState<LedProduct[]>([]);
-    const [formState, setFormState] = useState<FormState>({
+    const [formState, setFormState] = usePersistentState<FormState>('calculator:formState', {
         projectName: "My LED Project",
         selectedProductId: null,
         voltage: '208v',

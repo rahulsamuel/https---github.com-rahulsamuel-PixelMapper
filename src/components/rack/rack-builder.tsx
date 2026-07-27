@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { downloadRackPng } from '@/lib/rack-download';
+import { usePersistentState } from '@/hooks/use-persistent-state';
 
 interface RackState {
   id: number;
@@ -43,17 +44,18 @@ async function fetchEquipmentLibrary(): Promise<EquipmentItem[]> {
 }
 
 export function RackBuilder() {
-  const [racks, setRacks] = useState<RackState[]>([
+  const [racks, setRacks] = usePersistentState<RackState[]>('rack-builder:racks', [
     { id: 1, name: 'Main Rack', ru: 24, items: [] },
   ]);
-  const [nextRackId, setNextRackId] = useState(2);
+  const [nextRackId, setNextRackId] = usePersistentState<number>('rack-builder:nextRackId', 2);
   const [equipmentLibrary, setEquipmentLibrary] = useState<EquipmentItem[]>(defaultEquipmentLibrary);
-  const [activeSide, setActiveSide] = useState<RackSide>('front');
-  const [showImages, setShowImages] = useState(true);
+  const [activeSide, setActiveSide] = usePersistentState<RackSide>('rack-builder:activeSide', 'front');
+  const [showImages, setShowImages] = usePersistentState<boolean>('rack-builder:showImages', true);
+  const [libraryVersion, setLibraryVersion] = useState(0);
 
   useEffect(() => {
     fetchEquipmentLibrary().then(setEquipmentLibrary);
-  }, []);
+  }, [libraryVersion]);
 
   const addRack = () => {
     setRacks(prev => [...prev, { id: nextRackId, name: `Rack ${nextRackId}`, ru: 24, items: [] }]);
@@ -152,7 +154,7 @@ export function RackBuilder() {
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex h-[calc(100svh-3.5rem)] overflow-hidden">
-        <EquipmentSidebar equipment={equipmentLibrary} activeSide={activeSide} showImages={showImages} />
+        <EquipmentSidebar equipment={equipmentLibrary} activeSide={activeSide} showImages={showImages} onEquipmentAdded={() => setLibraryVersion(v => v + 1)} />
 
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Toolbar */}
