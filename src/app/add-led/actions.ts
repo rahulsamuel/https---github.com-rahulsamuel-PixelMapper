@@ -108,6 +108,7 @@ export async function addProductAction(prevState: FormState, formData: FormData)
       applicationFloor: d.applicationFloor,
       productImageUrl: d.productImageUrl || null,
       specSheetUrl: d.specSheetUrl || null,
+      createdBy: (formData.get('createdBy') as string) || undefined,
     });
 
     if (!success) throw new Error(error);

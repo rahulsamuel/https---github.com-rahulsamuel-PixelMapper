@@ -77,7 +77,6 @@ function mapRow(product: Record<string, unknown>): LedProduct {
 export async function addLedProduct(data: LedProductData & { createdBy?: string }) {
   try {
     const supabase = getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
     const { error } = await supabase.from("led_products").insert({
       manufacturer: data.manufacturer,
@@ -108,7 +107,7 @@ export async function addLedProduct(data: LedProductData & { createdBy?: string 
       application_floor: data.applicationFloor ?? false,
       product_image_url: data.productImageUrl ?? null,
       spec_sheet_url: data.specSheetUrl ?? null,
-      created_by: user?.id ?? null,
+      created_by: data.createdBy ?? null,
     });
 
     if (error) {

@@ -523,7 +523,7 @@ function SelectStep({ products, onSelect, onBack, onBulkSave }: {
 export function LedProductForm() {
   const [state, formAction] = useActionState(addProductAction, initialState);
   const { toast } = useToast();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);
 
   const [step, setStep] = useState<WizardStep>('input');
@@ -684,6 +684,7 @@ export function LedProductForm() {
       {effectiveStep === 'review' && (
         <Form {...form}>
           <form ref={formRef} action={formAction} className="space-y-6">
+            <input type="hidden" name="createdBy" value={user?.id ?? ''} />
             <input type="hidden" name="applicationIndoor" value={String(form.watch('applicationIndoor'))} />
             <input type="hidden" name="applicationOutdoor" value={String(form.watch('applicationOutdoor'))} />
             <input type="hidden" name="applicationFloor" value={String(form.watch('applicationFloor'))} />
