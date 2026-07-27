@@ -69,7 +69,10 @@ export default function PowerDataPage() {
     if (first) setSelectedProcessorId(first.id);
   };
 
-  const { maxTilesPerPowerCircuit, maxTilesPerDataPort, maxTilesPerSubPort, circuitWatts, tileWatts, pixelsPerPort, pixelsPerSubPort, pixelsPerTile, hasDistribution } = useMemo(() => {
+  const {
+    maxTilesPerPowerCircuit, maxTilesPerDataPort, maxTilesPerDistUnit, maxTilesPerTrunk,
+    circuitWatts, tileWatts, pixelsPerPort, pixelsPerTile, hasDistribution,
+  } = useMemo(() => {
     // Power
     const v = parseFloat(circuitVoltage) || 0;
     const a = parseFloat(circuitAmperage) || 0;
@@ -78,22 +81,28 @@ export default function PowerDataPage() {
     const tileWatts = Number(selectedProduct?.wattsPerTile ?? 0);
     const maxTilesPerPowerCircuit = tileWatts > 0 ? Math.floor(circuitWatts / tileWatts) : 0;
 
-    // Data
+    // Data — pixels_per_port represents the per-1G-output-port capacity (per data cable)
     const pixelsPerTile = (Number(selectedProduct?.tileWidthPx) || 0) * (Number(selectedProduct?.tileHeightPx) || 0);
     const baseHz = selectedProcessor?.baseRefreshRateHz ?? 60;
     const rateHz = parseFloat(refreshRate) || 60;
     const rawPxPerPort = selectedProcessor?.pixelsPerPort ?? 0;
-    // Scale capacity if refresh rate exceeds base
+    // Scale capacity down proportionally if refresh rate exceeds the base rate
     const pixelsPerPort = rateHz > baseHz ? Math.floor(rawPxPerPort * (baseHz / rateHz)) : rawPxPerPort;
+    // Tiles per 1G data port (one physical cable to a tile group)
     const maxTilesPerDataPort = pixelsPerTile > 0 && pixelsPerPort > 0 ? Math.floor(pixelsPerPort / pixelsPerTile) : 0;
 
-    // Distribution (e.g. XD box splits 1 × 10G port into 10 × 1G ports)
+    // Distribution: e.g. Tessera XD unit has 10 × 1G sub-ports fed by 1 × 10G trunk
     const dist = selectedProcessor?.distributionPerPort ?? 1;
     const hasDistribution = dist > 1;
-    const pixelsPerSubPort = hasDistribution ? Math.floor(pixelsPerPort / dist) : pixelsPerPort;
-    const maxTilesPerSubPort = pixelsPerTile > 0 && pixelsPerSubPort > 0 ? Math.floor(pixelsPerSubPort / pixelsPerTile) : 0;
+    // Tiles per distribution unit (e.g. per XD box) = tiles_per_port × sub-ports per unit
+    const maxTilesPerDistUnit = maxTilesPerDataPort * dist;
+    // Tiles per processor output trunk port (the 10G connector on the processor)
+    const maxTilesPerTrunk = maxTilesPerDistUnit;
 
-    return { maxTilesPerPowerCircuit, maxTilesPerDataPort, maxTilesPerSubPort, circuitWatts, tileWatts, pixelsPerPort, pixelsPerSubPort, pixelsPerTile, hasDistribution };
+    return {
+      maxTilesPerPowerCircuit, maxTilesPerDataPort, maxTilesPerDistUnit, maxTilesPerTrunk,
+      circuitWatts, tileWatts, pixelsPerPort, pixelsPerTile, hasDistribution,
+    };
   }, [selectedProduct, selectedProcessor, circuitVoltage, circuitAmperage, safetyMargin, refreshRate]);
 
   return (
@@ -206,7 +215,7 @@ export default function PowerDataPage() {
               </div>
               {selectedProcessor && (
                 <p className="text-[10px] text-muted-foreground mt-1.5">
-                  {selectedProcessor.outputPortCount} ports · {pixelsPerPort.toLocaleString()} px/port @ {refreshRate}Hz
+                  {selectedProcessor.outputPortCount} ports · {pixelsPerPort.toLocaleString()} px/1G port @ {refreshRate}Hz
                   {hasDistribution && ` · ×${selectedProcessor.distributionPerPort} ${selectedProcessor.distributionUnitName ?? ''}`}
                 </p>
               )}
@@ -248,7 +257,7 @@ export default function PowerDataPage() {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base text-muted-foreground">
-                Max Tiles per Data Port{hasDistribution ? ` (${selectedProcessor?.distributionUnitName ?? 'Distribution Box'})` : ''}
+                Max Tiles per Data Port{hasDistribution ? ` (per 1G cable)` : ''}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -256,23 +265,23 @@ export default function PowerDataPage() {
                 <>
                   <div className="flex items-baseline gap-4">
                     <div>
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Per 10G Output Port</p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Per 1G Data Port</p>
                       <p className="text-5xl font-bold tracking-tight tabular-nums">{maxTilesPerDataPort}</p>
                     </div>
-                    <div className="text-2xl text-muted-foreground font-light">÷ {selectedProcessor?.distributionPerPort}</div>
+                    <div className="text-2xl text-muted-foreground font-light">× {selectedProcessor?.distributionPerPort}</div>
                     <div>
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Per 1G Sub-Port</p>
-                      <p className="text-5xl font-bold tracking-tight tabular-nums text-primary">{maxTilesPerSubPort}</p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Per {selectedProcessor?.distributionUnitName ?? 'Distribution Box'}</p>
+                      <p className="text-5xl font-bold tracking-tight tabular-nums text-primary">{maxTilesPerDistUnit}</p>
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t grid grid-cols-2 gap-3 text-xs text-muted-foreground">
                     <div>
                       <p className="font-medium text-foreground">{pixelsPerPort.toLocaleString()} px</p>
-                      <p>Pixels per 10G port</p>
+                      <p>Pixels per 1G port</p>
                     </div>
                     <div>
-                      <p className="font-medium text-foreground">{pixelsPerSubPort.toLocaleString()} px</p>
-                      <p>Pixels per 1G sub-port</p>
+                      <p className="font-medium text-foreground">{(pixelsPerPort * (selectedProcessor?.distributionPerPort ?? 1)).toLocaleString()} px</p>
+                      <p>Pixels per {selectedProcessor?.distributionUnitName ?? 'distribution unit'}</p>
                     </div>
                   </div>
                 </>
