@@ -211,7 +211,7 @@ function EquipmentBlock({
             <img
               src={sideImage}
               alt={displayName}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-contain"
               style={{ zIndex: 0 }}
               draggable={false}
             />
@@ -635,7 +635,7 @@ export function Rack({
               const fromTop = ru - ghost.ru;
               if (fromTop < 0 || fromTop >= ru) return null;
               const ghostImage = showImages
-                ? (otherSide === 'front' ? ghost.equipment.frontImageUrl : ghost.equipment.rearImageUrl)
+                ? (activeSide === 'front' ? ghost.equipment.frontImageUrl : ghost.equipment.rearImageUrl)
                 : null;
               return (
                 <div
@@ -657,12 +657,7 @@ export function Rack({
                       <img
                         src={ghostImage}
                         alt={ghost.customName ?? ghost.equipment.name}
-                        className="absolute inset-0 w-full h-full object-cover"
-                        draggable={false}
-                      />
-                      <div
-                        className="absolute inset-0"
-                        style={{ background: `linear-gradient(90deg, ${otherCfg.indicatorColor}40 0%, rgba(0,0,0,0.2) 100%)` }}
+                        className="absolute inset-0 w-full h-full object-contain"
                       />
                     </>
                   ) : (
