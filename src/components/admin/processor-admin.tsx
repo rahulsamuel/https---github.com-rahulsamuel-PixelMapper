@@ -392,7 +392,6 @@ function ProcessorForm({
               <div className="flex items-center gap-3">
                 <Switch
                   id="isActive"
-                  name="isActive"
                   checked={vals.isActive ?? true}
                   onCheckedChange={v => set('isActive', v)}
                 />
