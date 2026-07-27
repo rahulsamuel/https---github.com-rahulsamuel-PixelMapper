@@ -6,8 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { getProducts } from '@/app/calculator/actions';
-import { getProcessorsAction } from './actions';
+import { getProductsAction, getProcessorsAction } from './actions';
 import type { Processor } from '@/services/supabase';
 
 interface LedProduct {
@@ -34,7 +33,7 @@ export default function PowerDataPage() {
   const [refreshRate, setRefreshRate] = useState('60');
 
   useEffect(() => {
-    getProducts().then(({ data }) => {
+    getProductsAction().then(({ data }) => {
       if (data?.length) {
         setProducts(data as LedProduct[]);
         setSelectedProductId(data[0].id);
