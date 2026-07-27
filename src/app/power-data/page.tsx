@@ -21,6 +21,7 @@ interface LedProduct {
 }
 
 const REFRESH_RATES = ['23.98','24','25','29.97','30','48','50','59.94','60','72','75','90','100','120','144'];
+const BIT_DEPTHS = ['8', '10', '12'];
 
 export default function PowerDataPage() {
   const [products, setProducts] = useState<LedProduct[]>([]);
@@ -31,6 +32,7 @@ export default function PowerDataPage() {
   const [circuitAmperage, setCircuitAmperage] = useState('20');
   const [safetyMargin, setSafetyMargin] = useState('80');
   const [refreshRate, setRefreshRate] = useState('60');
+  const [bitDepth, setBitDepth] = useState('8');
 
   useEffect(() => {
     getProductsAction().then(({ data }) => {
@@ -88,7 +90,10 @@ export default function PowerDataPage() {
     const rawPxPerPort = selectedProcessor?.pixelsPerPort ?? 0;
     // Capacity scales inversely with refresh rate relative to the base rate:
     // lower rates get proportionally more pixels, higher rates get fewer.
-    const pixelsPerPort = Math.floor(rawPxPerPort * (baseHz / rateHz));
+    // Capacity also scales inversely with color bit depth (8-bit is the reference):
+    // 10-bit = 8/10 of capacity, 12-bit = 8/12 of capacity.
+    const depth = parseFloat(bitDepth) || 8;
+    const pixelsPerPort = Math.floor(rawPxPerPort * (baseHz / rateHz) * (8 / depth));
     // Tiles per 1G data port (one physical cable to a tile group)
     const maxTilesPerDataPort = pixelsPerTile > 0 && pixelsPerPort > 0 ? Math.floor(pixelsPerPort / pixelsPerTile) : 0;
 
@@ -104,7 +109,7 @@ export default function PowerDataPage() {
       maxTilesPerPowerCircuit, maxTilesPerDataPort, maxTilesPerDistUnit, maxTilesPerTrunk,
       circuitWatts, tileWatts, pixelsPerPort, pixelsPerTile, hasDistribution,
     };
-  }, [selectedProduct, selectedProcessor, circuitVoltage, circuitAmperage, safetyMargin, refreshRate]);
+  }, [selectedProduct, selectedProcessor, circuitVoltage, circuitAmperage, safetyMargin, refreshRate, bitDepth]);
 
   return (
     <div className="h-[calc(100svh-3.5rem)] flex overflow-hidden">
@@ -204,7 +209,7 @@ export default function PowerDataPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5 col-span-2">
+                <div className="space-y-1.5">
                   <Label className="text-xs">Refresh Rate (Hz)</Label>
                   <Select value={refreshRate} onValueChange={setRefreshRate}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -213,10 +218,19 @@ export default function PowerDataPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Color Bit Depth</Label>
+                  <Select value={bitDepth} onValueChange={setBitDepth}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {BIT_DEPTHS.map(b => <SelectItem key={b} value={b}>{b}-bit</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               {selectedProcessor && (
                 <p className="text-[10px] text-muted-foreground mt-1.5">
-                  {selectedProcessor.outputPortCount} ports · {pixelsPerPort.toLocaleString()} px/1G port @ {refreshRate}Hz
+                  {selectedProcessor.outputPortCount} ports · {pixelsPerPort.toLocaleString()} px/1G port @ {refreshRate}Hz · {bitDepth}-bit
                   {hasDistribution && ` · ×${selectedProcessor.distributionPerPort} ${selectedProcessor.distributionUnitName ?? ''}`}
                 </p>
               )}
