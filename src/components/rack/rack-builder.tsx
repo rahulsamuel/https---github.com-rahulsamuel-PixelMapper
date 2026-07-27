@@ -8,7 +8,7 @@ import { EquipmentSidebar } from './equipment-sidebar';
 import type { EquipmentItem, RackItem, RackSide } from '@/lib/rack-data';
 import { defaultEquipmentLibrary } from '@/lib/rack-data';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, LayoutGrid, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, LayoutGrid, Download, ChevronLeft, ChevronRight, ImageIcon, Type } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +49,7 @@ export function RackBuilder() {
   const [nextRackId, setNextRackId] = useState(2);
   const [equipmentLibrary, setEquipmentLibrary] = useState<EquipmentItem[]>(defaultEquipmentLibrary);
   const [activeSide, setActiveSide] = useState<RackSide>('front');
+  const [showImages, setShowImages] = useState(true);
 
   useEffect(() => {
     fetchEquipmentLibrary().then(setEquipmentLibrary);
@@ -151,7 +152,7 @@ export function RackBuilder() {
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex h-[calc(100svh-3.5rem)] overflow-hidden">
-        <EquipmentSidebar equipment={equipmentLibrary} activeSide={activeSide} />
+        <EquipmentSidebar equipment={equipmentLibrary} activeSide={activeSide} showImages={showImages} />
 
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Toolbar */}
@@ -193,6 +194,34 @@ export function RackBuilder() {
             </div>
 
             <div className="flex items-center gap-2 ml-auto">
+              <div className="flex items-center rounded-md border overflow-hidden">
+                <button
+                  onClick={() => setShowImages(true)}
+                  className={cn(
+                    'px-2.5 py-1 text-xs font-bold tracking-wide transition-colors flex items-center gap-1.5',
+                    showImages
+                      ? 'bg-primary text-primary-foreground border-r border-primary-foreground/20'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted border-r border-border',
+                  )}
+                  title="Show equipment photos"
+                >
+                  <ImageIcon className="h-3 w-3" />
+                  Photos
+                </button>
+                <button
+                  onClick={() => setShowImages(false)}
+                  className={cn(
+                    'px-2.5 py-1 text-xs font-bold tracking-wide transition-colors flex items-center gap-1.5',
+                    !showImages
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted',
+                  )}
+                  title="Show color blocks with text labels"
+                >
+                  <Type className="h-3 w-3" />
+                  Blocks
+                </button>
+              </div>
               <Button variant="outline" size="sm" onClick={downloadAll} title="Download all racks as PNG">
                 <Download className="mr-1.5 h-3.5 w-3.5" />
                 Download PNG
@@ -256,6 +285,7 @@ export function RackBuilder() {
                     onRename={renameRack}
                     onResize={resizeRack}
                     onRenameItem={renameItem}
+                    showImages={showImages}
                   />
                 ))}
               </div>

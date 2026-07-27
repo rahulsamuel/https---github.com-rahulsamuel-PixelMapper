@@ -93,6 +93,7 @@ function EquipmentBlock({
   rackId,
   item,
   activeSide,
+  showImages,
   onRemove,
   onMove,
   onRenameItem,
@@ -100,6 +101,7 @@ function EquipmentBlock({
   rackId: number;
   item: RackItem;
   activeSide: RackSide;
+  showImages: boolean;
   onRemove: (rackId: number, instanceId: string) => void;
   onMove: (rackId: number, item: RackItem, newRu: number) => void;
   onRenameItem: (rackId: number, instanceId: string, name: string) => void;
@@ -169,7 +171,9 @@ function EquipmentBlock({
   };
 
   const Icon = TYPE_ICONS[item.equipment.type] ?? HelpCircle;
-  const sideImage = activeSide === 'front' ? item.equipment.frontImageUrl : item.equipment.rearImageUrl;
+  const sideImage = showImages
+    ? (activeSide === 'front' ? item.equipment.frontImageUrl : item.equipment.rearImageUrl)
+    : null;
 
   return (
     <div
@@ -302,6 +306,7 @@ function RackSlot({
   item,
   rackId,
   activeSide,
+  showImages,
   onRemove,
   onMove,
   onRenameItem,
@@ -312,6 +317,7 @@ function RackSlot({
   item?: RackItem;
   rackId: number;
   activeSide: RackSide;
+  showImages: boolean;
   onRemove: (rackId: number, instanceId: string) => void;
   onMove: (rackId: number, item: RackItem, newRu: number) => void;
   onRenameItem: (rackId: number, instanceId: string, name: string) => void;
@@ -345,6 +351,7 @@ function RackSlot({
             rackId={rackId}
             item={item}
             activeSide={activeSide}
+            showImages={showImages}
             onRemove={onRemove}
             onMove={onMove}
             onRenameItem={onRenameItem}
@@ -361,6 +368,7 @@ export function Rack({
   ru,
   items,
   activeSide,
+  showImages,
   onDrop,
   onMove,
   onRemove,
@@ -374,6 +382,7 @@ export function Rack({
   ru: number;
   items: RackItem[];
   activeSide: RackSide;
+  showImages: boolean;
   onDrop: (rackId: number, item: EquipmentItem, targetRu: number, side: RackSide) => void;
   onMove: (rackId: number, item: RackItem, newRu: number) => void;
   onRemove: (rackId: number, instanceId: string) => void;
@@ -625,34 +634,52 @@ export function Rack({
             {otherSideItems.map(ghost => {
               const fromTop = ru - ghost.ru;
               if (fromTop < 0 || fromTop >= ru) return null;
+              const ghostImage = showImages
+                ? (otherSide === 'front' ? ghost.equipment.frontImageUrl : ghost.equipment.rearImageUrl)
+                : null;
               return (
                 <div
                   key={ghost.instanceId}
-                  className="absolute left-0 right-0 pointer-events-none"
+                  className="absolute left-0 right-0 pointer-events-none overflow-hidden rounded-sm"
                   style={{
                     top: fromTop * RU_HEIGHT,
                     height: ghost.equipment.ru * RU_HEIGHT,
                     zIndex: 5,
-                    opacity: 0.28,
+                    opacity: 0.35,
+                    border: `1px dashed ${otherCfg.indicatorColor}80`,
+                    borderLeft: `2px dashed ${otherCfg.indicatorColor}`,
                   }}
+                  title={`${ghost.customName ?? ghost.equipment.name} (${otherSide} side)`}
                 >
-                  <div
-                    className="absolute inset-0 flex items-center px-2 gap-1.5 overflow-hidden rounded-sm"
-                    style={{
-                      background: `${ghost.equipment.color}35`,
-                      border: `1px dashed ${otherCfg.indicatorColor}80`,
-                      borderLeft: `2px dashed ${otherCfg.indicatorColor}`,
-                    }}
-                    title={`${ghost.customName ?? ghost.equipment.name} (${otherSide} side)`}
-                  >
+                  {ghostImage ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={ghostImage}
+                        alt={ghost.customName ?? ghost.equipment.name}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        draggable={false}
+                      />
+                      <div
+                        className="absolute inset-0"
+                        style={{ background: `linear-gradient(90deg, ${otherCfg.indicatorColor}40 0%, rgba(0,0,0,0.2) 100%)` }}
+                      />
+                    </>
+                  ) : (
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: `${ghost.equipment.color}35` }}
+                    />
+                  )}
+                  <div className="absolute inset-0 flex items-center px-2 gap-1.5">
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-white text-xs leading-tight truncate"
-                        style={{ fontSize: 10 }}>
+                        style={{ fontSize: 10, textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
                         {ghost.customName ?? ghost.equipment.name}
                       </p>
                     </div>
                     <span
-                      className="flex-shrink-0 font-bold rounded px-0.5"
+                      className="flex-shrink-0 font-bold rounded px-0.5 relative"
                       style={{
                         fontSize: 8,
                         background: otherCfg.indicatorColor,
@@ -678,6 +705,7 @@ export function Rack({
                   item={topItem}
                   rackId={id}
                   activeSide={activeSide}
+                  showImages={showImages}
                   onRemove={onRemove}
                   onMove={onMove}
                   onRenameItem={onRenameItem}

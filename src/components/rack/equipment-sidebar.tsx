@@ -22,7 +22,7 @@ function canMount(mountableAt: string | undefined, side: RackSide): boolean {
   return mountableAt === side;
 }
 
-function DraggableEquipment({ item, activeSide }: { item: EquipmentItem; activeSide: RackSide }) {
+function DraggableEquipment({ item, activeSide, showImages = true }: { item: EquipmentItem; activeSide: RackSide; showImages?: boolean }) {
   const allowed = canMount(item.mountableAt, activeSide);
   const notAllowedLabel = mountLabel(item.mountableAt, activeSide);
 
@@ -50,7 +50,9 @@ function DraggableEquipment({ item, activeSide }: { item: EquipmentItem; activeS
       <div className="w-1 self-stretch rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
       <div className="w-8 h-8 rounded flex-shrink-0 overflow-hidden border border-border/50 flex items-center justify-center bg-muted">
         {(() => {
-          const img = activeSide === 'front' ? item.frontImageUrl : item.rearImageUrl;
+          const img = showImages
+            ? (activeSide === 'front' ? item.frontImageUrl : item.rearImageUrl)
+            : null;
           return img ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={img} alt={item.name} className="w-full h-full object-cover" draggable={false} />
@@ -78,9 +80,11 @@ function DraggableEquipment({ item, activeSide }: { item: EquipmentItem; activeS
 export function EquipmentSidebar({
   equipment,
   activeSide,
+  showImages = true,
 }: {
   equipment: EquipmentItem[];
   activeSide: RackSide;
+  showImages?: boolean;
 }) {
   const [search, setSearch] = useState('');
   const [activeType, setActiveType] = useState<EquipmentType | 'all'>('all');
@@ -179,7 +183,7 @@ export function EquipmentSidebar({
               </div>
               <div className="space-y-1">
                 {grouped[type]!.map(item => (
-                  <DraggableEquipment key={item.id} item={item} activeSide={activeSide} />
+                  <DraggableEquipment key={item.id} item={item} activeSide={activeSide} showImages={showImages} />
                 ))}
               </div>
             </div>
