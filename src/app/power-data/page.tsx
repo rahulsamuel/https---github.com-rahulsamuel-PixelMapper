@@ -86,8 +86,9 @@ export default function PowerDataPage() {
     const baseHz = selectedProcessor?.baseRefreshRateHz ?? 60;
     const rateHz = parseFloat(refreshRate) || 60;
     const rawPxPerPort = selectedProcessor?.pixelsPerPort ?? 0;
-    // Scale capacity down proportionally if refresh rate exceeds the base rate
-    const pixelsPerPort = rateHz > baseHz ? Math.floor(rawPxPerPort * (baseHz / rateHz)) : rawPxPerPort;
+    // Capacity scales inversely with refresh rate relative to the base rate:
+    // lower rates get proportionally more pixels, higher rates get fewer.
+    const pixelsPerPort = Math.floor(rawPxPerPort * (baseHz / rateHz));
     // Tiles per 1G data port (one physical cable to a tile group)
     const maxTilesPerDataPort = pixelsPerTile > 0 && pixelsPerPort > 0 ? Math.floor(pixelsPerPort / pixelsPerTile) : 0;
 
