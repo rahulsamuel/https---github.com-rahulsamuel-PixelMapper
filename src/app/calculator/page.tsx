@@ -4,9 +4,10 @@
 import dynamic from 'next/dynamic';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Calculator, Spline } from 'lucide-react';
 import { getProducts } from './actions';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 
@@ -16,6 +17,11 @@ const CalculatorForm = dynamic(() => import('@/components/calculator/calculator-
 });
 
 const ResultsDisplay = dynamic(() => import('@/components/calculator/results-display').then(mod => mod.ResultsDisplay), {
+  ssr: false,
+  loading: () => <ResultsDisplaySkeleton />,
+});
+
+const CurvingCalculator = dynamic(() => import('@/components/calculator/curving-calculator').then(mod => mod.CurvingCalculator), {
   ssr: false,
   loading: () => <ResultsDisplaySkeleton />,
 });
@@ -65,6 +71,7 @@ function greatestCommonDivisor(a: number, b: number): number {
 
 export default function CalculatorPage() {
     const [products, setProducts] = useState<LedProduct[]>([]);
+    const [activeTab, setActiveTab] = usePersistentState<string>('calculator:activeTab', 'results');
     const [formState, setFormState] = usePersistentState<FormState>('calculator:formState', {
         projectName: "My LED Project",
         selectedProductId: null,
@@ -213,7 +220,31 @@ export default function CalculatorPage() {
             </div>
             {/* Main content */}
             <div className="flex-1 overflow-auto p-6">
-                {results ? <ResultsDisplay results={results} formState={formState} /> : <ResultsDisplaySkeleton />}
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                    <TabsList className="mb-6">
+                        <TabsTrigger value="results" className="gap-1.5">
+                            <Calculator className="h-4 w-4" />
+                            Results
+                        </TabsTrigger>
+                        <TabsTrigger value="curving" className="gap-1.5">
+                            <Spline className="h-4 w-4" />
+                            Curving
+                        </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="results">
+                        {results ? <ResultsDisplay results={results} formState={formState} /> : <ResultsDisplaySkeleton />}
+                    </TabsContent>
+                    <TabsContent value="curving">
+                        {selectedProduct ? (
+                            <CurvingCalculator
+                                screenWidthTiles={formState.screenWidthTiles}
+                                tileWidthMm={selectedProduct.tileWidthMm ?? 500}
+                            />
+                        ) : (
+                            <ResultsDisplaySkeleton />
+                        )}
+                    </TabsContent>
+                </Tabs>
             </div>
         </div>
     );
@@ -272,5 +303,3 @@ function ResultsDisplaySkeleton() {
     </div>
   );
 }
-
-    
