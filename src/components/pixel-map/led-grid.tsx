@@ -33,6 +33,10 @@ export function LedGrid() {
     resolutionLabelFontSize,
     resolutionLabelColor,
     resolutionLabelColorMode,
+    showDimensions,
+    dimensionUnit,
+    dimensionLabelSize,
+    dimensionLabelColor,
     zoom,
     onOffMode,
     sliceOffsetLabels,
@@ -47,6 +51,7 @@ export function LedGrid() {
     moduleBorderColor,
     randomizeModuleColors,
     currentScreen,
+    products,
     updateTextOverlay,
     removeTextOverlay,
     activeTool,
@@ -56,6 +61,8 @@ export function LedGrid() {
     handleGridMouseMove,
     handleGridMouseUp,
   } = usePixelMap();
+
+  const selectedProduct = useMemo(() => products.find(p => p.id === currentScreen.selectedProductId) ?? null, [products, currentScreen.selectedProductId]);
 
   const { totalGridPixelWidth, totalGridPixelHeight } = useMemo(() => {
     let width = 0;
@@ -129,6 +136,33 @@ export function LedGrid() {
     : resolutionLabelColor;
 
   const resolutionText = `Pixel: ${totalGridPixelWidth} x ${totalGridPixelHeight}`;
+
+  // Physical dimension calculations
+  const tileWmm = selectedProduct?.tileWidthMm as number | undefined;
+  const tileHmm = selectedProduct?.tileHeightMm as number | undefined;
+  const screenWmm = tileWmm ? tileWmm * effectiveScreenWidth : 0;
+  const screenHmm = tileHmm ? tileHmm * effectiveScreenHeight : 0;
+
+  const fmtMm = (mm: number) => {
+    if (mm >= 1000) return `${(mm / 1000).toFixed(2)}m`;
+    return `${Math.round(mm)}mm`;
+  };
+  const fmtInch = (mm: number) => `${(mm / 25.4).toFixed(1)}"`;
+
+  const widthLabel = (() => {
+    if (!screenWmm) return '';
+    const parts: string[] = [];
+    if (dimensionUnit === 'imperial' || dimensionUnit === 'all') parts.push(fmtInch(screenWmm));
+    if (dimensionUnit === 'standard' || dimensionUnit === 'all') parts.push(fmtMm(screenWmm));
+    return parts.join(' / ');
+  })();
+  const heightLabel = (() => {
+    if (!screenHmm) return '';
+    const parts: string[] = [];
+    if (dimensionUnit === 'imperial' || dimensionUnit === 'all') parts.push(fmtInch(screenHmm));
+    if (dimensionUnit === 'standard' || dimensionUnit === 'all') parts.push(fmtMm(screenHmm));
+    return parts.join(' / ');
+  })();
 
   const isSelectionMode = activeTool === 'delete' || activeTool === 'color';
 
@@ -297,6 +331,17 @@ export function LedGrid() {
                 {resolutionText}
             </div>
         )}
+        {showDimensions && selectedProduct && screenWmm > 0 && screenHmm > 0 && (
+          <DimensionOverlay
+            gridWidth={totalGridPixelWidth}
+            gridHeight={totalGridPixelHeight}
+            zoom={zoom}
+            widthLabel={widthLabel}
+            heightLabel={heightLabel}
+            fontSize={dimensionLabelSize}
+            color={dimensionLabelColor}
+          />
+        )}
         {(currentScreen.textOverlays ?? []).map((overlay) => (
           <DraggableTextOverlay
             key={overlay.id}
@@ -417,6 +462,100 @@ function DraggableTextOverlay({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+function DimensionOverlay({
+  gridWidth,
+  gridHeight,
+  zoom,
+  widthLabel,
+  heightLabel,
+  fontSize,
+  color,
+}: {
+  gridWidth: number;
+  gridHeight: number;
+  zoom: number;
+  widthLabel: string;
+  heightLabel: string;
+  fontSize: number;
+  color: string;
+}) {
+  const scaledW = gridWidth * zoom;
+  const scaledH = gridHeight * zoom;
+  const offset = 28;
+  const arrowSize = 8;
+  const fs = fontSize * zoom;
+  const stroke = 2;
+
+  return (
+    <div className="absolute pointer-events-none z-30" style={{ left: -offset, top: -offset }}>
+      <svg
+        width={scaledW + offset * 2}
+        height={scaledH + offset * 2}
+        style={{ overflow: 'visible' }}
+      >
+        {/* Width dimension (bottom) */}
+        <g>
+          <line
+            x1={offset} y1={scaledH + offset / 2}
+            x2={scaledW + offset} y2={scaledH + offset / 2}
+            stroke={color} strokeWidth={stroke}
+          />
+          <polygon
+            points={`${offset},${scaledH + offset / 2} ${offset + arrowSize},${scaledH + offset / 2 - arrowSize / 2} ${offset + arrowSize},${scaledH + offset / 2 + arrowSize / 2}`}
+            fill={color}
+          />
+          <polygon
+            points={`${scaledW + offset},${scaledH + offset / 2} ${scaledW + offset - arrowSize},${scaledH + offset / 2 - arrowSize / 2} ${scaledW + offset - arrowSize},${scaledH + offset / 2 + arrowSize / 2}`}
+            fill={color}
+          />
+          <line x1={offset} y1={scaledH + offset / 2 - 6} x2={offset} y2={scaledH + offset / 2 + 6} stroke={color} strokeWidth={1} />
+          <line x1={scaledW + offset} y1={scaledH + offset / 2 - 6} x2={scaledW + offset} y2={scaledH + offset / 2 + 6} stroke={color} strokeWidth={1} />
+          <text
+            x={offset + scaledW / 2}
+            y={scaledH + offset / 2 + fs + 4}
+            textAnchor="middle"
+            fontSize={fs}
+            fill={color}
+            fontWeight="bold"
+          >
+            {widthLabel}
+          </text>
+        </g>
+
+        {/* Height dimension (right side) */}
+        <g>
+          <line
+            x1={scaledW + offset / 2 + offset} y1={offset}
+            x2={scaledW + offset / 2 + offset} y2={scaledH + offset}
+            stroke={color} strokeWidth={stroke}
+          />
+          <polygon
+            points={`${scaledW + offset / 2 + offset},${offset} ${scaledW + offset / 2 + offset - arrowSize / 2},${offset + arrowSize} ${scaledW + offset / 2 + offset + arrowSize / 2},${offset + arrowSize}`}
+            fill={color}
+          />
+          <polygon
+            points={`${scaledW + offset / 2 + offset},${scaledH + offset} ${scaledW + offset / 2 + offset - arrowSize / 2},${scaledH + offset - arrowSize} ${scaledW + offset / 2 + offset + arrowSize / 2},${scaledH + offset - arrowSize}`}
+            fill={color}
+          />
+          <line x1={scaledW + offset / 2 + offset - 6} y1={offset} x2={scaledW + offset / 2 + offset + 6} y2={offset} stroke={color} strokeWidth={1} />
+          <line x1={scaledW + offset / 2 + offset - 6} y1={scaledH + offset} x2={scaledW + offset / 2 + offset + 6} y2={scaledH + offset} stroke={color} strokeWidth={1} />
+          <text
+            x={scaledW + offset / 2 + offset + fs + 4}
+            y={offset + scaledH / 2}
+            textAnchor="middle"
+            fontSize={fs}
+            fill={color}
+            fontWeight="bold"
+            transform={`rotate(90, ${scaledW + offset / 2 + offset + fs + 4}, ${offset + scaledH / 2})`}
+          >
+            {heightLabel}
+          </text>
+        </g>
+      </svg>
     </div>
   );
 }

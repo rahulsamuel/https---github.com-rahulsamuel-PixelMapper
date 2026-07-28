@@ -56,6 +56,14 @@ export function LabelControls() {
     setResolutionLabelColor,
     resolutionLabelColorMode,
     setResolutionLabelColorMode,
+    showDimensions,
+    setShowDimensions,
+    dimensionUnit,
+    setDimensionUnit,
+    dimensionLabelSize,
+    setDimensionLabelSize,
+    dimensionLabelColor,
+    setDimensionLabelColor,
     currentScreen,
     addTextOverlay,
     updateTextOverlay,
@@ -338,6 +346,67 @@ export function LabelControls() {
                             step={1}
                             value={[resolutionLabelFontSize]}
                             onValueChange={(value) => setResolutionLabelFontSize(value[0])}
+                        />
+                    </div>
+                </div>
+            )}
+        </div>
+
+        <Separator />
+
+        <div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="show-dimensions">Show Dimensions</Label>
+              <Switch
+                id="show-dimensions"
+                checked={showDimensions}
+                onCheckedChange={setShowDimensions}
+              />
+            </div>
+            {showDimensions && (
+                <div className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="dimension-unit">Unit System</Label>
+                        <Select
+                            value={dimensionUnit}
+                            onValueChange={(v) => setDimensionUnit(v as 'imperial' | 'standard' | 'all')}
+                        >
+                            <SelectTrigger id="dimension-unit"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All (Imperial + Standard)</SelectItem>
+                                <SelectItem value="imperial">Imperial (inches)</SelectItem>
+                                <SelectItem value="standard">Standard (mm/m)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="dimension-color">Color</Label>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                id="dimension-color"
+                                type="color"
+                                value={dimensionLabelColor}
+                                onChange={(e) => setDimensionLabelColor(e.target.value)}
+                                className="w-14 p-1"
+                            />
+                            <Input
+                                type="text"
+                                value={dimensionLabelColor}
+                                onChange={(e) => setDimensionLabelColor(e.target.value)}
+                                placeholder="#ffffff"
+                                className="font-mono"
+                            />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="dimension-font-size">Font Size: {dimensionLabelSize}px</Label>
+                        <Slider
+                            id="dimension-font-size"
+                            min={10}
+                            max={128}
+                            step={1}
+                            value={[dimensionLabelSize]}
+                            onValueChange={(value) => setDimensionLabelSize(value[0])}
                         />
                     </div>
                 </div>

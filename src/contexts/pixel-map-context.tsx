@@ -104,6 +104,10 @@ interface ScreenArrangement {
   showSliceOffsetLabels: boolean;
   showResolution: boolean;
   resolutionLabelPosition: string;
+  showDimensions: boolean;
+  dimensionUnit: 'imperial' | 'standard' | 'all';
+  dimensionLabelSize: number;
+  dimensionLabelColor: string;
 }
 
 export interface RasterMapConfig {
@@ -176,6 +180,10 @@ export interface Screen {
   resolutionLabelFontSize: number;
   resolutionLabelColor: string;
   resolutionLabelColorMode: LabelColorMode;
+  showDimensions: boolean;
+  dimensionUnit: 'imperial' | 'standard' | 'all';
+  dimensionLabelSize: number;
+  dimensionLabelColor: string;
   rasterGroupId: string;
   topHalfTile: boolean;
   bottomHalfTile: boolean;
@@ -266,6 +274,10 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setResolutionLabelFontSize: Dispatch<SetStateAction<number>>;
   setResolutionLabelColor: Dispatch<SetStateAction<string>>;
   setResolutionLabelColorMode: Dispatch<SetStateAction<LabelColorMode>>;
+  setShowDimensions: Dispatch<SetStateAction<boolean>>;
+  setDimensionUnit: Dispatch<SetStateAction<'imperial' | 'standard' | 'all'>>;
+  setDimensionLabelSize: Dispatch<SetStateAction<number>>;
+  setDimensionLabelColor: Dispatch<SetStateAction<string>>;
   addTextOverlay: () => void;
   updateTextOverlay: (id: string, updates: Partial<TextOverlay>) => void;
   removeTextOverlay: (id: string) => void;
@@ -440,6 +452,10 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     resolutionLabelFontSize: 32,
     resolutionLabelColor: '#ffffff',
     resolutionLabelColorMode: 'auto',
+    showDimensions: false,
+    dimensionUnit: 'all',
+    dimensionLabelSize: 24,
+    dimensionLabelColor: '#ffffff',
     rasterGroupId: 'raster-1',
     topHalfTile: false,
     bottomHalfTile: false,
@@ -636,6 +652,10 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setResolutionLabelFontSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, resolutionLabelFontSize: typeof updater === 'function' ? updater(s.resolutionLabelFontSize ?? 32) : updater }));
   const setResolutionLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, resolutionLabelColor: typeof updater === 'function' ? updater(s.resolutionLabelColor ?? '#ffffff') : updater }));
   const setResolutionLabelColorMode = (updater: SetStateAction<LabelColorMode>) => updateCurrentScreen(s => ({ ...s, resolutionLabelColorMode: typeof updater === 'function' ? updater(s.resolutionLabelColorMode ?? 'auto') : updater }));
+  const setShowDimensions = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showDimensions: typeof updater === 'function' ? updater(s.showDimensions ?? false) : updater }));
+  const setDimensionUnit = (updater: SetStateAction<'imperial' | 'standard' | 'all'>) => updateCurrentScreen(s => ({ ...s, dimensionUnit: typeof updater === 'function' ? updater(s.dimensionUnit ?? 'all') : updater }));
+  const setDimensionLabelSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, dimensionLabelSize: typeof updater === 'function' ? updater(s.dimensionLabelSize ?? 24) : updater }));
+  const setDimensionLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, dimensionLabelColor: typeof updater === 'function' ? updater(s.dimensionLabelColor ?? '#ffffff') : updater }));
   const setProcessorType = (updater: SetStateAction<ProcessorType>) => updateCurrentScreen(s => ({ ...s, processorType: typeof updater === 'function' ? updater(s.processorType) : updater }));
 
   const drawTextOverlaysOnCtx = useCallback((
@@ -2842,6 +2862,14 @@ const handleRightHalfTileChange = (add: boolean) => {
     setResolutionLabelColor,
     resolutionLabelColorMode: currentScreen.resolutionLabelColorMode ?? 'auto',
     setResolutionLabelColorMode,
+    showDimensions: currentScreen.showDimensions ?? false,
+    setShowDimensions,
+    dimensionUnit: currentScreen.dimensionUnit ?? 'all',
+    setDimensionUnit,
+    dimensionLabelSize: currentScreen.dimensionLabelSize ?? 24,
+    setDimensionLabelSize,
+    dimensionLabelColor: currentScreen.dimensionLabelColor ?? '#ffffff',
+    setDimensionLabelColor,
     addTextOverlay,
     updateTextOverlay,
     removeTextOverlay,
