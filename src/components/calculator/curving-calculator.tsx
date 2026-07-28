@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { RotateCw, RotateCcw, ZoomIn, ZoomOut, Maximize2, RefreshCw } from 'lucide-react';
+import { RotateCw, RotateCcw, ZoomIn, ZoomOut, Maximize2, RefreshCw, Eye, ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 
 export type CurveMode = 'uniform' | 'variable';
 export type Direction = 'concave' | 'convex';
@@ -405,7 +405,19 @@ export function CurvingPreview({ screenWidthTiles, tileWidthMm, state, onZoom }:
       <Card className="flex-1 flex flex-col min-h-0">
         <CardHeader className="flex-shrink-0 pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle>Top-Down Arc Preview</CardTitle>
+            <div className="flex items-center gap-3">
+              <CardTitle>Top-Down Arc Preview</CardTitle>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold border-2 ${
+                  state.direction === 'concave'
+                    ? 'border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                    : 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                }`}
+              >
+                {state.direction === 'concave' ? <ArrowUpFromLine className="h-3.5 w-3.5" /> : <ArrowDownToLine className="h-3.5 w-3.5" />}
+                {state.direction === 'concave' ? 'Concave — curves toward viewer' : 'Convex — curves away from viewer'}
+              </span>
+            </div>
             <div className="flex items-center gap-1">
               <Button variant="outline" size="icon" className="h-7 w-7" onClick={handleZoomOut} disabled={zoom <= ZOOM_MIN} title="Zoom out">
                 <ZoomOut className="h-3.5 w-3.5" />
@@ -445,9 +457,9 @@ export function CurvingPreview({ screenWidthTiles, tileWidthMm, state, onZoom }:
                     r={arc.radius * scale}
                     fill="none"
                     stroke="hsl(var(--primary))"
-                    strokeWidth="1"
-                    strokeDasharray="4 4"
-                    opacity="0.25"
+                    strokeWidth="1.5"
+                    strokeDasharray="6 4"
+                    opacity="0.4"
                   />
                   <line
                     x1={toSvg(arc.center.x, arc.center.y).x}
@@ -455,17 +467,25 @@ export function CurvingPreview({ screenWidthTiles, tileWidthMm, state, onZoom }:
                     x2={toSvg(arc.positions[0].x1, arc.positions[0].y1).x}
                     y2={toSvg(arc.positions[0].x1, arc.positions[0].y1).y}
                     stroke="hsl(var(--primary))"
-                    strokeWidth="1.5"
-                    strokeDasharray="6 3"
-                    opacity="0.6"
+                    strokeWidth="2"
+                    strokeDasharray="8 4"
+                    opacity="0.8"
+                  />
+                  <circle
+                    cx={toSvg(arc.center.x, arc.center.y).x}
+                    cy={toSvg(arc.center.x, arc.center.y).y}
+                    r="3"
+                    fill="hsl(var(--primary))"
+                    opacity="0.8"
                   />
                   <text
                     x={(toSvg(arc.center.x, arc.center.y).x + toSvg(arc.positions[0].x1, arc.positions[0].y1).x) / 2}
                     y={(toSvg(arc.center.x, arc.center.y).y + toSvg(arc.positions[0].x1, arc.positions[0].y1).y) / 2}
                     fill="hsl(var(--primary))"
-                    fontSize={Math.max(9, 11 * zoom)}
+                    fontSize={Math.max(10, 12 * zoom)}
+                    fontWeight="bold"
                     textAnchor="middle"
-                    dy="-6"
+                    dy="-8"
                   >
                     R = {formatMm(arc.radius)}
                   </text>
@@ -499,50 +519,116 @@ export function CurvingPreview({ screenWidthTiles, tileWidthMm, state, onZoom }:
               )}
 
               {/* Columns */}
-              {arc.positions.map((col, i) => {
-                const p1 = toSvg(col.x1, col.y1);
-                const p2 = toSvg(col.x2, col.y2);
-                const strokeW = Math.max(3, 10 * baseScale * zoom);
+              {(() => {
+                const dirSign = state.direction === 'concave' ? -1 : 1;
+                return arc.positions.map((col, i) => {
+                  const p1 = toSvg(col.x1, col.y1);
+                  const p2 = toSvg(col.x2, col.y2);
+                  const strokeW = Math.max(3, 10 * baseScale * zoom);
+                  const midX = (p1.x + p2.x) / 2;
+                  const midY = (p1.y + p2.y) / 2;
+                  // Outward normal (away from center / outside of curve)
+                  const dx = p2.x - p1.x;
+                  const dy = p2.y - p1.y;
+                  const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                  const nx = (dy * dirSign) / len;
+                  const ny = (-dx * dirSign) / len;
+                  const labelOffset = strokeW / 2 + 16;
+                  const labelX = midX + nx * labelOffset;
+                  const labelY = midY + ny * labelOffset;
+                  return (
+                    <g key={i}>
+                      <line
+                        x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={strokeW}
+                        strokeLinecap="butt"
+                        opacity={0.85}
+                      />
+                      {zoom >= 0.5 && (
+                        <>
+                          <circle
+                            cx={labelX}
+                            cy={labelY}
+                            r={Math.max(8, 11 * zoom)}
+                            fill="hsl(var(--primary))"
+                            opacity="0.9"
+                          />
+                          <text
+                            x={labelX}
+                            y={labelY}
+                            fill="white"
+                            fontSize={Math.max(8, 10 * zoom)}
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            fontWeight="bold"
+                          >
+                            {i + 1}
+                          </text>
+                        </>
+                      )}
+                    </g>
+                  );
+                });
+              })()}
+
+              {/* Direction / shape label + Viewer position indicator */}
+              {!isNearFullCircle && arc.positions.length > 0 && (() => {
+                const dirSign = state.direction === 'concave' ? -1 : 1;
+                const first = arc.positions[0];
+                const last = arc.positions[arc.positions.length - 1];
+                const midDataX = (first.x1 + last.x2) / 2;
+                const midDataY = (first.y1 + last.y2) / 2;
+                const viewerSvg = toSvg(midDataX, midDataY);
+                // Viewer is on the inside of the curve (opposite of outward normal)
+                const dx = last.x2 - first.x1;
+                const dy = last.y2 - first.y1;
+                const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                const nx = (dy * dirSign) / len;
+                const ny = (-dx * dirSign) / len;
+                const viewerOffset = 40;
+                const vx = viewerSvg.x - nx * viewerOffset;
+                const vy = viewerSvg.y - ny * viewerOffset;
                 return (
-                  <g key={i}>
-                    <line
-                      x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y}
-                      stroke="hsl(var(--primary))"
-                      strokeWidth={strokeW}
-                      strokeLinecap="butt"
-                      opacity={0.85}
-                    />
-                    {zoom >= 0.5 && (
-                      <text
-                        x={(p1.x + p2.x) / 2}
-                        y={(p1.y + p2.y) / 2}
-                        fill="white"
-                        fontSize={Math.max(7, 9 * zoom)}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fontWeight="bold"
-                      >
-                        {i + 1}
-                      </text>
-                    )}
+                  <g opacity="0.7">
+                    <circle cx={vx} cy={vy} r="14" fill="hsl(var(--muted))" stroke="hsl(var(--muted-foreground))" strokeWidth="1.5" />
+                    <text
+                      x={vx}
+                      y={vy}
+                      fill="hsl(var(--muted-foreground))"
+                      fontSize={Math.max(10, 13 * zoom)}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                    >
+                      V
+                    </text>
+                    <text
+                      x={vx}
+                      y={vy + Math.max(18, 22 * zoom)}
+                      fill="hsl(var(--muted-foreground))"
+                      fontSize={Math.max(8, 10 * zoom)}
+                      textAnchor="middle"
+                      fontWeight="600"
+                    >
+                      Viewer
+                    </text>
                   </g>
                 );
-              })}
+              })()}
 
-              {/* Direction / shape label */}
+              {/* Shape label at bottom */}
               <text
                 x={Math.ceil(svgW) / 2}
                 y={Math.ceil(svgH) - 10}
                 fill="hsl(var(--muted-foreground))"
-                fontSize={Math.max(9, 11 * zoom)}
+                fontSize={Math.max(10, 12 * zoom)}
                 textAnchor="middle"
                 fontStyle="italic"
+                fontWeight="600"
               >
                 {isNearFullCircle
                   ? `Full Circle / Cylinder (${state.direction})`
-                  : state.direction === 'concave'
-                  ? '↑ Viewer (Concave)'
-                  : '↓ Viewer (Convex)'}
+                  : `${state.direction === 'concave' ? 'Concave' : 'Convex'} Arc — ${arc.totalArcAngleDeg.toFixed(1)}°`}
               </text>
             </svg>
           </div>
