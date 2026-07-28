@@ -7,7 +7,7 @@ import {
   GitBranch, FileOutput, Upload, Cpu, Shapes, Bolt,
   ArrowRight, CheckCircle2, Sparkles, Layers, Zap, Map,
   Palette, Download, LayoutGrid, ScanLine, MonitorPlay,
-  ChevronRight, Users, Star, Shield,
+  ChevronRight, Users, Star, Shield, Server, Spline, UsersRound,
 } from 'lucide-react';
 import { Logo } from '../logo';
 import { cn } from '@/lib/utils';
@@ -87,18 +87,43 @@ const features = [
     bg: 'bg-cyan-500/10',
     tag: 'Workflow',
   },
+  {
+    icon: Spline,
+    title: 'Curving Calculator',
+    description: 'Visualise curved and cylindrical LED layouts. Calculate radius, diameter, and the exact junction angle needed for a full circle.',
+    color: 'text-emerald-400',
+    bg: 'bg-emerald-500/10',
+    tag: 'Calculator',
+  },
+  {
+    icon: Server,
+    title: 'Rack Drawing',
+    description: 'Build front and rear rack elevations with drag-and-drop equipment. Export print-ready PNG diagrams for fabrication.',
+    color: 'text-rose-400',
+    bg: 'bg-rose-500/10',
+    tag: 'Hardware',
+  },
+  {
+    icon: UsersRound,
+    title: 'Real-time Collaboration',
+    description: 'Invite teammates to edit a project together in real time. See live cursors, presence indicators, and instant sync.',
+    color: 'text-indigo-400',
+    bg: 'bg-indigo-500/10',
+    tag: 'Workflow',
+  },
 ];
 
 const tools = [
   { href: '/app',          icon: Map,    label: 'Pixel Map',       desc: 'Design your LED layout' },
   { href: '/calculator',   icon: Layers, label: 'LED Calculator',  desc: 'Compute specs instantly' },
   { href: '/power-data',   icon: Zap,    label: 'Power & Data',    desc: 'Circuit load analysis' },
+  { href: '/rack-drawing', icon: Server, label: 'Rack Drawing',    desc: 'Plan equipment racks' },
 ];
 
 const stats = [
   { value: '50+',  label: 'LED Products' },
   { value: '∞',    label: 'Screen Configs' },
-  { value: '3',    label: 'Processors' },
+  { value: '4',    label: 'Pro Tools' },
   { value: '100%', label: 'Free to Use' },
 ];
 
@@ -352,6 +377,49 @@ export function LandingPage() {
               The tools
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Four tools, one platform</h2>
+          </div>
+
+          <div className="space-y-16 max-w-5xl mx-auto">
+            {/* Rack Drawing */}
+            <div className="grid lg:grid-cols-2 gap-10 items-center">
+              <div className="space-y-4">
+                <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center">
+                  <Server className="w-6 h-6 text-rose-400" />
+                </div>
+                <h3 className="text-2xl font-bold">Rack Drawing</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  Plan your equipment racks visually. Drag processors, power supplies, and gear
+                  onto front or rear rack elevations, resize racks to any RU height, and export
+                  print-ready PNG diagrams for fabrication and installation.
+                </p>
+                <ul className="space-y-2">
+                  {['Front and rear rack views', 'Drag-and-drop equipment library', 'Custom RU sizing per rack', 'Photo or block display modes'].map(t => (
+                    <li key={t} className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                      {t}
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/rack-drawing">
+                  <Button variant="outline" className="gap-2 group mt-2">
+                    Open Rack Drawing <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                  </Button>
+                </Link>
+              </div>
+              <div className="rounded-2xl border border-border/60 bg-card/60 p-6 space-y-3">
+                {[
+                  { label: 'Rack height', value: '24 RU' },
+                  { label: 'Racks', value: 'Unlimited' },
+                  { label: 'Sides', value: 'Front + Rear' },
+                  { label: 'Export', value: 'PNG' },
+                ].map(r => (
+                  <div key={r.label} className="flex items-center justify-between py-2 border-b border-border/40 last:border-0">
+                    <span className="text-sm text-muted-foreground">{r.label}</span>
+                    <span className="text-sm font-mono font-semibold text-primary">{r.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="space-y-16 max-w-5xl mx-auto">
