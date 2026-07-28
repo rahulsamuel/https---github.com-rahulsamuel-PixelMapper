@@ -2,9 +2,9 @@
 
 "use client";
 
-import { usePixelMap, type TextOverlay } from "@/contexts/pixel-map-context";
+import { usePixelMap, type TextOverlay, type LogoOverlay } from "@/contexts/pixel-map-context";
 import { cn, isColorDark } from "@/lib/utils";
-import { useMemo, useRef, useCallback, useState } from "react";
+import { useMemo, useRef, useCallback, useState, useEffect } from "react";
 import { Trash2 } from "lucide-react";
 
 export function LedGrid() {
@@ -54,6 +54,8 @@ export function LedGrid() {
     products,
     updateTextOverlay,
     removeTextOverlay,
+    logoOverlay,
+    setLogoOverlay,
     activeTool,
     selectionRect,
     selectedTileIds,
@@ -151,7 +153,8 @@ export function LedGrid() {
     const totalInches = mm / 25.4;
     const feet = Math.floor(totalInches / 12);
     const remainingInches = totalInches - feet * 12;
-    return `${feet}' ${remainingInches.toFixed(1)}"`;
+    const inchStr = formatFractionalInch(remainingInches);
+    return `${feet}' ${inchStr}"`;
   };
   const fmtLabel = (mm: number) => {
     switch (dimensionUnit) {
@@ -357,6 +360,15 @@ export function LedGrid() {
             onRemove={removeTextOverlay}
           />
         ))}
+        {logoOverlay && (
+          <DraggableLogoOverlay
+            overlay={logoOverlay}
+            zoom={zoom}
+            gridWidth={totalGridPixelWidth}
+            gridHeight={totalGridPixelHeight}
+            onUpdate={setLogoOverlay}
+          />
+        )}
       </div>
     </div>
   );
@@ -469,6 +481,30 @@ function DraggableTextOverlay({
   );
 }
 
+function formatFractionalInch(inches: number): string {
+  const whole = Math.floor(inches);
+  const frac = inches - whole;
+  const denominators = [2, 4, 8, 16, 32];
+  let bestNumerator = 0;
+  let bestDenominator = 1;
+  let bestDiff = frac;
+  for (const denom of denominators) {
+    const numerator = Math.round(frac * denom);
+    const diff = Math.abs(frac - numerator / denom);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestNumerator = numerator;
+      bestDenominator = denom;
+    }
+  }
+  if (bestNumerator === 0) return `${whole}`;
+  const gcf = (a: number, b: number): number => b === 0 ? a : gcf(b, a % b);
+  const divisor = gcf(bestNumerator, bestDenominator);
+  const num = bestNumerator / divisor;
+  const denom = bestDenominator / divisor;
+  return `${whole} ${num}/${denom}`;
+}
+
 function DimensionOverlay({
   gridWidth,
   gridHeight,
@@ -530,6 +566,70 @@ function DimensionOverlay({
           </text>
         </g>
       </svg>
+    </div>
+  );
+}
+
+function DraggableLogoOverlay({
+  overlay,
+  zoom,
+  gridWidth,
+  gridHeight,
+  onUpdate,
+}: {
+  overlay: LogoOverlay;
+  zoom: number;
+  gridWidth: number;
+  gridHeight: number;
+  onUpdate: (updater: (prev: LogoOverlay | null) => LogoOverlay | null) => void;
+}) {
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: overlay.x, origY: overlay.y };
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleMove = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      const dx = (e.clientX - dragRef.current.startX) / zoom;
+      const dy = (e.clientY - dragRef.current.startY) / zoom;
+      const maxX = gridWidth - overlay.width;
+      const maxY = gridHeight - overlay.height;
+      const nx = Math.max(0, Math.min(maxX, dragRef.current.origX + dx));
+      const ny = Math.max(0, Math.min(maxY, dragRef.current.origY + dy));
+      onUpdate(prev => prev ? { ...prev, x: nx, y: ny } : prev);
+    };
+    const handleUp = () => { setIsDragging(false); dragRef.current = null; };
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    return () => { window.removeEventListener('mousemove', handleMove); window.removeEventListener('mouseup', handleUp); };
+  }, [isDragging, zoom, gridWidth, gridHeight, overlay.width, overlay.height, onUpdate]);
+
+  return (
+    <div
+      className="absolute z-40 cursor-move select-none"
+      style={{
+        left: overlay.x * zoom,
+        top: overlay.y * zoom,
+        width: overlay.width * zoom,
+        height: overlay.height * zoom,
+      }}
+      onMouseDown={handleMouseDown}
+    >
+      <img
+        src={overlay.imageData}
+        alt="Logo overlay"
+        draggable={false}
+        className="w-full h-full object-contain pointer-events-none"
+        style={{ opacity: isDragging ? 0.7 : 1 }}
+      />
+      <div className="absolute -top-1 -left-1 -right-1 -bottom-1 border-2 border-primary/50 rounded pointer-events-none" style={{ display: isDragging ? 'block' : 'none' }} />
     </div>
   );
 }

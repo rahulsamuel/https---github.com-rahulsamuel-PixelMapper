@@ -10,6 +10,28 @@ import { getProducts } from "@/app/calculator/actions";
 import { useAuth } from "./auth-context";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 
+function formatFractionalInch(inches: number): string {
+  const whole = Math.floor(inches);
+  const frac = inches - whole;
+  const denominators = [2, 4, 8, 16, 32];
+  let bestNumerator = 0;
+  let bestDenominator = 1;
+  let bestDiff = frac;
+  for (const denom of denominators) {
+    const numerator = Math.round(frac * denom);
+    const diff = Math.abs(frac - numerator / denom);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestNumerator = numerator;
+      bestDenominator = denom;
+    }
+  }
+  if (bestNumerator === 0) return `${whole}`;
+  const gcf = (a: number, b: number): number => b === 0 ? a : gcf(b, a % b);
+  const divisor = gcf(bestNumerator, bestDenominator);
+  return `${whole} ${bestNumerator / divisor}/${bestDenominator / divisor}`;
+}
+
 interface LedProduct {
     id: string;
     manufacturer: string;
@@ -72,6 +94,16 @@ export interface TextOverlay {
   rotation: number;
   backgroundColor: string;
   showBackground: boolean;
+}
+
+export interface LogoOverlay {
+  id: string;
+  imageData: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  aspectRatio: number;
 }
 
 export interface RasterGroup {
@@ -193,6 +225,7 @@ export interface Screen {
   selectedProductId: string | null;
   nextTileId: number;
   textOverlays: TextOverlay[];
+  logoOverlay: LogoOverlay | null;
   showModules: boolean;
   moduleBorderColor: string;
   randomizeModuleColors: boolean;
@@ -281,6 +314,7 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   addTextOverlay: () => void;
   updateTextOverlay: (id: string, updates: Partial<TextOverlay>) => void;
   removeTextOverlay: (id: string) => void;
+  setLogoOverlay: Dispatch<SetStateAction<LogoOverlay | null>>;
   setOnOffMode: Dispatch<SetStateAction<boolean>>;
   zoom: number;
   setZoom: (value: number | ((prev: number) => number), applyToAllTabs?: boolean) => void;
@@ -465,6 +499,7 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     selectedProductId: 'custom',
     nextTileId: idCounter + initialTiles.length,
     textOverlays: [],
+    logoOverlay: null,
     showModules: false,
     moduleBorderColor: "#000000",
     randomizeModuleColors: false,
@@ -729,6 +764,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       textOverlays: (s.textOverlays ?? []).filter(o => o.id !== id),
     }));
   }, [updateCurrentScreen]);
+
+  const setLogoOverlay = (updater: SetStateAction<LogoOverlay | null>) => updateCurrentScreen(s => ({ ...s, logoOverlay: typeof updater === 'function' ? updater(s.logoOverlay ?? null) : updater }));
 
   const addRasterGroup = useCallback(() => {
     const newId = `raster-${Date.now()}`;
@@ -1579,7 +1616,8 @@ const handleRightHalfTileChange = (add: boolean) => {
                 const totalInches = mm / 25.4;
                 const feet = Math.floor(totalInches / 12);
                 const remainingInches = totalInches - feet * 12;
-                return `${feet}' ${remainingInches.toFixed(1)}"`;
+                const inchStr = formatFractionalInch(remainingInches);
+                return `${feet}' ${inchStr}"`;
             };
             const unit = screen.dimensionUnit ?? 'all';
             const fmtLabel = (mm: number) => {
@@ -1664,6 +1702,17 @@ const handleRightHalfTileChange = (add: boolean) => {
         }
     }
 
+    // Draw logo overlay
+    if (drawOverlays && screen.logoOverlay) {
+      try {
+        const logoImg = new Image();
+        logoImg.src = screen.logoOverlay.imageData;
+        if (logoImg.complete) {
+          masterCtx.drawImage(logoImg, screen.logoOverlay.x, screen.logoOverlay.y, screen.logoOverlay.width, screen.logoOverlay.height);
+        }
+      } catch {}
+    }
+
     // Draw text overlays
     if (drawOverlays && screen.textOverlays) {
       drawTextOverlaysOnCtx(masterCtx, screen.textOverlays, contentWidth, contentHeight);
@@ -1679,12 +1728,27 @@ const handleRightHalfTileChange = (add: boolean) => {
 
     setIsPngDownloading(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
         const canvas = createScreenContentCanvas(currentScreen, activeBounds, includeTextOverlaysInDownload);
         if (!canvas) {
           setIsPngDownloading(false);
           return;
+        }
+
+        const ctx = canvas.getContext('2d');
+
+        // Draw logo overlay asynchronously (image needs to load)
+        if (ctx && includeTextOverlaysInDownload && currentScreen.logoOverlay) {
+          try {
+            const logoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+              const img = new Image();
+              img.onload = () => resolve(img);
+              img.onerror = reject;
+              img.src = currentScreen.logoOverlay!.imageData;
+            });
+            ctx.drawImage(logoImg, currentScreen.logoOverlay.x, currentScreen.logoOverlay.y, currentScreen.logoOverlay.width, currentScreen.logoOverlay.height);
+          } catch {}
         }
 
         const contentPixelWidth = canvas.width;
@@ -1775,6 +1839,10 @@ const handleRightHalfTileChange = (add: boolean) => {
             showSliceOffsetLabels: screen.showSliceOffsetLabels,
             showResolution: screen.showResolution ?? false,
             resolutionLabelPosition: screen.resolutionLabelPosition ?? 'bottom-right',
+            showDimensions: screen.showDimensions ?? false,
+            dimensionUnit: screen.dimensionUnit ?? 'all',
+            dimensionLabelSize: screen.dimensionLabelSize ?? 24,
+            dimensionLabelColor: screen.dimensionLabelColor ?? '#ffffff',
         });
 
         if (screen.rasterOffset.x + contentWidth > totalContentWidth) {
@@ -2977,6 +3045,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     addTextOverlay,
     updateTextOverlay,
     removeTextOverlay,
+    setLogoOverlay,
     onOffMode: currentScreen.onOffMode,
     setOnOffMode,
     zoom,
@@ -3099,6 +3168,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     lastRasterArgs: currentScreen.lastRasterArgs,
     rasterGroupId: currentScreen.rasterGroupId,
     textOverlays: currentScreen.textOverlays,
+    logoOverlay: currentScreen.logoOverlay ?? null,
   };
 
   return (
