@@ -147,22 +147,20 @@ export function LedGrid() {
     if (mm >= 1000) return `${(mm / 1000).toFixed(2)}m`;
     return `${Math.round(mm)}mm`;
   };
-  const fmtInch = (mm: number) => `${(mm / 25.4).toFixed(1)}"`;
+  const fmtFractional = (mm: number) => {
+    const totalInches = mm / 25.4;
+    const feet = Math.floor(totalInches / 12);
+    const remainingInches = totalInches - feet * 12;
+    return `${feet}' ${remainingInches.toFixed(1)}"`;
+  };
+  const fmtLabel = (mm: number) => {
+    if (dimensionUnit === 'mm') return fmtMm(mm);
+    if (dimensionUnit === 'fractional') return fmtFractional(mm);
+    return `${fmtFractional(mm)} / ${fmtMm(mm)}`;
+  };
 
-  const widthLabel = (() => {
-    if (!screenWmm) return '';
-    const parts: string[] = [];
-    if (dimensionUnit === 'imperial' || dimensionUnit === 'all') parts.push(fmtInch(screenWmm));
-    if (dimensionUnit === 'standard' || dimensionUnit === 'all') parts.push(fmtMm(screenWmm));
-    return parts.join(' / ');
-  })();
-  const heightLabel = (() => {
-    if (!screenHmm) return '';
-    const parts: string[] = [];
-    if (dimensionUnit === 'imperial' || dimensionUnit === 'all') parts.push(fmtInch(screenHmm));
-    if (dimensionUnit === 'standard' || dimensionUnit === 'all') parts.push(fmtMm(screenHmm));
-    return parts.join(' / ');
-  })();
+  const widthLabel = screenWmm ? fmtLabel(screenWmm) : '';
+  const heightLabel = screenHmm ? fmtLabel(screenHmm) : '';
 
   const isSelectionMode = activeTool === 'delete' || activeTool === 'color';
 
@@ -485,72 +483,43 @@ function DimensionOverlay({
 }) {
   const scaledW = gridWidth * zoom;
   const scaledH = gridHeight * zoom;
-  const offset = 28;
-  const arrowSize = 8;
   const fs = fontSize * zoom;
+  const padding = fs * 1.5;
+  const arrowSize = Math.max(6, fs * 0.4);
   const stroke = 2;
+  const shadow = 'drop-shadow(1px 1px 2px rgba(0,0,0,0.8))';
 
   return (
-    <div className="absolute pointer-events-none z-30" style={{ left: -offset, top: -offset }}>
-      <svg
-        width={scaledW + offset * 2}
-        height={scaledH + offset * 2}
-        style={{ overflow: 'visible' }}
-      >
-        {/* Width dimension (bottom) */}
+    <div className="absolute pointer-events-none z-30" style={{ left: 0, top: 0, width: scaledW, height: scaledH }}>
+      <svg width={scaledW} height={scaledH} style={{ overflow: 'visible' }}>
+        {/* Width dimension (bottom, inside grid) */}
         <g>
-          <line
-            x1={offset} y1={scaledH + offset / 2}
-            x2={scaledW + offset} y2={scaledH + offset / 2}
-            stroke={color} strokeWidth={stroke}
-          />
-          <polygon
-            points={`${offset},${scaledH + offset / 2} ${offset + arrowSize},${scaledH + offset / 2 - arrowSize / 2} ${offset + arrowSize},${scaledH + offset / 2 + arrowSize / 2}`}
-            fill={color}
-          />
-          <polygon
-            points={`${scaledW + offset},${scaledH + offset / 2} ${scaledW + offset - arrowSize},${scaledH + offset / 2 - arrowSize / 2} ${scaledW + offset - arrowSize},${scaledH + offset / 2 + arrowSize / 2}`}
-            fill={color}
-          />
-          <line x1={offset} y1={scaledH + offset / 2 - 6} x2={offset} y2={scaledH + offset / 2 + 6} stroke={color} strokeWidth={1} />
-          <line x1={scaledW + offset} y1={scaledH + offset / 2 - 6} x2={scaledW + offset} y2={scaledH + offset / 2 + 6} stroke={color} strokeWidth={1} />
-          <text
-            x={offset + scaledW / 2}
-            y={scaledH + offset / 2 + fs + 4}
-            textAnchor="middle"
-            fontSize={fs}
-            fill={color}
-            fontWeight="bold"
-          >
+          <line x1={0} y1={scaledH} x2={0} y2={scaledH - padding - arrowSize} stroke={color} strokeWidth={1} />
+          <line x1={scaledW} y1={scaledH} x2={scaledW} y2={scaledH - padding - arrowSize} stroke={color} strokeWidth={1} />
+          <line x1={arrowSize} y1={scaledH - padding} x2={scaledW - arrowSize} y2={scaledH - padding} stroke={color} strokeWidth={stroke} />
+          <polygon points={`0,${scaledH - padding} ${arrowSize},${scaledH - padding - arrowSize / 2} ${arrowSize},${scaledH - padding + arrowSize / 2}`} fill={color} />
+          <polygon points={`${scaledW},${scaledH - padding} ${scaledW - arrowSize},${scaledH - padding - arrowSize / 2} ${scaledW - arrowSize},${scaledH - padding + arrowSize / 2}`} fill={color} />
+          <text x={scaledW / 2} y={scaledH - padding - fs * 0.7} textAnchor="middle" fontSize={fs} fill={color} fontWeight="bold" style={{ filter: shadow }}>
             {widthLabel}
           </text>
         </g>
 
-        {/* Height dimension (right side) */}
+        {/* Height dimension (right, inside grid) */}
         <g>
-          <line
-            x1={scaledW + offset / 2 + offset} y1={offset}
-            x2={scaledW + offset / 2 + offset} y2={scaledH + offset}
-            stroke={color} strokeWidth={stroke}
-          />
-          <polygon
-            points={`${scaledW + offset / 2 + offset},${offset} ${scaledW + offset / 2 + offset - arrowSize / 2},${offset + arrowSize} ${scaledW + offset / 2 + offset + arrowSize / 2},${offset + arrowSize}`}
-            fill={color}
-          />
-          <polygon
-            points={`${scaledW + offset / 2 + offset},${scaledH + offset} ${scaledW + offset / 2 + offset - arrowSize / 2},${scaledH + offset - arrowSize} ${scaledW + offset / 2 + offset + arrowSize / 2},${scaledH + offset - arrowSize}`}
-            fill={color}
-          />
-          <line x1={scaledW + offset / 2 + offset - 6} y1={offset} x2={scaledW + offset / 2 + offset + 6} y2={offset} stroke={color} strokeWidth={1} />
-          <line x1={scaledW + offset / 2 + offset - 6} y1={scaledH + offset} x2={scaledW + offset / 2 + offset + 6} y2={scaledH + offset} stroke={color} strokeWidth={1} />
+          <line x1={scaledW} y1={0} x2={scaledW - padding - arrowSize} y2={0} stroke={color} strokeWidth={1} />
+          <line x1={scaledW} y1={scaledH} x2={scaledW - padding - arrowSize} y2={scaledH} stroke={color} strokeWidth={1} />
+          <line x1={scaledW - padding} y1={arrowSize} x2={scaledW - padding} y2={scaledH - arrowSize} stroke={color} strokeWidth={stroke} />
+          <polygon points={`${scaledW - padding},0 ${scaledW - padding - arrowSize / 2},${arrowSize} ${scaledW - padding + arrowSize / 2},${arrowSize}`} fill={color} />
+          <polygon points={`${scaledW - padding},${scaledH} ${scaledW - padding - arrowSize / 2},${scaledH - arrowSize} ${scaledW - padding + arrowSize / 2},${scaledH - arrowSize}`} fill={color} />
           <text
-            x={scaledW + offset / 2 + offset + fs + 4}
-            y={offset + scaledH / 2}
+            x={scaledW - padding - fs * 0.7}
+            y={scaledH / 2}
             textAnchor="middle"
             fontSize={fs}
             fill={color}
             fontWeight="bold"
-            transform={`rotate(90, ${scaledW + offset / 2 + offset + fs + 4}, ${offset + scaledH / 2})`}
+            transform={`rotate(-90, ${scaledW - padding - fs * 0.7}, ${scaledH / 2})`}
+            style={{ filter: shadow }}
           >
             {heightLabel}
           </text>

@@ -105,7 +105,7 @@ interface ScreenArrangement {
   showResolution: boolean;
   resolutionLabelPosition: string;
   showDimensions: boolean;
-  dimensionUnit: 'imperial' | 'standard' | 'all';
+  dimensionUnit: 'mm' | 'fractional' | 'all';
   dimensionLabelSize: number;
   dimensionLabelColor: string;
 }
@@ -181,7 +181,7 @@ export interface Screen {
   resolutionLabelColor: string;
   resolutionLabelColorMode: LabelColorMode;
   showDimensions: boolean;
-  dimensionUnit: 'imperial' | 'standard' | 'all';
+  dimensionUnit: 'mm' | 'fractional' | 'all';
   dimensionLabelSize: number;
   dimensionLabelColor: string;
   rasterGroupId: string;
@@ -275,7 +275,7 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setResolutionLabelColor: Dispatch<SetStateAction<string>>;
   setResolutionLabelColorMode: Dispatch<SetStateAction<LabelColorMode>>;
   setShowDimensions: Dispatch<SetStateAction<boolean>>;
-  setDimensionUnit: Dispatch<SetStateAction<'imperial' | 'standard' | 'all'>>;
+  setDimensionUnit: Dispatch<SetStateAction<'mm' | 'fractional' | 'all'>>;
   setDimensionLabelSize: Dispatch<SetStateAction<number>>;
   setDimensionLabelColor: Dispatch<SetStateAction<string>>;
   addTextOverlay: () => void;
@@ -653,7 +653,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setResolutionLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, resolutionLabelColor: typeof updater === 'function' ? updater(s.resolutionLabelColor ?? '#ffffff') : updater }));
   const setResolutionLabelColorMode = (updater: SetStateAction<LabelColorMode>) => updateCurrentScreen(s => ({ ...s, resolutionLabelColorMode: typeof updater === 'function' ? updater(s.resolutionLabelColorMode ?? 'auto') : updater }));
   const setShowDimensions = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showDimensions: typeof updater === 'function' ? updater(s.showDimensions ?? false) : updater }));
-  const setDimensionUnit = (updater: SetStateAction<'imperial' | 'standard' | 'all'>) => updateCurrentScreen(s => ({ ...s, dimensionUnit: typeof updater === 'function' ? updater(s.dimensionUnit ?? 'all') : updater }));
+  const setDimensionUnit = (updater: SetStateAction<'mm' | 'fractional' | 'all'>) => updateCurrentScreen(s => ({ ...s, dimensionUnit: typeof updater === 'function' ? updater(s.dimensionUnit ?? 'all') : updater }));
   const setDimensionLabelSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, dimensionLabelSize: typeof updater === 'function' ? updater(s.dimensionLabelSize ?? 24) : updater }));
   const setDimensionLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, dimensionLabelColor: typeof updater === 'function' ? updater(s.dimensionLabelColor ?? '#ffffff') : updater }));
   const setProcessorType = (updater: SetStateAction<ProcessorType>) => updateCurrentScreen(s => ({ ...s, processorType: typeof updater === 'function' ? updater(s.processorType) : updater }));
@@ -1560,13 +1560,109 @@ const handleRightHalfTileChange = (add: boolean) => {
         masterCtx.shadowBlur = 0;
     }
 
+    // Draw dimensions overlay
+    if (screen.showDimensions) {
+        const product = products.find(p => p.id === screen.selectedProductId);
+        const tileWmm = product?.tileWidthMm as number | undefined;
+        const tileHmm = product?.tileHeightMm as number | undefined;
+        if (tileWmm && tileHmm) {
+            const screenEffW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+            const screenEffH = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+            const physWmm = tileWmm * screenEffW;
+            const physHmm = tileHmm * screenEffH;
+
+            const fmtMm = (mm: number) => mm >= 1000 ? `${(mm / 1000).toFixed(2)}m` : `${Math.round(mm)}mm`;
+            const fmtFractional = (mm: number) => {
+                const totalInches = mm / 25.4;
+                const feet = Math.floor(totalInches / 12);
+                const remainingInches = totalInches - feet * 12;
+                return `${feet}' ${remainingInches.toFixed(1)}"`;
+            };
+            const unit = screen.dimensionUnit ?? 'all';
+            const fmtLabel = (mm: number) => {
+                if (unit === 'mm') return fmtMm(mm);
+                if (unit === 'fractional') return fmtFractional(mm);
+                return `${fmtFractional(mm)} / ${fmtMm(mm)}`;
+            };
+
+            const wLabel = fmtLabel(physWmm);
+            const hLabel = fmtLabel(physHmm);
+            const fontSize = screen.dimensionLabelSize ?? 24;
+            const color = screen.dimensionLabelColor ?? '#ffffff';
+            const padding = fontSize * 1.5;
+            const arrowSize = Math.max(6, fontSize * 0.4);
+            const stroke = 2;
+
+            masterCtx.strokeStyle = color;
+            masterCtx.fillStyle = color;
+            masterCtx.lineWidth = stroke;
+            masterCtx.textAlign = 'center';
+            masterCtx.textBaseline = 'middle';
+            masterCtx.font = `bold ${fontSize}px sans-serif`;
+            masterCtx.shadowColor = 'rgba(0,0,0,0.8)';
+            masterCtx.shadowBlur = fontSize * 0.3;
+
+            // Width dimension (bottom, inside grid)
+            masterCtx.beginPath();
+            masterCtx.moveTo(0, contentHeight);
+            masterCtx.lineTo(0, contentHeight - padding - arrowSize);
+            masterCtx.moveTo(contentWidth, contentHeight);
+            masterCtx.lineTo(contentWidth, contentHeight - padding - arrowSize);
+            masterCtx.moveTo(arrowSize, contentHeight - padding);
+            masterCtx.lineTo(contentWidth - arrowSize, contentHeight - padding);
+            masterCtx.stroke();
+            masterCtx.beginPath();
+            masterCtx.moveTo(0, contentHeight - padding);
+            masterCtx.lineTo(arrowSize, contentHeight - padding - arrowSize / 2);
+            masterCtx.lineTo(arrowSize, contentHeight - padding + arrowSize / 2);
+            masterCtx.closePath();
+            masterCtx.fill();
+            masterCtx.beginPath();
+            masterCtx.moveTo(contentWidth, contentHeight - padding);
+            masterCtx.lineTo(contentWidth - arrowSize, contentHeight - padding - arrowSize / 2);
+            masterCtx.lineTo(contentWidth - arrowSize, contentHeight - padding + arrowSize / 2);
+            masterCtx.closePath();
+            masterCtx.fill();
+            masterCtx.fillText(wLabel, contentWidth / 2, contentHeight - padding - fontSize * 0.7);
+
+            // Height dimension (right, inside grid)
+            masterCtx.beginPath();
+            masterCtx.moveTo(contentWidth, 0);
+            masterCtx.lineTo(contentWidth - padding - arrowSize, 0);
+            masterCtx.moveTo(contentWidth, contentHeight);
+            masterCtx.lineTo(contentWidth - padding - arrowSize, contentHeight);
+            masterCtx.moveTo(contentWidth - padding, arrowSize);
+            masterCtx.lineTo(contentWidth - padding, contentHeight - arrowSize);
+            masterCtx.stroke();
+            masterCtx.beginPath();
+            masterCtx.moveTo(contentWidth - padding, 0);
+            masterCtx.lineTo(contentWidth - padding - arrowSize / 2, arrowSize);
+            masterCtx.lineTo(contentWidth - padding + arrowSize / 2, arrowSize);
+            masterCtx.closePath();
+            masterCtx.fill();
+            masterCtx.beginPath();
+            masterCtx.moveTo(contentWidth - padding, contentHeight);
+            masterCtx.lineTo(contentWidth - padding - arrowSize / 2, contentHeight - arrowSize);
+            masterCtx.lineTo(contentWidth - padding + arrowSize / 2, contentHeight - arrowSize);
+            masterCtx.closePath();
+            masterCtx.fill();
+            masterCtx.save();
+            masterCtx.translate(contentWidth - padding - fontSize * 0.7, contentHeight / 2);
+            masterCtx.rotate(-Math.PI / 2);
+            masterCtx.fillText(hLabel, 0, 0);
+            masterCtx.restore();
+
+            masterCtx.shadowBlur = 0;
+        }
+    }
+
     // Draw text overlays
     if (drawOverlays && screen.textOverlays) {
       drawTextOverlaysOnCtx(masterCtx, screen.textOverlays, contentWidth, contentHeight);
     }
 
     return masterCanvas;
-  }, [drawTextOverlaysOnCtx]);
+  }, [drawTextOverlaysOnCtx, products]);
 
   const handleDownloadPng = useCallback((filename?: string) => {
     if (!activeBounds) {
