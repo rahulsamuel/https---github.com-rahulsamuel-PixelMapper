@@ -10,6 +10,12 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, Calculator, Spline } from 'lucide-react';
 import { getProducts } from './actions';
 import { usePersistentState } from '@/hooks/use-persistent-state';
+import {
+  CurvingSettings,
+  CurvingPreview,
+  DEFAULT_CURVING_STATE,
+  type CurvingState,
+} from '@/components/calculator/curving-calculator';
 
 const CalculatorForm = dynamic(() => import('@/components/calculator/calculator-form').then(mod => mod.CalculatorForm), {
   ssr: false,
@@ -17,11 +23,6 @@ const CalculatorForm = dynamic(() => import('@/components/calculator/calculator-
 });
 
 const ResultsDisplay = dynamic(() => import('@/components/calculator/results-display').then(mod => mod.ResultsDisplay), {
-  ssr: false,
-  loading: () => <ResultsDisplaySkeleton />,
-});
-
-const CurvingCalculator = dynamic(() => import('@/components/calculator/curving-calculator').then(mod => mod.CurvingCalculator), {
   ssr: false,
   loading: () => <ResultsDisplaySkeleton />,
 });
@@ -80,6 +81,7 @@ export default function CalculatorPage() {
         screenWidthTiles: 8,
         screenHeightTiles: 5,
     });
+    const [curvingState, setCurvingState] = useState<CurvingState>(DEFAULT_CURVING_STATE);
 
     const [results, setResults] = useState<CalculatedResults | null>(null);
 
@@ -88,7 +90,6 @@ export default function CalculatorPage() {
             const { data, error } = await getProducts();
             if (data) {
                 setProducts(data as LedProduct[]);
-                // Set initial product
                 if (data.length > 0 && !formState.selectedProductId) {
                     handleFormChange('selectedProductId', data[0].id);
                 }
@@ -105,7 +106,6 @@ export default function CalculatorPage() {
         return products.find(p => p.id === formState.selectedProductId) ?? null;
     }, [formState.selectedProductId, products]);
 
-
     const calculateResults = useCallback(() => {
         if (!selectedProduct) {
             setResults(null);
@@ -114,7 +114,6 @@ export default function CalculatorPage() {
 
         const { screenWidthTiles, screenHeightTiles, voltage, phase } = formState;
 
-        // Resolution & Properties
         const resWidth = screenWidthTiles * selectedProduct.tileWidthPx;
         const resHeight = screenHeightTiles * selectedProduct.tileHeightPx;
         const totalPixels = resWidth * resHeight;
@@ -124,7 +123,6 @@ export default function CalculatorPage() {
         const aspectRatio = `${aspectX}:${aspectY} (${(aspectX / aspectY).toFixed(2)}:1)`;
         const totalTiles = screenWidthTiles * screenHeightTiles;
 
-        // Physical Dimensions
         const widthMm = screenWidthTiles * (selectedProduct.tileWidthMm ?? 0);
         const heightMm = screenHeightTiles * (selectedProduct.tileHeightMm ?? 0);
         const widthIn = widthMm / 25.4;
@@ -132,14 +130,10 @@ export default function CalculatorPage() {
         const widthFt = widthIn / 12;
         const heightFt = heightIn / 12;
 
-        // Total Weight
         const totalWeightKg = totalTiles * (selectedProduct.tileWeightKg ?? 0);
         const totalWeightLbs = totalWeightKg * 2.20462;
 
-        // Power Consumption
         const screenAreaM2 = (widthMm / 1000) * (heightMm / 1000);
-
-        // Use per-sqm values if available, otherwise derive from wattsPerTile
         const totalTilesPower = totalTiles * (selectedProduct.wattsPerTile ?? 0);
         const maxPowerPerM2 = selectedProduct.maxPowerWPerSqm != null
             ? selectedProduct.maxPowerWPerSqm
@@ -151,15 +145,14 @@ export default function CalculatorPage() {
         const totalMaxPower = screenAreaM2 > 0 ? maxPowerPerM2 * screenAreaM2 : totalTilesPower;
         const totalAvgPower = screenAreaM2 > 0 ? avgPowerPerM2 * screenAreaM2 : totalTilesPower * 0.4;
 
-        // Current Draw
         const vNum = parseInt(voltage.replace('v', ''));
         const phaseDivisor = phase === 'three-phase' ? Math.sqrt(3) : 1;
         const maxAmps = totalMaxPower / (vNum * phaseDivisor);
         const avgAmps = totalAvgPower / (vNum * phaseDivisor);
-        
+
         const phaseText = phase === 'three-phase' ? 'Three Phase' : 'Single Phase';
         const currentDrawLabel = `Current Draw @ ${vNum}V (${phaseText})`;
-        
+
         setResults({
             resolution: { width: resWidth, height: resHeight },
             totalPixels,
@@ -191,37 +184,58 @@ export default function CalculatorPage() {
         });
     };
 
+    const handleCurvingChange = (patch: Partial<CurvingState>) => {
+        setCurvingState(prev => ({ ...prev, ...patch }));
+    };
+
+    const isCurving = activeTab === 'curving';
+
     return (
         <div className="h-[calc(100svh-3.5rem)] flex overflow-hidden">
-            {/* Left sidebar */}
+            {/* Left sidebar — swaps content based on active tab */}
             <div className="w-80 flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden">
                 <div className="flex-shrink-0 px-4 pt-4 pb-2 border-b">
-                    <h2 className="font-semibold text-sm">Input Parameters</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">Enter your LED setup details.</p>
+                    <h2 className="font-semibold text-sm">
+                        {isCurving ? 'Curve Settings' : 'Input Parameters'}
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                        {isCurving ? 'Configure your screen curvature.' : 'Enter your LED setup details.'}
+                    </p>
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                    <div className="p-4 space-y-0">
-                        <CalculatorForm
-                            products={products}
-                            formState={formState}
-                            onFormChange={handleFormChange}
-                            selectedProduct={selectedProduct}
-                        />
-                        <div className="pt-4">
-                            <Link href="/add-led">
-                                <Button variant="outline" className="w-full" size="sm">
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Add New LED Product
-                                </Button>
-                            </Link>
-                        </div>
+                    <div className="p-4">
+                        {isCurving ? (
+                            <CurvingSettings
+                                screenWidthTiles={formState.screenWidthTiles}
+                                state={curvingState}
+                                onChange={handleCurvingChange}
+                            />
+                        ) : (
+                            <div className="space-y-0">
+                                <CalculatorForm
+                                    products={products}
+                                    formState={formState}
+                                    onFormChange={handleFormChange}
+                                    selectedProduct={selectedProduct}
+                                />
+                                <div className="pt-4">
+                                    <Link href="/add-led">
+                                        <Button variant="outline" className="w-full" size="sm">
+                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                            Add New LED Product
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
+
             {/* Main content */}
-            <div className="flex-1 overflow-auto p-6">
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="mb-6">
+            <div className="flex-1 overflow-hidden p-6 flex flex-col">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+                    <TabsList className="mb-4 self-start">
                         <TabsTrigger value="results" className="gap-1.5">
                             <Calculator className="h-4 w-4" />
                             Results
@@ -231,14 +245,16 @@ export default function CalculatorPage() {
                             Curving
                         </TabsTrigger>
                     </TabsList>
-                    <TabsContent value="results">
+                    <TabsContent value="results" className="flex-1 overflow-auto mt-0">
                         {results ? <ResultsDisplay results={results} formState={formState} /> : <ResultsDisplaySkeleton />}
                     </TabsContent>
-                    <TabsContent value="curving">
+                    <TabsContent value="curving" className="flex-1 min-h-0 mt-0">
                         {selectedProduct ? (
-                            <CurvingCalculator
+                            <CurvingPreview
                                 screenWidthTiles={formState.screenWidthTiles}
                                 tileWidthMm={selectedProduct.tileWidthMm ?? 500}
+                                state={curvingState}
+                                onZoom={(z) => handleCurvingChange({ zoom: z })}
                             />
                         ) : (
                             <ResultsDisplaySkeleton />
