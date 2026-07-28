@@ -13,7 +13,37 @@ interface LedProduct {
     productName: string;
     tileWidthPx: number;
     tileHeightPx: number;
-    [key: string]: any;
+    pixelPitchMm?: number | null;
+    tileWidthMm?: number | null;
+    tileHeightMm?: number | null;
+    tileWeightKg?: number | null;
+    maxBrightnessNit?: number | null;
+    wattsPerTile?: number;
+    maxPowerWPerSqm?: number | null;
+    avgPowerWPerSqm?: number | null;
+    [key: string]: unknown;
+}
+
+function ProductInfoPanel({ product }: { product: LedProduct }) {
+  const rows: { label: string; value: string }[] = [];
+  if (product.pixelPitchMm) rows.push({ label: 'Pixel Pitch', value: `${product.pixelPitchMm}mm` });
+  rows.push({ label: 'Resolution', value: `${product.tileWidthPx}\u00d7${product.tileHeightPx}` });
+  if (product.tileWidthMm && product.tileHeightMm)
+    rows.push({ label: 'Physical Size', value: `${product.tileWidthMm}\u00d7${product.tileHeightMm}mm` });
+  if (product.tileWeightKg) rows.push({ label: 'Weight', value: `${product.tileWeightKg}kg` });
+  if (product.maxBrightnessNit) rows.push({ label: 'Brightness', value: `${product.maxBrightnessNit} nit` });
+  if (product.wattsPerTile) rows.push({ label: 'Power / Tile', value: `${product.wattsPerTile}W` });
+  if (rows.length === 0) return null;
+  return (
+    <div className="rounded-md border bg-muted/30 overflow-hidden">
+      {rows.map(({ label, value }) => (
+        <div key={label} className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 last:border-0">
+          <span className="text-xs text-muted-foreground">{label}</span>
+          <span className="text-xs font-semibold tabular-nums">{value}</span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 interface FormState {
@@ -100,11 +130,7 @@ export function CalculatorForm({ products, formState, onFormChange, selectedProd
         </div>
       </div>
       
-      {selectedProduct && (
-        <div className="p-3 rounded-md bg-muted/50 border text-sm text-center text-muted-foreground">
-          Tile Resolution: <span className="font-semibold text-foreground">{selectedProduct.tileWidthPx}px</span> x <span className="font-semibold text-foreground">{selectedProduct.tileHeightPx}px</span>
-        </div>
-      )}
+      {selectedProduct && <ProductInfoPanel product={selectedProduct} />}
 
       <div className="space-y-3">
         <Label>Operating Voltage</Label>

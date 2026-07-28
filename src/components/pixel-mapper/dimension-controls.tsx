@@ -10,6 +10,29 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useMemo } from "react";
 import { Button } from "../ui/button";
 import { RefreshCw } from "lucide-react";
+import type { LedProduct } from "@/services/supabase";
+
+function ProductInfoPanel({ product }: { product: LedProduct }) {
+  const rows: { label: string; value: string }[] = [];
+  if (product.pixelPitchMm) rows.push({ label: 'Pixel Pitch', value: `${product.pixelPitchMm}mm` });
+  rows.push({ label: 'Resolution', value: `${product.tileWidthPx}\u00d7${product.tileHeightPx}` });
+  if (product.tileWidthMm && product.tileHeightMm)
+    rows.push({ label: 'Physical Size', value: `${product.tileWidthMm}\u00d7${product.tileHeightMm}mm` });
+  if (product.tileWeightKg) rows.push({ label: 'Weight', value: `${product.tileWeightKg}kg` });
+  if (product.maxBrightnessNit) rows.push({ label: 'Brightness', value: `${product.maxBrightnessNit} nit` });
+  if (product.wattsPerTile) rows.push({ label: 'Power / Tile', value: `${product.wattsPerTile}W` });
+  if (rows.length === 0) return null;
+  return (
+    <div className="rounded-md border bg-muted/30 overflow-hidden">
+      {rows.map(({ label, value }) => (
+        <div key={label} className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 last:border-0">
+          <span className="text-xs text-muted-foreground">{label}</span>
+          <span className="text-xs font-semibold tabular-nums">{value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function DimensionControls() {
   const { 
@@ -111,6 +134,9 @@ export function DimensionControls() {
                 </Select>
             </div>
         </div>
+        {selectedProduct && !isCustom && (
+          <ProductInfoPanel product={selectedProduct as LedProduct} />
+        )}
         <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
                 <Label htmlFor="tileWidth">Tile Width (px)</Label>
