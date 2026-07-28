@@ -1,13 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { RotateCw, RotateCcw, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { RotateCw, RotateCcw, ZoomIn, ZoomOut, Maximize2, RefreshCw } from 'lucide-react';
 
 export type CurveMode = 'uniform' | 'variable';
 export type Direction = 'concave' | 'convex';
@@ -29,11 +29,7 @@ export const DEFAULT_CURVING_STATE: CurvingState = {
 };
 
 interface ColumnPosition {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
-  angle: number;
+  x1: number; y1: number; x2: number; y2: number; angle: number;
 }
 
 interface ArcData {
@@ -55,17 +51,14 @@ function computeArc(
 ): ArcData {
   const sign = direction === 'concave' ? -1 : 1;
   const positions: ColumnPosition[] = [];
-  let x = 0;
-  let y = 0;
-  let heading = 0;
+  let x = 0, y = 0, heading = 0;
 
   for (let i = 0; i < numColumns; i++) {
     const rad = (heading * Math.PI) / 180;
     const dx = Math.cos(rad) * columnWidthMm;
     const dy = Math.sin(rad) * columnWidthMm;
     positions.push({ x1: x, y1: y, x2: x + dx, y2: y + dy, angle: heading });
-    x += dx;
-    y += dy;
+    x += dx; y += dy;
     if (i < numColumns - 1) heading += sign * junctionAngles[i];
   }
 
@@ -73,8 +66,7 @@ function computeArc(
   let radius: number | null = null;
   let center: { x: number; y: number } | null = null;
 
-  const isUniform =
-    junctionAngles.length > 0 && junctionAngles.every((a) => Math.abs(a - junctionAngles[0]) < 0.001);
+  const isUniform = junctionAngles.length > 0 && junctionAngles.every((a) => Math.abs(a - junctionAngles[0]) < 0.001);
   if (isUniform && junctionAngles[0] > 0) {
     const thetaRad = (junctionAngles[0] * Math.PI) / 180;
     radius = columnWidthMm / (2 * Math.sin(thetaRad / 2));
@@ -107,10 +99,10 @@ const PADDING = 60;
 const ZOOM_STEP = 0.25;
 const ZOOM_MIN = 0.25;
 const ZOOM_MAX = 4;
+const ANGLE_MAX = 90;
 
 function useArcData(screenWidthTiles: number, tileWidthMm: number, state: CurvingState) {
   const numJunctions = Math.max(0, screenWidthTiles - 1);
-
   const effectiveVariableAngles = useMemo(() => {
     const arr = [...state.variableAngles];
     while (arr.length < numJunctions) arr.push(5);
@@ -118,10 +110,9 @@ function useArcData(screenWidthTiles: number, tileWidthMm: number, state: Curvin
     return arr;
   }, [state.variableAngles, numJunctions]);
 
-  const junctionAngles =
-    state.curveMode === 'uniform'
-      ? Array(numJunctions).fill(state.uniformAngle)
-      : effectiveVariableAngles;
+  const junctionAngles = state.curveMode === 'uniform'
+    ? Array(numJunctions).fill(state.uniformAngle)
+    : effectiveVariableAngles;
 
   return useMemo(
     () => computeArc(screenWidthTiles, tileWidthMm || 500, junctionAngles, state.direction),
@@ -129,15 +120,16 @@ function useArcData(screenWidthTiles: number, tileWidthMm: number, state: Curvin
   );
 }
 
-/* ---------- Sidebar settings ---------- */
+/* ── Sidebar settings ── */
 
 interface CurvingSettingsProps {
   screenWidthTiles: number;
+  tileWidthMm: number;
   state: CurvingState;
   onChange: (patch: Partial<CurvingState>) => void;
 }
 
-export function CurvingSettings({ screenWidthTiles, state, onChange }: CurvingSettingsProps) {
+export function CurvingSettings({ screenWidthTiles, tileWidthMm, state, onChange }: CurvingSettingsProps) {
   const numJunctions = Math.max(0, screenWidthTiles - 1);
 
   const effectiveVariableAngles = useMemo(() => {
@@ -146,6 +138,17 @@ export function CurvingSettings({ screenWidthTiles, state, onChange }: CurvingSe
     while (arr.length > numJunctions) arr.pop();
     return arr;
   }, [state.variableAngles, numJunctions]);
+
+  // Full circle calculations
+  const fullCircleAngle = numJunctions > 0 ? 360 / numJunctions : null;
+  const circumferenceMm = screenWidthTiles * (tileWidthMm || 500);
+  const fullCircleRadius = circumferenceMm / (2 * Math.PI);
+  const fullCircleDiameter = fullCircleRadius * 2;
+
+  const applyFullCircle = () => {
+    if (fullCircleAngle == null) return;
+    onChange({ curveMode: 'uniform', uniformAngle: parseFloat(fullCircleAngle.toFixed(4)) });
+  };
 
   const updateVariableAngle = (idx: number, value: number) => {
     const arr = [...state.variableAngles];
@@ -159,35 +162,80 @@ export function CurvingSettings({ screenWidthTiles, state, onChange }: CurvingSe
       {/* Direction */}
       <div className="space-y-2">
         <Label>Curve Direction</Label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => onChange({ direction: 'concave' })}
-            className={`flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-colors ${
-              state.direction === 'concave'
-                ? 'border-primary bg-primary/5 text-primary'
-                : 'border-muted bg-popover hover:bg-accent'
+            className={`flex items-center gap-2 rounded-lg border-2 p-2.5 text-sm font-medium transition-colors ${
+              state.direction === 'concave' ? 'border-primary bg-primary/5 text-primary' : 'border-muted bg-popover hover:bg-accent'
             }`}
           >
-            <RotateCcw className="h-4 w-4" />
-            Concave
+            <RotateCcw className="h-4 w-4" /> Concave
           </button>
           <button
             onClick={() => onChange({ direction: 'convex' })}
-            className={`flex items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-colors ${
-              state.direction === 'convex'
-                ? 'border-primary bg-primary/5 text-primary'
-                : 'border-muted bg-popover hover:bg-accent'
+            className={`flex items-center gap-2 rounded-lg border-2 p-2.5 text-sm font-medium transition-colors ${
+              state.direction === 'convex' ? 'border-primary bg-primary/5 text-primary' : 'border-muted bg-popover hover:bg-accent'
             }`}
           >
-            <RotateCw className="h-4 w-4" />
-            Convex
+            <RotateCw className="h-4 w-4" /> Convex
           </button>
         </div>
         <p className="text-xs text-muted-foreground">
           {state.direction === 'concave'
-            ? 'Screen curves toward the viewer (like a stadium display).'
-            : 'Screen curves away from the viewer (like a billboard wrap).'}
+            ? 'Screen curves toward the viewer (stadium-style).'
+            : 'Screen curves away from the viewer (billboard wrap).'}
         </p>
+      </div>
+
+      <Separator />
+
+      {/* Full Circle / Cylinder */}
+      <div className="space-y-2">
+        <Label>Full Circle / Cylinder</Label>
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            To form a fully closed circle or cylinder with {screenWidthTiles} column{screenWidthTiles === 1 ? '' : 's'}, each junction must bend at exactly:
+          </p>
+          {numJunctions > 0 ? (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Angle per junction</p>
+                  <p className="font-bold text-lg tabular-nums">{fullCircleAngle!.toFixed(2)}°</p>
+                  <p className="text-xs text-muted-foreground">{numJunctions} junctions</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Circle radius</p>
+                  <p className="font-bold text-lg">{formatMm(fullCircleRadius)}</p>
+                  <p className="text-xs text-muted-foreground">{formatMmFt(fullCircleRadius)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Diameter</p>
+                  <p className="font-bold text-base">{formatMm(fullCircleDiameter)}</p>
+                  <p className="text-xs text-muted-foreground">{formatMmFt(fullCircleDiameter)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Circumference</p>
+                  <p className="font-bold text-base">{formatMm(circumferenceMm)}</p>
+                  <p className="text-xs text-muted-foreground">{formatMmFt(circumferenceMm)}</p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full gap-2 border-primary/40 text-primary hover:bg-primary/5"
+                onClick={applyFullCircle}
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Apply Full Circle Angle
+              </Button>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">
+              Need at least 2 columns to calculate a full circle.
+            </p>
+          )}
+        </div>
       </div>
 
       <Separator />
@@ -195,23 +243,19 @@ export function CurvingSettings({ screenWidthTiles, state, onChange }: CurvingSe
       {/* Curve type */}
       <div className="space-y-2">
         <Label>Curve Type</Label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => onChange({ curveMode: 'uniform' })}
-            className={`rounded-lg border-2 p-3 text-sm font-medium transition-colors ${
-              state.curveMode === 'uniform'
-                ? 'border-primary bg-primary/5 text-primary'
-                : 'border-muted bg-popover hover:bg-accent'
+            className={`rounded-lg border-2 p-2.5 text-sm font-medium transition-colors ${
+              state.curveMode === 'uniform' ? 'border-primary bg-primary/5 text-primary' : 'border-muted bg-popover hover:bg-accent'
             }`}
           >
             Uniform
           </button>
           <button
             onClick={() => onChange({ curveMode: 'variable' })}
-            className={`rounded-lg border-2 p-3 text-sm font-medium transition-colors ${
-              state.curveMode === 'variable'
-                ? 'border-primary bg-primary/5 text-primary'
-                : 'border-muted bg-popover hover:bg-accent'
+            className={`rounded-lg border-2 p-2.5 text-sm font-medium transition-colors ${
+              state.curveMode === 'variable' ? 'border-primary bg-primary/5 text-primary' : 'border-muted bg-popover hover:bg-accent'
             }`}
           >
             Variable
@@ -235,58 +279,49 @@ export function CurvingSettings({ screenWidthTiles, state, onChange }: CurvingSe
           </div>
           <Slider
             min={0}
-            max={30}
+            max={ANGLE_MAX}
             step={0.5}
-            value={[state.uniformAngle]}
+            value={[Math.min(state.uniformAngle, ANGLE_MAX)]}
             onValueChange={([v]) => onChange({ uniformAngle: v })}
           />
           <div className="flex items-center gap-2">
             <Input
               type="number"
               value={state.uniformAngle}
-              onChange={(e) =>
-                onChange({ uniformAngle: Math.max(0, Math.min(30, Number(e.target.value) || 0)) })
-              }
+              onChange={(e) => onChange({ uniformAngle: Math.max(0, Number(e.target.value) || 0) })}
               min={0}
-              max={30}
               step={0.5}
               className="w-24"
             />
             <span className="text-sm text-muted-foreground">deg / junction</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            Applied to all {numJunctions} junction{numJunctions === 1 ? '' : 's'} between{' '}
-            {screenWidthTiles} columns.
+            Applied to all {numJunctions} junction{numJunctions === 1 ? '' : 's'} · total {(state.uniformAngle * numJunctions).toFixed(1)}°
           </p>
         </div>
       ) : (
         <div className="space-y-3">
           <Label>Junction Angles ({numJunctions})</Label>
           {numJunctions === 0 ? (
-            <p className="text-xs text-muted-foreground italic">
-              Need at least 2 columns. Adjust screen width in Input Parameters.
-            </p>
+            <p className="text-xs text-muted-foreground italic">Need at least 2 columns.</p>
           ) : (
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
               {effectiveVariableAngles.map((angle, idx) => (
                 <div key={idx} className="flex items-center gap-2">
                   <span className="text-xs font-mono w-7 shrink-0 text-muted-foreground">J{idx + 1}</span>
                   <Slider
                     min={0}
-                    max={30}
+                    max={ANGLE_MAX}
                     step={0.5}
-                    value={[angle]}
+                    value={[Math.min(angle, ANGLE_MAX)]}
                     onValueChange={([v]) => updateVariableAngle(idx, v)}
                     className="flex-1"
                   />
                   <Input
                     type="number"
                     value={angle}
-                    onChange={(e) =>
-                      updateVariableAngle(idx, Math.max(0, Math.min(30, Number(e.target.value) || 0)))
-                    }
+                    onChange={(e) => updateVariableAngle(idx, Math.max(0, Number(e.target.value) || 0))}
                     min={0}
-                    max={30}
                     step={0.5}
                     className="w-16 h-8 text-sm"
                   />
@@ -300,7 +335,7 @@ export function CurvingSettings({ screenWidthTiles, state, onChange }: CurvingSe
   );
 }
 
-/* ---------- Main preview + values ---------- */
+/* ── Main preview + values ── */
 
 interface CurvingPreviewProps {
   screenWidthTiles: number;
@@ -313,7 +348,6 @@ export function CurvingPreview({ screenWidthTiles, tileWidthMm, state, onZoom }:
   const arc = useArcData(screenWidthTiles, tileWidthMm, state);
   const zoom = state.zoom;
 
-  // SVG viewport
   const allX = arc.positions.flatMap((p) => [p.x1, p.x2]);
   const allY = arc.positions.flatMap((p) => [p.y1, p.y2]);
   if (arc.center) { allX.push(arc.center.x); allY.push(arc.center.y); }
@@ -335,6 +369,9 @@ export function CurvingPreview({ screenWidthTiles, tileWidthMm, state, onZoom }:
   const handleZoomOut = () => onZoom(Math.max(ZOOM_MIN, parseFloat((zoom - ZOOM_STEP).toFixed(2))));
   const handleZoomReset = () => onZoom(1);
 
+  // Detect near-full-circle (within 5°)
+  const isNearFullCircle = arc.totalArcAngleDeg >= 355;
+
   return (
     <div className="flex flex-col gap-4 h-full">
       {/* Calculated values strip */}
@@ -344,21 +381,21 @@ export function CurvingPreview({ screenWidthTiles, tileWidthMm, state, onZoom }:
             {[
               { label: 'Radius', value: arc.radius != null ? formatMm(arc.radius) : '—', sub: arc.radius != null ? formatMmFt(arc.radius) : undefined },
               { label: 'Diameter', value: arc.diameter != null ? formatMm(arc.diameter) : '—', sub: arc.diameter != null ? formatMmFt(arc.diameter) : undefined },
-              { label: 'Total Arc', value: `${arc.totalArcAngleDeg.toFixed(1)}°` },
+              { label: 'Total Arc', value: `${arc.totalArcAngleDeg.toFixed(1)}°`, sub: isNearFullCircle ? 'Full circle' : undefined },
               { label: 'Arc Length', value: formatMm(arc.arcLengthMm), sub: formatMmFt(arc.arcLengthMm) },
               { label: 'Chord', value: formatMm(arc.chordMm), sub: formatMmFt(arc.chordMm) },
               { label: 'Columns', value: String(screenWidthTiles), sub: `${tileWidthMm?.toFixed(0)} mm each` },
             ].map(({ label, value, sub }) => (
               <div key={label}>
                 <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-                <p className="font-bold text-base leading-tight">{value}</p>
-                {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+                <p className={`font-bold text-base leading-tight ${isNearFullCircle && label === 'Total Arc' ? 'text-primary' : ''}`}>{value}</p>
+                {sub && <p className={`text-xs ${isNearFullCircle && label === 'Total Arc' ? 'text-primary font-medium' : 'text-muted-foreground'}`}>{sub}</p>}
               </div>
             ))}
           </div>
           {state.curveMode === 'variable' && (
             <p className="text-xs text-muted-foreground italic pt-2 mt-2 border-t">
-              Radius and diameter are only shown for uniform curves.
+              Radius and diameter shown for uniform curves only.
             </p>
           )}
         </CardContent>
@@ -435,8 +472,8 @@ export function CurvingPreview({ screenWidthTiles, tileWidthMm, state, onZoom }:
                 </>
               )}
 
-              {/* Chord line */}
-              {arc.positions.length > 1 && (
+              {/* Chord line (hide when nearly full circle) */}
+              {arc.positions.length > 1 && !isNearFullCircle && (
                 <>
                   <line
                     x1={toSvg(arc.positions[0].x1, arc.positions[0].y1).x}
@@ -492,7 +529,7 @@ export function CurvingPreview({ screenWidthTiles, tileWidthMm, state, onZoom }:
                 );
               })}
 
-              {/* Direction label */}
+              {/* Direction / shape label */}
               <text
                 x={Math.ceil(svgW) / 2}
                 y={Math.ceil(svgH) - 10}
@@ -501,7 +538,11 @@ export function CurvingPreview({ screenWidthTiles, tileWidthMm, state, onZoom }:
                 textAnchor="middle"
                 fontStyle="italic"
               >
-                {state.direction === 'concave' ? '↑ Viewer (Concave)' : '↓ Viewer (Convex)'}
+                {isNearFullCircle
+                  ? `Full Circle / Cylinder (${state.direction})`
+                  : state.direction === 'concave'
+                  ? '↑ Viewer (Concave)'
+                  : '↓ Viewer (Convex)'}
               </text>
             </svg>
           </div>

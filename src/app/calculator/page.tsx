@@ -192,39 +192,40 @@ export default function CalculatorPage() {
 
     return (
         <div className="h-[calc(100svh-3.5rem)] flex overflow-hidden">
-            {/* Left sidebar — swaps content based on active tab */}
+            {/* Left sidebar */}
             <div className="w-80 flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden">
                 <div className="flex-shrink-0 px-4 pt-4 pb-2 border-b">
-                    <h2 className="font-semibold text-sm">
-                        {isCurving ? 'Curve Settings' : 'Input Parameters'}
-                    </h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                        {isCurving ? 'Configure your screen curvature.' : 'Enter your LED setup details.'}
-                    </p>
+                    <h2 className="font-semibold text-sm">Input Parameters</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">Enter your LED setup details.</p>
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                    <div className="p-4">
-                        {isCurving ? (
-                            <CurvingSettings
-                                screenWidthTiles={formState.screenWidthTiles}
-                                state={curvingState}
-                                onChange={handleCurvingChange}
-                            />
-                        ) : (
-                            <div className="space-y-0">
-                                <CalculatorForm
-                                    products={products}
-                                    formState={formState}
-                                    onFormChange={handleFormChange}
-                                    selectedProduct={selectedProduct}
-                                />
-                                <div className="pt-4">
-                                    <Link href="/add-led">
-                                        <Button variant="outline" className="w-full" size="sm">
-                                            <PlusCircle className="mr-2 h-4 w-4" />
-                                            Add New LED Product
-                                        </Button>
-                                    </Link>
+                    <div className="p-4 space-y-6">
+                        <CalculatorForm
+                            products={products}
+                            formState={formState}
+                            onFormChange={handleFormChange}
+                            selectedProduct={selectedProduct}
+                        />
+                        <div>
+                            <Link href="/add-led">
+                                <Button variant="outline" className="w-full" size="sm">
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Add New LED Product
+                                </Button>
+                            </Link>
+                        </div>
+                        {/* Curve Settings — shown only on the Curving tab */}
+                        {isCurving && (
+                            <div className="space-y-4">
+                                <div className="border-t pt-4">
+                                    <h3 className="font-semibold text-sm mb-0.5">Curve Settings</h3>
+                                    <p className="text-xs text-muted-foreground mb-4">Configure your screen curvature.</p>
+                                    <CurvingSettings
+                                        screenWidthTiles={formState.screenWidthTiles}
+                                        tileWidthMm={selectedProduct?.tileWidthMm ?? 500}
+                                        state={curvingState}
+                                        onChange={handleCurvingChange}
+                                    />
                                 </div>
                             </div>
                         )}
