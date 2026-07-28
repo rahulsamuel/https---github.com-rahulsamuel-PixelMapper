@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { getProductsAction, getProcessorsAction } from './actions';
 import type { Processor } from '@/services/supabase';
 import { usePersistentState } from '@/hooks/use-persistent-state';
+import { LedProductCombobox } from '@/components/ui/led-product-combobox';
 
 interface LedProduct {
   id: string;
@@ -77,27 +78,8 @@ export default function PowerDataPage() {
     });
   }, []);
 
-  const manufacturers = useMemo(() => [...new Set(products.map(p => p.manufacturer))], [products]);
-
   const selectedProduct = useMemo(() => products.find(p => p.id === selectedProductId), [products, selectedProductId]);
   const selectedProcessor = useMemo(() => processors.find(p => p.id === selectedProcessorId), [processors, selectedProcessorId]);
-
-  const selectedManufacturer = selectedProduct?.manufacturer ?? '';
-  const availableProducts = useMemo(() => products.filter(p => p.manufacturer === selectedManufacturer), [products, selectedManufacturer]);
-
-  const processorManufacturers = useMemo(() => [...new Set(processors.map(p => p.manufacturer))], [processors]);
-  const selectedProcessorManufacturer = selectedProcessor?.manufacturer ?? '';
-  const availableProcessors = useMemo(() => processors.filter(p => p.manufacturer === selectedProcessorManufacturer), [processors, selectedProcessorManufacturer]);
-
-  const handleManufacturerChange = (val: string) => {
-    const first = products.find(p => p.manufacturer === val);
-    if (first) setSelectedProductId(first.id);
-  };
-
-  const handleProcessorManufacturerChange = (val: string) => {
-    const first = processors.find(p => p.manufacturer === val);
-    if (first) setSelectedProcessorId(first.id);
-  };
 
   const {
     maxTilesPerPowerCircuit, maxTilesPerDataPort, maxTilesPerDistUnit, maxTilesPerTrunk,
@@ -153,26 +135,11 @@ export default function PowerDataPage() {
             {/* LED Product */}
             <div>
               <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-2">LED Product</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Manufacturer</Label>
-                  <Select value={selectedManufacturer} onValueChange={handleManufacturerChange}>
-                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-                    <SelectContent>
-                      {manufacturers.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Product</Label>
-                  <Select value={selectedProductId} onValueChange={setSelectedProductId} disabled={!selectedManufacturer}>
-                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-                    <SelectContent>
-                      {availableProducts.map(p => <SelectItem key={p.id} value={p.id}>{p.productName}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <LedProductCombobox
+                products={products}
+                value={selectedProductId}
+                onChange={setSelectedProductId}
+              />
               {selectedProduct && <ProductInfoPanel product={selectedProduct} />}
             </div>
 
@@ -214,43 +181,32 @@ export default function PowerDataPage() {
             {/* Processor / Data */}
             <div>
               <h3 className="font-semibold text-xs uppercase tracking-wide text-muted-foreground mb-2">Data Port</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Manufacturer</Label>
-                  <Select value={selectedProcessorManufacturer} onValueChange={handleProcessorManufacturerChange}>
-                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-                    <SelectContent>
-                      {processorManufacturers.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Processor</Label>
-                  <Select value={selectedProcessorId} onValueChange={setSelectedProcessorId} disabled={!selectedProcessorManufacturer}>
-                    <SelectTrigger><SelectValue placeholder="Select…" /></SelectTrigger>
-                    <SelectContent>
-                      {availableProcessors.map(p => <SelectItem key={p.id} value={p.id}>{p.modelName}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Refresh Rate (Hz)</Label>
-                  <Select value={refreshRate} onValueChange={setRefreshRate}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {REFRESH_RATES.map(r => <SelectItem key={r} value={r}>{r} Hz</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Color Bit Depth</Label>
-                  <Select value={bitDepth} onValueChange={setBitDepth}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {BIT_DEPTHS.map(b => <SelectItem key={b} value={b}>{b}-bit</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Processor</Label>
+                <LedProductCombobox
+                  products={processors.map(p => ({ id: p.id, manufacturer: p.manufacturer, productName: p.modelName }))}
+                  value={selectedProcessorId}
+                  onChange={setSelectedProcessorId}
+                  placeholder="Search processors…"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Refresh Rate (Hz)</Label>
+                <Select value={refreshRate} onValueChange={setRefreshRate}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {REFRESH_RATES.map(r => <SelectItem key={r} value={r}>{r} Hz</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Color Bit Depth</Label>
+                <Select value={bitDepth} onValueChange={setBitDepth}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {BIT_DEPTHS.map(b => <SelectItem key={b} value={b}>{b}-bit</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               {selectedProcessor && (
                 <p className="text-[10px] text-muted-foreground mt-1.5">

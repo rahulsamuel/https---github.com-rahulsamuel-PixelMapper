@@ -6,11 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMemo } from "react";
 import { Button } from "../ui/button";
 import { RefreshCw } from "lucide-react";
 import type { LedProduct } from "@/services/supabase";
+import { LedProductCombobox } from "@/components/ui/led-product-combobox";
 
 function ProductInfoPanel({ product }: { product: LedProduct }) {
   const rows: { label: string; value: string }[] = [];
@@ -66,73 +66,22 @@ export function DimensionControls() {
     }));
   };
 
-  const manufacturers = useMemo(() => {
-    if (!products) return ["Custom"];
-    const dbManufacturers = [...new Set(products.map(p => p.manufacturer))];
-    return ["Custom", ...dbManufacturers];
-  }, [products]);
-  
   const selectedProduct = useMemo(() => {
     return products.find(p => p.id === selectedProductId) ?? null;
   }, [products, selectedProductId]);
 
-  const selectedManufacturer = useMemo(() => {
-    if (selectedProductId === 'custom') return 'Custom';
-    return selectedProduct?.manufacturer ?? '';
-  }, [selectedProduct, selectedProductId]);
-
-  const availableProducts = useMemo(() => {
-    if (selectedManufacturer === 'Custom') return [{ id: 'custom', productName: 'Custom' }];
-    if (!products) return [];
-    return products.filter(p => p.manufacturer === selectedManufacturer);
-  }, [products, selectedManufacturer]);
-
-  const handleManufacturerChange = (value: string) => {
-    if (value === 'Custom') {
-      setSelectedProductId('custom');
-    } else {
-      const firstProductOfNewManufacturer = products.find(p => p.manufacturer === value);
-      if (firstProductOfNewManufacturer) {
-          setSelectedProductId(firstProductOfNewManufacturer.id);
-      }
-    }
-  };
-  
   const isCustom = selectedProductId === 'custom';
 
   return (
     <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-                <Label htmlFor="led-manufacturer">LED Manufacturer</Label>
-                <Select onValueChange={handleManufacturerChange} value={selectedManufacturer}>
-                    <SelectTrigger id="led-manufacturer">
-                        <SelectValue placeholder="Select manufacturer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {manufacturers.map(m => (
-                            <SelectItem key={m} value={m}>{m}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="led-product">LED Product</Label>
-                <Select 
-                    onValueChange={(value) => setSelectedProductId(value)} 
-                    value={selectedProductId ?? ''}
-                    disabled={!selectedManufacturer}
-                >
-                    <SelectTrigger id="led-product">
-                        <SelectValue placeholder="Select product" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {availableProducts.map(p => (
-                            <SelectItem key={p.id} value={p.id}>{p.productName}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
+        <div className="space-y-2">
+            <Label>LED Product</Label>
+            <LedProductCombobox
+                products={products as { id: string; manufacturer: string; productName: string }[]}
+                value={selectedProductId}
+                onChange={setSelectedProductId}
+                includeCustom
+            />
         </div>
         {selectedProduct && !isCustom && (
           <ProductInfoPanel product={selectedProduct as LedProduct} />

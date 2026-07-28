@@ -4,8 +4,8 @@
 import { useMemo } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { LedProductCombobox } from "@/components/ui/led-product-combobox";
 
 interface LedProduct {
     id: string;
@@ -64,26 +64,7 @@ interface CalculatorFormProps {
 
 export function CalculatorForm({ products, formState, onFormChange, selectedProduct }: CalculatorFormProps) {
   
-  const manufacturers = useMemo(() => {
-    if (!products) return [];
-    return [...new Set(products.map(p => p.manufacturer))];
-  }, [products]);
 
-  const selectedManufacturer = useMemo(() => {
-    return selectedProduct?.manufacturer ?? '';
-  }, [selectedProduct]);
-
-  const availableProducts = useMemo(() => {
-    if (!products) return [];
-    return products.filter(p => p.manufacturer === selectedManufacturer);
-  }, [products, selectedManufacturer]);
-
-  const handleManufacturerChange = (value: string) => {
-    const firstProductOfNewManufacturer = products.find(p => p.manufacturer === value);
-    if (firstProductOfNewManufacturer) {
-        onFormChange('selectedProductId', firstProductOfNewManufacturer.id);
-    }
-  };
 
 
   return (
@@ -97,37 +78,13 @@ export function CalculatorForm({ products, formState, onFormChange, selectedProd
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="led-manufacturer">LED Manufacturer</Label>
-          <Select onValueChange={handleManufacturerChange} value={selectedManufacturer}>
-            <SelectTrigger id="led-manufacturer">
-              <SelectValue placeholder="Select manufacturer" />
-            </SelectTrigger>
-            <SelectContent>
-              {manufacturers.map(m => (
-                <SelectItem key={m} value={m}>{m}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="led-product">LED Product</Label>
-          <Select 
-            onValueChange={(value) => onFormChange('selectedProductId', value)} 
-            value={formState.selectedProductId ?? ''}
-            disabled={!selectedManufacturer}
-          >
-            <SelectTrigger id="led-product">
-              <SelectValue placeholder="Select product" />
-            </SelectTrigger>
-            <SelectContent>
-               {availableProducts.map(p => (
-                 <SelectItem key={p.id} value={p.id}>{p.productName}</SelectItem>
-               ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="space-y-2">
+        <Label>LED Product</Label>
+        <LedProductCombobox
+          products={products}
+          value={formState.selectedProductId}
+          onChange={(id) => onFormChange('selectedProductId', id)}
+        />
       </div>
       
       {selectedProduct && <ProductInfoPanel product={selectedProduct} />}
