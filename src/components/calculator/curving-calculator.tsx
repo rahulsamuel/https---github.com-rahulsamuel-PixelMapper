@@ -456,32 +456,32 @@ export function CurvingPreview({ screenWidthTiles, tileWidthMm, state, onZoom }:
                     cy={toSvg(arc.center.x, arc.center.y).y}
                     r={arc.radius * scale}
                     fill="none"
-                    stroke="hsl(var(--primary))"
+                    stroke="#10b981"
                     strokeWidth="1.5"
                     strokeDasharray="6 4"
-                    opacity="0.4"
+                    opacity="0.5"
                   />
                   <line
                     x1={toSvg(arc.center.x, arc.center.y).x}
                     y1={toSvg(arc.center.x, arc.center.y).y}
                     x2={toSvg(arc.positions[0].x1, arc.positions[0].y1).x}
                     y2={toSvg(arc.positions[0].x1, arc.positions[0].y1).y}
-                    stroke="hsl(var(--primary))"
+                    stroke="#10b981"
                     strokeWidth="2"
                     strokeDasharray="8 4"
-                    opacity="0.8"
+                    opacity="0.9"
                   />
                   <circle
                     cx={toSvg(arc.center.x, arc.center.y).x}
                     cy={toSvg(arc.center.x, arc.center.y).y}
                     r="3"
-                    fill="hsl(var(--primary))"
-                    opacity="0.8"
+                    fill="#10b981"
+                    opacity="0.9"
                   />
                   <text
                     x={(toSvg(arc.center.x, arc.center.y).x + toSvg(arc.positions[0].x1, arc.positions[0].y1).x) / 2}
                     y={(toSvg(arc.center.x, arc.center.y).y + toSvg(arc.positions[0].x1, arc.positions[0].y1).y) / 2}
-                    fill="hsl(var(--primary))"
+                    fill="#059669"
                     fontSize={Math.max(10, 12 * zoom)}
                     fontWeight="bold"
                     textAnchor="middle"
