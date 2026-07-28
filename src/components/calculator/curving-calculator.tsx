@@ -139,11 +139,14 @@ export function CurvingSettings({ screenWidthTiles, tileWidthMm, state, onChange
     return arr;
   }, [state.variableAngles, numJunctions]);
 
-  // Full circle calculations
+  // Full circle calculations — uses the same junction-angle formula as the arc preview
+  // so the radius/diameter match the stats card above the preview.
   const fullCircleAngle = numJunctions > 0 ? 360 / numJunctions : null;
-  const circumferenceMm = screenWidthTiles * (tileWidthMm || 500);
-  const fullCircleRadius = circumferenceMm / (2 * Math.PI);
+  const fullCircleRadius = fullCircleAngle != null
+    ? (tileWidthMm || 500) / (2 * Math.sin((fullCircleAngle * Math.PI / 180) / 2))
+    : 0;
   const fullCircleDiameter = fullCircleRadius * 2;
+  const circumferenceMm = 2 * Math.PI * fullCircleRadius;
 
   const applyFullCircle = () => {
     if (fullCircleAngle == null) return;
