@@ -369,13 +369,16 @@ export function LabelControls() {
                         <Label htmlFor="dimension-unit">Unit System</Label>
                         <Select
                             value={dimensionUnit}
-                            onValueChange={(v) => setDimensionUnit(v as 'mm' | 'fractional' | 'all')}
+                            onValueChange={(v) => setDimensionUnit(v as 'mm' | 'meters' | 'inches' | 'decimal-feet' | 'feet-inches' | 'all')}
                         >
                             <SelectTrigger id="dimension-unit"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">All (Fractional + mm)</SelectItem>
-                                <SelectItem value="fractional">Fractional (ft & in)</SelectItem>
-                                <SelectItem value="mm">Metric (mm/m)</SelectItem>
+                                <SelectItem value="all">All (ft/in + mm)</SelectItem>
+                                <SelectItem value="feet-inches">Feet/Inches (fractional)</SelectItem>
+                                <SelectItem value="decimal-feet">Decimal Feet</SelectItem>
+                                <SelectItem value="inches">Inches</SelectItem>
+                                <SelectItem value="mm">Millimeters</SelectItem>
+                                <SelectItem value="meters">Meters</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

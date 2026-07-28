@@ -105,7 +105,7 @@ interface ScreenArrangement {
   showResolution: boolean;
   resolutionLabelPosition: string;
   showDimensions: boolean;
-  dimensionUnit: 'mm' | 'fractional' | 'all';
+  dimensionUnit: 'mm' | 'meters' | 'inches' | 'decimal-feet' | 'feet-inches' | 'all';
   dimensionLabelSize: number;
   dimensionLabelColor: string;
 }
@@ -181,7 +181,7 @@ export interface Screen {
   resolutionLabelColor: string;
   resolutionLabelColorMode: LabelColorMode;
   showDimensions: boolean;
-  dimensionUnit: 'mm' | 'fractional' | 'all';
+  dimensionUnit: 'mm' | 'meters' | 'inches' | 'decimal-feet' | 'feet-inches' | 'all';
   dimensionLabelSize: number;
   dimensionLabelColor: string;
   rasterGroupId: string;
@@ -275,7 +275,7 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setResolutionLabelColor: Dispatch<SetStateAction<string>>;
   setResolutionLabelColorMode: Dispatch<SetStateAction<LabelColorMode>>;
   setShowDimensions: Dispatch<SetStateAction<boolean>>;
-  setDimensionUnit: Dispatch<SetStateAction<'mm' | 'fractional' | 'all'>>;
+  setDimensionUnit: Dispatch<SetStateAction<'mm' | 'meters' | 'inches' | 'decimal-feet' | 'feet-inches' | 'all'>>;
   setDimensionLabelSize: Dispatch<SetStateAction<number>>;
   setDimensionLabelColor: Dispatch<SetStateAction<string>>;
   addTextOverlay: () => void;
@@ -653,7 +653,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setResolutionLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, resolutionLabelColor: typeof updater === 'function' ? updater(s.resolutionLabelColor ?? '#ffffff') : updater }));
   const setResolutionLabelColorMode = (updater: SetStateAction<LabelColorMode>) => updateCurrentScreen(s => ({ ...s, resolutionLabelColorMode: typeof updater === 'function' ? updater(s.resolutionLabelColorMode ?? 'auto') : updater }));
   const setShowDimensions = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showDimensions: typeof updater === 'function' ? updater(s.showDimensions ?? false) : updater }));
-  const setDimensionUnit = (updater: SetStateAction<'mm' | 'fractional' | 'all'>) => updateCurrentScreen(s => ({ ...s, dimensionUnit: typeof updater === 'function' ? updater(s.dimensionUnit ?? 'all') : updater }));
+  const setDimensionUnit = (updater: SetStateAction<'mm' | 'meters' | 'inches' | 'decimal-feet' | 'feet-inches' | 'all'>) => updateCurrentScreen(s => ({ ...s, dimensionUnit: typeof updater === 'function' ? updater(s.dimensionUnit ?? 'all') : updater }));
   const setDimensionLabelSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, dimensionLabelSize: typeof updater === 'function' ? updater(s.dimensionLabelSize ?? 24) : updater }));
   const setDimensionLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, dimensionLabelColor: typeof updater === 'function' ? updater(s.dimensionLabelColor ?? '#ffffff') : updater }));
   const setProcessorType = (updater: SetStateAction<ProcessorType>) => updateCurrentScreen(s => ({ ...s, processorType: typeof updater === 'function' ? updater(s.processorType) : updater }));
@@ -1571,8 +1571,11 @@ const handleRightHalfTileChange = (add: boolean) => {
             const physWmm = tileWmm * screenEffW;
             const physHmm = tileHmm * screenEffH;
 
-            const fmtMm = (mm: number) => mm >= 1000 ? `${(mm / 1000).toFixed(2)}m` : `${Math.round(mm)}mm`;
-            const fmtFractional = (mm: number) => {
+            const fmtMm = (mm: number) => `${Math.round(mm)}mm`;
+            const fmtMeters = (mm: number) => `${(mm / 1000).toFixed(3)}m`;
+            const fmtInches = (mm: number) => `${(mm / 25.4).toFixed(2)}"`;
+            const fmtDecimalFeet = (mm: number) => `${(mm / 304.8).toFixed(2)}ft`;
+            const fmtFeetInches = (mm: number) => {
                 const totalInches = mm / 25.4;
                 const feet = Math.floor(totalInches / 12);
                 const remainingInches = totalInches - feet * 12;
@@ -1580,9 +1583,14 @@ const handleRightHalfTileChange = (add: boolean) => {
             };
             const unit = screen.dimensionUnit ?? 'all';
             const fmtLabel = (mm: number) => {
-                if (unit === 'mm') return fmtMm(mm);
-                if (unit === 'fractional') return fmtFractional(mm);
-                return `${fmtFractional(mm)} / ${fmtMm(mm)}`;
+                switch (unit) {
+                    case 'mm': return fmtMm(mm);
+                    case 'meters': return fmtMeters(mm);
+                    case 'inches': return fmtInches(mm);
+                    case 'decimal-feet': return fmtDecimalFeet(mm);
+                    case 'feet-inches': return fmtFeetInches(mm);
+                    default: return `${fmtFeetInches(mm)} / ${fmtMm(mm)}`;
+                }
             };
 
             const wLabel = fmtLabel(physWmm);

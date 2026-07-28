@@ -143,20 +143,25 @@ export function LedGrid() {
   const screenWmm = tileWmm ? tileWmm * effectiveScreenWidth : 0;
   const screenHmm = tileHmm ? tileHmm * effectiveScreenHeight : 0;
 
-  const fmtMm = (mm: number) => {
-    if (mm >= 1000) return `${(mm / 1000).toFixed(2)}m`;
-    return `${Math.round(mm)}mm`;
-  };
-  const fmtFractional = (mm: number) => {
+  const fmtMm = (mm: number) => `${Math.round(mm)}mm`;
+  const fmtMeters = (mm: number) => `${(mm / 1000).toFixed(3)}m`;
+  const fmtInches = (mm: number) => `${(mm / 25.4).toFixed(2)}"`;
+  const fmtDecimalFeet = (mm: number) => `${(mm / 304.8).toFixed(2)}ft`;
+  const fmtFeetInches = (mm: number) => {
     const totalInches = mm / 25.4;
     const feet = Math.floor(totalInches / 12);
     const remainingInches = totalInches - feet * 12;
     return `${feet}' ${remainingInches.toFixed(1)}"`;
   };
   const fmtLabel = (mm: number) => {
-    if (dimensionUnit === 'mm') return fmtMm(mm);
-    if (dimensionUnit === 'fractional') return fmtFractional(mm);
-    return `${fmtFractional(mm)} / ${fmtMm(mm)}`;
+    switch (dimensionUnit) {
+      case 'mm': return fmtMm(mm);
+      case 'meters': return fmtMeters(mm);
+      case 'inches': return fmtInches(mm);
+      case 'decimal-feet': return fmtDecimalFeet(mm);
+      case 'feet-inches': return fmtFeetInches(mm);
+      default: return `${fmtFeetInches(mm)} / ${fmtMm(mm)}`;
+    }
   };
 
   const widthLabel = screenWmm ? fmtLabel(screenWmm) : '';
