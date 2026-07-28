@@ -60,9 +60,10 @@ interface CalculatorFormProps {
     formState: FormState;
     onFormChange: (field: keyof FormState, value: any) => void;
     selectedProduct: LedProduct | null;
+    hidePowerConfig?: boolean;
 }
 
-export function CalculatorForm({ products, formState, onFormChange, selectedProduct }: CalculatorFormProps) {
+export function CalculatorForm({ products, formState, onFormChange, selectedProduct, hidePowerConfig }: CalculatorFormProps) {
   
 
 
@@ -89,6 +90,7 @@ export function CalculatorForm({ products, formState, onFormChange, selectedProd
       
       {selectedProduct && <ProductInfoPanel product={selectedProduct} />}
 
+      {!hidePowerConfig && (
       <div className="space-y-3">
         <Label>Operating Voltage</Label>
         <RadioGroup 
@@ -116,7 +118,9 @@ export function CalculatorForm({ products, formState, onFormChange, selectedProd
             </div>
         </RadioGroup>
       </div>
+      )}
       
+      {!hidePowerConfig && (
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Label>Phase Configuration</Label>
@@ -144,6 +148,7 @@ export function CalculatorForm({ products, formState, onFormChange, selectedProd
             </div>
         </RadioGroup>
       </div>
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">

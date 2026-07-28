@@ -205,15 +205,19 @@ export default function CalculatorPage() {
                             formState={formState}
                             onFormChange={handleFormChange}
                             selectedProduct={selectedProduct}
+                            hidePowerConfig={isCurving}
                         />
-                        <div>
-                            <Link href="/add-led">
-                                <Button variant="outline" className="w-full" size="sm">
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Add New LED Product
-                                </Button>
-                            </Link>
-                        </div>
+                        {/* Add New LED Product button — hidden on Curving tab */}
+                        {!isCurving && (
+                            <div>
+                                <Link href="/add-led">
+                                    <Button variant="outline" className="w-full" size="sm">
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        Add New LED Product
+                                    </Button>
+                                </Link>
+                            </div>
+                        )}
                         {/* Curve Settings — shown only on the Curving tab */}
                         {isCurving && (
                             <div className="space-y-4">
