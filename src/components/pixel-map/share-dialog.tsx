@@ -29,9 +29,10 @@ interface ShareDialogProps {
   projectId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  isShareSaving?: boolean;
 }
 
-export function ShareDialog({ projectId, open, onOpenChange }: ShareDialogProps) {
+export function ShareDialog({ projectId, open, onOpenChange, isShareSaving = false }: ShareDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [inviteEmail, setInviteEmail] = useState("");
@@ -115,9 +116,10 @@ export function ShareDialog({ projectId, open, onOpenChange }: ShareDialogProps)
             <Input
               readOnly
               value={projectId ? `${window.location.origin}/app?project=${projectId}` : ""}
+              placeholder={isShareSaving ? "Saving project..." : "No project loaded"}
               className="text-sm"
             />
-            <Button size="sm" variant="outline" onClick={handleCopyLink} className="shrink-0">
+            <Button size="sm" variant="outline" onClick={handleCopyLink} disabled={!projectId} className="shrink-0">
               {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>

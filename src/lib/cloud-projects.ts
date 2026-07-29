@@ -73,6 +73,31 @@ export async function getUserCloudProjects(
   };
 }
 
+export async function getCloudProject(
+  projectId: string
+): Promise<{ data: CloudProject | null; error: string | null }> {
+  const { data, error } = await supabase
+    .from("pixel_map_projects")
+    .select("*")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (error) return { data: null, error: error.message };
+  if (!data) return { data: null, error: null };
+
+  return {
+    data: {
+      id: data.id,
+      userId: data.user_id,
+      projectName: data.project_name,
+      projectData: data.project_data as ProjectData,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    },
+    error: null,
+  };
+}
+
 export async function deleteCloudProject(
   projectId: string
 ): Promise<{ success: boolean; error: string | null }> {

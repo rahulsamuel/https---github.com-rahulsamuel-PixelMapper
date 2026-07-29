@@ -4,9 +4,11 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import { useAuth } from "@/contexts/auth-context";
 import { usePresence } from "@/hooks/use-presence";
+import { useToast } from "@/hooks/use-toast";
 import { PixelMapLayout } from "./pixel-map-layout";
 import { ShareDialog } from "./share-dialog";
 import { supabase } from "@/lib/supabase/client";
+import { saveCloudProject } from "@/lib/cloud-projects";
 import type { ProjectData } from "@/contexts/pixel-map-context";
 
 export function CollaborationWrapper() {
@@ -17,9 +19,12 @@ export function CollaborationWrapper() {
     loadProjectData,
     scheduleSave,
     setProjectName,
+    projectName,
   } = usePixelMap();
   const { user } = useAuth();
+  const { toast } = useToast();
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [isShareSaving, setIsShareSaving] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
   const loadedRef = useRef<string | null>(null);
 
@@ -59,16 +64,38 @@ export function CollaborationWrapper() {
     updateCursor(x, y);
   }, [updateCursor]);
 
+  const handleShareClick = useCallback(async () => {
+    if (!user) {
+      toast({ title: "Login Required", description: "Please log in to share projects.", variant: "destructive" });
+      return;
+    }
+    if (activeProjectId) {
+      setShareDialogOpen(true);
+      return;
+    }
+    setIsShareSaving(true);
+    const projectData = getProjectData();
+    const { success, error, projectId } = await saveCloudProject(user.id, projectName, projectData);
+    setIsShareSaving(false);
+    if (!success || !projectId) {
+      toast({ title: "Share Failed", description: error ?? "Could not save project for sharing.", variant: "destructive" });
+      return;
+    }
+    setActiveProjectId(projectId);
+    setShareDialogOpen(true);
+  }, [user, activeProjectId, getProjectData, projectName, setActiveProjectId, toast]);
+
   return (
     <div className="h-full w-full" onMouseMove={handleMouseMove} ref={gridRef}>
       <PixelMapLayout
         onlineUsers={onlineUsers}
-        onShareClick={() => setShareDialogOpen(true)}
+        onShareClick={handleShareClick}
       />
       <ShareDialog
         projectId={activeProjectId}
         open={shareDialogOpen}
         onOpenChange={setShareDialogOpen}
+        isShareSaving={isShareSaving}
       />
     </div>
   );
