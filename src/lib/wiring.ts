@@ -522,27 +522,42 @@ export function getWiringData({
 
   // DATA WIRING
   if (wiringPattern === 'manual') {
-      const processedDataIndices = new Set<number>();
-      allTilesData.forEach((startTileInfo, startTileGridIndex) => {
-          const startTile = tiles[startTileGridIndex];
-          if (startTile.deleted || !startTile.dataCircuit || processedDataIndices.has(startTileGridIndex)) return;
-          
-          const { tileCount, pattern, mainLabel, backupLabel, runLength: circuitRunLength } = startTile.dataCircuit;
+      // Group all tiles carrying a dataCircuit by mainLabel, then find the true
+      // start (earliest in pathOrder) to avoid rendering a label on every tile
+      // when the circuit flows in reverse grid-index order.
+      type DataCircuitEntry = { gridIndices: number[]; circuit: NonNullable<Tile['dataCircuit']> };
+      const dataCircuitGroups = new Map<string, DataCircuitEntry>();
+      tiles.forEach((tile, gridIndex) => {
+          if (tile.deleted || !tile.dataCircuit) return;
+          const { mainLabel } = tile.dataCircuit;
+          if (!dataCircuitGroups.has(mainLabel)) {
+              dataCircuitGroups.set(mainLabel, { gridIndices: [], circuit: tile.dataCircuit });
+          }
+          dataCircuitGroups.get(mainLabel)!.gridIndices.push(gridIndex);
+      });
+
+      dataCircuitGroups.forEach(({ gridIndices, circuit }) => {
+          const { tileCount, pattern, mainLabel, backupLabel, runLength: circuitRunLength } = circuit;
           if (tileCount === 0) return;
 
           const pathOrder = getPathOrder(activeTileIndices, pattern, screenWidth, screenHeight, circuitRunLength);
-          const startTileIndexInPath = pathOrder.indexOf(startTileGridIndex);
-          if (startTileIndexInPath === -1) return;
-          
-          allTilesData[startTileGridIndex].dataLabel = mainLabel;
+
+          // Find the tile with the smallest position in pathOrder (true start)
+          let trueStartPathIndex = Infinity;
+          gridIndices.forEach(idx => {
+              const pos = pathOrder.indexOf(idx);
+              if (pos !== -1 && pos < trueStartPathIndex) trueStartPathIndex = pos;
+          });
+          if (trueStartPathIndex === Infinity) return;
+
+          const trueStartGridIndex = pathOrder[trueStartPathIndex];
+          allTilesData[trueStartGridIndex].dataLabel = mainLabel;
 
           for (let i = 0; i < tileCount; i++) {
-              const currentPathIndex = startTileIndexInPath + i;
+              const currentPathIndex = trueStartPathIndex + i;
               if (currentPathIndex >= pathOrder.length) break;
-              
-              const currentGridIndex = pathOrder[currentPathIndex];
-              processedDataIndices.add(currentGridIndex);
 
+              const currentGridIndex = pathOrder[currentPathIndex];
               const isLastInCircuit = i === tileCount - 1;
               const isLastInPath = currentPathIndex === pathOrder.length - 1;
 
@@ -605,25 +620,35 @@ export function getWiringData({
   
   // POWER WIRING
   if (powerWiringPattern === 'manual') {
-      const processedPowerIndices = new Set<number>();
-      allTilesData.forEach((startTileInfo, startTileGridIndex) => {
-          const startTile = tiles[startTileGridIndex];
-          if (startTile.deleted || !startTile.powerCircuit || processedPowerIndices.has(startTileGridIndex)) return;
+      type PowerCircuitEntry = { gridIndices: number[]; circuit: NonNullable<Tile['powerCircuit']> };
+      const powerCircuitGroups = new Map<string, PowerCircuitEntry>();
+      tiles.forEach((tile, gridIndex) => {
+          if (tile.deleted || !tile.powerCircuit) return;
+          const { label } = tile.powerCircuit;
+          if (!powerCircuitGroups.has(label)) {
+              powerCircuitGroups.set(label, { gridIndices: [], circuit: tile.powerCircuit });
+          }
+          powerCircuitGroups.get(label)!.gridIndices.push(gridIndex);
+      });
 
-          const { tileCount, pattern, runLength: circuitRunLength } = startTile.powerCircuit;
+      powerCircuitGroups.forEach(({ gridIndices, circuit }) => {
+          const { tileCount, pattern, runLength: circuitRunLength } = circuit;
           if (tileCount === 0) return;
 
           const pathOrder = getPathOrder(activeTileIndices, pattern, screenWidth, screenHeight, circuitRunLength);
-          const startTileIndexInPath = pathOrder.indexOf(startTileGridIndex);
-          if (startTileIndexInPath === -1) return;
+
+          let trueStartPathIndex = Infinity;
+          gridIndices.forEach(idx => {
+              const pos = pathOrder.indexOf(idx);
+              if (pos !== -1 && pos < trueStartPathIndex) trueStartPathIndex = pos;
+          });
+          if (trueStartPathIndex === Infinity) return;
 
           for (let i = 0; i < tileCount; i++) {
-              const currentPathIndex = startTileIndexInPath + i;
+              const currentPathIndex = trueStartPathIndex + i;
               if (currentPathIndex >= pathOrder.length) break;
-              
-              const currentGridIndex = pathOrder[currentPathIndex];
-              processedPowerIndices.add(currentGridIndex);
 
+              const currentGridIndex = pathOrder[currentPathIndex];
               const isLastInCircuit = i === tileCount - 1;
               const isLastInPath = currentPathIndex === pathOrder.length - 1;
 
