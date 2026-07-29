@@ -176,21 +176,50 @@ function generateCustomSerpentinePath(
       }
     }
   } else {
-    // Vertical serpentine: column blocks, each column snakes through all rows
-    for (let blockStart = 0; blockStart < screenWidth; blockStart += runLength) {
-      const blockEnd = Math.min(blockStart + runLength - 1, screenWidth - 1);
-      for (let x = blockStart; x <= blockEnd; x++) {
-        const posInBlock = x - blockStart;
-        const goDown = (posInBlock % 2 === 0) !== startBottom;
-        if (goDown) {
-          for (let y = 0; y < screenHeight; y++) {
-            const idx = y * screenWidth + x;
-            if (indexSet.has(idx)) result.push(idx);
+    // Vertical serpentine: bands of `runLength` rows, snaking column-by-column within each band.
+    // Bands are anchored to the actual active-tile extents so deleted edge rows don't shrink runs.
+    let minActiveRow = screenHeight;
+    let maxActiveRow = -1;
+    for (const idx of indexSet) {
+      const r = Math.floor(idx / screenWidth);
+      if (r < minActiveRow) minActiveRow = r;
+      if (r > maxActiveRow) maxActiveRow = r;
+    }
+    if (maxActiveRow < 0) return result;
+
+    if (startBottom) {
+      // Anchor from the bottom: first band covers [maxActiveRow-runLength+1 .. maxActiveRow]
+      for (let bandEnd = maxActiveRow; bandEnd >= minActiveRow; bandEnd -= runLength) {
+        const bandStart = Math.max(minActiveRow, bandEnd - runLength + 1);
+        for (let x = 0; x < screenWidth; x++) {
+          if (x % 2 === 0) {
+            for (let y = bandEnd; y >= bandStart; y--) {
+              const idx = y * screenWidth + x;
+              if (indexSet.has(idx)) result.push(idx);
+            }
+          } else {
+            for (let y = bandStart; y <= bandEnd; y++) {
+              const idx = y * screenWidth + x;
+              if (indexSet.has(idx)) result.push(idx);
+            }
           }
-        } else {
-          for (let y = screenHeight - 1; y >= 0; y--) {
-            const idx = y * screenWidth + x;
-            if (indexSet.has(idx)) result.push(idx);
+        }
+      }
+    } else {
+      // Anchor from the top: first band covers [minActiveRow .. minActiveRow+runLength-1]
+      for (let bandStart = minActiveRow; bandStart <= maxActiveRow; bandStart += runLength) {
+        const bandEnd = Math.min(maxActiveRow, bandStart + runLength - 1);
+        for (let x = 0; x < screenWidth; x++) {
+          if (x % 2 === 0) {
+            for (let y = bandStart; y <= bandEnd; y++) {
+              const idx = y * screenWidth + x;
+              if (indexSet.has(idx)) result.push(idx);
+            }
+          } else {
+            for (let y = bandEnd; y >= bandStart; y--) {
+              const idx = y * screenWidth + x;
+              if (indexSet.has(idx)) result.push(idx);
+            }
           }
         }
       }
