@@ -2,23 +2,22 @@
 "use client";
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
-import { useState, useEffect, useMemo } from "react";
-import { cn, isColorDark } from "@/lib/utils";
+import { useEffect, useRef, useMemo, useCallback } from "react";
+import { isColorDark } from "@/lib/utils";
 
 export function WiringDiagram() {
-  const { 
-    dimensions, 
-    tiles, 
-    tileColor, 
-    tileColorTwo, 
-    onOffMode, 
+  const {
+    dimensions,
+    tiles,
+    tileColor,
+    tileColorTwo,
+    onOffMode,
     zoom,
     showDataLabels,
     showPowerLabels,
     labels,
     showLabels,
     labelFontSize,
-    labelPosition,
     labelColor,
     labelColorMode,
     arrowheadSize,
@@ -46,26 +45,20 @@ export function WiringDiagram() {
     handleTileClick,
   } = usePixelMap();
 
-  const [isClient, setIsClient] = useState(false);
+  const baseCanvasRef = useRef<HTMLCanvasElement>(null);
+  const dataCanvasRef = useRef<HTMLCanvasElement>(null);
+  const powerCanvasRef = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-  
   const rowData = useMemo(() => {
     const data: { yPos: number; height: number }[] = [];
     let currentY = 0;
     for (let i = 0; i < effectiveScreenHeight; i++) {
-        const isTopHalfRow = topHalfTile && i === 0;
-        const isBottomHalfRow = bottomHalfTile && i === effectiveScreenHeight - 1;
-        
-        let rowHeight = dimensions.tileHeight;
-        if (isTopHalfRow || isBottomHalfRow) {
-            rowHeight /= 2;
-        }
-
-        data.push({ yPos: currentY, height: rowHeight });
-        currentY += rowHeight;
+      const isTopHalfRow = topHalfTile && i === 0;
+      const isBottomHalfRow = bottomHalfTile && i === effectiveScreenHeight - 1;
+      let rowHeight = dimensions.tileHeight;
+      if (isTopHalfRow || isBottomHalfRow) rowHeight /= 2;
+      data.push({ yPos: currentY, height: rowHeight });
+      currentY += rowHeight;
     }
     return data;
   }, [dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
@@ -74,254 +67,399 @@ export function WiringDiagram() {
     const data: { xPos: number; width: number }[] = [];
     let currentX = 0;
     for (let i = 0; i < effectiveScreenWidth; i++) {
-        const isLeftHalf = leftHalfTile && i === 0;
-        const isRightHalf = rightHalfTile && i === effectiveScreenWidth - 1;
-
-        let colWidth = dimensions.tileWidth;
-        if (isLeftHalf || isRightHalf) {
-            colWidth /= 2;
-        }
-        data.push({ xPos: currentX, width: colWidth });
-        currentX += colWidth;
+      const isLeftHalf = leftHalfTile && i === 0;
+      const isRightHalf = rightHalfTile && i === effectiveScreenWidth - 1;
+      let colWidth = dimensions.tileWidth;
+      if (isLeftHalf || isRightHalf) colWidth /= 2;
+      data.push({ xPos: currentX, width: colWidth });
+      currentX += colWidth;
     }
     return data;
   }, [dimensions, leftHalfTile, rightHalfTile, effectiveScreenWidth]);
 
-  const totalGridPixelHeight = rowData.reduce((acc, curr) => acc + curr.height, 0);
-  const totalGridPixelWidth = colData.reduce((acc, curr) => acc + curr.width, 0);
+  const totalGridPixelWidth = useMemo(
+    () => colData.reduce((acc, c) => acc + c.width, 0),
+    [colData],
+  );
+  const totalGridPixelHeight = useMemo(
+    () => rowData.reduce((acc, r) => acc + r.height, 0),
+    [rowData],
+  );
+
+  const getTileCenter = useCallback(
+    (x: number, y: number) => {
+      const col = colData[x];
+      const row = rowData[y];
+      if (!col || !row) return null;
+      const cx = isWiringMirrored
+        ? totalGridPixelWidth - col.xPos - col.width / 2
+        : col.xPos + col.width / 2;
+      const cy = row.yPos + row.height / 2;
+      return { cx, cy };
+    },
+    [colData, rowData, isWiringMirrored, totalGridPixelWidth],
+  );
+
+  // ── Draw base layer (tiles, borders, custom labels) ────────────────────
+  useEffect(() => {
+    const canvas = baseCanvasRef.current;
+    if (!canvas || tiles.length === 0) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = totalGridPixelWidth;
+    const h = totalGridPixelHeight;
+
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, w, h);
+
+    wiringData.forEach(({ x, y, isDeleted }, index) => {
+      const originalIndex = y * effectiveScreenWidth + x;
+      const tile = tiles[originalIndex];
+      if (!tile) return;
+
+      const row = rowData[y];
+      const col = colData[x];
+      if (!row || !col) return;
+
+      const drawX = isWiringMirrored ? totalGridPixelWidth - col.xPos - col.width : col.xPos;
+      const drawY = row.yPos;
+      const tw = col.width;
+      const th = row.height;
+
+      let bgColor: string;
+      if (onOffMode) {
+        bgColor = isDeleted ? '#000000' : '#FFFFFF';
+      } else {
+        if (isDeleted) {
+          bgColor = '#000000';
+        } else if (tile.color) {
+          bgColor = tile.color;
+        } else {
+          bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
+        }
+      }
+
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(drawX, drawY, tw, th);
+
+      if (!isDeleted && borderWidth > 0) {
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = borderWidth;
+        ctx.strokeRect(drawX + borderWidth / 2, drawY + borderWidth / 2, tw - borderWidth, th - borderWidth);
+      }
+
+      if (!isDeleted) {
+        const currentLabelColor = labelColorMode === 'auto'
+          ? isColorDark(bgColor) ? '#FFFFFF' : '#000000'
+          : labelColor;
+
+        if (showLabels && labels[originalIndex]) {
+          ctx.fillStyle = currentLabelColor;
+          ctx.globalAlpha = 0.7;
+          ctx.font = `bold ${labelFontSize}px sans-serif`;
+          ctx.textBaseline = 'alphabetic';
+          ctx.fillText(labels[originalIndex], drawX + 4, drawY + labelFontSize + 2);
+          ctx.globalAlpha = 1;
+        }
+
+        if (showSliceOffsetLabels && wiringData[index]?.sliceOffsetLabel) {
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.fillRect(drawX + 2, drawY + 2, 40, 14);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 9px monospace';
+          ctx.textBaseline = 'top';
+          ctx.fillText(wiringData[index].sliceOffsetLabel!, drawX + 4, drawY + 3);
+        }
+      }
+    });
+  }, [
+    tiles, wiringData, rowData, colData, totalGridPixelWidth, totalGridPixelHeight,
+    onOffMode, tileColor, tileColorTwo, borderWidth, borderColor,
+    showLabels, labels, labelFontSize, labelColor, labelColorMode,
+    isWiringMirrored, showSliceOffsetLabels, effectiveScreenWidth,
+  ]);
+
+  // ── Draw data layer (data labels + data arrows) ────────────────────────
+  useEffect(() => {
+    const canvas = dataCanvasRef.current;
+    if (!canvas || tiles.length === 0) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = totalGridPixelWidth;
+    const h = totalGridPixelHeight;
+
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    if (!showDataLabels) return;
+
+    // Data label circles
+    wiringData.forEach(({ x, y, dataLabel, backupLabel, isDeleted }) => {
+      if (isDeleted || (!backupLabel && !dataLabel)) return;
+      const row = rowData[y];
+      const col = colData[x];
+      if (!row || !col) return;
+
+      const drawX = isWiringMirrored ? totalGridPixelWidth - col.xPos - col.width : col.xPos;
+      const cx = drawX + col.width / 2;
+      const cy = row.yPos + row.height / 2;
+      const offset = showPowerLabels ? (dataLabelSize / 2) + 2 : 0;
+      const labelY = cy - offset;
+
+      const label = backupLabel || dataLabel;
+      const r = dataLabelSize / 2;
+      ctx.beginPath();
+      ctx.arc(cx, labelY, r, 0, Math.PI * 2);
+      ctx.fillStyle = backupLabel ? '#ef4444' : dataLabelColor;
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${Math.max(8, dataLabelSize * 0.4)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, cx, labelY);
+      ctx.textAlign = 'left';
+    });
+
+    // Data arrows
+    ctx.strokeStyle = dataLabelColor;
+    ctx.fillStyle = dataLabelColor;
+    ctx.lineWidth = 3;
+    wiringData.forEach(({ x, y, nextTile, isDeleted }) => {
+      if (isDeleted || !nextTile) return;
+      const start = getTileCenter(x, y);
+      const end = getTileCenter(nextTile.x, nextTile.y);
+      if (!start || !end) return;
+
+      const dx = end.cx - start.cx;
+      const dy = end.cy - start.cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist <= arrowGap * 2) return;
+
+      const nx = dx / dist;
+      const ny = dy / dist;
+      const x1 = start.cx + nx * arrowGap;
+      const y1 = start.cy + ny * arrowGap;
+      const x2 = end.cx - nx * arrowGap;
+      const y2 = end.cy - ny * arrowGap;
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      const baseCX = x2 - nx * arrowheadLength;
+      const baseCY = y2 - ny * arrowheadLength;
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(baseCX - ny * (arrowheadSize / 2), baseCY + nx * (arrowheadSize / 2));
+      ctx.lineTo(baseCX + ny * (arrowheadSize / 2), baseCY - nx * (arrowheadSize / 2));
+      ctx.closePath();
+      ctx.fill();
+    });
+  }, [
+    wiringData, rowData, colData, totalGridPixelWidth, totalGridPixelHeight,
+    showDataLabels, showPowerLabels, dataLabelSize, dataLabelColor,
+    arrowheadSize, arrowheadLength, arrowGap, isWiringMirrored, getTileCenter,
+  ]);
+
+  // ── Draw power layer (power labels + power arrows) ─────────────────────
+  useEffect(() => {
+    const canvas = powerCanvasRef.current;
+    if (!canvas || tiles.length === 0) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = totalGridPixelWidth;
+    const h = totalGridPixelHeight;
+
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    if (!showPowerLabels) return;
+
+    // Power label circles
+    wiringData.forEach(({ x, y, powerPortLabel, isDeleted }) => {
+      if (isDeleted || !powerPortLabel) return;
+      const row = rowData[y];
+      const col = colData[x];
+      if (!row || !col) return;
+
+      const drawX = isWiringMirrored ? totalGridPixelWidth - col.xPos - col.width : col.xPos;
+      const cx = drawX + col.width / 2;
+      const cy = row.yPos + row.height / 2;
+      const hasData = showDataLabels && wiringData[y * effectiveScreenWidth + x];
+      const dataInfo = hasData ? wiringData[y * effectiveScreenWidth + x] : null;
+      const offset = (dataInfo && (dataInfo.backupLabel || dataInfo.dataLabel))
+        ? (powerLabelSize / 2) + 2
+        : 0;
+      const labelY = cy + offset;
+
+      const r = powerLabelSize / 2;
+      ctx.beginPath();
+      ctx.arc(cx, labelY, r, 0, Math.PI * 2);
+      ctx.fillStyle = powerLabelColor;
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${Math.max(8, powerLabelSize * 0.4)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(powerPortLabel, cx, labelY);
+      ctx.textAlign = 'left';
+    });
+
+    // Power arrows
+    ctx.strokeStyle = powerLabelColor;
+    ctx.fillStyle = powerLabelColor;
+    ctx.lineWidth = 2;
+    wiringData.forEach(({ x, y, nextPowerTile, isDeleted }) => {
+      if (isDeleted || !nextPowerTile) return;
+      const start = getTileCenter(x, y);
+      const end = getTileCenter(nextPowerTile.x, nextPowerTile.y);
+      if (!start || !end) return;
+
+      const dx = end.cx - start.cx;
+      const dy = end.cy - start.cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist <= powerArrowGap * 2) return;
+
+      const nx = dx / dist;
+      const ny = dy / dist;
+      const x1 = start.cx + nx * powerArrowGap;
+      const y1 = start.cy + ny * powerArrowGap;
+      const x2 = end.cx - nx * powerArrowGap;
+      const y2 = end.cy - ny * powerArrowGap;
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      const baseCX = x2 - nx * powerArrowheadLength;
+      const baseCY = y2 - ny * powerArrowheadLength;
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(baseCX - ny * (powerArrowheadSize / 2), baseCY + nx * (powerArrowheadSize / 2));
+      ctx.lineTo(baseCX + ny * (powerArrowheadSize / 2), baseCY - nx * (powerArrowheadSize / 2));
+      ctx.closePath();
+      ctx.fill();
+    });
+  }, [
+    wiringData, rowData, colData, totalGridPixelWidth, totalGridPixelHeight,
+    showPowerLabels, showDataLabels, powerLabelSize, powerLabelColor,
+    powerArrowheadSize, powerArrowheadLength, powerArrowGap, isWiringMirrored,
+    effectiveScreenWidth, getTileCenter,
+  ]);
+
+  // ── Click handling ─────────────────────────────────────────────────────
+  const handleCanvasClick = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = baseCanvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = totalGridPixelWidth / rect.width;
+      const scaleY = totalGridPixelHeight / rect.height;
+      const canvasX = (e.clientX - rect.left) * scaleX;
+      const canvasY = (e.clientY - rect.top) * scaleY;
+
+      for (let yi = 0; yi < rowData.length; yi++) {
+        const row = rowData[yi];
+        if (canvasY < row.yPos || canvasY >= row.yPos + row.height) continue;
+        for (let xi = 0; xi < colData.length; xi++) {
+          const col = colData[xi];
+          const drawX = isWiringMirrored
+            ? totalGridPixelWidth - col.xPos - col.width
+            : col.xPos;
+          if (canvasX >= drawX && canvasX < drawX + col.width) {
+            const tileIndex = yi * effectiveScreenWidth + xi;
+            const tile = tiles[tileIndex];
+            if (tile) handleTileClick(tile.id);
+            return;
+          }
+        }
+      }
+    },
+    [rowData, colData, tiles, handleTileClick, isWiringMirrored, totalGridPixelWidth, totalGridPixelHeight, effectiveScreenWidth],
+  );
 
   if (tiles.length === 0) {
     return (
-        <div className="flex h-full w-full items-center justify-center text-muted-foreground p-4">
-            <p>Set dimensions and apply to see the wiring diagram.</p>
-        </div>
+      <div className="flex h-full w-full items-center justify-center text-muted-foreground p-4">
+        <p>Set dimensions and apply to see the wiring diagram.</p>
+      </div>
     );
   }
 
   return (
-    <div>
-      <div style={{ width: totalGridPixelWidth * zoom, height: totalGridPixelHeight * zoom }}>
-        <div 
-          ref={wiringDiagramRef}
-          className="relative bg-background"
-          style={{ 
-            width: totalGridPixelWidth, 
-            height: totalGridPixelHeight,
-            transform: `scale(${zoom})`,
-            transformOrigin: 'top left',
-          }}
-        >
-          {wiringData.map(({ x, y, dataLabel, powerPortLabel, backupLabel, isDeleted, sliceOffsetLabel }, index) => {
-            const originalIndex = y * effectiveScreenWidth + x;
-            const tile = tiles[originalIndex];
-            if (!tile) return null; // Guard against out of bounds if arrays desync
-            
-            const { yPos, height: tileHeight } = rowData[y];
-            const { xPos, width: tileWidth } = colData[x];
-
-            let bgColor;
-            if (onOffMode) {
-              bgColor = isDeleted ? '#000000' : '#FFFFFF';
-            } else {
-              if (isDeleted) {
-                bgColor = '#000000';
-              } else if (tile.color) {
-                bgColor = tile.color;
-              } else {
-                bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
-              }
-            }
-
-            const tileStyle: React.CSSProperties = {
-              top: yPos,
-              width: tileWidth,
-              height: tileHeight,
-              backgroundColor: bgColor,
-              border: isDeleted ? 'none' : `${borderWidth}px solid ${borderColor}`,
-              boxSizing: 'border-box',
-              ...(isWiringMirrored ? { right: xPos } : { left: xPos }),
-            };
-            
-            const currentLabelColor = labelColorMode === 'auto'
-              ? isColorDark(bgColor) ? '#FFFFFF' : '#000000'
-              : labelColor;
-
-            return (
-              <button
-                key={`wiring-tile-${tile.id}`}
-                onClick={() => handleTileClick(tile.id)}
-                className="absolute overflow-visible focus:outline-none focus:ring-2 focus:ring-accent focus:z-10"
-                style={tileStyle}
-                aria-label={`Tile ${labels[originalIndex] || tile.id}`}
-              >
-                {!isDeleted && (
-                  <>
-                    {showLabels && labels[originalIndex] && (
-                      <span
-                        className={cn(
-                          "absolute font-bold pointer-events-none drop-shadow-sm",
-                          {
-                              'top-1 left-2': labelPosition === 'top-left',
-                              'top-1 right-2 text-right': labelPosition === 'top-right',
-                              'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center': labelPosition === 'center',
-                              'bottom-1 left-2': labelPosition === 'bottom-left',
-                              'bottom-1 right-2 text-right': labelPosition === 'bottom-right',
-                          }
-                        )}
-                        style={{
-                          fontSize: `${labelFontSize}px`,
-                          color: currentLabelColor,
-                          opacity: 0.7,
-                        }}
-                      >
-                        {labels[originalIndex]}
-                      </span>
-                    )}
-                    {showSliceOffsetLabels && sliceOffsetLabel && (
-                        <div
-                            className="absolute top-1 left-1 bg-black/60 text-white text-xs font-mono px-1 py-0.5 rounded z-20"
-                        >
-                            {sliceOffsetLabel}
-                        </div>
-                    )}
-                    <div
-                      className="flex flex-col items-center justify-center h-full w-full text-foreground relative"
-                    >
-                      {showDataLabels && (backupLabel || dataLabel) && (
-                        <div
-                          data-wiring-type="data"
-                          className={`rounded-full flex items-center justify-center font-bold z-10 ${backupLabel ? 'bg-destructive text-destructive-foreground' : ''}`}
-                          style={{
-                            width: `${dataLabelSize}px`,
-                            height: `${dataLabelSize}px`,
-                            fontSize: `${Math.max(8, dataLabelSize * 0.4)}px`,
-                            ...(backupLabel ? {} : { backgroundColor: dataLabelColor, color: '#ffffff' }),
-                          }}
-                        >
-                          <span>{backupLabel || dataLabel}</span>
-                        </div>
-                      )}
-                      {showPowerLabels && powerPortLabel && (
-                         <div
-                            data-wiring-type="power"
-                            className="rounded-full flex items-center justify-center font-bold z-10"
-                            style={{
-                              width: `${powerLabelSize}px`,
-                              height: `${powerLabelSize}px`,
-                              fontSize: `${Math.max(8, powerLabelSize * 0.4)}px`,
-                              backgroundColor: powerLabelColor,
-                              color: '#ffffff',
-                            }}
-                         >
-                            <span>{powerPortLabel}</span>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </button>
-            );
-          })}
-           <svg
-              className="absolute top-0 left-0 w-full h-full pointer-events-none z-20"
-              style={{
-                width: totalGridPixelWidth,
-                height: totalGridPixelHeight,
-              }}
-            >
-              {/* Data Arrows */}
-              {isClient && showDataLabels && wiringData.map(({ x, y, nextTile, isDeleted }) => {
-                if (isDeleted || !nextTile) return null;
-                
-                const startRow = rowData[y];
-                const endRow = rowData[nextTile.y];
-                const startCol = colData[x];
-                const endCol = colData[nextTile.x];
-
-                const startX_center = (isWiringMirrored ? totalGridPixelWidth - startCol.xPos - startCol.width : startCol.xPos) + startCol.width / 2;
-                const startY_center = startRow.yPos + startRow.height / 2;
-                const endX_center = (isWiringMirrored ? totalGridPixelWidth - endCol.xPos - endCol.width : endCol.xPos) + endCol.width / 2;
-                const endY_center = endRow.yPos + endRow.height / 2;
-                
-                const dx = endX_center - startX_center;
-                const dy = endY_center - startY_center;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-
-                if (distance <= arrowGap * 2) return null;
-
-                const nx = dx / distance;
-                const ny = dy / distance;
-                const x1 = startX_center + nx * arrowGap;
-                const y1 = startY_center + ny * arrowGap;
-                const x2 = endX_center - nx * arrowGap;
-                const y2 = endY_center - ny * arrowGap;
-                
-                const tipX = x2;
-                const tipY = y2;
-                const baseCenterX = tipX - nx * arrowheadLength;
-                const baseCenterY = tipY - ny * arrowheadLength;
-                const p2x = baseCenterX - ny * (arrowheadSize / 2);
-                const p2y = baseCenterY + nx * (arrowheadSize / 2);
-                const p3x = baseCenterX + ny * (arrowheadSize / 2);
-                const p3y = baseCenterY - nx * (arrowheadSize / 2);
-                const arrowheadPoints = `${tipX},${tipY} ${p2x},${p2y} ${p3x},${p3y}`;
-
-                return (
-                  <g key={`data-arrow-${x}-${y}`} data-wiring-type="data">
-                    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={dataLabelColor} strokeWidth="3" />
-                     <polygon points={arrowheadPoints} fill={dataLabelColor} />
-                  </g>
-                );
-              })}
-
-              {/* Power Arrows */}
-              {isClient && showPowerLabels && wiringData.map(({ x, y, nextPowerTile, isDeleted }) => {
-                if (isDeleted || !nextPowerTile) return null;
-
-                const startRow = rowData[y];
-                const endRow = rowData[nextPowerTile.y];
-                const startCol = colData[x];
-                const endCol = colData[nextPowerTile.x];
-
-                const startX_center = (isWiringMirrored ? totalGridPixelWidth - startCol.xPos - startCol.width : startCol.xPos) + startCol.width / 2;
-                const startY_center = startRow.yPos + startRow.height / 2;
-                const endX_center = (isWiringMirrored ? totalGridPixelWidth - endCol.xPos - endCol.width : endCol.xPos) + endCol.width / 2;
-                const endY_center = endRow.yPos + endRow.height / 2;
-                
-                const dx = endX_center - startX_center;
-                const dy = endY_center - startY_center;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-
-                if (distance <= powerArrowGap * 2) return null;
-
-                const nx = dx / distance;
-                const ny = dy / distance;
-
-                const x1 = startX_center + nx * powerArrowGap;
-                const y1 = startY_center + ny * powerArrowGap;
-                const x2 = endX_center - nx * powerArrowGap;
-                const y2 = endY_center - ny * powerArrowGap;
-                
-                const tipX = x2;
-                const tipY = y2;
-                const baseCenterX = tipX - nx * powerArrowheadLength;
-                const baseCenterY = tipY - ny * powerArrowheadLength;
-                const p2x = baseCenterX - ny * (powerArrowheadSize / 2);
-                const p2y = baseCenterY + nx * (powerArrowheadSize / 2);
-                const p3x = baseCenterX + ny * (powerArrowheadSize / 2);
-                const p3y = baseCenterY - nx * (powerArrowheadSize / 2);
-                const arrowheadPoints = `${tipX},${tipY} ${p2x},${p2y} ${p3x},${p3y}`;
-
-                return (
-                  <g key={`power-arrow-${x}-${y}`} data-wiring-type="power">
-                    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={powerLabelColor} strokeWidth="2" />
-                     <polygon points={arrowheadPoints} fill={powerLabelColor} />
-                  </g>
-                );
-              })}
-            </svg>
-        </div>
-      </div>
+    <div
+      ref={wiringDiagramRef}
+      style={{
+        width: totalGridPixelWidth * zoom,
+        height: totalGridPixelHeight * zoom,
+        flexShrink: 0,
+        position: 'relative',
+      }}
+    >
+      <canvas
+        ref={baseCanvasRef}
+        onClick={handleCanvasClick}
+        style={{
+          display: 'block',
+          transform: `scale(${zoom})`,
+          transformOrigin: 'top left',
+          cursor: 'pointer',
+          imageRendering: zoom < 1 ? 'auto' : 'pixelated',
+        }}
+      />
+      <canvas
+        ref={dataCanvasRef}
+        data-wiring-type="data"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          display: 'block',
+          transform: `scale(${zoom})`,
+          transformOrigin: 'top left',
+          pointerEvents: 'none',
+          imageRendering: zoom < 1 ? 'auto' : 'pixelated',
+        }}
+      />
+      <canvas
+        ref={powerCanvasRef}
+        data-wiring-type="power"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          display: 'block',
+          transform: `scale(${zoom})`,
+          transformOrigin: 'top left',
+          pointerEvents: 'none',
+          imageRendering: zoom < 1 ? 'auto' : 'pixelated',
+        }}
+      />
     </div>
   );
 }
