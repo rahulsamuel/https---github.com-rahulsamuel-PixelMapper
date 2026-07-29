@@ -2524,15 +2524,19 @@ const handleRightHalfTileChange = (add: boolean) => {
 
   const canUndo = historyRef.current.past.length > 0;
   const canRedo = historyRef.current.future.length > 0;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { isUndoRedoRef.current = false; }, [screens]);
 
-  // Debounced auto-capture: when screens change (and not from undo/redo),
-  // snapshot the previous state into history after a short idle period.
+  // Debounced auto-capture: snapshot previous state on screen changes.
+  // isUndoRedoRef is checked AND reset inside the timer so redo isn't wiped.
   useEffect(() => {
-    if (isUndoRedoRef.current) return;
     if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
+    const wasUndoRedo = isUndoRedoRef.current;
     historyTimerRef.current = setTimeout(() => {
+      if (wasUndoRedo) {
+        // Just update the baseline snapshot after undo/redo; don't touch history.
+        lastSnapshotRef.current = getProjectData();
+        isUndoRedoRef.current = false;
+        return;
+      }
       const currentSnapshot = getProjectData();
       const last = lastSnapshotRef.current;
       if (last && JSON.stringify(last) !== JSON.stringify(currentSnapshot)) {

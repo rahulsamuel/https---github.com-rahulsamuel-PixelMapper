@@ -3,7 +3,7 @@
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import { useAuth } from "@/contexts/auth-context";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -223,7 +223,7 @@ export function PixelMapActions() {
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleExportClick} className={buttonVariants({ variant: "outline" })}>
+            <AlertDialogAction onClick={handleExportClick}>
               <Download className="mr-2 h-4 w-4" />
               Save First
             </AlertDialogAction>
