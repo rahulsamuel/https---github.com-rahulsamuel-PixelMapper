@@ -19,7 +19,6 @@ export function CollaborationWrapper() {
     setActiveProjectId,
     getProjectData,
     loadProjectData,
-    scheduleSave,
     setProjectName,
     projectName,
     startNewProject,
