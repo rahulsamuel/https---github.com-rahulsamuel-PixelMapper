@@ -144,6 +144,100 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
   });
 }
 
+const CUSTOM_SERPENTINE_PATTERNS: WiringPattern[] = [
+  'custom-serpentine-h',
+  'custom-serpentine-h-start-right',
+  'custom-serpentine-v',
+  'custom-serpentine-v-start-bottom',
+];
+
+function isCustomSerpentine(pattern: WiringPattern): boolean {
+  return CUSTOM_SERPENTINE_PATTERNS.includes(pattern);
+}
+
+// Generates a local serpentine path anchored to the clicked tile.
+// For H patterns: the clicked tile is the first tile of the first row-run;
+// the column range is derived from startCol and runLength.
+// For V patterns: the clicked tile starts the first column-run;
+// the row range is derived from startRow and runLength.
+function generateManualSerpentinePath(
+  startGridIndex: number,
+  activeTileIndices: number[],
+  pattern: WiringPattern,
+  screenWidth: number,
+  screenHeight: number,
+  runLength: number,
+): number[] {
+  const indexSet = new Set(activeTileIndices);
+  const result: number[] = [];
+  const startRow = Math.floor(startGridIndex / screenWidth);
+  const startCol = startGridIndex % screenWidth;
+
+  if (pattern === 'custom-serpentine-h-start-right') {
+    const colEnd = startCol;
+    const colStart = startCol - runLength + 1;
+    for (let rowOff = 0; startRow + rowOff < screenHeight; rowOff++) {
+      const y = startRow + rowOff;
+      if (rowOff % 2 === 0) {
+        for (let x = colEnd; x >= colStart; x--) {
+          if (x >= 0 && indexSet.has(y * screenWidth + x)) result.push(y * screenWidth + x);
+        }
+      } else {
+        for (let x = colStart; x <= colEnd; x++) {
+          if (x >= 0 && indexSet.has(y * screenWidth + x)) result.push(y * screenWidth + x);
+        }
+      }
+    }
+  } else if (pattern === 'custom-serpentine-h') {
+    const colStart = startCol;
+    const colEnd = startCol + runLength - 1;
+    for (let rowOff = 0; startRow + rowOff < screenHeight; rowOff++) {
+      const y = startRow + rowOff;
+      if (rowOff % 2 === 0) {
+        for (let x = colStart; x <= colEnd; x++) {
+          if (x < screenWidth && indexSet.has(y * screenWidth + x)) result.push(y * screenWidth + x);
+        }
+      } else {
+        for (let x = colEnd; x >= colStart; x--) {
+          if (x < screenWidth && indexSet.has(y * screenWidth + x)) result.push(y * screenWidth + x);
+        }
+      }
+    }
+  } else if (pattern === 'custom-serpentine-v-start-bottom') {
+    const rowEnd = startRow;
+    const rowStart = startRow - runLength + 1;
+    for (let colOff = 0; startCol + colOff < screenWidth; colOff++) {
+      const x = startCol + colOff;
+      if (colOff % 2 === 0) {
+        for (let y = rowEnd; y >= rowStart; y--) {
+          if (y >= 0 && indexSet.has(y * screenWidth + x)) result.push(y * screenWidth + x);
+        }
+      } else {
+        for (let y = rowStart; y <= rowEnd; y++) {
+          if (y >= 0 && indexSet.has(y * screenWidth + x)) result.push(y * screenWidth + x);
+        }
+      }
+    }
+  } else if (pattern === 'custom-serpentine-v') {
+    const rowStart = startRow;
+    const rowEnd = startRow + runLength - 1;
+    for (let colOff = 0; startCol + colOff < screenWidth; colOff++) {
+      const x = startCol + colOff;
+      if (colOff % 2 === 0) {
+        for (let y = rowStart; y <= rowEnd; y++) {
+          if (y < screenHeight && indexSet.has(y * screenWidth + x)) result.push(y * screenWidth + x);
+        }
+      } else {
+        for (let y = rowEnd; y >= rowStart; y--) {
+          if (y < screenHeight && indexSet.has(y * screenWidth + x)) result.push(y * screenWidth + x);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
 function generateCustomSerpentinePath(
   indices: number[],
   pattern: WiringPattern,
@@ -378,8 +472,10 @@ export function applyManualPowerWiring(
     }
 
     const activeTileIndices = newTiles.map((t, i) => !t.deleted ? i : -1).filter(i => i !== -1);
-    const pathOrder = getPathOrder(activeTileIndices, powerPattern, screenWidth, screenHeight, runLength);
-    const startTilePathIndex = pathOrder.indexOf(startTileGridIndex);
+    const pathOrder = isCustomSerpentine(powerPattern)
+      ? generateManualSerpentinePath(startTileGridIndex, activeTileIndices, powerPattern, screenWidth, screenHeight, runLength || 4)
+      : getPathOrder(activeTileIndices, powerPattern, screenWidth, screenHeight, runLength);
+    const startTilePathIndex = isCustomSerpentine(powerPattern) ? 0 : pathOrder.indexOf(startTileGridIndex);
     if (startTilePathIndex === -1) return tiles; 
 
     const circuitTilesIndices: number[] = [];
@@ -458,8 +554,10 @@ export function applyManualDataWiring(
     }
 
     const activeTileIndices = newTiles.map((t, i) => !t.deleted ? i : -1).filter(i => i !== -1);
-    const pathOrder = getPathOrder(activeTileIndices, dataPattern, screenWidth, screenHeight, runLength);
-    const startTilePathIndex = pathOrder.indexOf(startTileGridIndex);
+    const pathOrder = isCustomSerpentine(dataPattern)
+      ? generateManualSerpentinePath(startTileGridIndex, activeTileIndices, dataPattern, screenWidth, screenHeight, runLength || 4)
+      : getPathOrder(activeTileIndices, dataPattern, screenWidth, screenHeight, runLength);
+    const startTilePathIndex = isCustomSerpentine(dataPattern) ? 0 : pathOrder.indexOf(startTileGridIndex);
     if (startTilePathIndex === -1) return tiles; 
 
     const circuitTilesIndices: number[] = [];
@@ -571,15 +669,22 @@ export function getWiringData({
           const { tileCount, pattern, mainLabel, backupLabel, runLength: circuitRunLength } = circuit;
           if (tileCount === 0) return;
 
-          const pathOrder = getPathOrder(activeTileIndices, pattern, screenWidth, screenHeight, circuitRunLength);
+          const startGridIdx = gridIndices[0];
+          const pathOrder = isCustomSerpentine(pattern)
+            ? generateManualSerpentinePath(startGridIdx, activeTileIndices, pattern, screenWidth, screenHeight, circuitRunLength || 4)
+            : getPathOrder(activeTileIndices, pattern, screenWidth, screenHeight, circuitRunLength);
 
-          // Find the tile with the smallest position in pathOrder (true start)
-          let trueStartPathIndex = Infinity;
-          gridIndices.forEach(idx => {
+          let trueStartPathIndex: number;
+          if (isCustomSerpentine(pattern)) {
+            trueStartPathIndex = 0;
+          } else {
+            trueStartPathIndex = Infinity;
+            gridIndices.forEach(idx => {
               const pos = pathOrder.indexOf(idx);
               if (pos !== -1 && pos < trueStartPathIndex) trueStartPathIndex = pos;
-          });
-          if (trueStartPathIndex === Infinity) return;
+            });
+            if (trueStartPathIndex === Infinity) return;
+          }
 
           const trueStartGridIndex = pathOrder[trueStartPathIndex];
           allTilesData[trueStartGridIndex].dataLabel = mainLabel;
@@ -666,14 +771,22 @@ export function getWiringData({
           const { tileCount, pattern, runLength: circuitRunLength } = circuit;
           if (tileCount === 0) return;
 
-          const pathOrder = getPathOrder(activeTileIndices, pattern, screenWidth, screenHeight, circuitRunLength);
+          const startGridIdx = gridIndices[0];
+          const pathOrder = isCustomSerpentine(pattern)
+            ? generateManualSerpentinePath(startGridIdx, activeTileIndices, pattern, screenWidth, screenHeight, circuitRunLength || 4)
+            : getPathOrder(activeTileIndices, pattern, screenWidth, screenHeight, circuitRunLength);
 
-          let trueStartPathIndex = Infinity;
-          gridIndices.forEach(idx => {
+          let trueStartPathIndex: number;
+          if (isCustomSerpentine(pattern)) {
+            trueStartPathIndex = 0;
+          } else {
+            trueStartPathIndex = Infinity;
+            gridIndices.forEach(idx => {
               const pos = pathOrder.indexOf(idx);
               if (pos !== -1 && pos < trueStartPathIndex) trueStartPathIndex = pos;
-          });
-          if (trueStartPathIndex === Infinity) return;
+            });
+            if (trueStartPathIndex === Infinity) return;
+          }
 
           for (let i = 0; i < tileCount; i++) {
               const currentPathIndex = trueStartPathIndex + i;
