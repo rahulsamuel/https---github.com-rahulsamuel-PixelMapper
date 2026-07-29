@@ -46,7 +46,24 @@ interface RasterMapConfig {
   screenArrangement: ScreenArrangement[];
 }
 
-export type WiringPattern = 'serpentine-horizontal' | 'serpentine-vertical' | 'serpentine-horizontal-reverse' | 'serpentine-vertical-reverse' | 'left-right' | 'top-bottom' | 'bottom-to-top' | 'serpentine-vertical-bottom-start' | 'serpentine-vertical-reverse-bottom-start' | 'serpentine-vertical-bottom-main' | 'manual';
+export type WiringPattern =
+  | 'serpentine-horizontal'
+  | 'serpentine-horizontal-start-right'
+  | 'serpentine-horizontal-reverse'
+  | 'serpentine-vertical'
+  | 'serpentine-vertical-reverse'
+  | 'serpentine-vertical-bottom-start'
+  | 'serpentine-vertical-reverse-bottom-start'
+  | 'serpentine-vertical-bottom-main'
+  | 'custom-serpentine-h'
+  | 'custom-serpentine-h-start-right'
+  | 'custom-serpentine-v'
+  | 'custom-serpentine-v-start-bottom'
+  | 'left-right'
+  | 'right-to-left'
+  | 'top-bottom'
+  | 'bottom-to-top'
+  | 'manual';
 type ProcessorType = 'Brompton' | 'Novastar' | 'Helios';
 
 export interface WiringInfo {
@@ -61,11 +78,16 @@ export interface WiringInfo {
   sliceOffsetLabel?: string;
 }
 
-export function getPathOrder(indices: number[], pattern: WiringPattern, screenWidth: number, screenHeight: number): number[] {
+export function getPathOrder(indices: number[], pattern: WiringPattern, screenWidth: number, screenHeight: number, runLength?: number): number[] {
   const getCoords = (index: number) => ({
     x: index % screenWidth,
     y: Math.floor(index / screenWidth),
   });
+
+  if (pattern === 'custom-serpentine-h' || pattern === 'custom-serpentine-h-start-right' ||
+      pattern === 'custom-serpentine-v' || pattern === 'custom-serpentine-v-start-bottom') {
+    return generateCustomSerpentinePath(indices, pattern, screenWidth, screenHeight, runLength || 4);
+  }
 
   return [...indices].sort((indexA, indexB) => {
     const a = getCoords(indexA);
@@ -75,6 +97,9 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
       case 'serpentine-horizontal':
         if (a.y !== b.y) return a.y - b.y;
         return a.y % 2 === 0 ? a.x - b.x : b.x - a.x;
+      case 'serpentine-horizontal-start-right':
+        if (a.y !== b.y) return a.y - b.y;
+        return a.y % 2 === 0 ? b.x - a.x : a.x - b.x;
       case 'serpentine-horizontal-reverse':
         if (a.y !== b.y) return b.y - a.y;
         return (screenHeight - 1 - a.y) % 2 === 0 ? a.x - b.x : b.x - a.x;
@@ -93,10 +118,10 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
         if (columnPairA !== columnPairB) {
             return columnPairA - columnPairB;
         }
-        if (a.x % 2 === 0) { // Left column of the pair
-            return b.y - a.y; // Bottom to top
-        } else { // Right column of the pair
-            return a.y - b.y; // Top to bottom
+        if (a.x % 2 === 0) {
+            return b.y - a.y;
+        } else {
+            return a.y - b.y;
         }
       case 'serpentine-vertical-reverse-bottom-start':
         if (a.x !== b.x) return b.x - a.x;
@@ -104,6 +129,9 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
       case 'left-right':
         if (a.y !== b.y) return a.y - b.y;
         return a.x - b.x;
+      case 'right-to-left':
+        if (a.y !== b.y) return a.y - b.y;
+        return b.x - a.x;
       case 'top-bottom':
         if (a.x !== b.x) return a.x - b.x;
         return a.y - b.y;
@@ -114,6 +142,60 @@ export function getPathOrder(indices: number[], pattern: WiringPattern, screenWi
         return a.y - b.y || a.x - b.x;
     }
   });
+}
+
+function generateCustomSerpentinePath(
+  indices: number[],
+  pattern: WiringPattern,
+  screenWidth: number,
+  screenHeight: number,
+  runLength: number,
+): number[] {
+  const indexSet = new Set(indices);
+  const result: number[] = [];
+  const isHorizontal = pattern === 'custom-serpentine-h' || pattern === 'custom-serpentine-h-start-right';
+  const startRight = pattern === 'custom-serpentine-h-start-right';
+  const startBottom = pattern === 'custom-serpentine-v-start-bottom';
+
+  if (isHorizontal) {
+    for (let blockStart = 0; blockStart < screenWidth; blockStart += runLength) {
+      const blockEnd = Math.min(blockStart + runLength - 1, screenWidth - 1);
+      for (let y = 0; y < screenHeight; y++) {
+        const goRight = (y % 2 === 0) !== startRight;
+        if (goRight) {
+          for (let x = blockStart; x <= blockEnd; x++) {
+            const idx = y * screenWidth + x;
+            if (indexSet.has(idx)) result.push(idx);
+          }
+        } else {
+          for (let x = blockEnd; x >= blockStart; x--) {
+            const idx = y * screenWidth + x;
+            if (indexSet.has(idx)) result.push(idx);
+          }
+        }
+      }
+    }
+  } else {
+    for (let blockStart = 0; blockStart < screenHeight; blockStart += runLength) {
+      const blockEnd = Math.min(blockStart + runLength - 1, screenHeight - 1);
+      for (let x = 0; x < screenWidth; x++) {
+        const goDown = (x % 2 === 0) !== startBottom;
+        if (goDown) {
+          for (let y = blockStart; y <= blockEnd; y++) {
+            const idx = y * screenWidth + x;
+            if (indexSet.has(idx)) result.push(idx);
+          }
+        } else {
+          for (let y = blockEnd; y >= blockStart; y--) {
+            const idx = y * screenWidth + x;
+            if (indexSet.has(idx)) result.push(idx);
+          }
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
 function applyDataWiring(
@@ -238,6 +320,7 @@ export function applyManualPowerWiring(
     screenWidth: number,
     screenHeight: number,
     portLabel: string,
+    runLength?: number,
 ): Tile[] {
     const newTiles = tiles.map(t => ({ ...t }));
     const startTileGridIndex = newTiles.findIndex(t => t.id === startTileId);
@@ -264,7 +347,7 @@ export function applyManualPowerWiring(
     }
 
     const activeTileIndices = newTiles.map((t, i) => !t.deleted ? i : -1).filter(i => i !== -1);
-    const pathOrder = getPathOrder(activeTileIndices, powerPattern, screenWidth, screenHeight);
+    const pathOrder = getPathOrder(activeTileIndices, powerPattern, screenWidth, screenHeight, runLength);
     const startTilePathIndex = pathOrder.indexOf(startTileGridIndex);
     if (startTilePathIndex === -1) return tiles; 
 
@@ -281,7 +364,7 @@ export function applyManualPowerWiring(
         if (newTiles[tileIndex]?.powerCircuit) {
             // It's a start of another circuit, need to clear that entire old circuit
             const oldCircuit = newTiles[tileIndex].powerCircuit!;
-            const oldPathOrder = getPathOrder(activeTileIndices, oldCircuit.pattern, screenWidth, screenHeight);
+            const oldPathOrder = getPathOrder(activeTileIndices, oldCircuit.pattern, screenWidth, screenHeight, oldCircuit.runLength);
             const oldStartIdx = oldPathOrder.indexOf(tileIndex);
             if (oldStartIdx !== -1) {
                 for (let i = 0; i < oldCircuit.tileCount; i++) {
@@ -303,6 +386,7 @@ export function applyManualPowerWiring(
             label: portLabel,
             tileCount: numTiles,
             pattern: powerPattern,
+            runLength: runLength || 0,
         };
     }
     
@@ -318,6 +402,7 @@ export function applyManualDataWiring(
     screenHeight: number,
     mainLabel: string,
     backupLabel: string,
+    runLength?: number,
 ): Tile[] {
     const newTiles = tiles.map(t => ({ ...t }));
     const startTileGridIndex = newTiles.findIndex(t => t.id === startTileId);
@@ -342,7 +427,7 @@ export function applyManualDataWiring(
     }
 
     const activeTileIndices = newTiles.map((t, i) => !t.deleted ? i : -1).filter(i => i !== -1);
-    const pathOrder = getPathOrder(activeTileIndices, dataPattern, screenWidth, screenHeight);
+    const pathOrder = getPathOrder(activeTileIndices, dataPattern, screenWidth, screenHeight, runLength);
     const startTilePathIndex = pathOrder.indexOf(startTileGridIndex);
     if (startTilePathIndex === -1) return tiles; 
 
@@ -357,7 +442,7 @@ export function applyManualDataWiring(
     circuitTilesIndices.forEach(tileIndex => {
         if (newTiles[tileIndex]?.dataCircuit) {
             const oldCircuit = newTiles[tileIndex].dataCircuit!;
-            const oldPathOrder = getPathOrder(activeTileIndices, oldCircuit.pattern, screenWidth, screenHeight);
+            const oldPathOrder = getPathOrder(activeTileIndices, oldCircuit.pattern, screenWidth, screenHeight, oldCircuit.runLength);
             const oldStartIdx = oldPathOrder.indexOf(tileIndex);
             if (oldStartIdx !== -1) {
                 for (let i = 0; i < oldCircuit.tileCount; i++) {
@@ -377,6 +462,7 @@ export function applyManualDataWiring(
             backupLabel: backupLabel,
             tileCount: numTiles,
             pattern: dataPattern,
+            runLength: runLength || 0,
         };
     }
     
@@ -441,10 +527,10 @@ export function getWiringData({
           const startTile = tiles[startTileGridIndex];
           if (startTile.deleted || !startTile.dataCircuit || processedDataIndices.has(startTileGridIndex)) return;
           
-          const { tileCount, pattern, mainLabel, backupLabel } = startTile.dataCircuit;
+          const { tileCount, pattern, mainLabel, backupLabel, runLength: circuitRunLength } = startTile.dataCircuit;
           if (tileCount === 0) return;
 
-          const pathOrder = getPathOrder(activeTileIndices, pattern, screenWidth, screenHeight);
+          const pathOrder = getPathOrder(activeTileIndices, pattern, screenWidth, screenHeight, circuitRunLength);
           const startTileIndexInPath = pathOrder.indexOf(startTileGridIndex);
           if (startTileIndexInPath === -1) return;
           
@@ -524,10 +610,10 @@ export function getWiringData({
           const startTile = tiles[startTileGridIndex];
           if (startTile.deleted || !startTile.powerCircuit || processedPowerIndices.has(startTileGridIndex)) return;
 
-          const { tileCount, pattern } = startTile.powerCircuit;
+          const { tileCount, pattern, runLength: circuitRunLength } = startTile.powerCircuit;
           if (tileCount === 0) return;
 
-          const pathOrder = getPathOrder(activeTileIndices, pattern, screenWidth, screenHeight);
+          const pathOrder = getPathOrder(activeTileIndices, pattern, screenWidth, screenHeight, circuitRunLength);
           const startTileIndexInPath = pathOrder.indexOf(startTileGridIndex);
           if (startTileIndexInPath === -1) return;
 

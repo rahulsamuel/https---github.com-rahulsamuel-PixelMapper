@@ -59,12 +59,14 @@ export interface Tile {
     label: string;
     tileCount: number;
     pattern: WiringPattern;
+    runLength?: number;
   };
   dataCircuit?: {
     mainLabel: string;
     backupLabel: string;
     tileCount: number;
     pattern: WiringPattern;
+    runLength?: number;
   };
 }
 
@@ -369,7 +371,7 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   isManualPowerModalOpen: boolean;
   setIsManualPowerModalOpen: Dispatch<SetStateAction<boolean>>;
   selectedTileForPower: number | null;
-  applyManualPowerWiring: (args: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; }) => void;
+  applyManualPowerWiring: (args: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; runLength?: number; }) => void;
   isManualDataModalOpen: boolean;
   setIsManualDataModalOpen: Dispatch<SetStateAction<boolean>>;
   selectedTileForData: number | null;
@@ -1166,7 +1168,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     return newLabels;
   }, [currentScreen, rasterMapConfigs, activeBounds, effectiveScreenWidth, effectiveScreenHeight, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile]);
 
-  const applyManualPowerWiring = useCallback((args: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; }) => {
+  const applyManualPowerWiring = useCallback((args: { startTileId: number; label: string; numTiles: number; pattern: WiringPattern; runLength?: number; }) => {
     updateCurrentScreen(screen => {
         const { tiles } = screen;
         const newTiles = [...tiles];
@@ -1176,7 +1178,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         if (args.numTiles === 0 && newTiles[startTileIndex].powerCircuit) {
             const circuitToClear = newTiles[startTileIndex].powerCircuit;
             const activeIndices = newTiles.map((t, i) => t.deleted ? -1 : i).filter(i => i !== -1);
-            const path = getPathOrder(activeIndices, circuitToClear.pattern, effectiveScreenWidth, effectiveScreenHeight);
+            const path = getPathOrder(activeIndices, circuitToClear.pattern, effectiveScreenWidth, effectiveScreenHeight, circuitToClear.runLength);
             const pathStartIndex = path.indexOf(startTileIndex);
             
             if (pathStartIndex !== -1) {
@@ -1189,7 +1191,7 @@ const handleRightHalfTileChange = (add: boolean) => {
             }
         } else {
             const activeIndices = newTiles.map((t, i) => t.deleted ? -1 : i).filter(i => i !== -1);
-            const path = getPathOrder(activeIndices, args.pattern, effectiveScreenWidth, effectiveScreenHeight);
+            const path = getPathOrder(activeIndices, args.pattern, effectiveScreenWidth, effectiveScreenHeight, args.runLength);
             const pathStartIndex = path.indexOf(startTileIndex);
             if (pathStartIndex === -1) return screen;
 
@@ -1201,7 +1203,7 @@ const handleRightHalfTileChange = (add: boolean) => {
 
                 if (newTiles[tileIndex].powerCircuit && newTiles[tileIndex].powerCircuit?.label !== args.label) {
                    const oldCircuit = newTiles[tileIndex].powerCircuit!;
-                   const oldPath = getPathOrder(activeIndices, oldCircuit.pattern, effectiveScreenWidth, effectiveScreenHeight);
+                   const oldPath = getPathOrder(activeIndices, oldCircuit.pattern, effectiveScreenWidth, effectiveScreenHeight, oldCircuit.runLength);
                    const oldStartIdx = oldPath.findIndex(pIndex => tiles[pIndex].powerCircuit?.label === oldCircuit.label);
 
                    if(oldStartIdx !== -1){
@@ -1214,7 +1216,7 @@ const handleRightHalfTileChange = (add: boolean) => {
                    }
                 }
 
-                newTiles[tileIndex] = { ...newTiles[tileIndex], powerCircuit: { label: args.label, tileCount: args.numTiles, pattern: args.pattern }};
+                newTiles[tileIndex] = { ...newTiles[tileIndex], powerCircuit: { label: args.label, tileCount: args.numTiles, pattern: args.pattern, runLength: args.runLength || 0 }};
                 if (i === 0) {
                     newTiles[tileIndex].powerPortLabel = args.label;
                 }
@@ -1224,7 +1226,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     });
   }, [updateCurrentScreen, effectiveScreenWidth, effectiveScreenHeight]);
   
-  const applyManualDataWiring = useCallback((args: { startTileId: number; mainLabel: string; backupLabel: string, numTiles: number; pattern: WiringPattern; }) => {
+  const applyManualDataWiring = useCallback((args: { startTileId: number; mainLabel: string; backupLabel: string, numTiles: number; pattern: WiringPattern; runLength?: number; }) => {
      updateCurrentScreen(screen => {
         const { tiles } = screen;
         const newTiles = [...tiles];
@@ -1234,7 +1236,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         if (args.numTiles === 0 && newTiles[startTileIndex].dataCircuit) {
             const circuitToClear = newTiles[startTileIndex].dataCircuit!;
             const activeIndices = newTiles.map((t, i) => t.deleted ? -1 : i).filter(i => i !== -1);
-            const path = getPathOrder(activeIndices, circuitToClear.pattern, effectiveScreenWidth, effectiveScreenHeight);
+            const path = getPathOrder(activeIndices, circuitToClear.pattern, effectiveScreenWidth, effectiveScreenHeight, circuitToClear.runLength);
             const pathStartIndex = path.indexOf(startTileIndex);
             
             if (pathStartIndex !== -1) {
@@ -1249,7 +1251,7 @@ const handleRightHalfTileChange = (add: boolean) => {
             }
         } else {
             const activeIndices = newTiles.map((t, i) => t.deleted ? -1 : i).filter(i => i !== -1);
-            const path = getPathOrder(activeIndices, args.pattern, effectiveScreenWidth, effectiveScreenHeight);
+            const path = getPathOrder(activeIndices, args.pattern, effectiveScreenWidth, effectiveScreenHeight, args.runLength);
             const pathStartIndex = path.indexOf(startTileIndex);
             if (pathStartIndex === -1) return screen;
 
@@ -1261,7 +1263,7 @@ const handleRightHalfTileChange = (add: boolean) => {
 
                 if (newTiles[tileIndex].dataCircuit && newTiles[tileIndex].dataCircuit?.mainLabel !== args.mainLabel) {
                    const oldCircuit = newTiles[tileIndex].dataCircuit!;
-                   const oldPath = getPathOrder(activeIndices, oldCircuit.pattern, effectiveScreenWidth, effectiveScreenHeight);
+                   const oldPath = getPathOrder(activeIndices, oldCircuit.pattern, effectiveScreenWidth, effectiveScreenHeight, oldCircuit.runLength);
                    const oldStartIdx = oldPath.findIndex(pIndex => tiles[pIndex].dataCircuit?.mainLabel === oldCircuit.mainLabel);
                    
                    if(oldStartIdx !== -1){
@@ -1274,7 +1276,7 @@ const handleRightHalfTileChange = (add: boolean) => {
                    }
                 }
 
-                newTiles[tileIndex] = { ...newTiles[tileIndex], dataCircuit: { mainLabel: args.mainLabel, backupLabel: args.backupLabel, tileCount: args.numTiles, pattern: args.pattern }};
+                newTiles[tileIndex] = { ...newTiles[tileIndex], dataCircuit: { mainLabel: args.mainLabel, backupLabel: args.backupLabel, tileCount: args.numTiles, pattern: args.pattern, runLength: args.runLength || 0 }};
             }
         }
         return { ...screen, tiles: newTiles };
@@ -1306,7 +1308,7 @@ const handleRightHalfTileChange = (add: boolean) => {
                 return;
             }
             if (clickedTile.powerCircuit) {
-              applyManualPowerWiring({ startTileId: tileId, label: '', numTiles: 0, pattern: clickedTile.powerCircuit.pattern });
+              applyManualPowerWiring({ startTileId: tileId, label: '', numTiles: 0, pattern: clickedTile.powerCircuit.pattern, runLength: clickedTile.powerCircuit.runLength });
             } else {
               setSelectedTileForPower(tileId);
               setIsManualPowerModalOpen(true);
@@ -1322,7 +1324,7 @@ const handleRightHalfTileChange = (add: boolean) => {
                 return;
             }
             if (clickedTile.dataCircuit) {
-              applyManualDataWiring({ startTileId: tileId, mainLabel: '', backupLabel: '', numTiles: 0, pattern: clickedTile.dataCircuit.pattern });
+              applyManualDataWiring({ startTileId: tileId, mainLabel: '', backupLabel: '', numTiles: 0, pattern: clickedTile.dataCircuit.pattern, runLength: clickedTile.dataCircuit.runLength });
             } else {
               setSelectedTileForData(tileId);
               setIsManualDataModalOpen(true);

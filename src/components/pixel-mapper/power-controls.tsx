@@ -45,14 +45,17 @@ export function PowerControls() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="manual">Manual</SelectItem>
-            <SelectItem value="serpentine-horizontal">Serpentine (Horizontal)</SelectItem>
-            <SelectItem value="serpentine-horizontal-reverse">Serpentine (Horizontal Reverse)</SelectItem>
-            <SelectItem value="serpentine-vertical">Serpentine (Vertical)</SelectItem>
-            <SelectItem value="serpentine-vertical-reverse">Serpentine (Vertical Reverse)</SelectItem>
+            <SelectItem value="serpentine-horizontal">Serpentine Horizontal (Start Left)</SelectItem>
+            <SelectItem value="serpentine-horizontal-start-right">Serpentine Horizontal (Start Right)</SelectItem>
+            <SelectItem value="serpentine-horizontal-reverse">Serpentine Horizontal (Reverse)</SelectItem>
+            <SelectItem value="serpentine-vertical">Serpentine Vertical (Start Top)</SelectItem>
+            <SelectItem value="serpentine-vertical-start-bottom">Serpentine Vertical (Start Bottom)</SelectItem>
+            <SelectItem value="serpentine-vertical-reverse">Serpentine Vertical (Reverse)</SelectItem>
             <SelectItem value="serpentine-vertical-bottom-start">Serpentine Vertical (Bottom Start)</SelectItem>
             <SelectItem value="serpentine-vertical-bottom-main">Serpentine Vertical (Bottom Main)</SelectItem>
             <SelectItem value="serpentine-vertical-reverse-bottom-start">Serpentine Vertical (Reverse Bottom Start)</SelectItem>
             <SelectItem value="left-right">Left to Right</SelectItem>
+            <SelectItem value="right-to-left">Right to Left</SelectItem>
             <SelectItem value="top-bottom">Top to Bottom</SelectItem>
             <SelectItem value="bottom-to-top">Bottom to Top</SelectItem>
           </SelectContent>

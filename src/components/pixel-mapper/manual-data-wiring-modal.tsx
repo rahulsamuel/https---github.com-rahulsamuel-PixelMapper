@@ -18,10 +18,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { WiringPattern } from '@/lib/wiring';
 import { usePixelMap } from '@/contexts/pixel-map-context';
 
+const CUSTOM_PATTERNS: WiringPattern[] = [
+  'custom-serpentine-h',
+  'custom-serpentine-h-start-right',
+  'custom-serpentine-v',
+  'custom-serpentine-v-start-bottom',
+];
+
 interface ManualDataWiringModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { mainLabel: string; backupLabel: string, numTiles: number; pattern: WiringPattern }) => void;
+  onSubmit: (data: { mainLabel: string; backupLabel: string, numTiles: number; pattern: WiringPattern; runLength?: number }) => void;
 }
 
 export function ManualDataWiringModal({ isOpen, onClose, onSubmit }: ManualDataWiringModalProps) {
@@ -30,14 +37,14 @@ export function ManualDataWiringModal({ isOpen, onClose, onSubmit }: ManualDataW
   const [backupLabel, setBackupLabel] = useState('');
   const [numTiles, setNumTiles] = useState('8');
   const [pattern, setPattern] = useState<WiringPattern>('left-right');
+  const [runLength, setRunLength] = useState('4');
 
   useEffect(() => {
     if (isOpen) {
-      // Find the next available port number
       let maxPortNum = 0;
       wiringData.forEach(d => {
         const label = d.dataLabel;
-        if (label && /^\d+$/.test(label)) { // Check if label is a simple number
+        if (label && /^\d+$/.test(label)) {
           const portNum = parseInt(label, 10);
           if (portNum > maxPortNum) {
             maxPortNum = portNum;
@@ -50,11 +57,20 @@ export function ManualDataWiringModal({ isOpen, onClose, onSubmit }: ManualDataW
     }
   }, [isOpen, wiringData]);
 
+  const isCustomPattern = CUSTOM_PATTERNS.includes(pattern);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const num = parseInt(numTiles, 10);
+    const rl = parseInt(runLength, 10);
     if (mainLabel.trim() && !isNaN(num) && num > 0) {
-      onSubmit({ mainLabel: mainLabel.trim(), backupLabel: backupLabel.trim(), numTiles: num, pattern });
+      onSubmit({
+        mainLabel: mainLabel.trim(),
+        backupLabel: backupLabel.trim(),
+        numTiles: num,
+        pattern,
+        runLength: isCustomPattern && !isNaN(rl) && rl > 0 ? rl : undefined,
+      });
       onClose();
     }
   };
@@ -96,14 +112,36 @@ export function ManualDataWiringModal({ isOpen, onClose, onSubmit }: ManualDataW
                 <SelectValue placeholder="Select pattern" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="serpentine-horizontal">Serpentine (Horizontal)</SelectItem>
-                <SelectItem value="serpentine-vertical">Serpentine (Vertical)</SelectItem>
+                <SelectItem value="serpentine-horizontal">Serpentine Horizontal (Start Left)</SelectItem>
+                <SelectItem value="serpentine-horizontal-start-right">Serpentine Horizontal (Start Right)</SelectItem>
+                <SelectItem value="serpentine-vertical">Serpentine Vertical (Start Top)</SelectItem>
+                <SelectItem value="serpentine-vertical-start-bottom">Serpentine Vertical (Start Bottom)</SelectItem>
+                <SelectItem value="custom-serpentine-h">Custom Serpentine Horizontal (Start Left)</SelectItem>
+                <SelectItem value="custom-serpentine-h-start-right">Custom Serpentine Horizontal (Start Right)</SelectItem>
+                <SelectItem value="custom-serpentine-v">Custom Serpentine Vertical (Start Top)</SelectItem>
+                <SelectItem value="custom-serpentine-v-start-bottom">Custom Serpentine Vertical (Start Bottom)</SelectItem>
                 <SelectItem value="left-right">Left to Right</SelectItem>
+                <SelectItem value="right-to-left">Right to Left</SelectItem>
                 <SelectItem value="top-bottom">Top to Bottom</SelectItem>
                 <SelectItem value="bottom-to-top">Bottom to Top</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          {isCustomPattern && (
+            <div className="space-y-2">
+              <Label htmlFor="run-length">Tiles Per Run (before dropping down)</Label>
+              <Input
+                id="run-length"
+                type="number"
+                value={runLength}
+                onChange={(e) => setRunLength(e.target.value)}
+                min="1"
+              />
+              <p className="text-xs text-muted-foreground">
+                The serpentine will travel this many tiles in one direction before dropping to the next row/column and reversing.
+              </p>
+            </div>
+          )}
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline">Cancel</Button>

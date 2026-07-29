@@ -18,10 +18,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import type { WiringPattern } from '@/lib/wiring';
 import { usePixelMap } from '@/contexts/pixel-map-context';
 
+const CUSTOM_PATTERNS: WiringPattern[] = [
+  'custom-serpentine-h',
+  'custom-serpentine-h-start-right',
+  'custom-serpentine-v',
+  'custom-serpentine-v-start-bottom',
+];
+
 interface ManualPowerWiringModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { label: string; numTiles: number; pattern: WiringPattern }) => void;
+  onSubmit: (data: { label: string; numTiles: number; pattern: WiringPattern; runLength?: number }) => void;
 }
 
 export function ManualPowerWiringModal({ isOpen, onClose, onSubmit }: ManualPowerWiringModalProps) {
@@ -29,10 +36,10 @@ export function ManualPowerWiringModal({ isOpen, onClose, onSubmit }: ManualPowe
   const [label, setLabel] = useState('');
   const [numTiles, setNumTiles] = useState('8');
   const [pattern, setPattern] = useState<WiringPattern>('left-right');
+  const [runLength, setRunLength] = useState('4');
 
   useEffect(() => {
     if (isOpen) {
-      // Find the next available 'P' number
       let maxPortNum = 0;
       tiles.forEach(t => {
         if (t.powerPortLabel?.startsWith('P')) {
@@ -46,11 +53,19 @@ export function ManualPowerWiringModal({ isOpen, onClose, onSubmit }: ManualPowe
     }
   }, [isOpen, tiles]);
 
+  const isCustomPattern = CUSTOM_PATTERNS.includes(pattern);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const num = parseInt(numTiles, 10);
+    const rl = parseInt(runLength, 10);
     if (label.trim() && !isNaN(num) && num > 0) {
-      onSubmit({ label: label.trim(), numTiles: num, pattern });
+      onSubmit({
+        label: label.trim(),
+        numTiles: num,
+        pattern,
+        runLength: isCustomPattern && !isNaN(rl) && rl > 0 ? rl : undefined,
+      });
       onClose();
     }
   };
@@ -86,14 +101,36 @@ export function ManualPowerWiringModal({ isOpen, onClose, onSubmit }: ManualPowe
                 <SelectValue placeholder="Select pattern" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="serpentine-horizontal">Serpentine (Horizontal)</SelectItem>
-                <SelectItem value="serpentine-vertical">Serpentine (Vertical)</SelectItem>
+                <SelectItem value="serpentine-horizontal">Serpentine Horizontal (Start Left)</SelectItem>
+                <SelectItem value="serpentine-horizontal-start-right">Serpentine Horizontal (Start Right)</SelectItem>
+                <SelectItem value="serpentine-vertical">Serpentine Vertical (Start Top)</SelectItem>
+                <SelectItem value="serpentine-vertical-start-bottom">Serpentine Vertical (Start Bottom)</SelectItem>
+                <SelectItem value="custom-serpentine-h">Custom Serpentine Horizontal (Start Left)</SelectItem>
+                <SelectItem value="custom-serpentine-h-start-right">Custom Serpentine Horizontal (Start Right)</SelectItem>
+                <SelectItem value="custom-serpentine-v">Custom Serpentine Vertical (Start Top)</SelectItem>
+                <SelectItem value="custom-serpentine-v-start-bottom">Custom Serpentine Vertical (Start Bottom)</SelectItem>
                 <SelectItem value="left-right">Left to Right</SelectItem>
+                <SelectItem value="right-to-left">Right to Left</SelectItem>
                 <SelectItem value="top-bottom">Top to Bottom</SelectItem>
                 <SelectItem value="bottom-to-top">Bottom to Top</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          {isCustomPattern && (
+            <div className="space-y-2">
+              <Label htmlFor="run-length">Tiles Per Run (before dropping down)</Label>
+              <Input
+                id="run-length"
+                type="number"
+                value={runLength}
+                onChange={(e) => setRunLength(e.target.value)}
+                min="1"
+              />
+              <p className="text-xs text-muted-foreground">
+                The serpentine will travel this many tiles in one direction before dropping to the next row/column and reversing.
+              </p>
+            </div>
+          )}
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline">Cancel</Button>
