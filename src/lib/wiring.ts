@@ -176,17 +176,19 @@ function generateCustomSerpentinePath(
       }
     }
   } else {
-    for (let blockStart = 0; blockStart < screenHeight; blockStart += runLength) {
-      const blockEnd = Math.min(blockStart + runLength - 1, screenHeight - 1);
-      for (let x = 0; x < screenWidth; x++) {
-        const goDown = (x % 2 === 0) !== startBottom;
+    // Vertical serpentine: column blocks, each column snakes through all rows
+    for (let blockStart = 0; blockStart < screenWidth; blockStart += runLength) {
+      const blockEnd = Math.min(blockStart + runLength - 1, screenWidth - 1);
+      for (let x = blockStart; x <= blockEnd; x++) {
+        const posInBlock = x - blockStart;
+        const goDown = (posInBlock % 2 === 0) !== startBottom;
         if (goDown) {
-          for (let y = blockStart; y <= blockEnd; y++) {
+          for (let y = 0; y < screenHeight; y++) {
             const idx = y * screenWidth + x;
             if (indexSet.has(idx)) result.push(idx);
           }
         } else {
-          for (let y = blockEnd; y >= blockStart; y--) {
+          for (let y = screenHeight - 1; y >= 0; y--) {
             const idx = y * screenWidth + x;
             if (indexSet.has(idx)) result.push(idx);
           }
