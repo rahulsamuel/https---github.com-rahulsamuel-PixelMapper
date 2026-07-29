@@ -2170,64 +2170,55 @@ const handleRightHalfTileChange = (add: boolean) => {
     const sx = xPosOfMinX;
     const sy = yPosOfMinY;
 
-    const setWiringVisibility = (type: 'data' | 'power' | 'both') => {
-      const allElements = node.querySelectorAll('[data-wiring-type]');
-      allElements.forEach(el => {
-        const elType = el.getAttribute('data-wiring-type');
-        const shouldShow = type === 'both' || type === elType;
-        (el as HTMLElement).style.visibility = shouldShow ? '' : 'hidden';
-      });
-    };
-
     const generateAndDownload = async (type: 'data' | 'power' | 'both', isMirrored: boolean, filename: string) => {
-      setWiringVisibility(type);
-      try {
-        // The wiring diagram component already renders the mirrored (rear view)
-        // layout correctly — tiles and arrows are positioned for the mirror
-        // while text stays readable. No additional image flipping is needed.
-        const dataUrl = await toPng(node, {
-          cacheBust: true,
-          backgroundColor: '#ffffff',
-          pixelRatio: 1,
-          width: cropWidth,
-          height: cropHeight,
-          style: {
-            transform: `translate(-${sx}px, -${sy}px)`,
-          },
-        });
+      // Composite the stacked canvases directly to avoid html-to-image capturing
+      // extra whitespace from the surrounding scroll container.
+      const canvases = Array.from(node.querySelectorAll('canvas')) as HTMLCanvasElement[];
+      if (canvases.length === 0) return;
 
-        let finalDataUrl = dataUrl;
-        if (subscriptionStatus === 'trial') {
-          finalDataUrl = await addWatermark(dataUrl);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const outW = cropWidth;
+      const outH = cropHeight;
+      // The canvas bitmap already has mirrored content baked in, so for the
+      // rear view the crop origin is on the right side of the bitmap.
+      const totalGridPixelWidth = canvases[0].width / dpr;
+      const originX = isMirrored ? (totalGridPixelWidth - sx - cropWidth) : sx;
+      const srcSx = originX * dpr;
+      const srcSy = sy * dpr;
+      const srcW = outW * dpr;
+      const srcH = outH * dpr;
+
+      const output = document.createElement('canvas');
+      output.width = outW;
+      output.height = outH;
+      const octx = output.getContext('2d')!;
+      octx.fillStyle = '#ffffff';
+      octx.fillRect(0, 0, outW, outH);
+
+      for (const cvs of canvases) {
+        const wiringType = cvs.getAttribute('data-wiring-type') as 'data' | 'power' | null;
+        if (wiringType) {
+          const shouldShow = type === 'both' || type === wiringType;
+          if (!shouldShow) continue;
         }
-
-        if (includeTextOverlaysInDownload && currentScreen.textOverlays?.length) {
-          const img = new Image();
-          img.src = finalDataUrl;
-          await new Promise<void>((resolve, reject) => {
-            img.onload = () => resolve();
-            img.onerror = reject;
-            setTimeout(() => resolve(), 5000);
-          });
-          const overlayCanvas = document.createElement('canvas');
-          overlayCanvas.width = img.width || cropWidth;
-          overlayCanvas.height = img.height || cropHeight;
-          const octx = overlayCanvas.getContext('2d');
-          if (octx) {
-            octx.drawImage(img, 0, 0);
-            drawTextOverlaysOnCtx(octx, currentScreen.textOverlays, cropWidth, cropHeight);
-            finalDataUrl = overlayCanvas.toDataURL('image/png');
-          }
-        }
-
-        const link = document.createElement("a");
-        link.download = filename;
-        link.href = finalDataUrl;
-        link.click();
-        trackEvent('download', { type: 'wiring-diagram', filename, thumbnail: finalDataUrl });
-      } finally {
-        setWiringVisibility('both');
+        octx.drawImage(cvs, srcSx, srcSy, srcW, srcH, 0, 0, outW, outH);
       }
+
+      if (includeTextOverlaysInDownload && currentScreen.textOverlays?.length) {
+        drawTextOverlaysOnCtx(octx, currentScreen.textOverlays, outW, outH);
+      }
+
+      let finalDataUrl = output.toDataURL('image/png');
+
+      if (subscriptionStatus === 'trial') {
+        finalDataUrl = await addWatermark(finalDataUrl);
+      }
+
+      const link = document.createElement("a");
+      link.download = filename;
+      link.href = finalDataUrl;
+      link.click();
+      trackEvent('download', { type: 'wiring-diagram', filename, thumbnail: finalDataUrl });
     };
 
     const wiringType: 'data' | 'power' | 'both' =
