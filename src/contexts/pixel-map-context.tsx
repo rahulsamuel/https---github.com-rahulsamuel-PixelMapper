@@ -405,6 +405,12 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   isSyncing: boolean;
   projectName: string;
   setProjectName: (name: string) => void;
+  clearAllWiring: () => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  startNewProject: () => void;
 }
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
@@ -550,6 +556,13 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const dragStateRef = useRef<{ startX: number; startY: number; active: boolean } | null>(null);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Untitled Project");
+
+  // Undo/redo history — debounced auto-capture via useEffect
+  const historyRef = useRef<{ past: ProjectData[]; future: ProjectData[] }>({ past: [], future: [] });
+  const lastSnapshotRef = useRef<ProjectData | null>(null);
+  const historyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isUndoRedoRef = useRef(false);
+  const [historyVersion, setHistoryVersion] = useState(0);
 
   // Deliverables State
   const [projectNumber, setProjectNumber] = useState("");
@@ -2482,6 +2495,85 @@ const handleRightHalfTileChange = (add: boolean) => {
     };
   }, [getProjectData]);
 
+  const pushHistory = useCallback(() => {
+    historyRef.current.past.push(getProjectData());
+    if (historyRef.current.past.length > 50) historyRef.current.past.shift();
+    historyRef.current.future = [];
+    setHistoryVersion(v => v + 1);
+  }, [getProjectData]);
+
+  const undo = useCallback(() => {
+    const { past, future } = historyRef.current;
+    if (past.length === 0) return;
+    const prev = past.pop()!;
+    future.push(getProjectData());
+    isUndoRedoRef.current = true;
+    loadProjectData(prev);
+    setHistoryVersion(v => v + 1);
+  }, [getProjectData, loadProjectData]);
+
+  const redo = useCallback(() => {
+    const { past, future } = historyRef.current;
+    if (future.length === 0) return;
+    const next = future.pop()!;
+    past.push(getProjectData());
+    isUndoRedoRef.current = true;
+    loadProjectData(next);
+    setHistoryVersion(v => v + 1);
+  }, [getProjectData, loadProjectData]);
+
+  const canUndo = historyRef.current.past.length > 0;
+  const canRedo = historyRef.current.future.length > 0;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { isUndoRedoRef.current = false; }, [screens]);
+
+  // Debounced auto-capture: when screens change (and not from undo/redo),
+  // snapshot the previous state into history after a short idle period.
+  useEffect(() => {
+    if (isUndoRedoRef.current) return;
+    if (historyTimerRef.current) clearTimeout(historyTimerRef.current);
+    historyTimerRef.current = setTimeout(() => {
+      const currentSnapshot = getProjectData();
+      const last = lastSnapshotRef.current;
+      if (last && JSON.stringify(last) !== JSON.stringify(currentSnapshot)) {
+        historyRef.current.past.push(last);
+        if (historyRef.current.past.length > 50) historyRef.current.past.shift();
+        historyRef.current.future = [];
+        setHistoryVersion(v => v + 1);
+      }
+      lastSnapshotRef.current = currentSnapshot;
+    }, 800);
+    return () => { if (historyTimerRef.current) clearTimeout(historyTimerRef.current); };
+  }, [screens, getProjectData]);
+
+  const clearAllWiring = useCallback(() => {
+    setScreens(prevScreens => prevScreens.map(s => ({
+      ...s,
+      tiles: s.tiles.map(t => ({ ...t, dataCircuit: undefined, powerCircuit: undefined, powerPortLabel: undefined })),
+      wiringPattern: 'serpentine-horizontal',
+      powerWiringPattern: 'left-right',
+    })));
+    toast({ title: "Wiring Cleared", description: "All manual wiring has been removed." });
+  }, [toast]);
+
+  const startNewProject = useCallback(() => {
+    const newScreen = createNewScreen("Default Screen", 1);
+    nextIdCounter.current = newScreen.nextTileId;
+    setScreens([newScreen]);
+    setCurrentScreenId(newScreen.id);
+    setActiveTab('grid');
+    setProjectName("Untitled Project");
+    setActiveProjectId(null);
+    setRasterGroups([{ id: 'raster-1', name: 'Raster 1' }]);
+    setActiveRasterGroupId('raster-1');
+    setRasterMapConfigs({});
+    setProjectNumber("");
+    setVersionNumber("1.0");
+    setProjectNotes("");
+    setUploadedMaps([]);
+    toast({ title: "New Project", description: "Started a new project. Use Undo to bring back your previous work." });
+  }, [toast]);
+
   const exportProject = useCallback((projectName?: string) => {
     const projectData: ProjectData = getProjectData();
 
@@ -3106,6 +3198,12 @@ const handleRightHalfTileChange = (add: boolean) => {
     isSyncing,
     projectName,
     setProjectName,
+    clearAllWiring,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    startNewProject,
     brushColor: currentScreen.brushColor,
     setBrushColor,
     isWiringMirrored: currentScreen.isWiringMirrored,

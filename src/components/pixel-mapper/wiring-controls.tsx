@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -14,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Cpu } from "lucide-react";
+import { Cpu, Eraser } from "lucide-react";
 
 export function WiringControls() {
   const {
@@ -42,6 +43,7 @@ export function WiringControls() {
     setDataLabelColor,
     powerLabelColor,
     setPowerLabelColor,
+    clearAllWiring,
   } = usePixelMap();
 
   return (
@@ -143,6 +145,15 @@ export function WiringControls() {
         <Label htmlFor="arrow-gap">Arrow Gap: {arrowGap}</Label>
         <Slider id="arrow-gap" min={0} max={100} step={1} value={[arrowGap]} onValueChange={(v) => setArrowGap(v[0])} />
       </div>
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+        onClick={clearAllWiring}
+      >
+        <Eraser className="mr-2 h-3.5 w-3.5" />
+        Clear All Wiring
+      </Button>
     </div>
   );
 }

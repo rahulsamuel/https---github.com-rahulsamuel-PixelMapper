@@ -3,7 +3,7 @@
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import { useAuth } from "@/contexts/auth-context";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -34,6 +34,9 @@ import {
   LogIn,
   Loader2,
   Clock,
+  Undo2,
+  Redo2,
+  FilePlus2,
 } from "lucide-react";
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -45,7 +48,7 @@ import {
 } from "@/lib/cloud-projects";
 
 export function PixelMapActions() {
-  const { exportProject, importProject, getProjectData, loadProjectData, setActiveProjectId, projectName, setProjectName } = usePixelMap();
+  const { exportProject, importProject, getProjectData, loadProjectData, setActiveProjectId, projectName, setProjectName, undo, redo, canUndo, canRedo, startNewProject } = usePixelMap();
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -181,6 +184,55 @@ export function PixelMapActions() {
           />
         </Button>
       </div>
+
+      {/* Undo / Redo */}
+      <div className="grid grid-cols-2 gap-2">
+        <Button onClick={undo} disabled={!canUndo} variant="outline" size="sm">
+          <Undo2 className="mr-2 h-3.5 w-3.5" />
+          Undo
+        </Button>
+        <Button onClick={redo} disabled={!canRedo} variant="outline" size="sm">
+          <Redo2 className="mr-2 h-3.5 w-3.5" />
+          Redo
+        </Button>
+      </div>
+
+      {/* New Project */}
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button variant="outline" size="sm" className="w-full">
+            <FilePlus2 className="mr-2 h-3.5 w-3.5" />
+            New Project
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <FilePlus2 className="h-5 w-5 text-primary" />
+              Start New Project?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                This will clear the current screen and start fresh. Your current work will be replaced.
+              </span>
+              <span className="block font-semibold">
+                Would you like to save your current project first?
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExportClick} className={buttonVariants({ variant: "outline" })}>
+              <Download className="mr-2 h-4 w-4" />
+              Save First
+            </AlertDialogAction>
+            <AlertDialogAction onClick={startNewProject}>
+              <FilePlus2 className="mr-2 h-4 w-4" />
+              Don&apos;t Save
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Cloud section */}
       <div className="border rounded-lg p-3 space-y-2.5 bg-muted/30">
