@@ -7,6 +7,8 @@ import { usePresence } from "@/hooks/use-presence";
 import { useToast } from "@/hooks/use-toast";
 import { PixelMapLayout } from "./pixel-map-layout";
 import { ShareDialog } from "./share-dialog";
+import { ProjectSwitcher } from "./project-switcher";
+import { useCollaborationNotifications } from "@/hooks/use-collaboration-notifications";
 import { supabase } from "@/lib/supabase/client";
 import { saveCloudProject } from "@/lib/cloud-projects";
 import type { ProjectData } from "@/contexts/pixel-map-context";
@@ -20,6 +22,7 @@ export function CollaborationWrapper() {
     scheduleSave,
     setProjectName,
     projectName,
+    startNewProject,
   } = usePixelMap();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -27,6 +30,29 @@ export function CollaborationWrapper() {
   const [isShareSaving, setIsShareSaving] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
   const loadedRef = useRef<string | null>(null);
+
+  useCollaborationNotifications();
+
+  const switchToProject = useCallback(async (projectId: string) => {
+    const { data, error } = await supabase
+      .from("pixel_map_projects")
+      .select("project_name, project_data")
+      .eq("id", projectId)
+      .maybeSingle();
+
+    if (error || !data) {
+      toast({ title: "Error", description: "Could not load project.", variant: "destructive" });
+      return;
+    }
+    loadProjectData(data.project_data as ProjectData);
+    setProjectName(data.project_name);
+    setActiveProjectId(projectId);
+    loadedRef.current = projectId;
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("project", projectId);
+    window.history.replaceState({}, "", url.toString());
+  }, [loadProjectData, setActiveProjectId, setProjectName, toast]);
 
   // Load project from URL param on mount
   useEffect(() => {
@@ -85,11 +111,28 @@ export function CollaborationWrapper() {
     setShareDialogOpen(true);
   }, [user, activeProjectId, getProjectData, projectName, setActiveProjectId, toast]);
 
+  const handleNewProject = useCallback(() => {
+    startNewProject();
+    setActiveProjectId(null);
+    loadedRef.current = null;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("project");
+    window.history.replaceState({}, "", url.toString());
+  }, [startNewProject, setActiveProjectId]);
+
   return (
     <div className="h-full w-full" onMouseMove={handleMouseMove} ref={gridRef}>
       <PixelMapLayout
         onlineUsers={onlineUsers}
         onShareClick={handleShareClick}
+        projectSwitcher={
+          <ProjectSwitcher
+            activeProjectId={activeProjectId}
+            currentProjectName={projectName}
+            onSwitchProject={switchToProject}
+            onNewProject={handleNewProject}
+          />
+        }
       />
       <ShareDialog
         projectId={activeProjectId}

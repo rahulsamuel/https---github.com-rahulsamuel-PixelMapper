@@ -58,7 +58,7 @@ import { RemoteCursors } from "./remote-cursors";
 import type { PresenceUser } from "@/hooks/use-presence";
 
 
-export function PixelMapLayout({ onlineUsers = [], onShareClick }: { onlineUsers?: PresenceUser[]; onShareClick?: () => void }) {
+export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher }: { onlineUsers?: PresenceUser[]; onShareClick?: () => void; projectSwitcher?: React.ReactNode }) {
   const { 
     screens,
     currentScreen,
@@ -491,6 +491,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick }: { onlineUsers
                 >
                   {toolPanelOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
                 </Button>
+                {projectSwitcher}
                 <div className="hidden md:flex items-center gap-4">
                   <div className="text-sm text-muted-foreground whitespace-nowrap">
                     Res: <span className="font-mono">{Math.round(totalWidth)}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
