@@ -2,7 +2,7 @@
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { Users, Loader2, Check } from "lucide-react";
 import type { PresenceUser } from "@/hooks/use-presence";
 
@@ -18,6 +18,7 @@ export function PresenceBar({ onlineUsers, isSyncing, lastSyncAt, onShareClick }
   const localUser = onlineUsers.find((u) => u.isLocal);
 
   return (
+    <TooltipProvider delayDuration={300}>
     <div className="flex items-center gap-2">
       {/* Sync indicator */}
       <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -79,5 +80,6 @@ export function PresenceBar({ onlineUsers, isSyncing, lastSyncAt, onShareClick }
         <span className="text-xs">Share</span>
       </Button>
     </div>
+    </TooltipProvider>
   );
 }
