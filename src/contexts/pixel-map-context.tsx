@@ -234,6 +234,41 @@ export interface Screen {
   moduleColors: string[][];
 }
 
+export interface CalculatorTabData {
+  activeTab?: string;
+  formState?: {
+    projectName: string;
+    selectedProductId: string | null;
+    voltage: '110v' | '208v' | '230v';
+    phase: 'single-phase' | 'three-phase';
+    screenWidthTiles: number;
+    screenHeightTiles: number;
+  };
+  curvingState?: {
+    radius: number;
+    angle: number;
+    view: 'front' | 'top' | 'perspective';
+    zoom: number;
+  };
+}
+
+export interface PowerDataTabData {
+  selectedProductId?: string;
+  selectedProcessorId?: string;
+  circuitVoltage?: string;
+  circuitAmperage?: string;
+  safetyMargin?: string;
+  refreshRate?: string;
+  bitDepth?: string;
+}
+
+export interface RackDrawingTabData {
+  racks?: { id: number; name: string; ru: number; items: any[] }[];
+  nextRackId?: number;
+  activeSide?: 'front' | 'rear';
+  showImages?: boolean;
+}
+
 export interface ProjectData {
   version: string;
   screens: Screen[];
@@ -247,6 +282,15 @@ export interface ProjectData {
   preferredCodec?: string;
   audioFormat?: string;
   imageFormat?: string;
+  rasterMapConfigs?: Record<string, RasterMapConfig>;
+  rasterGroups?: RasterGroup[];
+  activeRasterGroupId?: string;
+  rasterBgColor?: string;
+  uploadedMaps?: string[];
+  includeTextOverlaysInDownload?: boolean;
+  calculator?: CalculatorTabData;
+  powerData?: PowerDataTabData;
+  rackDrawing?: RackDrawingTabData;
 }
 
 interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nextTileId' | 'moduleColors'> {
@@ -2331,8 +2375,44 @@ const handleRightHalfTileChange = (add: boolean) => {
 
 
   const getProjectData = useCallback((): ProjectData => {
+    const readLS = (key: string): any => {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : undefined;
+      } catch { return undefined; }
+    };
+
+    const calculator: CalculatorTabData | undefined = (() => {
+      const fs = readLS('calculator:formState');
+      const at = readLS('calculator:activeTab');
+      if (!fs && !at) return undefined;
+      return { formState: fs, activeTab: at };
+    })();
+
+    const powerData: PowerDataTabData | undefined = (() => {
+      const d: PowerDataTabData = {
+        selectedProductId: readLS('power-data:selectedProductId'),
+        selectedProcessorId: readLS('power-data:selectedProcessorId'),
+        circuitVoltage: readLS('power-data:circuitVoltage'),
+        circuitAmperage: readLS('power-data:circuitAmperage'),
+        safetyMargin: readLS('power-data:safetyMargin'),
+        refreshRate: readLS('power-data:refreshRate'),
+        bitDepth: readLS('power-data:bitDepth'),
+      };
+      return Object.values(d).some(v => v !== undefined) ? d : undefined;
+    })();
+
+    const rackDrawing: RackDrawingTabData | undefined = (() => {
+      const racks = readLS('rack-builder:racks');
+      const nextRackId = readLS('rack-builder:nextRackId');
+      const activeSide = readLS('rack-builder:activeSide');
+      const showImages = readLS('rack-builder:showImages');
+      if (racks === undefined && nextRackId === undefined && activeSide === undefined && showImages === undefined) return undefined;
+      return { racks, nextRackId, activeSide, showImages };
+    })();
+
     return {
-      version: "1.4.0",
+      version: "1.5.0",
       screens,
       currentScreenId,
       activeTab,
@@ -2343,8 +2423,17 @@ const handleRightHalfTileChange = (add: boolean) => {
       preferredCodec,
       audioFormat,
       imageFormat,
+      rasterMapConfigs,
+      rasterGroups,
+      activeRasterGroupId,
+      rasterBgColor,
+      uploadedMaps,
+      includeTextOverlaysInDownload,
+      calculator,
+      powerData,
+      rackDrawing,
     };
-  }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, audioFormat, imageFormat]);
+  }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, audioFormat, imageFormat, rasterMapConfigs, rasterGroups, activeRasterGroupId, rasterBgColor, uploadedMaps, includeTextOverlaysInDownload]);
 
   const loadProjectData = useCallback((data: ProjectData) => {
     let maxId = 0;
@@ -2370,6 +2459,36 @@ const handleRightHalfTileChange = (add: boolean) => {
     if (data.preferredCodec) setPreferredCodec(data.preferredCodec);
     if (data.audioFormat) setAudioFormat(data.audioFormat);
     if (data.imageFormat) setImageFormat(data.imageFormat);
+
+    if (data.rasterMapConfigs) setRasterMapConfigs(data.rasterMapConfigs);
+    if (data.rasterGroups) setRasterGroups(data.rasterGroups);
+    if (data.activeRasterGroupId) setActiveRasterGroupId(data.activeRasterGroupId);
+    if (data.rasterBgColor) setRasterBgColor(data.rasterBgColor);
+    if (data.uploadedMaps) setUploadedMaps(data.uploadedMaps);
+    if (data.includeTextOverlaysInDownload !== undefined) setIncludeTextOverlaysInDownload(data.includeTextOverlaysInDownload);
+
+    const writeLS = (key: string, value: any) => {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
+    };
+    if (data.calculator) {
+      if (data.calculator.formState) writeLS('calculator:formState', data.calculator.formState);
+      if (data.calculator.activeTab) writeLS('calculator:activeTab', data.calculator.activeTab);
+    }
+    if (data.powerData) {
+      if (data.powerData.selectedProductId !== undefined) writeLS('power-data:selectedProductId', data.powerData.selectedProductId);
+      if (data.powerData.selectedProcessorId !== undefined) writeLS('power-data:selectedProcessorId', data.powerData.selectedProcessorId);
+      if (data.powerData.circuitVoltage !== undefined) writeLS('power-data:circuitVoltage', data.powerData.circuitVoltage);
+      if (data.powerData.circuitAmperage !== undefined) writeLS('power-data:circuitAmperage', data.powerData.circuitAmperage);
+      if (data.powerData.safetyMargin !== undefined) writeLS('power-data:safetyMargin', data.powerData.safetyMargin);
+      if (data.powerData.refreshRate !== undefined) writeLS('power-data:refreshRate', data.powerData.refreshRate);
+      if (data.powerData.bitDepth !== undefined) writeLS('power-data:bitDepth', data.powerData.bitDepth);
+    }
+    if (data.rackDrawing) {
+      if (data.rackDrawing.racks !== undefined) writeLS('rack-builder:racks', data.rackDrawing.racks);
+      if (data.rackDrawing.nextRackId !== undefined) writeLS('rack-builder:nextRackId', data.rackDrawing.nextRackId);
+      if (data.rackDrawing.activeSide !== undefined) writeLS('rack-builder:activeSide', data.rackDrawing.activeSide);
+      if (data.rackDrawing.showImages !== undefined) writeLS('rack-builder:showImages', data.rackDrawing.showImages);
+    }
   }, []);
 
   const AUTOSAVE_KEY = 'pixel-mapper-autosave';
@@ -2563,6 +2682,36 @@ const handleRightHalfTileChange = (add: boolean) => {
           if (data.preferredCodec) setPreferredCodec(data.preferredCodec);
           if (data.audioFormat) setAudioFormat(data.audioFormat);
           if (data.imageFormat) setImageFormat(data.imageFormat);
+
+          if (data.rasterMapConfigs) setRasterMapConfigs(data.rasterMapConfigs);
+          if (data.rasterGroups) setRasterGroups(data.rasterGroups);
+          if (data.activeRasterGroupId) setActiveRasterGroupId(data.activeRasterGroupId);
+          if (data.rasterBgColor) setRasterBgColor(data.rasterBgColor);
+          if (data.uploadedMaps) setUploadedMaps(data.uploadedMaps);
+          if (data.includeTextOverlaysInDownload !== undefined) setIncludeTextOverlaysInDownload(data.includeTextOverlaysInDownload);
+        }
+
+        const writeLS = (key: string, value: any) => {
+          try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
+        };
+        if (data.calculator) {
+          if (data.calculator.formState) writeLS('calculator:formState', data.calculator.formState);
+          if (data.calculator.activeTab) writeLS('calculator:activeTab', data.calculator.activeTab);
+        }
+        if (data.powerData) {
+          if (data.powerData.selectedProductId !== undefined) writeLS('power-data:selectedProductId', data.powerData.selectedProductId);
+          if (data.powerData.selectedProcessorId !== undefined) writeLS('power-data:selectedProcessorId', data.powerData.selectedProcessorId);
+          if (data.powerData.circuitVoltage !== undefined) writeLS('power-data:circuitVoltage', data.powerData.circuitVoltage);
+          if (data.powerData.circuitAmperage !== undefined) writeLS('power-data:circuitAmperage', data.powerData.circuitAmperage);
+          if (data.powerData.safetyMargin !== undefined) writeLS('power-data:safetyMargin', data.powerData.safetyMargin);
+          if (data.powerData.refreshRate !== undefined) writeLS('power-data:refreshRate', data.powerData.refreshRate);
+          if (data.powerData.bitDepth !== undefined) writeLS('power-data:bitDepth', data.powerData.bitDepth);
+        }
+        if (data.rackDrawing) {
+          if (data.rackDrawing.racks !== undefined) writeLS('rack-builder:racks', data.rackDrawing.racks);
+          if (data.rackDrawing.nextRackId !== undefined) writeLS('rack-builder:nextRackId', data.rackDrawing.nextRackId);
+          if (data.rackDrawing.activeSide !== undefined) writeLS('rack-builder:activeSide', data.rackDrawing.activeSide);
+          if (data.rackDrawing.showImages !== undefined) writeLS('rack-builder:showImages', data.rackDrawing.showImages);
         }
         
         toast({

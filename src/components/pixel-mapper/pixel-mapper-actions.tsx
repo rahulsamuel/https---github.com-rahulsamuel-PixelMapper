@@ -43,6 +43,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   saveCloudProject,
+  updateCloudProject,
   getUserCloudProjects,
   deleteCloudProject,
   type CloudProject,
@@ -113,14 +114,24 @@ export function PixelMapActions() {
     }
     setIsSaving(true);
     const projectData = getProjectData();
-    const { success, error, projectId } = await saveCloudProject(user.id, projectName, projectData);
-    setIsSaving(false);
-    if (!success) {
-      toast({ title: "Save Failed", description: error ?? "Unknown error.", variant: "destructive" });
-      return;
+    if (activeProjectId) {
+      const { success, error } = await updateCloudProject(activeProjectId, projectName, projectData);
+      setIsSaving(false);
+      if (!success) {
+        toast({ title: "Save Failed", description: error ?? "Unknown error.", variant: "destructive" });
+        return;
+      }
+      toast({ title: "Saved to Cloud", description: `"${projectName}" updated successfully.` });
+    } else {
+      const { success, error, projectId } = await saveCloudProject(user.id, projectName, projectData);
+      setIsSaving(false);
+      if (!success) {
+        toast({ title: "Save Failed", description: error ?? "Unknown error.", variant: "destructive" });
+        return;
+      }
+      if (projectId) setActiveProjectId(projectId);
+      toast({ title: "Saved to Cloud", description: `"${projectName}" saved successfully.` });
     }
-    if (projectId) setActiveProjectId(projectId);
-    toast({ title: "Saved to Cloud", description: `"${projectName}" saved successfully.` });
     if (showProjectsDialog) loadUserProjects();
   };
 
