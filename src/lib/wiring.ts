@@ -151,7 +151,7 @@ const CUSTOM_SERPENTINE_PATTERNS: WiringPattern[] = [
   'custom-serpentine-v-start-bottom',
 ];
 
-function isCustomSerpentine(pattern: WiringPattern): boolean {
+export function isCustomSerpentine(pattern: WiringPattern): boolean {
   return CUSTOM_SERPENTINE_PATTERNS.includes(pattern);
 }
 
@@ -160,7 +160,7 @@ function isCustomSerpentine(pattern: WiringPattern): boolean {
 // the column range is derived from startCol and runLength.
 // For V patterns: the clicked tile starts the first column-run;
 // the row range is derived from startRow and runLength.
-function generateManualSerpentinePath(
+export function generateManualSerpentinePath(
   startGridIndex: number,
   activeTileIndices: number[],
   pattern: WiringPattern,
