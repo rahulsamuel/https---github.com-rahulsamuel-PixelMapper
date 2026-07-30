@@ -2,28 +2,34 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
-import type { ProjectData } from "@/contexts/pixel-map-context";
+import type { ProjectData, Screen } from "@/contexts/pixel-map-context";
 
-const SAVE_DEBOUNCE_MS = 2000;
+const SAVE_DEBOUNCE_MS = 5000;
 
 interface UseRealtimeSyncArgs {
   projectId: string | null;
   userId: string | null;
+  screens: Screen[];
   getProjectData: () => ProjectData;
-  loadProjectData: (data: ProjectData) => void;
+  mergeRemoteScreen: (screen: Screen) => void;
+  removeRemoteScreen: (screenId: string) => void;
 }
 
 export function useRealtimeSync({
   projectId,
   userId,
+  screens,
   getProjectData,
-  loadProjectData,
+  mergeRemoteScreen,
+  removeRemoteScreen,
 }: UseRealtimeSyncArgs) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
-  const skipRemoteRef = useRef(false);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dataRef = useRef(getProjectData);
+  const lastBroadcastScreensRef = useRef<Screen[]>([]);
+  const isMergingRef = useRef(false);
 
   dataRef.current = getProjectData;
 
@@ -32,7 +38,6 @@ export function useRealtimeSync({
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(async () => {
       const data = dataRef.current();
-      skipRemoteRef.current = true;
       setIsSyncing(true);
       const { error } = await supabase
         .from("pixel_map_projects")
@@ -46,38 +51,89 @@ export function useRealtimeSync({
     }, SAVE_DEBOUNCE_MS);
   }, [projectId]);
 
+  // Detect local screen changes, broadcast them, and schedule a DB save.
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId || !userId) return;
 
-    const channel = supabase
-      .channel(`project-sync-${projectId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "pixel_map_projects",
-          filter: `id=eq.${projectId}`,
-        },
-        (payload: any) => {
-          if (skipRemoteRef.current) {
-            skipRemoteRef.current = false;
-            return;
-          }
-          const newProjectData = payload.new?.project_data;
-          if (newProjectData) {
-            loadProjectData(newProjectData as ProjectData);
-            setLastSyncAt(Date.now());
-          }
+    if (isMergingRef.current) {
+      lastBroadcastScreensRef.current = screens;
+      return;
+    }
+
+    const prev = lastBroadcastScreensRef.current;
+    const prevMap = new Map(prev.map(s => [s.id, s]));
+    const currentIds = new Set(screens.map(s => s.id));
+
+    // Broadcast deleted screens
+    for (const oldScreen of prev) {
+      if (!currentIds.has(oldScreen.id) && channelRef.current) {
+        channelRef.current.send({
+          type: "broadcast",
+          event: "screen_delete",
+          payload: { screenId: oldScreen.id, userId },
+        });
+      }
+    }
+
+    // Broadcast changed or new screens
+    for (const screen of screens) {
+      const prevScreen = prevMap.get(screen.id);
+      if (!prevScreen || JSON.stringify(prevScreen) !== JSON.stringify(screen)) {
+        if (channelRef.current) {
+          channelRef.current.send({
+            type: "broadcast",
+            event: "screen_update",
+            payload: { screen, userId },
+          });
         }
-      )
+      }
+    }
+
+    lastBroadcastScreensRef.current = screens;
+    scheduleSave();
+  }, [screens, projectId, userId, scheduleSave]);
+
+  // Set up realtime broadcast channel
+  useEffect(() => {
+    if (!projectId || !userId) return;
+
+    const channel = supabase.channel(`project-collab-${projectId}`, {
+      config: {
+        broadcast: { self: false },
+      },
+    });
+
+    channelRef.current = channel;
+    lastBroadcastScreensRef.current = screens;
+
+    channel
+      .on("broadcast", { event: "screen_update" }, (payload: any) => {
+        const remoteScreen = payload.payload?.screen as Screen | undefined;
+        const remoteUserId = payload.payload?.userId as string | undefined;
+        if (!remoteScreen || !remoteUserId || remoteUserId === userId) return;
+        isMergingRef.current = true;
+        mergeRemoteScreen(remoteScreen);
+        setTimeout(() => { isMergingRef.current = false; }, 0);
+        setLastSyncAt(Date.now());
+      })
+      .on("broadcast", { event: "screen_delete" }, (payload: any) => {
+        const screenId = payload.payload?.screenId as string | undefined;
+        const remoteUserId = payload.payload?.userId as string | undefined;
+        if (!screenId || !remoteUserId || remoteUserId === userId) return;
+        isMergingRef.current = true;
+        removeRemoteScreen(screenId);
+        setTimeout(() => { isMergingRef.current = false; }, 0);
+        setLastSyncAt(Date.now());
+      })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
+      channelRef.current = null;
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [projectId, loadProjectData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, userId, mergeRemoteScreen, removeRemoteScreen]);
 
   return { scheduleSave, isSyncing, lastSyncAt };
 }

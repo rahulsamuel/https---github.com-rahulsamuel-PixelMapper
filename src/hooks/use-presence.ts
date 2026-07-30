@@ -8,6 +8,8 @@ export interface PresenceUser {
   email: string;
   color: string;
   cursor: { x: number; y: number } | null;
+  currentScreenId: string | null;
+  activeTab: string | null;
   isLocal?: boolean;
 }
 
@@ -29,13 +31,20 @@ interface UsePresenceArgs {
   projectId: string | null;
   userId: string | null;
   email: string | null;
+  currentScreenId: string | null;
+  activeTab: string | null;
   gridRef: React.RefObject<HTMLDivElement | null>;
 }
 
-export function usePresence({ projectId, userId, email, gridRef }: UsePresenceArgs) {
+export function usePresence({ projectId, userId, email, currentScreenId, activeTab, gridRef }: UsePresenceArgs) {
   const [onlineUsers, setOnlineUsers] = useState<PresenceUser[]>([]);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const cursorThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const screenIdRef = useRef(currentScreenId);
+  const activeTabRef = useRef(activeTab);
+
+  screenIdRef.current = currentScreenId;
+  activeTabRef.current = activeTab;
 
   const updateCursor = useCallback((x: number, y: number) => {
     if (!channelRef.current || !userId) return;
@@ -49,8 +58,23 @@ export function usePresence({ projectId, userId, email, gridRef }: UsePresenceAr
       email,
       color: pickColor(userId),
       cursor: { x, y },
+      currentScreenId: screenIdRef.current,
+      activeTab: activeTabRef.current,
     });
   }, [userId, email]);
+
+  // Re-track when screen or tab changes so others see the update immediately
+  useEffect(() => {
+    if (!channelRef.current || !userId) return;
+    channelRef.current.track({
+      userId,
+      email,
+      color: pickColor(userId),
+      cursor: null,
+      currentScreenId,
+      activeTab,
+    });
+  }, [currentScreenId, activeTab, userId, email]);
 
   useEffect(() => {
     if (!projectId || !userId) return;
@@ -71,6 +95,8 @@ export function usePresence({ projectId, userId, email, gridRef }: UsePresenceAr
           email: p.email,
           color: p.color || pickColor(p.userId),
           cursor: p.cursor ?? null,
+          currentScreenId: p.currentScreenId ?? null,
+          activeTab: p.activeTab ?? null,
           isLocal: p.userId === userId,
         }));
         setOnlineUsers(users);
@@ -82,6 +108,8 @@ export function usePresence({ projectId, userId, email, gridRef }: UsePresenceAr
             email,
             color: pickColor(userId),
             cursor: null,
+            currentScreenId: screenIdRef.current,
+            activeTab: activeTabRef.current,
           });
         }
       });

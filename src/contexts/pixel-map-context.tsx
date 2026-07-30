@@ -379,6 +379,8 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   deleteRasterGroup: (id: string) => void;
   setRasterOffset: Dispatch<SetStateAction<{ x: number; y: number; }>>;
   updateScreenById: (screenId: string, updater: (s: Screen) => Screen) => void;
+  mergeRemoteScreen: (screen: Screen) => void;
+  removeRemoteScreen: (screenId: string) => void;
   rasterBgColor: string;
   setRasterBgColor: Dispatch<SetStateAction<string>>;
   setWiringPortConfig: Dispatch<SetStateAction<string>>;
@@ -915,6 +917,27 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     setScreens(prev => [...prev, newScreen]);
     setCurrentScreenId(newScreen.id);
   };
+
+  const mergeRemoteScreen = useCallback((remoteScreen: Screen) => {
+    setScreens(prev => {
+      const exists = prev.some(s => s.id === remoteScreen.id);
+      if (exists) {
+        return prev.map(s => s.id === remoteScreen.id ? { ...remoteScreen } : s);
+      }
+      return [...prev, remoteScreen];
+    });
+    const maxId = Math.max(nextIdCounter.current, ...remoteScreen.tiles.map(t => t.id), remoteScreen.nextTileId ?? 0);
+    nextIdCounter.current = maxId + 1;
+  }, []);
+
+  const removeRemoteScreen = useCallback((screenId: string) => {
+    setScreens(prev => {
+      if (prev.length <= 1) return prev;
+      const filtered = prev.filter(s => s.id !== screenId);
+      if (filtered.length === 0) return prev;
+      return filtered;
+    });
+  }, []);
 
   const { dimensions, tiles, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile } = currentScreen;
 
@@ -3098,13 +3121,11 @@ const handleRightHalfTileChange = (add: boolean) => {
   const { scheduleSave, isSyncing } = useRealtimeSync({
     projectId: activeProjectId,
     userId: user?.id ?? null,
+    screens,
     getProjectData,
-    loadProjectData,
+    mergeRemoteScreen,
+    removeRemoteScreen,
   });
-
-  useEffect(() => {
-    if (activeProjectId) scheduleSave();
-  }, [activeProjectId, screens, scheduleSave]);
 
   const value: PixelMapState = {
     appState,
@@ -3222,6 +3243,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     rasterOffset: currentScreen.rasterOffset,
     setRasterOffset,
     updateScreenById,
+    mergeRemoteScreen,
+    removeRemoteScreen,
     rasterBgColor,
     setRasterBgColor,
     wiringPortConfig: currentScreen.wiringPortConfig,

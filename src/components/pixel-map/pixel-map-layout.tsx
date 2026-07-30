@@ -56,6 +56,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { PresenceBar } from "./presence-bar";
 import { RemoteCursors } from "./remote-cursors";
 import type { PresenceUser } from "@/hooks/use-presence";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 
 export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher }: { onlineUsers?: PresenceUser[]; onShareClick?: () => void; projectSwitcher?: React.ReactNode }) {
@@ -303,6 +304,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               <AccordionItem value="screens" className="border-none">
                 <AccordionSectionTrigger icon={<ScreenShare className="size-5" />} title="Screens" />
                 <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
+                  <TooltipProvider delayDuration={300}>
                   <div className="space-y-2">
                     {screens.map(screen => (
                       <div key={screen.id} className="flex items-center justify-between rounded-md border p-2 bg-muted/20">
@@ -316,14 +318,33 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                             className="h-8"
                           />
                         ) : (
-                          <Button
-                            variant={screen.id === currentScreenId ? 'secondary' : 'ghost'}
-                            size="sm"
-                            className="flex-grow justify-start"
-                            onClick={() => setCurrentScreenId(screen.id)}
-                          >
-                            {screen.name}
-                          </Button>
+                          <div className="flex items-center gap-2 flex-grow min-w-0">
+                            <Button
+                              variant={screen.id === currentScreenId ? 'secondary' : 'ghost'}
+                              size="sm"
+                              className="flex-grow justify-start"
+                              onClick={() => setCurrentScreenId(screen.id)}
+                            >
+                              {screen.name}
+                            </Button>
+                            {onlineUsers
+                              .filter((u) => !u.isLocal && u.currentScreenId === screen.id)
+                              .map((u) => (
+                                <Tooltip key={u.userId}>
+                                  <TooltipTrigger asChild>
+                                    <div
+                                      className="h-5 w-5 rounded-full border border-background shrink-0 flex items-center justify-center text-[8px] text-white font-medium"
+                                      style={{ backgroundColor: u.color }}
+                                    >
+                                      {u.email?.slice(0, 1).toUpperCase()}
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="right" className="text-xs">
+                                    {u.email} is on this screen
+                                  </TooltipContent>
+                                </Tooltip>
+                              ))}
+                          </div>
                         )}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -353,6 +374,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                       </div>
                     ))}
                   </div>
+                  </TooltipProvider>
                   <Button onClick={addNewScreen} variant="outline" className="w-full">
                     <Plus className="mr-2" />
                     Add New Screen
@@ -549,10 +571,25 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                    isSyncing={isSyncing}
                    lastSyncAt={lastSyncAt}
                    onShareClick={onShareClick ?? (() => {})}
+                   currentScreenId={currentScreenId}
+                   screens={screens.map(s => ({ id: s.id, name: s.name }))}
                  />
                </div>
              </div>
            </header>
+          {(() => {
+            const sameScreen = onlineUsers.filter((u) => !u.isLocal && u.currentScreenId === currentScreenId);
+            if (sameScreen.length === 0) return null;
+            const screenName = screens.find((s) => s.id === currentScreenId)?.name ?? "this screen";
+            return (
+              <div className="flex items-center gap-2 bg-amber-500/10 border-b border-amber-500/30 px-4 py-1.5 text-xs text-amber-700 dark:text-amber-400">
+                <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                <span>
+                  <strong>Heads up:</strong> {sameScreen.map((u) => u.email).join(", ")} {sameScreen.length === 1 ? "is" : "are"} also editing &ldquo;{screenName}&rdquo;. Coordinate to avoid overwriting each other&apos;s changes.
+                </span>
+              </div>
+            );
+          })()}
           <div className="flex-1 overflow-auto bg-muted/20" ref={viewportRef}>
               <TabsContent value="grid" className="mt-0 p-8">
                 <div className="inline-block relative" style={{ width: fullGridWidth * zoom, height: fullGridHeight * zoom }}>

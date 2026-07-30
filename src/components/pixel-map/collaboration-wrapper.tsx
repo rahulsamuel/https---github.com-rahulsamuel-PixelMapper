@@ -22,6 +22,8 @@ export function CollaborationWrapper() {
     setProjectName,
     projectName,
     startNewProject,
+    currentScreenId,
+    activeTab,
   } = usePixelMap();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -78,6 +80,8 @@ export function CollaborationWrapper() {
     projectId: activeProjectId,
     userId: user?.id ?? null,
     email: user?.email ?? null,
+    currentScreenId,
+    activeTab,
     gridRef,
   });
 
