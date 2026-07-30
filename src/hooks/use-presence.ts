@@ -45,6 +45,7 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
   const cursorThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const screenIdRef = useRef(currentScreenId);
   const activeTabRef = useRef(activeTab);
+  const cursorsRef = useRef<Map<string, { x: number; y: number } | null>>(new Map());
 
   screenIdRef.current = currentScreenId;
   activeTabRef.current = activeTab;
@@ -60,16 +61,12 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
       cursorThrottleRef.current = null;
     }, 50);
 
-    channelRef.current.track({
-      userId,
-      sessionId: SESSION_ID,
-      email,
-      color: pickColor(userId),
-      cursor: { x, y },
-      currentScreenId: screenIdRef.current,
-      activeTab: activeTabRef.current,
+    channelRef.current.send({
+      type: "broadcast",
+      event: "cursor",
+      payload: { sessionId: SESSION_ID, cursor: { x, y } },
     });
-  }, [userId, email]);
+  }, [userId]);
 
   // Re-track when screen or tab changes so others see the update immediately
   useEffect(() => {
@@ -95,6 +92,7 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
     const channel = supabase.channel(`presence-${projectId}`, {
       config: {
         presence: { key: SESSION_ID },
+        broadcast: { self: false },
       },
     });
 
@@ -109,7 +107,7 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
           sessionId: p.sessionId,
           email: p.email,
           color: p.color || pickColor(p.userId),
-          cursor: p.cursor ?? null,
+          cursor: cursorsRef.current.get(p.sessionId) ?? null,
           currentScreenId: p.currentScreenId ?? null,
           activeTab: p.activeTab ?? null,
           isLocal: isLocalUser(p),
@@ -119,6 +117,13 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
           console.log("[presence] detail", JSON.stringify(users.map(u => ({ email: u.email, sid: u.sessionId, screen: u.currentScreenId, tab: u.activeTab, local: u.isLocal }))));
         }
         setOnlineUsers(users);
+      })
+      .on("broadcast", { event: "cursor" }, (payload: any) => {
+        const sid = payload.payload?.sessionId as string | undefined;
+        const cursor = payload.payload?.cursor as { x: number; y: number } | undefined;
+        if (!sid || sid === SESSION_ID) return;
+        cursorsRef.current.set(sid, cursor ?? null);
+        setOnlineUsers(prev => prev.map(u => u.sessionId === sid ? { ...u, cursor: cursor ?? null } : u));
       })
       .subscribe(async (status) => {
         console.log("[presence] channel status", status);
@@ -145,6 +150,7 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
       channel.untrack();
       supabase.removeChannel(channel);
       channelRef.current = null;
+      cursorsRef.current.clear();
       window.removeEventListener("beforeunload", handleLeave);
     };
   }, [projectId, userId, email]);
