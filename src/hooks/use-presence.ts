@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 
 export interface PresenceUser {
   userId: string;
+  sessionId: string;
   email: string;
   color: string;
   cursor: { x: number; y: number } | null;
@@ -85,7 +86,11 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
   }, [currentScreenId, activeTab, userId, email]);
 
   useEffect(() => {
-    if (!projectId || !userId) return;
+    if (!projectId || !userId) {
+      console.log("[presence] skipping subscribe", { projectId, userId });
+      return;
+    }
+    console.log("[presence] subscribing", { projectId, userId, email, SESSION_ID });
 
     const channel = supabase.channel(`presence-${projectId}`, {
       config: {
@@ -98,8 +103,10 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
     channel
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
+        console.log("[presence] sync", { state, keyCount: Object.keys(state).length });
         const users: PresenceUser[] = Object.values(state).flat().map((p: any) => ({
           userId: p.userId,
+          sessionId: p.sessionId,
           email: p.email,
           color: p.color || pickColor(p.userId),
           cursor: p.cursor ?? null,
@@ -107,9 +114,11 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
           activeTab: p.activeTab ?? null,
           isLocal: isLocalUser(p),
         }));
+        console.log("[presence] users", users);
         setOnlineUsers(users);
       })
       .subscribe(async (status) => {
+        console.log("[presence] channel status", status);
         if (status === "SUBSCRIBED") {
           await channel.track({
             userId,

@@ -330,7 +330,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                             {onlineUsers
                               .filter((u) => !u.isLocal && u.currentScreenId === screen.id)
                               .map((u) => (
-                                <Tooltip key={u.userId}>
+                                <Tooltip key={u.sessionId}>
                                   <TooltipTrigger asChild>
                                     <div
                                       className="h-5 w-5 rounded-full border border-background shrink-0 flex items-center justify-center text-[8px] text-white font-medium"

@@ -37,7 +37,7 @@ export function PresenceBar({ onlineUsers, isSyncing, lastSyncAt, onShareClick, 
           </TooltipTrigger>
           <TooltipContent side="bottom" className="text-xs">
             {sameScreenUsers.map((u) => (
-              <div key={u.userId}>{u.email} is also viewing &ldquo;{screenName(u.currentScreenId)}&rdquo;</div>
+              <div key={u.sessionId}>{u.email} is also viewing &ldquo;{screenName(u.currentScreenId)}&rdquo;</div>
             ))}
             <div className="mt-1 text-muted-foreground">Coordinate to avoid overwriting each other&apos;s changes.</div>
           </TooltipContent>
@@ -77,7 +77,7 @@ export function PresenceBar({ onlineUsers, isSyncing, lastSyncAt, onShareClick, 
           </Tooltip>
         )}
         {remoteUsers.slice(0, 4).map((u) => (
-          <Tooltip key={u.userId}>
+          <Tooltip key={u.sessionId}>
             <TooltipTrigger asChild>
               <div className="relative" style={{ outlineWidth: 2, outlineStyle: "solid", outlineColor: u.currentScreenId === currentScreenId ? "rgb(245 158 11 / 0.5)" : "transparent", outlineOffset: 1 }}>
                 <Avatar className="h-7 w-7 border-2 border-background" style={{ backgroundColor: u.color }}>

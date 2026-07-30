@@ -104,7 +104,9 @@ export function CollaborationWrapper() {
     }
     setIsShareSaving(true);
     const projectData = getProjectData();
+    console.log("[share] saving project", { userId: user.id, projectName, hasData: !!projectData });
     const { success, error, projectId } = await saveCloudProject(user.id, projectName, projectData);
+    console.log("[share] save result", { success, error, projectId });
     setIsShareSaving(false);
     if (!success || !projectId) {
       toast({ title: "Share Failed", description: error ?? "Could not save project for sharing.", variant: "destructive" });

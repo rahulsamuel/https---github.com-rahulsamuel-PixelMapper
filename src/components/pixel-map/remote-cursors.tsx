@@ -17,7 +17,7 @@ export function RemoteCursors({ onlineUsers }: RemoteCursorsProps) {
         if (!u.cursor) return null;
         return (
           <div
-            key={u.userId}
+            key={u.sessionId}
             className="absolute transition-transform duration-75 ease-out"
             style={{
               left: `${u.cursor.x}px`,
