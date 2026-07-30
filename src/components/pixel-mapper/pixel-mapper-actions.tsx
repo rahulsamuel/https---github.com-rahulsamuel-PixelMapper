@@ -50,7 +50,7 @@ import {
 } from "@/lib/cloud-projects";
 
 export function PixelMapActions() {
-  const { exportProject, importProject, getProjectData, loadProjectData, setActiveProjectId, projectName, setProjectName, undo, redo, canUndo, canRedo, startNewProject } = usePixelMap();
+  const { exportProject, importProject, getProjectData, loadProjectData, activeProjectId, setActiveProjectId, projectName, setProjectName, undo, redo, canUndo, canRedo, startNewProject } = usePixelMap();
   const { user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
