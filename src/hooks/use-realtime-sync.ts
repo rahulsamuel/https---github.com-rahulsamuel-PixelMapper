@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 import type { ProjectData, Screen } from "@/contexts/pixel-map-context";
 
 const SAVE_DEBOUNCE_MS = 5000;
+const SESSION_ID = Math.random().toString(36).slice(2, 11);
 
 interface UseRealtimeSyncArgs {
   projectId: string | null;
@@ -70,7 +71,7 @@ export function useRealtimeSync({
         channelRef.current.send({
           type: "broadcast",
           event: "screen_delete",
-          payload: { screenId: oldScreen.id, userId },
+          payload: { screenId: oldScreen.id, userId, sessionId: SESSION_ID },
         });
       }
     }
@@ -83,7 +84,7 @@ export function useRealtimeSync({
           channelRef.current.send({
             type: "broadcast",
             event: "screen_update",
-            payload: { screen, userId },
+            payload: { screen, userId, sessionId: SESSION_ID },
           });
         }
       }
@@ -109,8 +110,8 @@ export function useRealtimeSync({
     channel
       .on("broadcast", { event: "screen_update" }, (payload: any) => {
         const remoteScreen = payload.payload?.screen as Screen | undefined;
-        const remoteUserId = payload.payload?.userId as string | undefined;
-        if (!remoteScreen || !remoteUserId || remoteUserId === userId) return;
+        const remoteSessionId = payload.payload?.sessionId as string | undefined;
+        if (!remoteScreen || !remoteSessionId || remoteSessionId === SESSION_ID) return;
         isMergingRef.current = true;
         mergeRemoteScreen(remoteScreen);
         setTimeout(() => { isMergingRef.current = false; }, 0);
@@ -118,8 +119,8 @@ export function useRealtimeSync({
       })
       .on("broadcast", { event: "screen_delete" }, (payload: any) => {
         const screenId = payload.payload?.screenId as string | undefined;
-        const remoteUserId = payload.payload?.userId as string | undefined;
-        if (!screenId || !remoteUserId || remoteUserId === userId) return;
+        const remoteSessionId = payload.payload?.sessionId as string | undefined;
+        if (!screenId || !remoteSessionId || remoteSessionId === SESSION_ID) return;
         isMergingRef.current = true;
         removeRemoteScreen(screenId);
         setTimeout(() => { isMergingRef.current = false; }, 0);

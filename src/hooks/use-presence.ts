@@ -36,6 +36,8 @@ interface UsePresenceArgs {
   gridRef: React.RefObject<HTMLDivElement | null>;
 }
 
+const SESSION_ID = Math.random().toString(36).slice(2, 11);
+
 export function usePresence({ projectId, userId, email, currentScreenId, activeTab, gridRef }: UsePresenceArgs) {
   const [onlineUsers, setOnlineUsers] = useState<PresenceUser[]>([]);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -46,6 +48,10 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
   screenIdRef.current = currentScreenId;
   activeTabRef.current = activeTab;
 
+  const isLocalUser = useCallback((p: any) => {
+    return p.userId === userId && p.sessionId === SESSION_ID;
+  }, [userId]);
+
   const updateCursor = useCallback((x: number, y: number) => {
     if (!channelRef.current || !userId) return;
     if (cursorThrottleRef.current) return;
@@ -55,6 +61,7 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
 
     channelRef.current.track({
       userId,
+      sessionId: SESSION_ID,
       email,
       color: pickColor(userId),
       cursor: { x, y },
@@ -68,6 +75,7 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
     if (!channelRef.current || !userId) return;
     channelRef.current.track({
       userId,
+      sessionId: SESSION_ID,
       email,
       color: pickColor(userId),
       cursor: null,
@@ -81,7 +89,7 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
 
     const channel = supabase.channel(`presence-${projectId}`, {
       config: {
-        presence: { key: userId },
+        presence: { key: SESSION_ID },
       },
     });
 
@@ -97,7 +105,7 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
           cursor: p.cursor ?? null,
           currentScreenId: p.currentScreenId ?? null,
           activeTab: p.activeTab ?? null,
-          isLocal: p.userId === userId,
+          isLocal: isLocalUser(p),
         }));
         setOnlineUsers(users);
       })
@@ -105,6 +113,7 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
         if (status === "SUBSCRIBED") {
           await channel.track({
             userId,
+            sessionId: SESSION_ID,
             email,
             color: pickColor(userId),
             cursor: null,
