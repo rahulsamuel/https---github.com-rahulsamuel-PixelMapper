@@ -102,16 +102,20 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
         console.log("[presence] sync", { state, keyCount: Object.keys(state).length });
-        const users: PresenceUser[] = Object.values(state).flat().map((p: any) => ({
-          userId: p.userId,
-          sessionId: p.sessionId,
-          email: p.email,
-          color: p.color || pickColor(p.userId),
-          cursor: cursorsRef.current.get(p.sessionId) ?? null,
-          currentScreenId: p.currentScreenId ?? null,
-          activeTab: p.activeTab ?? null,
-          isLocal: isLocalUser(p),
-        }));
+        // Take only the last (most recent) entry per session key to avoid duplicates from multiple track() calls
+        const users: PresenceUser[] = Object.values(state).map((entries: any[]) => {
+          const p = entries[entries.length - 1];
+          return {
+            userId: p.userId,
+            sessionId: p.sessionId,
+            email: p.email,
+            color: p.color || pickColor(p.userId),
+            cursor: cursorsRef.current.get(p.sessionId) ?? null,
+            currentScreenId: p.currentScreenId ?? null,
+            activeTab: p.activeTab ?? null,
+            isLocal: isLocalUser(p),
+          };
+        });
         console.log("[presence] users", users);
         if (users.length > 1) {
           console.log("[presence] detail", JSON.stringify(users.map(u => ({ email: u.email, sid: u.sessionId, screen: u.currentScreenId, tab: u.activeTab, local: u.isLocal }))));
@@ -147,7 +151,7 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
 
     return () => {
       if (cursorThrottleRef.current) clearTimeout(cursorThrottleRef.current);
-      channel.untrack();
+      channel.untrack().catch(() => {});
       supabase.removeChannel(channel);
       channelRef.current = null;
       cursorsRef.current.clear();
