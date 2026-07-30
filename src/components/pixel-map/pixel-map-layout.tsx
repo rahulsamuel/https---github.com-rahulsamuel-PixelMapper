@@ -572,20 +572,22 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                    lastSyncAt={lastSyncAt}
                    onShareClick={onShareClick ?? (() => {})}
                    currentScreenId={currentScreenId}
+                   activeTab={activeTab}
                    screens={screens.map(s => ({ id: s.id, name: s.name }))}
                  />
                </div>
              </div>
            </header>
           {(() => {
-            const sameScreen = onlineUsers.filter((u) => !u.isLocal && u.currentScreenId === currentScreenId);
-            if (sameScreen.length === 0) return null;
+            const sameScreenTab = onlineUsers.filter((u) => !u.isLocal && u.currentScreenId === currentScreenId && u.activeTab === activeTab);
+            if (sameScreenTab.length === 0) return null;
             const screenName = screens.find((s) => s.id === currentScreenId)?.name ?? "this screen";
+            const tabLabel = activeTab === 'grid' ? 'LED Grid' : activeTab === 'wiring' ? 'Wiring Diagram' : activeTab === 'raster' ? 'Raster Map' : 'Deliverables';
             return (
               <div className="flex items-center gap-2 bg-amber-500/10 border-b border-amber-500/30 px-4 py-1.5 text-xs text-amber-700 dark:text-amber-400">
                 <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
                 <span>
-                  <strong>Heads up:</strong> {sameScreen.map((u) => u.email).join(", ")} {sameScreen.length === 1 ? "is" : "are"} also editing &ldquo;{screenName}&rdquo;. Coordinate to avoid overwriting each other&apos;s changes.
+                  <strong>Heads up:</strong> {sameScreenTab.map((u) => u.email).join(", ")} {sameScreenTab.length === 1 ? "is" : "are"} also editing &ldquo;{screenName}&rdquo; ({tabLabel}). Coordinate to avoid overwriting each other&apos;s changes.
                 </span>
               </div>
             );
