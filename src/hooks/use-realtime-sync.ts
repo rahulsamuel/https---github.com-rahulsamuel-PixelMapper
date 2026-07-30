@@ -58,6 +58,7 @@ export function useRealtimeSync({
 
     if (isMergingRef.current) {
       lastBroadcastScreensRef.current = screens;
+      isMergingRef.current = false;
       return;
     }
 
@@ -114,7 +115,6 @@ export function useRealtimeSync({
         if (!remoteScreen || !remoteSessionId || remoteSessionId === SESSION_ID) return;
         isMergingRef.current = true;
         mergeRemoteScreen(remoteScreen);
-        setTimeout(() => { isMergingRef.current = false; }, 0);
         setLastSyncAt(Date.now());
       })
       .on("broadcast", { event: "screen_delete" }, (payload: any) => {
@@ -123,7 +123,6 @@ export function useRealtimeSync({
         if (!screenId || !remoteSessionId || remoteSessionId === SESSION_ID) return;
         isMergingRef.current = true;
         removeRemoteScreen(screenId);
-        setTimeout(() => { isMergingRef.current = false; }, 0);
         setLastSyncAt(Date.now());
       })
       .subscribe();
