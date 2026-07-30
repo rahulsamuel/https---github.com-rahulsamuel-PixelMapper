@@ -922,7 +922,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     setScreens(prev => {
       const exists = prev.some(s => s.id === remoteScreen.id);
       if (exists) {
-        return prev.map(s => s.id === remoteScreen.id ? { ...remoteScreen } : s);
+        return prev.map(s => s.id === remoteScreen.id ? { ...remoteScreen, zoomLevels: s.zoomLevels } : s);
       }
       return [...prev, remoteScreen];
     });

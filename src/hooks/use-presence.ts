@@ -115,6 +115,9 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
           isLocal: isLocalUser(p),
         }));
         console.log("[presence] users", users);
+        if (users.length > 1) {
+          console.log("[presence] detail", users.map(u => ({ email: u.email, sessionId: u.sessionId, currentScreenId: u.currentScreenId, activeTab: u.activeTab, isLocal: u.isLocal })));
+        }
         setOnlineUsers(users);
       })
       .subscribe(async (status) => {
