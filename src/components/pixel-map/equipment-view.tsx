@@ -17,7 +17,6 @@ import {
   RefreshCw,
   Plus,
   Trash2,
-  Cpu,
   Network,
   Cable,
   Ruler,
@@ -25,7 +24,7 @@ import {
   Shield,
   Layers,
 } from "lucide-react";
-import type { GearConfig, ProcessorEntry, FiberBoxEntry, CableRun, ProcessorType } from "@/contexts/pixel-map-context";
+import type { ProcessorEntry, CableRun, ProcessorType } from "@/contexts/pixel-map-context";
 
 const PROCESSOR_TYPES: { value: ProcessorType; label: string; boxLabel: string; defaultPorts: number }[] = [
   { value: "Novastar", label: "Novastar (CVT)", boxLabel: "Novastar CVT Box", defaultPorts: 16 },
@@ -71,9 +70,12 @@ export function EquipmentView() {
   const screenName = (id: string) => screens.find(s => s.id === id)?.name ?? "Unknown";
   const groupName = (id: string) => rasterGroups.find(g => g.id === id)?.name ?? "Ungrouped";
 
+  const primaryDataPorts = dataPorts.filter(dp => !dp.isBackup);
+  const backupDataPorts = dataPorts.filter(dp => dp.isBackup);
+
   const handleAddProcessor = () => {
     const label = newProcLabel.trim() || `Processor ${processors.length + 1}`;
-    addProcessor({ label, type: newProcType, screenIds: [], rasterGroupId: `manual-${Date.now()}` });
+    addProcessor({ label, type: newProcType, screenIds: [], rasterGroupId: `manual-${Date.now()}`, isBackup: false });
     setNewProcLabel("");
     setShowAddProc(false);
   };
@@ -93,7 +95,6 @@ export function EquipmentView() {
     });
   };
 
-  // Group processors by rasterGroupId
   const groupedProcessors = useMemo(() => {
     const map = new Map<string, { primary: ProcessorEntry | undefined; backup: ProcessorEntry | undefined }>();
     processors.forEach((p) => {
@@ -187,6 +188,39 @@ export function EquipmentView() {
       </div>
     );
   };
+
+  const renderCableRow = (cable: CableRun) => (
+    <div key={cable.id} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20">
+      <Input
+        value={cable.fromLabel}
+        onChange={(e) => updateCable(cable.id, { fromLabel: e.target.value })}
+        className="w-32 text-sm"
+      />
+      <span className="text-muted-foreground">→</span>
+      <Input
+        value={cable.toLabel}
+        onChange={(e) => updateCable(cable.id, { toLabel: e.target.value })}
+        className="w-32 text-sm"
+      />
+      <Input
+        type="number"
+        min={0}
+        value={cable.length}
+        onChange={(e) => updateCable(cable.id, { length: Math.max(0, parseFloat(e.target.value) || 0) })}
+        className="w-20 text-sm"
+      />
+      <Select value={cable.unit} onValueChange={(v: "ft" | "m") => updateCable(cable.id, { unit: v })}>
+        <SelectTrigger className="w-16 text-sm"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="m">m</SelectItem>
+          <SelectItem value="ft">ft</SelectItem>
+        </SelectContent>
+      </Select>
+      <Button variant="ghost" size="icon" onClick={() => removeCable(cable.id)} className="text-destructive ml-auto">
+        <Trash2 className="size-4" />
+      </Button>
+    </div>
+  );
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6">
@@ -282,27 +316,49 @@ export function EquipmentView() {
         </CardContent>
       </Card>
 
-      {/* Data Ports */}
+      {/* Data Ports with backup subsection */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Cable className="size-5" /> Data Ports (Cat Runs)</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          {dataPorts.length === 0 && <p className="text-sm text-muted-foreground py-2">No data ports. Set up wiring in the Wiring Diagram tab.</p>}
-          {dataPorts.map((dp) => (
-            <div key={dp.id} className={`flex items-center gap-2 rounded-md border p-2 text-sm ${dp.isBackup ? "bg-orange-50/40 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900" : "bg-muted/20"}`}>
-              {dp.isBackup && <Shield className="size-3.5 text-orange-500" />}
-              <span className={`font-mono font-medium px-2 py-0.5 rounded ${dp.isBackup ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" : "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"}`}>{dp.label}</span>
-              {dp.backupLabel && (
-                <span className="font-mono text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">Backup: {dp.backupLabel}</span>
-              )}
-              <span className="text-muted-foreground">{screenName(dp.screenId)}</span>
-              <span className="text-muted-foreground">{dp.tileCount} tiles</span>
-              <span className={`text-xs px-1.5 py-0.5 rounded-full ${dp.isBackup ? "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400" : "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400"}`}>
-                {dp.isBackup ? "Backup" : "Primary"}
-              </span>
+        <CardContent className="space-y-4">
+          {/* Primary data ports */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs font-medium text-green-600 dark:text-green-400">
+              <span className="size-2 rounded-full bg-green-500" />
+              PRIMARY DATA PORTS
             </div>
-          ))}
+            {primaryDataPorts.length === 0 && <p className="text-sm text-muted-foreground py-1">No primary data ports. Set up wiring in the Wiring Diagram tab.</p>}
+            {primaryDataPorts.map((dp) => (
+              <div key={dp.id} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20 text-sm">
+                <span className="font-mono font-medium px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">{dp.label}</span>
+                {dp.backupLabel && (
+                  <span className="font-mono text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">Backup: {dp.backupLabel}</span>
+                )}
+                <span className="text-muted-foreground">{screenName(dp.screenId)}</span>
+                <span className="text-muted-foreground">{dp.tileCount} tiles</span>
+                <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400">Primary</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Backup data ports */}
+          <div className="space-y-2 pt-2 border-t">
+            <div className="flex items-center gap-2 text-xs font-medium text-orange-600 dark:text-orange-400">
+              <Shield className="size-3.5" />
+              BACKUP DATA PORTS
+            </div>
+            {backupDataPorts.length === 0 && <p className="text-sm text-muted-foreground py-1">No backup data ports. Backup labels (red ports) will appear here once set in the Wiring Diagram tab.</p>}
+            {backupDataPorts.map((dp) => (
+              <div key={dp.id} className="flex items-center gap-2 rounded-md border p-2 bg-orange-50/40 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900 text-sm">
+                <Shield className="size-3.5 text-orange-500" />
+                <span className="font-mono font-medium px-2 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">{dp.label}</span>
+                <span className="text-muted-foreground">{screenName(dp.screenId)}</span>
+                <span className="text-muted-foreground">{dp.tileCount} tiles</span>
+                <span className="text-xs px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400">Backup</span>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -323,50 +379,44 @@ export function EquipmentView() {
         </CardContent>
       </Card>
 
-      {/* Cable Runs */}
+      {/* Data Cable Runs */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Ruler className="size-5" /> Cable Runs</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Cable className="size-5" /> Data Cable Runs (Cat5e/6)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {cables.length === 0 && <p className="text-sm text-muted-foreground py-2">No cable runs defined yet.</p>}
-          {cables.map((cable) => (
-            <div key={cable.id} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20">
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${cable.kind === "fiber" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : cable.kind === "power" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" : "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"}`}>
-                {cable.kind === "fiber" ? "Fiber" : cable.kind === "power" ? "Power" : "Cat5e/6"}
-              </span>
-              <Input
-                value={cable.fromLabel}
-                onChange={(e) => updateCable(cable.id, { fromLabel: e.target.value })}
-                className="w-32 text-sm"
-              />
-              <span className="text-muted-foreground">→</span>
-              <Input
-                value={cable.toLabel}
-                onChange={(e) => updateCable(cable.id, { toLabel: e.target.value })}
-                className="w-32 text-sm"
-              />
-              <Input
-                type="number"
-                min={0}
-                value={cable.length}
-                onChange={(e) => updateCable(cable.id, { length: Math.max(0, parseFloat(e.target.value) || 0) })}
-                className="w-20 text-sm"
-              />
-              <Select value={cable.unit} onValueChange={(v: "ft" | "m") => updateCable(cable.id, { unit: v })}>
-                <SelectTrigger className="w-16 text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="m">m</SelectItem>
-                  <SelectItem value="ft">ft</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="ghost" size="icon" onClick={() => removeCable(cable.id)} className="text-destructive ml-auto">
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-          ))}
+          {cables.filter(c => c.kind === "cat").length === 0 && <p className="text-sm text-muted-foreground py-2">No data cable runs defined yet.</p>}
+          {cables.filter(c => c.kind === "cat").map(renderCableRow)}
           <Button variant="outline" size="sm" onClick={() => addCable({ kind: "cat", fromLabel: "", toLabel: "", length: 10, unit: "m" })}>
-            <Plus className="size-3 mr-1" /> Add Cable Run
+            <Plus className="size-3 mr-1" /> Add Data Cable Run
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Power Cable Runs */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Zap className="size-5" /> Power Cable Runs</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {cables.filter(c => c.kind === "power").length === 0 && <p className="text-sm text-muted-foreground py-2">No power cable runs defined yet.</p>}
+          {cables.filter(c => c.kind === "power").map(renderCableRow)}
+          <Button variant="outline" size="sm" onClick={() => addCable({ kind: "power", fromLabel: "", toLabel: "", length: 10, unit: "m" })}>
+            <Plus className="size-3 mr-1" /> Add Power Cable Run
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Fiber Cable Runs */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Network className="size-5" /> Fiber Cable Runs</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {cables.filter(c => c.kind === "fiber").length === 0 && <p className="text-sm text-muted-foreground py-2">No fiber cable runs defined yet.</p>}
+          {cables.filter(c => c.kind === "fiber").map(renderCableRow)}
+          <Button variant="outline" size="sm" onClick={() => addCable({ kind: "fiber", fromLabel: "", toLabel: "", length: 100, unit: "m" })}>
+            <Plus className="size-3 mr-1" /> Add Fiber Cable Run
           </Button>
         </CardContent>
       </Card>

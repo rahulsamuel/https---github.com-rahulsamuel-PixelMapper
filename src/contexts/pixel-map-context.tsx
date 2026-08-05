@@ -1588,6 +1588,16 @@ const handleRightHalfTileChange = (add: boolean) => {
             screenId: screen.id,
             tileCount,
           });
+
+          // Power cable run: power port -> LED tile chain (default 10m / ~33ft, editable)
+          cables.push({
+            id: `cable-power-${screen.id}-${info.powerPortLabel}`,
+            kind: 'power',
+            fromLabel: info.powerPortLabel,
+            toLabel: `${screen.name} chain`,
+            length: 10,
+            unit: 'm',
+          });
         }
       });
     });
