@@ -1516,18 +1516,27 @@ const handleRightHalfTileChange = (add: boolean) => {
         processors.find(p => p.rasterGroupId === owningProcessor?.rasterGroupId && p.isBackup)?.id ?? '';
 
       // Collect unique data port labels (non-empty dataLabel = start of a chain).
-      // backupLabel lives on the LAST tile of each chain, not the first, so scan
-      // the whole chain to pick it up.
+      // Chains are linked via nextTile {x,y}; backupLabel lives on the LAST tile.
+      // Build a coordinate lookup so we can walk the linked list.
+      const wiringByXY = new Map<string, typeof wiringInfo[number]>();
+      wiringInfo.forEach((info) => {
+        if (!info.isDeleted) wiringByXY.set(`${info.x},${info.y}`, info);
+      });
+
       const seenDataLabels = new Set<string>();
-      wiringInfo.forEach((info, startIndex) => {
+      wiringInfo.forEach((info) => {
         if (info.dataLabel && !info.isDeleted && !seenDataLabels.has(info.dataLabel)) {
           seenDataLabels.add(info.dataLabel);
           let tileCount = 0;
           let chainBackupLabel = '';
-          for (let i = startIndex; i < wiringInfo.length; i++) {
-            if (i > startIndex && wiringInfo[i].dataLabel) break;
-            if (!wiringInfo[i].isDeleted) tileCount++;
-            if (wiringInfo[i].backupLabel) chainBackupLabel = wiringInfo[i].backupLabel;
+          let current: typeof info | undefined = info;
+          const visited = new Set<string>();
+          while (current && !visited.has(`${current.x},${current.y}`)) {
+            visited.add(`${current.x},${current.y}`);
+            tileCount++;
+            if (current.backupLabel) chainBackupLabel = current.backupLabel;
+            if (!current.nextTile) break;
+            current = wiringByXY.get(`${current.nextTile.x},${current.nextTile.y}`);
           }
 
           const isBackupPort = chainBackupLabel !== '';
@@ -1578,16 +1587,19 @@ const handleRightHalfTileChange = (add: boolean) => {
         }
       });
 
-      // Collect unique power port labels
+      // Collect unique power port labels — follow nextPowerTile linked list
       const seenPowerLabels = new Set<string>();
       wiringInfo.forEach((info) => {
         if (info.powerPortLabel && !info.isDeleted && !seenPowerLabels.has(info.powerPortLabel)) {
           seenPowerLabels.add(info.powerPortLabel);
           let tileCount = 0;
-          const startIndex = wiringInfo.indexOf(info);
-          for (let i = startIndex; i < wiringInfo.length; i++) {
-            if (i > startIndex && wiringInfo[i].powerPortLabel && wiringInfo[i].powerPortLabel !== info.powerPortLabel) break;
-            if (!wiringInfo[i].isDeleted) tileCount++;
+          let current: typeof info | undefined = info;
+          const visited = new Set<string>();
+          while (current && !visited.has(`${current.x},${current.y}`)) {
+            visited.add(`${current.x},${current.y}`);
+            tileCount++;
+            if (!current.nextPowerTile) break;
+            current = wiringByXY.get(`${current.nextPowerTile.x},${current.nextPowerTile.y}`);
           }
 
           powerPorts.push({

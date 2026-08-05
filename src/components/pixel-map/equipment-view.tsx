@@ -415,7 +415,8 @@ export function EquipmentView() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {[
             { label: "Processors", value: processors.length },
-            { label: "Data Ports", value: dataPorts.length },
+            { label: "Primary Data Ports", value: primaryDataPorts.length },
+            { label: "Backup Data Ports", value: backupDataPorts.length },
             { label: "Power Ports", value: powerPorts.length },
             { label: "Fiber Boxes", value: fiberBoxes.length },
             { label: "Cable Runs", value: cables.length },
