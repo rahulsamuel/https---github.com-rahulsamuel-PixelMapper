@@ -125,10 +125,11 @@ export function EquipmentView() {
   };
 
   const groupedProcessors = useMemo(() => {
-    const map = new Map<string, { primary: ProcessorEntry | undefined; backup: ProcessorEntry | undefined }>();
+    const map = new Map<string, { groupId: string; sliceKey?: string; primary: ProcessorEntry | undefined; backup: ProcessorEntry | undefined }>();
     processors.forEach((p) => {
-      if (!map.has(p.rasterGroupId)) map.set(p.rasterGroupId, { primary: undefined, backup: undefined });
-      const entry = map.get(p.rasterGroupId)!;
+      const key = `${p.rasterGroupId}:${p.sliceKey ?? "default"}`;
+      if (!map.has(key)) map.set(key, { groupId: p.rasterGroupId, sliceKey: p.sliceKey, primary: undefined, backup: undefined });
+      const entry = map.get(key)!;
       if (p.isBackup) entry.backup = p;
       else entry.primary = p;
     });
@@ -452,10 +453,10 @@ export function EquipmentView() {
             {groupedProcessors.size === 0 && !showAddProc && (
               <p className="text-sm text-muted-foreground py-2">No processors. Add raster groups in the Raster Map tab or add one manually.</p>
             )}
-            {Array.from(groupedProcessors.entries()).map(([groupId, { primary, backup }]) => (
-              <div key={groupId} className="space-y-2">
+            {Array.from(groupedProcessors.entries()).map(([processorGroupKey, { groupId, sliceKey, primary, backup }], index) => (
+              <div key={processorGroupKey} className="space-y-2">
                 <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground border-b pb-1">
-                  <Layers className="size-4" /> {groupName(groupId)}
+                  <Layers className="size-4" /> {sliceKey && sliceKey !== "default" ? `Raster ${index + 1}` : groupName(groupId)}
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="space-y-1">

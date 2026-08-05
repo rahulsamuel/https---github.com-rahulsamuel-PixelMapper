@@ -1431,8 +1431,8 @@ const handleRightHalfTileChange = (add: boolean) => {
 
       const slices = groupConfig?.slices ?? [];
       const sliceEntries = slices.length > 0
-        ? slices.map((s, i) => ({ key: s.key, label: `${group.name || `Raster ${groupIdx + 1}`} - Raster ${i + 1}`, index: i }))
-        : [{ key: 'default', label: group.name || `Processor ${groupIdx + 1}`, index: 0 }];
+        ? slices.map((s, i) => ({ key: s.key, label: `Raster ${i + 1}`, index: i }))
+        : [{ key: 'default', label: `Raster ${groupIdx + 1}`, index: 0 }];
 
       sliceEntries.forEach(({ key: sliceKey, label: sliceLabel, index: sliceIdx }) => {
         const primaryProcId = `proc-${group.id}-${sliceKey}`;
@@ -2336,7 +2336,24 @@ const handleRightHalfTileChange = (add: boolean) => {
         if (config) newConfigs[group.id] = config;
     }
     setRasterMapConfigs(newConfigs);
-  }, [currentScreen.lastRasterArgs, rasterGroups, buildRasterConfigForGroup]);
+
+    // Auto-sync the raster groups list to match the number of slices in the
+    // active group's config. When a screen is too big for one raster, the
+    // config is split into multiple slices — each slice should appear as its
+    // own "Raster N" entry so the count matches the processors in Equipment.
+    const activeConfig = newConfigs[activeRasterGroupId];
+    if (activeConfig && activeConfig.slices.length > 1) {
+      const sliceCount = activeConfig.slices.length;
+      setRasterGroups(prev => {
+        if (prev.length >= sliceCount) return prev;
+        const next = [...prev];
+        for (let i = prev.length; i < sliceCount; i++) {
+          next.push({ id: `raster-${i + 1}`, name: `Raster ${i + 1}` });
+        }
+        return next;
+      });
+    }
+  }, [currentScreen.lastRasterArgs, rasterGroups, buildRasterConfigForGroup, activeRasterGroupId]);
 
 
   useEffect(() => {
