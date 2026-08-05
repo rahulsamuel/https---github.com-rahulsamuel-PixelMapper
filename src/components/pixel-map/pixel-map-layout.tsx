@@ -24,6 +24,7 @@ import { ColorToolControls } from "../pixel-mapper/color-tool-controls";
 import { ManualPowerWiringModal } from "../pixel-mapper/manual-power-wiring-modal";
 import { ManualDataWiringModal } from "../pixel-mapper/manual-data-wiring-modal";
 import { DeliverablesView } from "./deliverables-view";
+import { EquipmentView } from "./equipment-view";
 import { ProjectDetailsControls } from "../pixel-mapper/project-details-controls";
 import {
   Accordion,
@@ -149,6 +150,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
         }
         break;
       case 'deliverables':
+      case 'equipment':
         contentWidth = 1000;
         contentHeight = 800;
         break;
@@ -534,6 +536,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                   <TabsTrigger value="grid">LED Grid</TabsTrigger>
                   <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
                   <TabsTrigger value="raster">Raster Map</TabsTrigger>
+                  <TabsTrigger value="equipment">Equipment</TabsTrigger>
                   <TabsTrigger value="deliverables">Deliverables</TabsTrigger>
                 </TabsList>
                </div>
@@ -582,7 +585,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
             const sameScreenTab = onlineUsers.filter((u) => !u.isLocal && u.currentScreenId === currentScreenId && u.activeTab === activeTab);
             if (sameScreenTab.length === 0) return null;
             const screenName = screens.find((s) => s.id === currentScreenId)?.name ?? "this screen";
-            const tabLabel = activeTab === 'grid' ? 'LED Grid' : activeTab === 'wiring' ? 'Wiring Diagram' : activeTab === 'raster' ? 'Raster Map' : 'Deliverables';
+            const tabLabel = activeTab === 'grid' ? 'LED Grid' : activeTab === 'wiring' ? 'Wiring Diagram' : activeTab === 'raster' ? 'Raster Map' : activeTab === 'equipment' ? 'Equipment' : 'Deliverables';
             return (
               <div className="flex items-center gap-2 bg-amber-500/10 border-b border-amber-500/30 px-4 py-1.5 text-xs text-amber-700 dark:text-amber-400">
                 <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
@@ -608,6 +611,9 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                  <div className="inline-block" style={{ width: (rasterMapConfig?.totalWidth ?? 0) * zoom, height: (rasterMapConfig?.totalHeight ?? 0) * zoom }}>
                   <RasterMapPreview />
                 </div>
+              </TabsContent>
+              <TabsContent value="equipment" className="mt-0 p-8 flex justify-center items-start">
+                <EquipmentView />
               </TabsContent>
               <TabsContent value="deliverables" className="mt-0 p-8 flex justify-center items-start">
                 <DeliverablesView />

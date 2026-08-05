@@ -269,6 +269,36 @@ export interface RackDrawingTabData {
   showImages?: boolean;
 }
 
+export interface ProcessorEntry {
+  id: string;
+  label: string;
+  type: ProcessorType;
+  screenIds: string[];
+}
+
+export interface FiberBoxEntry {
+  id: string;
+  label: string;
+  processorId: string;
+  portCount: number;
+  screenIds: string[];
+}
+
+export interface CableRun {
+  id: string;
+  kind: 'fiber' | 'cat';
+  fromLabel: string;
+  toLabel: string;
+  length: number;
+  unit: 'ft' | 'm';
+}
+
+export interface GearConfig {
+  processors: ProcessorEntry[];
+  fiberBoxes: FiberBoxEntry[];
+  cables: CableRun[];
+}
+
 export interface ProjectData {
   version: string;
   screens: Screen[];
@@ -291,6 +321,7 @@ export interface ProjectData {
   calculator?: CalculatorTabData;
   powerData?: PowerDataTabData;
   rackDrawing?: RackDrawingTabData;
+  gear?: GearConfig;
 }
 
 interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nextTileId' | 'moduleColors'> {
@@ -457,6 +488,17 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   canUndo: boolean;
   canRedo: boolean;
   startNewProject: () => void;
+  gear: GearConfig;
+  gearVersion: number;
+  addProcessor: (entry: Omit<ProcessorEntry, 'id'>) => string;
+  updateProcessor: (id: string, patch: Partial<ProcessorEntry>) => void;
+  removeProcessor: (id: string) => void;
+  addFiberBox: (entry: Omit<FiberBoxEntry, 'id'>) => string;
+  updateFiberBox: (id: string, patch: Partial<FiberBoxEntry>) => void;
+  removeFiberBox: (id: string) => void;
+  addCable: (entry: Omit<CableRun, 'id'>) => string;
+  updateCable: (id: string, patch: Partial<CableRun>) => void;
+  removeCable: (id: string) => void;
 }
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
@@ -580,6 +622,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
   const [currentScreenId, setCurrentScreenId] = useState<string>(screens[0].id);
   const [activeTab, setActiveTab] = useState('grid');
+  const gearRef = useRef<GearConfig>({ processors: [], fiberBoxes: [], cables: [] });
+  const [gearVersion, setGearVersion] = useState(0);
   const [rasterMapConfigs, setRasterMapConfigs] = useState<Record<string, RasterMapConfig>>({});
   const [rasterGroups, setRasterGroups] = useState<RasterGroup[]>([{ id: 'raster-1', name: 'Raster 1' }]);
   const [activeRasterGroupId, setActiveRasterGroupId] = useState<string>('raster-1');
@@ -1280,6 +1324,61 @@ const handleRightHalfTileChange = (add: boolean) => {
         return { ...screen, tiles: newTiles };
     });
   }, [updateCurrentScreen, effectiveScreenWidth, effectiveScreenHeight]);
+
+  const addProcessor = useCallback((entry: Omit<ProcessorEntry, 'id'>) => {
+    const id = `proc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    gearRef.current = { ...gearRef.current, processors: [...gearRef.current.processors, { ...entry, id }] };
+    setGearVersion(v => v + 1);
+    return id;
+  }, []);
+
+  const updateProcessor = useCallback((id: string, patch: Partial<ProcessorEntry>) => {
+    gearRef.current = { ...gearRef.current, processors: gearRef.current.processors.map(p => p.id === id ? { ...p, ...patch } : p) };
+    setGearVersion(v => v + 1);
+  }, []);
+
+  const removeProcessor = useCallback((id: string) => {
+    gearRef.current = {
+      processors: gearRef.current.processors.filter(p => p.id !== id),
+      fiberBoxes: gearRef.current.fiberBoxes.filter(b => b.processorId !== id),
+      cables: gearRef.current.cables.filter(c => c.fromLabel !== id && c.toLabel !== id),
+    };
+    setGearVersion(v => v + 1);
+  }, []);
+
+  const addFiberBox = useCallback((entry: Omit<FiberBoxEntry, 'id'>) => {
+    const id = `box-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    gearRef.current = { ...gearRef.current, fiberBoxes: [...gearRef.current.fiberBoxes, { ...entry, id }] };
+    setGearVersion(v => v + 1);
+    return id;
+  }, []);
+
+  const updateFiberBox = useCallback((id: string, patch: Partial<FiberBoxEntry>) => {
+    gearRef.current = { ...gearRef.current, fiberBoxes: gearRef.current.fiberBoxes.map(b => b.id === id ? { ...b, ...patch } : b) };
+    setGearVersion(v => v + 1);
+  }, []);
+
+  const removeFiberBox = useCallback((id: string) => {
+    gearRef.current = { ...gearRef.current, fiberBoxes: gearRef.current.fiberBoxes.filter(b => b.id !== id) };
+    setGearVersion(v => v + 1);
+  }, []);
+
+  const addCable = useCallback((entry: Omit<CableRun, 'id'>) => {
+    const id = `cable-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    gearRef.current = { ...gearRef.current, cables: [...gearRef.current.cables, { ...entry, id }] };
+    setGearVersion(v => v + 1);
+    return id;
+  }, []);
+
+  const updateCable = useCallback((id: string, patch: Partial<CableRun>) => {
+    gearRef.current = { ...gearRef.current, cables: gearRef.current.cables.map(c => c.id === id ? { ...c, ...patch } : c) };
+    setGearVersion(v => v + 1);
+  }, []);
+
+  const removeCable = useCallback((id: string) => {
+    gearRef.current = { ...gearRef.current, cables: gearRef.current.cables.filter(c => c.id !== id) };
+    setGearVersion(v => v + 1);
+  }, []);
 
   const handleTileClick = useCallback((tileId: number) => {
     const clickedTile = currentScreen.tiles.find(t => t.id === tileId);
@@ -2434,6 +2533,8 @@ const handleRightHalfTileChange = (add: boolean) => {
       return { racks, nextRackId, activeSide, showImages };
     })();
 
+    const gear: GearConfig | undefined = gearRef.current || undefined;
+
     return {
       version: "1.5.0",
       screens,
@@ -2455,6 +2556,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       calculator,
       powerData,
       rackDrawing,
+      gear,
     };
   }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, audioFormat, imageFormat, rasterMapConfigs, rasterGroups, activeRasterGroupId, rasterBgColor, uploadedMaps, includeTextOverlaysInDownload]);
 
@@ -2511,6 +2613,9 @@ const handleRightHalfTileChange = (add: boolean) => {
       if (data.rackDrawing.nextRackId !== undefined) writeLS('rack-builder:nextRackId', data.rackDrawing.nextRackId);
       if (data.rackDrawing.activeSide !== undefined) writeLS('rack-builder:activeSide', data.rackDrawing.activeSide);
       if (data.rackDrawing.showImages !== undefined) writeLS('rack-builder:showImages', data.rackDrawing.showImages);
+    }
+    if (data.gear) {
+      gearRef.current = data.gear;
     }
   }, []);
 
@@ -3354,6 +3459,17 @@ const handleRightHalfTileChange = (add: boolean) => {
     rasterGroupId: currentScreen.rasterGroupId,
     textOverlays: currentScreen.textOverlays,
     logoOverlay: currentScreen.logoOverlay ?? null,
+    gear: gearRef.current,
+    gearVersion,
+    addProcessor,
+    updateProcessor,
+    removeProcessor,
+    addFiberBox,
+    updateFiberBox,
+    removeFiberBox,
+    addCable,
+    updateCable,
+    removeCable,
   };
 
   return (
