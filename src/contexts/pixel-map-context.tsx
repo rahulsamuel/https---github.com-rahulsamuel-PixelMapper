@@ -82,7 +82,7 @@ type LabelFormat = 'none' | 'sequential' | 'row-col' | 'dmx-style' | 'row-letter
 type LabelPosition = 'top-left' | 'top-right' | 'top-center' | 'center' | 'bottom-left' | 'bottom-right' | 'bottom-center';
 type LabelColorMode = 'single' | 'auto';
 type ResolutionType = 'content' | 'hd' | '4k-uhd' | '4k-dci' | 'custom';
-type ProcessorType = 'Brompton' | 'Novastar' | 'Helios';
+export type ProcessorType = 'Brompton' | 'Novastar' | 'Helios';
 
 export interface TextOverlay {
   id: string;
@@ -1363,6 +1363,7 @@ const handleRightHalfTileChange = (add: boolean) => {
 
   const removeProcessor = useCallback((id: string) => {
     gearRef.current = {
+      ...gearRef.current,
       processors: gearRef.current.processors.filter(p => p.id !== id),
       fiberBoxes: gearRef.current.fiberBoxes.filter(b => b.processorId !== id),
       cables: gearRef.current.cables.filter(c => c.fromLabel !== id && c.toLabel !== id),
@@ -1504,10 +1505,15 @@ const handleRightHalfTileChange = (add: boolean) => {
         screenId: screen.id,
       });
 
-      // Find which processor group this screen belongs to
-      const owningProcessor = processors.find(p => p.screenIds.includes(screen.id) && !p.isBackup);
-      const primaryProcId = owningProcessor?.id ?? processors[0]?.id ?? '';
-      const backupProcId = processors.find(p => p.rasterGroupId === owningProcessor?.rasterGroupId && p.isBackup)?.id ?? '';
+      // Find which processor group this screen belongs to.
+      // Fall back to the first raster group when no explicit group assignment exists
+      // (e.g. no raster map has been configured yet).
+      const owningProcessor =
+        processors.find(p => p.screenIds.includes(screen.id) && !p.isBackup) ??
+        processors.find(p => !p.isBackup);
+      const primaryProcId = owningProcessor?.id ?? '';
+      const backupProcId =
+        processors.find(p => p.rasterGroupId === owningProcessor?.rasterGroupId && p.isBackup)?.id ?? '';
 
       // Collect unique data port labels (non-empty dataLabel = start of a chain)
       const seenDataLabels = new Set<string>();
@@ -1535,12 +1541,12 @@ const handleRightHalfTileChange = (add: boolean) => {
           });
 
           // Backup data port entry (routes to backup processor + backup fiber box)
-          if (isBackupPort && backupProcId) {
+          if (isBackupPort) {
             dataPorts.push({
               id: `dp-backup-${screen.id}-${info.backupLabel}`,
               label: info.backupLabel,
               backupLabel: '',
-              processorId: backupProcId,
+              processorId: backupProcId || primaryProcId,
               screenId: screen.id,
               tileCount,
               isBackup: true,
