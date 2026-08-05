@@ -22,7 +22,8 @@ import {
   Cable,
   Ruler,
   Zap,
-  CableCar,
+  Shield,
+  Layers,
 } from "lucide-react";
 import type { GearConfig, ProcessorEntry, FiberBoxEntry, CableRun, ProcessorType } from "@/contexts/pixel-map-context";
 
@@ -35,6 +36,7 @@ const PROCESSOR_TYPES: { value: ProcessorType; label: string; boxLabel: string; 
 export function EquipmentView() {
   const {
     screens,
+    rasterGroups,
     gear,
     gearVersion,
     regenerateGear,
@@ -51,7 +53,6 @@ export function EquipmentView() {
 
   void gearVersion;
 
-  // Auto-populate on mount
   useEffect(() => {
     regenerateGear();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -68,6 +69,7 @@ export function EquipmentView() {
   const cables = gear?.cables ?? [];
 
   const screenName = (id: string) => screens.find(s => s.id === id)?.name ?? "Unknown";
+  const groupName = (id: string) => rasterGroups.find(g => g.id === id)?.name ?? "Ungrouped";
 
   const handleAddProcessor = () => {
     const label = newProcLabel.trim() || `Processor ${processors.length + 1}`;
@@ -76,20 +78,33 @@ export function EquipmentView() {
     setShowAddProc(false);
   };
 
-  const handleAddFiberBox = (processorId: string) => {
+  const handleAddFiberBox = (processorId: string, isBackup: boolean) => {
     const proc = processors.find(p => p.id === processorId);
     if (!proc) return;
     const meta = PROCESSOR_TYPES.find(t => t.value === proc.type);
     const boxLabel = meta?.boxLabel ?? "Fiber Box";
+    const existing = fiberBoxes.filter(b => b.processorId === processorId).length;
     addFiberBox({
-      label: `${boxLabel} ${fiberBoxes.filter(b => b.processorId === processorId).length + 1}`,
+      label: `${boxLabel} ${existing + 1}${isBackup ? " (Backup)" : ""}`,
       processorId,
       portCount: meta?.defaultPorts ?? 12,
       screenIds: [],
+      isBackup,
     });
   };
 
-  // Totals
+  // Group processors by rasterGroupId
+  const groupedProcessors = useMemo(() => {
+    const map = new Map<string, { primary: ProcessorEntry | undefined; backup: ProcessorEntry | undefined }>();
+    processors.forEach((p) => {
+      if (!map.has(p.rasterGroupId)) map.set(p.rasterGroupId, { primary: undefined, backup: undefined });
+      const entry = map.get(p.rasterGroupId)!;
+      if (p.isBackup) entry.backup = p;
+      else entry.primary = p;
+    });
+    return map;
+  }, [processors]);
+
   const totals = useMemo(() => {
     const fiberCables = cables.filter(c => c.kind === "fiber");
     const catCables = cables.filter(c => c.kind === "cat");
@@ -109,20 +124,82 @@ export function EquipmentView() {
     };
   }, [cables]);
 
+  const renderProcessorRow = (proc: ProcessorEntry) => {
+    const boxes = fiberBoxes.filter(b => b.processorId === proc.id);
+    return (
+      <div key={proc.id} className={`rounded-lg border p-4 space-y-3 ${proc.isBackup ? "bg-orange-50/40 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900" : "bg-muted/20"}`}>
+        <div className="flex items-center gap-2 flex-wrap">
+          {proc.isBackup && <Shield className="size-4 text-orange-500" />}
+          <Input
+            value={proc.label}
+            onChange={(e) => updateProcessor(proc.id, { label: e.target.value })}
+            className="w-48 font-medium"
+          />
+          <Select value={proc.type} onValueChange={(v) => updateProcessor(proc.id, { type: v as ProcessorType })}>
+            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PROCESSOR_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <div className="flex flex-wrap gap-1">
+            {proc.screenIds.map(sid => (
+              <span key={sid} className="text-xs px-2 py-1 rounded-md bg-primary/10 text-primary font-medium">{screenName(sid)}</span>
+            ))}
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => removeProcessor(proc.id)} className="text-destructive ml-auto">
+            <Trash2 className="size-4" />
+          </Button>
+        </div>
+
+        <div className="pl-4 space-y-2 border-l-2 border-border">
+          <div className="flex items-center gap-2">
+            <Network className="size-4 text-muted-foreground" />
+            <span className="text-sm font-medium">{proc.isBackup ? "Backup Fiber Boxes" : "Fiber Boxes"}</span>
+            <Button size="sm" variant="outline" onClick={() => handleAddFiberBox(proc.id, proc.isBackup)}>
+              <Plus className="size-3 mr-1" /> Add Box
+            </Button>
+          </div>
+          {boxes.map((box) => (
+            <div key={box.id} className="rounded-md border p-3 space-y-2 bg-background">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Input
+                  value={box.label}
+                  onChange={(e) => updateFiberBox(box.id, { label: e.target.value })}
+                  className="w-44 text-sm"
+                />
+                <div className="flex items-center gap-1">
+                  <Label className="text-xs whitespace-nowrap">Ports</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={box.portCount}
+                    onChange={(e) => updateFiberBox(box.id, { portCount: Math.max(1, parseInt(e.target.value) || 1) })}
+                    className="w-16 text-sm"
+                  />
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => removeFiberBox(box.id)} className="text-destructive ml-auto">
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6">
-      {/* Toolbar */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-xl font-semibold">Equipment List</h2>
-          <p className="text-sm text-muted-foreground">Auto-populated from raster groups and wiring. Edit values as needed.</p>
+          <p className="text-sm text-muted-foreground">Auto-populated from raster groups and wiring. Primary and backup processors grouped per raster group.</p>
         </div>
         <Button variant="outline" onClick={regenerateGear}>
           <RefreshCw className="size-4 mr-2" /> Regenerate from Wiring
         </Button>
       </div>
 
-      {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Processors</CardTitle></CardHeader>
@@ -146,78 +223,33 @@ export function EquipmentView() {
         </Card>
       </div>
 
-      {/* Processors */}
+      {/* Processors grouped by raster group */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Cpu className="size-5" /> Processors</CardTitle>
+          <CardTitle className="flex items-center gap-2"><Layers className="size-5" /> Processors by Raster Group</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {processors.length === 0 && !showAddProc && (
+        <CardContent className="space-y-4">
+          {groupedProcessors.size === 0 && !showAddProc && (
             <p className="text-sm text-muted-foreground py-2">No processors. Add raster groups in the Raster Map tab or add one manually.</p>
           )}
-          {processors.map((proc) => {
-            const boxes = fiberBoxes.filter(b => b.processorId === proc.id);
-            return (
-              <div key={proc.id} className="rounded-lg border p-4 space-y-3 bg-muted/20">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Input
-                    value={proc.label}
-                    onChange={(e) => updateProcessor(proc.id, { label: e.target.value })}
-                    className="w-48 font-medium"
-                  />
-                  <Select value={proc.type} onValueChange={(v) => updateProcessor(proc.id, { type: v as ProcessorType })}>
-                    <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {PROCESSOR_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <div className="flex flex-wrap gap-1">
-                    {proc.screenIds.map(sid => (
-                      <span key={sid} className="text-xs px-2 py-1 rounded-md bg-primary/10 text-primary font-medium">{screenName(sid)}</span>
-                    ))}
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => removeProcessor(proc.id)} className="text-destructive ml-auto">
-                    <Trash2 className="size-4" />
-                  </Button>
+          {Array.from(groupedProcessors.entries()).map(([groupId, { primary, backup }]) => (
+            <div key={groupId} className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground border-b pb-1">
+                <Layers className="size-4" />
+                {groupName(groupId)}
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <span className="text-xs font-medium text-green-600 dark:text-green-400 px-1">PRIMARY</span>
+                  {primary && renderProcessorRow(primary)}
                 </div>
-
-                {/* Fiber boxes under this processor */}
-                <div className="pl-4 space-y-2 border-l-2 border-border">
-                  <div className="flex items-center gap-2">
-                    <Network className="size-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Fiber Boxes</span>
-                    <Button size="sm" variant="outline" onClick={() => handleAddFiberBox(proc.id)}>
-                      <Plus className="size-3 mr-1" /> Add Box
-                    </Button>
-                  </div>
-                  {boxes.map((box) => (
-                    <div key={box.id} className="rounded-md border p-3 space-y-2 bg-background">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Input
-                          value={box.label}
-                          onChange={(e) => updateFiberBox(box.id, { label: e.target.value })}
-                          className="w-44 text-sm"
-                        />
-                        <div className="flex items-center gap-1">
-                          <Label className="text-xs whitespace-nowrap">Ports</Label>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={box.portCount}
-                            onChange={(e) => updateFiberBox(box.id, { portCount: Math.max(1, parseInt(e.target.value) || 1) })}
-                            className="w-16 text-sm"
-                          />
-                        </div>
-                        <Button variant="ghost" size="icon" onClick={() => removeFiberBox(box.id)} className="text-destructive ml-auto">
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                <div className="space-y-1">
+                  <span className="text-xs font-medium text-orange-600 dark:text-orange-400 px-1">BACKUP</span>
+                  {backup && renderProcessorRow(backup)}
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
 
           {showAddProc ? (
             <div className="flex flex-wrap items-end gap-2 pt-2 border-t">
@@ -258,13 +290,17 @@ export function EquipmentView() {
         <CardContent className="space-y-2">
           {dataPorts.length === 0 && <p className="text-sm text-muted-foreground py-2">No data ports. Set up wiring in the Wiring Diagram tab.</p>}
           {dataPorts.map((dp) => (
-            <div key={dp.id} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20 text-sm">
-              <span className="font-mono font-medium px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">{dp.label}</span>
+            <div key={dp.id} className={`flex items-center gap-2 rounded-md border p-2 text-sm ${dp.isBackup ? "bg-orange-50/40 dark:bg-orange-950/20 border-orange-200 dark:border-orange-900" : "bg-muted/20"}`}>
+              {dp.isBackup && <Shield className="size-3.5 text-orange-500" />}
+              <span className={`font-mono font-medium px-2 py-0.5 rounded ${dp.isBackup ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" : "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"}`}>{dp.label}</span>
               {dp.backupLabel && (
                 <span className="font-mono text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">Backup: {dp.backupLabel}</span>
               )}
               <span className="text-muted-foreground">{screenName(dp.screenId)}</span>
               <span className="text-muted-foreground">{dp.tileCount} tiles</span>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${dp.isBackup ? "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400" : "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400"}`}>
+                {dp.isBackup ? "Backup" : "Primary"}
+              </span>
             </div>
           ))}
         </CardContent>
@@ -335,7 +371,6 @@ export function EquipmentView() {
         </CardContent>
       </Card>
 
-      {/* Cable totals */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Fiber Total</CardTitle></CardHeader>

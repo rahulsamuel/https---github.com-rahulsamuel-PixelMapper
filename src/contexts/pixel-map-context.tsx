@@ -275,6 +275,7 @@ export interface ProcessorEntry {
   type: ProcessorType;
   screenIds: string[];
   rasterGroupId: string;
+  isBackup: boolean;
 }
 
 export interface DataPortEntry {
@@ -284,6 +285,7 @@ export interface DataPortEntry {
   processorId: string;
   screenId: string;
   tileCount: number;
+  isBackup: boolean;
 }
 
 export interface PowerPortEntry {
@@ -300,6 +302,7 @@ export interface FiberBoxEntry {
   processorId: string;
   portCount: number;
   screenIds: string[];
+  isBackup: boolean;
 }
 
 export interface CableRun {
@@ -1408,41 +1411,71 @@ const handleRightHalfTileChange = (add: boolean) => {
     const fiberBoxes: FiberBoxEntry[] = [];
     const cables: CableRun[] = [];
 
-    // One processor per raster group
+    const getBoxMeta = (procType: ProcessorType) => procType === 'Novastar' ? { label: 'CVT Box', ports: 16 }
+      : procType === 'Helios' ? { label: 'Helios Switch', ports: 12 }
+      : { label: 'XD Box', ports: 10 };
+
+    // One primary processor + one backup processor per raster group
     rasterGroups.forEach((group, idx) => {
-      const procId = `proc-${group.id}`;
       const groupConfig = rasterMapConfigs[group.id];
       const screenIds = groupConfig?.screenArrangement?.map(s => s.screenId) ?? [];
-      // Use processor type from the first screen that belongs to this group
       const screenForType = screens.find(s => screenIds.includes(s.id)) ?? screens[0];
       const procType = screenForType?.processorType ?? 'Brompton';
+      const meta = getBoxMeta(procType);
+
+      const primaryProcId = `proc-${group.id}`;
+      const backupProcId = `proc-backup-${group.id}`;
+      const primaryBoxId = `box-${group.id}`;
+      const backupBoxId = `box-backup-${group.id}`;
+
       processors.push({
-        id: procId,
+        id: primaryProcId,
         label: group.name || `Processor ${idx + 1}`,
         type: procType,
         screenIds,
         rasterGroupId: group.id,
+        isBackup: false,
+      });
+      processors.push({
+        id: backupProcId,
+        label: `${group.name || `Processor ${idx + 1}`} (Backup)`,
+        type: procType,
+        screenIds,
+        rasterGroupId: group.id,
+        isBackup: true,
       });
 
-      // Auto-populate one fiber box per processor
-      const boxId = `box-${group.id}`;
-      const meta = procType === 'Novastar' ? { label: 'CVT Box', ports: 16 }
-        : procType === 'Helios' ? { label: 'Helios Switch', ports: 12 }
-        : { label: 'XD Box', ports: 10 };
       fiberBoxes.push({
-        id: boxId,
+        id: primaryBoxId,
         label: `${meta.label} ${idx + 1}`,
-        processorId: procId,
+        processorId: primaryProcId,
         portCount: meta.ports,
         screenIds,
+        isBackup: false,
+      });
+      fiberBoxes.push({
+        id: backupBoxId,
+        label: `${meta.label} ${idx + 1} (Backup)`,
+        processorId: backupProcId,
+        portCount: meta.ports,
+        screenIds,
+        isBackup: true,
       });
 
-      // Fiber cable: processor -> fiber box (default 100m, editable)
+      // Fiber cables: primary and backup
       cables.push({
         id: `cable-fiber-${group.id}`,
         kind: 'fiber',
         fromLabel: group.name || `Processor ${idx + 1}`,
         toLabel: `${meta.label} ${idx + 1}`,
+        length: 100,
+        unit: 'm',
+      });
+      cables.push({
+        id: `cable-fiber-backup-${group.id}`,
+        kind: 'fiber',
+        fromLabel: `${group.name || `Processor ${idx + 1}`} (Backup)`,
+        toLabel: `${meta.label} ${idx + 1} (Backup)`,
         length: 100,
         unit: 'm',
       });
@@ -1471,17 +1504,16 @@ const handleRightHalfTileChange = (add: boolean) => {
         screenId: screen.id,
       });
 
-      // Find which processor this screen belongs to
-      const owningProcessor = processors.find(p => p.screenIds.includes(screen.id));
-      const procId = owningProcessor?.id ?? processors[0]?.id ?? '';
+      // Find which processor group this screen belongs to
+      const owningProcessor = processors.find(p => p.screenIds.includes(screen.id) && !p.isBackup);
+      const primaryProcId = owningProcessor?.id ?? processors[0]?.id ?? '';
+      const backupProcId = processors.find(p => p.rasterGroupId === owningProcessor?.rasterGroupId && p.isBackup)?.id ?? '';
 
       // Collect unique data port labels (non-empty dataLabel = start of a chain)
       const seenDataLabels = new Set<string>();
       wiringInfo.forEach((info) => {
         if (info.dataLabel && !info.isDeleted && !seenDataLabels.has(info.dataLabel)) {
           seenDataLabels.add(info.dataLabel);
-          // Count tiles in this chain: tiles with same dataLabel or empty dataLabel following it
-          // Simpler: count tiles until next non-empty dataLabel or end
           let tileCount = 0;
           const startIndex = wiringInfo.indexOf(info);
           for (let i = startIndex; i < wiringInfo.length; i++) {
@@ -1489,14 +1521,31 @@ const handleRightHalfTileChange = (add: boolean) => {
             if (!wiringInfo[i].isDeleted) tileCount++;
           }
 
+          const isBackupPort = info.backupLabel !== '';
+
+          // Primary data port entry
           dataPorts.push({
             id: `dp-${screen.id}-${info.dataLabel}`,
             label: info.dataLabel,
             backupLabel: info.backupLabel || '',
-            processorId: procId,
+            processorId: primaryProcId,
             screenId: screen.id,
             tileCount,
+            isBackup: false,
           });
+
+          // Backup data port entry (routes to backup processor + backup fiber box)
+          if (isBackupPort && backupProcId) {
+            dataPorts.push({
+              id: `dp-backup-${screen.id}-${info.backupLabel}`,
+              label: info.backupLabel,
+              backupLabel: '',
+              processorId: backupProcId,
+              screenId: screen.id,
+              tileCount,
+              isBackup: true,
+            });
+          }
 
           // Cat cable run: data port -> LED tile chain
           cables.push({
@@ -1507,6 +1556,16 @@ const handleRightHalfTileChange = (add: boolean) => {
             length: 10,
             unit: 'm',
           });
+          if (isBackupPort) {
+            cables.push({
+              id: `cable-cat-backup-${screen.id}-${info.backupLabel}`,
+              kind: 'cat',
+              fromLabel: info.backupLabel,
+              toLabel: `${screen.name} chain`,
+              length: 10,
+              unit: 'm',
+            });
+          }
         }
       });
 
@@ -1525,7 +1584,7 @@ const handleRightHalfTileChange = (add: boolean) => {
           powerPorts.push({
             id: `pp-${screen.id}-${info.powerPortLabel}`,
             label: info.powerPortLabel,
-            processorId: procId,
+            processorId: primaryProcId,
             screenId: screen.id,
             tileCount,
           });
