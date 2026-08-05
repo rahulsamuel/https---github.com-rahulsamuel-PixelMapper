@@ -1515,36 +1515,39 @@ const handleRightHalfTileChange = (add: boolean) => {
       const backupProcId =
         processors.find(p => p.rasterGroupId === owningProcessor?.rasterGroupId && p.isBackup)?.id ?? '';
 
-      // Collect unique data port labels (non-empty dataLabel = start of a chain)
+      // Collect unique data port labels (non-empty dataLabel = start of a chain).
+      // backupLabel lives on the LAST tile of each chain, not the first, so scan
+      // the whole chain to pick it up.
       const seenDataLabels = new Set<string>();
-      wiringInfo.forEach((info) => {
+      wiringInfo.forEach((info, startIndex) => {
         if (info.dataLabel && !info.isDeleted && !seenDataLabels.has(info.dataLabel)) {
           seenDataLabels.add(info.dataLabel);
           let tileCount = 0;
-          const startIndex = wiringInfo.indexOf(info);
+          let chainBackupLabel = '';
           for (let i = startIndex; i < wiringInfo.length; i++) {
             if (i > startIndex && wiringInfo[i].dataLabel) break;
             if (!wiringInfo[i].isDeleted) tileCount++;
+            if (wiringInfo[i].backupLabel) chainBackupLabel = wiringInfo[i].backupLabel;
           }
 
-          const isBackupPort = info.backupLabel !== '';
+          const isBackupPort = chainBackupLabel !== '';
 
           // Primary data port entry
           dataPorts.push({
             id: `dp-${screen.id}-${info.dataLabel}`,
             label: info.dataLabel,
-            backupLabel: info.backupLabel || '',
+            backupLabel: chainBackupLabel,
             processorId: primaryProcId,
             screenId: screen.id,
             tileCount,
             isBackup: false,
           });
 
-          // Backup data port entry (routes to backup processor + backup fiber box)
+          // Backup data port entry — mirrors the primary, one per primary port
           if (isBackupPort) {
             dataPorts.push({
-              id: `dp-backup-${screen.id}-${info.backupLabel}`,
-              label: info.backupLabel,
+              id: `dp-backup-${screen.id}-${chainBackupLabel}`,
+              label: chainBackupLabel,
               backupLabel: '',
               processorId: backupProcId || primaryProcId,
               screenId: screen.id,
@@ -1564,9 +1567,9 @@ const handleRightHalfTileChange = (add: boolean) => {
           });
           if (isBackupPort) {
             cables.push({
-              id: `cable-cat-backup-${screen.id}-${info.backupLabel}`,
+              id: `cable-cat-backup-${screen.id}-${chainBackupLabel}`,
               kind: 'cat',
-              fromLabel: info.backupLabel,
+              fromLabel: chainBackupLabel,
               toLabel: `${screen.name} chain`,
               length: 10,
               unit: 'm',
