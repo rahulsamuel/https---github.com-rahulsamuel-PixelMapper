@@ -87,6 +87,21 @@ export function EquipmentView() {
   const primaryDataPorts = dataPorts.filter(dp => !dp.isBackup);
   const backupDataPorts = dataPorts.filter(dp => dp.isBackup);
 
+  // Group data ports by slice for visual distinction
+  const sliceKeys = Array.from(new Set(dataPorts.map(dp => dp.sliceKey ?? "default")));
+  const SLICE_COLORS = [
+    { bg: "bg-blue-100 dark:bg-blue-900/40", text: "text-blue-700 dark:text-blue-300", border: "border-blue-200 dark:border-blue-800", dot: "bg-blue-500" },
+    { bg: "bg-teal-100 dark:bg-teal-900/40", text: "text-teal-700 dark:text-teal-300", border: "border-teal-200 dark:border-teal-800", dot: "bg-teal-500" },
+    { bg: "bg-amber-100 dark:bg-amber-900/40", text: "text-amber-700 dark:text-amber-300", border: "border-amber-200 dark:border-amber-800", dot: "bg-amber-500" },
+    { bg: "bg-rose-100 dark:bg-rose-900/40", text: "text-rose-700 dark:text-rose-300", border: "border-rose-200 dark:border-rose-800", dot: "bg-rose-500" },
+    { bg: "bg-indigo-100 dark:bg-indigo-900/40", text: "text-indigo-700 dark:text-indigo-300", border: "border-indigo-200 dark:border-indigo-800", dot: "bg-indigo-500" },
+    { bg: "bg-cyan-100 dark:bg-cyan-900/40", text: "text-cyan-700 dark:text-cyan-300", border: "border-cyan-200 dark:border-cyan-800", dot: "bg-cyan-500" },
+  ];
+  const sliceColor = (key: string) => {
+    const idx = sliceKeys.indexOf(key);
+    return SLICE_COLORS[idx % SLICE_COLORS.length] ?? SLICE_COLORS[0];
+  };
+
   const handleAddProcessor = () => {
     const label = newProcLabel.trim() || `Processor ${processors.length + 1}`;
     addProcessor({ label, type: newProcType, screenIds: [], rasterGroupId: `manual-${Date.now()}`, isBackup: false });
@@ -486,49 +501,64 @@ export function EquipmentView() {
           </CardContent>
         </Card>
 
-        {/* Data Ports (Cat Runs) */}
+        {/* Data Ports (Cat Runs) — grouped by raster slice */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Cable className="size-5" /> Data Ports (Cat Runs)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Primary data ports */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wide">
-                <span className="size-2 rounded-full bg-green-500 shrink-0" /> Primary Data Ports
-              </div>
-              {primaryDataPorts.length === 0 && (
-                <p className="text-sm text-muted-foreground py-1">No primary data ports. Set up wiring in the Wiring Diagram tab.</p>
-              )}
-              {primaryDataPorts.map((dp) => (
-                <div key={dp.id} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20 text-sm flex-wrap">
-                  <span className="font-mono font-medium px-2 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">{dp.label}</span>
-                  {dp.backupLabel && (
-                    <span className="font-mono text-xs px-2 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">Backup: {dp.backupLabel}</span>
-                  )}
-                  <span className="text-muted-foreground">{screenName(dp.screenId)}</span>
-                  <span className="text-muted-foreground text-xs">{dp.tileCount} tiles</span>
-                </div>
-              ))}
-            </div>
+            {sliceKeys.length === 0 && (
+              <p className="text-sm text-muted-foreground py-1">No data ports. Set up wiring in the Wiring Diagram tab.</p>
+            )}
+            {sliceKeys.map((sliceKey) => {
+              const sc = sliceColor(sliceKey);
+              const slicePrimary = primaryDataPorts.filter(dp => (dp.sliceKey ?? "default") === sliceKey);
+              const sliceBackup = backupDataPorts.filter(dp => (dp.sliceKey ?? "default") === sliceKey);
+              const sliceLabel = sliceKey === "default" ? "All Rasters" : `Raster ${sliceKeys.indexOf(sliceKey) + 1}`;
+              return (
+                <div key={sliceKey} className={`rounded-lg border p-3 space-y-3 ${sc.border}`}>
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    <span className={`size-2.5 rounded-full ${sc.dot} shrink-0`} />
+                    <span className={sc.text}>{sliceLabel}</span>
+                    <span className="text-muted-foreground text-xs font-normal">{slicePrimary.length} primary · {sliceBackup.length} backup</span>
+                  </div>
 
-            {/* Backup data ports */}
-            <div className="space-y-2 pt-2 border-t">
-              <div className="flex items-center gap-2 text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide">
-                <Shield className="size-3.5 shrink-0" /> Backup Data Ports
-              </div>
-              {backupDataPorts.length === 0 && (
-                <p className="text-sm text-muted-foreground py-1">No backup data ports. Red circles in the Wiring Diagram represent backup ports — they will appear here after regenerating.</p>
-              )}
-              {backupDataPorts.map((dp) => (
-                <div key={dp.id} className="flex items-center gap-2 rounded-md border p-2 bg-red-50/40 dark:bg-red-950/20 border-red-200 dark:border-red-900 text-sm flex-wrap">
-                  <Shield className="size-3.5 text-red-500 shrink-0" />
-                  <span className="font-mono font-medium px-2 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">{dp.label}</span>
-                  <span className="text-muted-foreground">{screenName(dp.screenId)}</span>
-                  <span className="text-muted-foreground text-xs">{dp.tileCount} tiles</span>
+                  {/* Primary data ports for this slice */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wide">
+                      <span className="size-2 rounded-full bg-green-500 shrink-0" /> Primary
+                    </div>
+                    {slicePrimary.length === 0 && <p className="text-xs text-muted-foreground py-0.5">No primary ports in this raster.</p>}
+                    {slicePrimary.map((dp) => (
+                      <div key={dp.id} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20 text-sm flex-wrap">
+                        <span className={`font-mono font-medium px-2 py-0.5 rounded ${sc.bg} ${sc.text}`}>{dp.label}</span>
+                        {dp.backupLabel && (
+                          <span className="font-mono text-xs px-2 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">Backup: {dp.backupLabel}</span>
+                        )}
+                        <span className="text-muted-foreground">{screenName(dp.screenId)}</span>
+                        <span className="text-muted-foreground text-xs">{dp.tileCount} tiles</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Backup data ports for this slice */}
+                  <div className="space-y-1.5 pt-1.5 border-t">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide">
+                      <Shield className="size-3.5 shrink-0" /> Backup
+                    </div>
+                    {sliceBackup.length === 0 && <p className="text-xs text-muted-foreground py-0.5">No backup ports in this raster.</p>}
+                    {sliceBackup.map((dp) => (
+                      <div key={dp.id} className="flex items-center gap-2 rounded-md border p-2 bg-red-50/40 dark:bg-red-950/20 border-red-200 dark:border-red-900 text-sm flex-wrap">
+                        <Shield className="size-3.5 text-red-500 shrink-0" />
+                        <span className={`font-mono font-medium px-2 py-0.5 rounded ${sc.bg} ${sc.text}`}>{dp.label}</span>
+                        <span className="text-muted-foreground">{screenName(dp.screenId)}</span>
+                        <span className="text-muted-foreground text-xs">{dp.tileCount} tiles</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </CardContent>
         </Card>
 

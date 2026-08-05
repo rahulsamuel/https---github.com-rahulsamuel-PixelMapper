@@ -276,6 +276,7 @@ export interface ProcessorEntry {
   screenIds: string[];
   rasterGroupId: string;
   isBackup: boolean;
+  sliceKey?: string;
 }
 
 export interface DataPortEntry {
@@ -286,6 +287,7 @@ export interface DataPortEntry {
   screenId: string;
   tileCount: number;
   isBackup: boolean;
+  sliceKey?: string;
 }
 
 export interface PowerPortEntry {
@@ -294,6 +296,7 @@ export interface PowerPortEntry {
   processorId: string;
   screenId: string;
   tileCount: number;
+  sliceKey?: string;
 }
 
 export interface FiberBoxEntry {
@@ -1416,69 +1419,79 @@ const handleRightHalfTileChange = (add: boolean) => {
       : procType === 'Helios' ? { label: 'Helios Switch', ports: 12 }
       : { label: 'XD Box', ports: 10 };
 
-    // One primary processor + one backup processor per raster group
-    rasterGroups.forEach((group, idx) => {
+    // One primary processor + one backup processor per slice within each raster group.
+    // When a screen is too big for one raster, the raster map is split into multiple slices;
+    // each slice gets its own primary + backup processor pair.
+    rasterGroups.forEach((group, groupIdx) => {
       const groupConfig = rasterMapConfigs[group.id];
       const screenIds = groupConfig?.screenArrangement?.map(s => s.screenId) ?? [];
       const screenForType = screens.find(s => screenIds.includes(s.id)) ?? screens[0];
       const procType = screenForType?.processorType ?? 'Brompton';
       const meta = getBoxMeta(procType);
 
-      const primaryProcId = `proc-${group.id}`;
-      const backupProcId = `proc-backup-${group.id}`;
-      const primaryBoxId = `box-${group.id}`;
-      const backupBoxId = `box-backup-${group.id}`;
+      const slices = groupConfig?.slices ?? [];
+      const sliceEntries = slices.length > 0
+        ? slices.map((s, i) => ({ key: s.key, label: `${group.name || `Raster ${groupIdx + 1}`} - Raster ${i + 1}`, index: i }))
+        : [{ key: 'default', label: group.name || `Processor ${groupIdx + 1}`, index: 0 }];
 
-      processors.push({
-        id: primaryProcId,
-        label: group.name || `Processor ${idx + 1}`,
-        type: procType,
-        screenIds,
-        rasterGroupId: group.id,
-        isBackup: false,
-      });
-      processors.push({
-        id: backupProcId,
-        label: `${group.name || `Processor ${idx + 1}`} (Backup)`,
-        type: procType,
-        screenIds,
-        rasterGroupId: group.id,
-        isBackup: true,
-      });
+      sliceEntries.forEach(({ key: sliceKey, label: sliceLabel, index: sliceIdx }) => {
+        const primaryProcId = `proc-${group.id}-${sliceKey}`;
+        const backupProcId = `proc-backup-${group.id}-${sliceKey}`;
+        const primaryBoxId = `box-${group.id}-${sliceKey}`;
+        const backupBoxId = `box-backup-${group.id}-${sliceKey}`;
 
-      fiberBoxes.push({
-        id: primaryBoxId,
-        label: `${meta.label} ${idx + 1}`,
-        processorId: primaryProcId,
-        portCount: meta.ports,
-        screenIds,
-        isBackup: false,
-      });
-      fiberBoxes.push({
-        id: backupBoxId,
-        label: `${meta.label} ${idx + 1} (Backup)`,
-        processorId: backupProcId,
-        portCount: meta.ports,
-        screenIds,
-        isBackup: true,
-      });
+        processors.push({
+          id: primaryProcId,
+          label: sliceLabel,
+          type: procType,
+          screenIds,
+          rasterGroupId: group.id,
+          isBackup: false,
+          sliceKey,
+        });
+        processors.push({
+          id: backupProcId,
+          label: `${sliceLabel} (Backup)`,
+          type: procType,
+          screenIds,
+          rasterGroupId: group.id,
+          isBackup: true,
+          sliceKey,
+        });
 
-      // Fiber cables: primary and backup
-      cables.push({
-        id: `cable-fiber-${group.id}`,
-        kind: 'fiber',
-        fromLabel: group.name || `Processor ${idx + 1}`,
-        toLabel: `${meta.label} ${idx + 1}`,
-        length: 100,
-        unit: 'm',
-      });
-      cables.push({
-        id: `cable-fiber-backup-${group.id}`,
-        kind: 'fiber',
-        fromLabel: `${group.name || `Processor ${idx + 1}`} (Backup)`,
-        toLabel: `${meta.label} ${idx + 1} (Backup)`,
-        length: 100,
-        unit: 'm',
+        fiberBoxes.push({
+          id: primaryBoxId,
+          label: `${meta.label} ${groupIdx + 1}.${sliceIdx + 1}`,
+          processorId: primaryProcId,
+          portCount: meta.ports,
+          screenIds,
+          isBackup: false,
+        });
+        fiberBoxes.push({
+          id: backupBoxId,
+          label: `${meta.label} ${groupIdx + 1}.${sliceIdx + 1} (Backup)`,
+          processorId: backupProcId,
+          portCount: meta.ports,
+          screenIds,
+          isBackup: true,
+        });
+
+        cables.push({
+          id: `cable-fiber-${group.id}-${sliceKey}`,
+          kind: 'fiber',
+          fromLabel: sliceLabel,
+          toLabel: `${meta.label} ${groupIdx + 1}.${sliceIdx + 1}`,
+          length: 100,
+          unit: 'm',
+        });
+        cables.push({
+          id: `cable-fiber-backup-${group.id}-${sliceKey}`,
+          kind: 'fiber',
+          fromLabel: `${sliceLabel} (Backup)`,
+          toLabel: `${meta.label} ${groupIdx + 1}.${sliceIdx + 1} (Backup)`,
+          length: 100,
+          unit: 'm',
+        });
       });
     });
 
@@ -1486,7 +1499,13 @@ const handleRightHalfTileChange = (add: boolean) => {
     screens.forEach((screen) => {
       const screenEffectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
       const screenEffectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
-      const screenGroupConfig = rasterMapConfigs[rasterGroups.find(g => g.id === activeRasterGroupId)?.id ?? ''] ?? null;
+
+      // Find the raster group + config that owns this screen
+      const owningGroup = rasterGroups.find(g => {
+        const cfg = rasterMapConfigs[g.id];
+        return cfg?.screenArrangement?.some(s => s.screenId === screen.id);
+      }) ?? rasterGroups[0];
+      const screenGroupConfig = rasterMapConfigs[owningGroup?.id ?? ''] ?? null;
 
       const wiringInfo = getWiringData({
         dimensions: { ...screen.dimensions, screenHeight: screenEffectiveHeight, screenWidth: screenEffectiveWidth },
@@ -1505,15 +1524,44 @@ const handleRightHalfTileChange = (add: boolean) => {
         screenId: screen.id,
       });
 
-      // Find which processor group this screen belongs to.
-      // Fall back to the first raster group when no explicit group assignment exists
-      // (e.g. no raster map has been configured yet).
-      const owningProcessor =
-        processors.find(p => p.screenIds.includes(screen.id) && !p.isBackup) ??
-        processors.find(p => !p.isBackup);
-      const primaryProcId = owningProcessor?.id ?? '';
-      const backupProcId =
-        processors.find(p => p.rasterGroupId === owningProcessor?.rasterGroupId && p.isBackup)?.id ?? '';
+      // Helper: compute which slice a tile (x,y) belongs to, based on raster map config.
+      // Returns the slice key, or 'default' if no slices configured.
+      const computeSliceKey = (tileX: number, tileY: number): string => {
+        if (!screenGroupConfig || screenGroupConfig.slices.length === 0 || screenGroupConfig.outputWidth <= 0) return 'default';
+        const arrangement = screenGroupConfig.screenArrangement.find(s => s.screenId === screen.id);
+        if (!arrangement) return 'default';
+        const { tileWidth, tileHeight } = screen.dimensions;
+        const { minX, minY } = arrangement.activeBounds;
+        // Compute pixel position relative to content area
+        let tileContentY = 0;
+        for (let i = minY; i < tileY; i++) {
+          const isTopRow = screen.topHalfTile && i === 0;
+          const isBottomRow = screen.bottomHalfTile && i === screenEffectiveHeight - 1;
+          tileContentY += (isTopRow || isBottomRow) ? tileHeight / 2 : tileHeight;
+        }
+        let tileContentX = 0;
+        for (let i = minX; i < tileX; i++) {
+          const isLeftHalf = screen.leftHalfTile && i === 0;
+          const isRightHalf = screen.rightHalfTile && i === screenEffectiveWidth - 1;
+          tileContentX += (isLeftHalf || isRightHalf) ? tileWidth / 2 : tileWidth;
+        }
+        const absoluteContentX = tileContentX + arrangement.x;
+        const absoluteContentY = tileContentY + arrangement.y;
+        const matchingSlice = screenGroupConfig.slices.find(s =>
+          absoluteContentX >= s.x && absoluteContentX < s.x + s.width &&
+          absoluteContentY >= s.y && absoluteContentY < s.y + s.height
+        );
+        return matchingSlice?.key ?? 'default';
+      };
+
+      // Find processors for this screen's raster group, keyed by slice
+      const findProcessorForSlice = (sliceKey: string, isBackup: boolean) => {
+        return processors.find(p =>
+          p.rasterGroupId === owningGroup?.id &&
+          p.sliceKey === sliceKey &&
+          p.isBackup === isBackup
+        ) ?? processors.find(p => p.rasterGroupId === owningGroup?.id && p.isBackup === isBackup);
+      };
 
       // Collect unique data port labels (non-empty dataLabel = start of a chain).
       // Chains are linked via nextTile {x,y}; backupLabel lives on the LAST tile.
@@ -1540,6 +1588,9 @@ const handleRightHalfTileChange = (add: boolean) => {
           }
 
           const isBackupPort = chainBackupLabel !== '';
+          const sliceKey = computeSliceKey(info.x, info.y);
+          const primaryProcId = findProcessorForSlice(sliceKey, false)?.id ?? '';
+          const backupProcId = findProcessorForSlice(sliceKey, true)?.id ?? primaryProcId;
 
           // Primary data port entry
           dataPorts.push({
@@ -1550,6 +1601,7 @@ const handleRightHalfTileChange = (add: boolean) => {
             screenId: screen.id,
             tileCount,
             isBackup: false,
+            sliceKey,
           });
 
           // Backup data port entry — mirrors the primary, one per primary port
@@ -1562,6 +1614,7 @@ const handleRightHalfTileChange = (add: boolean) => {
               screenId: screen.id,
               tileCount,
               isBackup: true,
+              sliceKey,
             });
           }
 
@@ -1602,12 +1655,16 @@ const handleRightHalfTileChange = (add: boolean) => {
             current = wiringByXY.get(`${current.nextPowerTile.x},${current.nextPowerTile.y}`);
           }
 
+          const sliceKey = computeSliceKey(info.x, info.y);
+          const primaryProcId = findProcessorForSlice(sliceKey, false)?.id ?? '';
+
           powerPorts.push({
             id: `pp-${screen.id}-${info.powerPortLabel}`,
             label: info.powerPortLabel,
             processorId: primaryProcId,
             screenId: screen.id,
             tileCount,
+            sliceKey,
           });
 
           // Power cable run: power port -> LED tile chain (default 10m / ~33ft, editable)
