@@ -274,6 +274,24 @@ export interface ProcessorEntry {
   label: string;
   type: ProcessorType;
   screenIds: string[];
+  rasterGroupId: string;
+}
+
+export interface DataPortEntry {
+  id: string;
+  label: string;
+  backupLabel: string;
+  processorId: string;
+  screenId: string;
+  tileCount: number;
+}
+
+export interface PowerPortEntry {
+  id: string;
+  label: string;
+  processorId: string;
+  screenId: string;
+  tileCount: number;
 }
 
 export interface FiberBoxEntry {
@@ -286,7 +304,7 @@ export interface FiberBoxEntry {
 
 export interface CableRun {
   id: string;
-  kind: 'fiber' | 'cat';
+  kind: 'fiber' | 'cat' | 'power';
   fromLabel: string;
   toLabel: string;
   length: number;
@@ -295,6 +313,8 @@ export interface CableRun {
 
 export interface GearConfig {
   processors: ProcessorEntry[];
+  dataPorts: DataPortEntry[];
+  powerPorts: PowerPortEntry[];
   fiberBoxes: FiberBoxEntry[];
   cables: CableRun[];
 }
@@ -499,6 +519,7 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   addCable: (entry: Omit<CableRun, 'id'>) => string;
   updateCable: (id: string, patch: Partial<CableRun>) => void;
   removeCable: (id: string) => void;
+  regenerateGear: () => void;
 }
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
@@ -622,7 +643,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
   const [currentScreenId, setCurrentScreenId] = useState<string>(screens[0].id);
   const [activeTab, setActiveTab] = useState('grid');
-  const gearRef = useRef<GearConfig>({ processors: [], fiberBoxes: [], cables: [] });
+  const gearRef = useRef<GearConfig>({ processors: [], dataPorts: [], powerPorts: [], fiberBoxes: [], cables: [] });
   const [gearVersion, setGearVersion] = useState(0);
   const [rasterMapConfigs, setRasterMapConfigs] = useState<Record<string, RasterMapConfig>>({});
   const [rasterGroups, setRasterGroups] = useState<RasterGroup[]>([{ id: 'raster-1', name: 'Raster 1' }]);
@@ -1379,6 +1400,142 @@ const handleRightHalfTileChange = (add: boolean) => {
     gearRef.current = { ...gearRef.current, cables: gearRef.current.cables.filter(c => c.id !== id) };
     setGearVersion(v => v + 1);
   }, []);
+
+  const regenerateGear = useCallback(() => {
+    const processors: ProcessorEntry[] = [];
+    const dataPorts: DataPortEntry[] = [];
+    const powerPorts: PowerPortEntry[] = [];
+    const fiberBoxes: FiberBoxEntry[] = [];
+    const cables: CableRun[] = [];
+
+    // One processor per raster group
+    rasterGroups.forEach((group, idx) => {
+      const procId = `proc-${group.id}`;
+      const groupConfig = rasterMapConfigs[group.id];
+      const screenIds = groupConfig?.screenArrangement?.map(s => s.screenId) ?? [];
+      // Use processor type from the first screen that belongs to this group
+      const screenForType = screens.find(s => screenIds.includes(s.id)) ?? screens[0];
+      const procType = screenForType?.processorType ?? 'Brompton';
+      processors.push({
+        id: procId,
+        label: group.name || `Processor ${idx + 1}`,
+        type: procType,
+        screenIds,
+        rasterGroupId: group.id,
+      });
+
+      // Auto-populate one fiber box per processor
+      const boxId = `box-${group.id}`;
+      const meta = procType === 'Novastar' ? { label: 'CVT Box', ports: 16 }
+        : procType === 'Helios' ? { label: 'Helios Switch', ports: 12 }
+        : { label: 'XD Box', ports: 10 };
+      fiberBoxes.push({
+        id: boxId,
+        label: `${meta.label} ${idx + 1}`,
+        processorId: procId,
+        portCount: meta.ports,
+        screenIds,
+      });
+
+      // Fiber cable: processor -> fiber box (default 100m, editable)
+      cables.push({
+        id: `cable-fiber-${group.id}`,
+        kind: 'fiber',
+        fromLabel: group.name || `Processor ${idx + 1}`,
+        toLabel: `${meta.label} ${idx + 1}`,
+        length: 100,
+        unit: 'm',
+      });
+    });
+
+    // Extract data ports and power ports from each screen's wiring data
+    screens.forEach((screen) => {
+      const screenEffectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+      const screenEffectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+      const screenGroupConfig = rasterMapConfigs[rasterGroups.find(g => g.id === activeRasterGroupId)?.id ?? ''] ?? null;
+
+      const wiringInfo = getWiringData({
+        dimensions: { ...screen.dimensions, screenHeight: screenEffectiveHeight, screenWidth: screenEffectiveWidth },
+        tiles: screen.tiles,
+        wiringPortConfig: screen.wiringPortConfig,
+        dataPortStartNumber: screen.dataPortStartNumber,
+        wiringPattern: screen.wiringPattern,
+        powerWiringPattern: screen.powerWiringPattern,
+        rasterMapConfig: screenGroupConfig,
+        tilesPerPowerString: screen.tilesPerPowerString,
+        topHalfTile: screen.topHalfTile,
+        bottomHalfTile: screen.bottomHalfTile,
+        leftHalfTile: screen.leftHalfTile,
+        rightHalfTile: screen.rightHalfTile,
+        processorType: screen.processorType,
+        screenId: screen.id,
+      });
+
+      // Find which processor this screen belongs to
+      const owningProcessor = processors.find(p => p.screenIds.includes(screen.id));
+      const procId = owningProcessor?.id ?? processors[0]?.id ?? '';
+
+      // Collect unique data port labels (non-empty dataLabel = start of a chain)
+      const seenDataLabels = new Set<string>();
+      wiringInfo.forEach((info) => {
+        if (info.dataLabel && !info.isDeleted && !seenDataLabels.has(info.dataLabel)) {
+          seenDataLabels.add(info.dataLabel);
+          // Count tiles in this chain: tiles with same dataLabel or empty dataLabel following it
+          // Simpler: count tiles until next non-empty dataLabel or end
+          let tileCount = 0;
+          const startIndex = wiringInfo.indexOf(info);
+          for (let i = startIndex; i < wiringInfo.length; i++) {
+            if (i > startIndex && wiringInfo[i].dataLabel) break;
+            if (!wiringInfo[i].isDeleted) tileCount++;
+          }
+
+          dataPorts.push({
+            id: `dp-${screen.id}-${info.dataLabel}`,
+            label: info.dataLabel,
+            backupLabel: info.backupLabel || '',
+            processorId: procId,
+            screenId: screen.id,
+            tileCount,
+          });
+
+          // Cat cable run: data port -> LED tile chain
+          cables.push({
+            id: `cable-cat-${screen.id}-${info.dataLabel}`,
+            kind: 'cat',
+            fromLabel: info.dataLabel,
+            toLabel: `${screen.name} chain`,
+            length: 10,
+            unit: 'm',
+          });
+        }
+      });
+
+      // Collect unique power port labels
+      const seenPowerLabels = new Set<string>();
+      wiringInfo.forEach((info) => {
+        if (info.powerPortLabel && !info.isDeleted && !seenPowerLabels.has(info.powerPortLabel)) {
+          seenPowerLabels.add(info.powerPortLabel);
+          let tileCount = 0;
+          const startIndex = wiringInfo.indexOf(info);
+          for (let i = startIndex; i < wiringInfo.length; i++) {
+            if (i > startIndex && wiringInfo[i].powerPortLabel && wiringInfo[i].powerPortLabel !== info.powerPortLabel) break;
+            if (!wiringInfo[i].isDeleted) tileCount++;
+          }
+
+          powerPorts.push({
+            id: `pp-${screen.id}-${info.powerPortLabel}`,
+            label: info.powerPortLabel,
+            processorId: procId,
+            screenId: screen.id,
+            tileCount,
+          });
+        }
+      });
+    });
+
+    gearRef.current = { processors, dataPorts, powerPorts, fiberBoxes, cables };
+    setGearVersion(v => v + 1);
+  }, [rasterGroups, rasterMapConfigs, screens, activeRasterGroupId]);
 
   const handleTileClick = useCallback((tileId: number) => {
     const clickedTile = currentScreen.tiles.find(t => t.id === tileId);
@@ -3470,6 +3627,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     addCable,
     updateCable,
     removeCable,
+    regenerateGear,
   };
 
   return (

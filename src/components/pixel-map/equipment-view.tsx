@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -15,12 +14,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  RefreshCw,
   Plus,
   Trash2,
   Cpu,
   Network,
   Cable,
   Ruler,
+  Zap,
+  CableCar,
 } from "lucide-react";
 import type { GearConfig, ProcessorEntry, FiberBoxEntry, CableRun, ProcessorType } from "@/contexts/pixel-map-context";
 
@@ -30,15 +32,12 @@ const PROCESSOR_TYPES: { value: ProcessorType; label: string; boxLabel: string; 
   { value: "Helios", label: "Helios", boxLabel: "Helios Switch", defaultPorts: 12 },
 ];
 
-function uid(prefix: string) {
-  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-}
-
 export function EquipmentView() {
   const {
     screens,
     gear,
     gearVersion,
+    regenerateGear,
     addProcessor,
     updateProcessor,
     removeProcessor,
@@ -50,22 +49,31 @@ export function EquipmentView() {
     removeCable,
   } = usePixelMap();
 
-  // gearVersion is read to trigger re-render when gearRef changes
   void gearVersion;
 
+  // Auto-populate on mount
+  useEffect(() => {
+    regenerateGear();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [showAddProc, setShowAddProc] = useState(false);
   const [newProcLabel, setNewProcLabel] = useState("");
   const [newProcType, setNewProcType] = useState<ProcessorType>("Novastar");
 
   const processors = gear?.processors ?? [];
+  const dataPorts = gear?.dataPorts ?? [];
+  const powerPorts = gear?.powerPorts ?? [];
   const fiberBoxes = gear?.fiberBoxes ?? [];
   const cables = gear?.cables ?? [];
 
-  const screenOptions = screens.map(s => ({ id: s.id, name: s.name }));
+  const screenName = (id: string) => screens.find(s => s.id === id)?.name ?? "Unknown";
 
   const handleAddProcessor = () => {
     const label = newProcLabel.trim() || `Processor ${processors.length + 1}`;
-    addProcessor({ label, type: newProcType, screenIds: [] });
+    addProcessor({ label, type: newProcType, screenIds: [], rasterGroupId: `manual-${Date.now()}` });
     setNewProcLabel("");
+    setShowAddProc(false);
   };
 
   const handleAddFiberBox = (processorId: string) => {
@@ -81,67 +89,60 @@ export function EquipmentView() {
     });
   };
 
-  const handleAddFiberCable = (processorId: string, boxId: string) => {
-    const proc = processors.find(p => p.id === processorId);
-    const box = fiberBoxes.find(b => b.id === boxId);
-    if (!proc || !box) return;
-    addCable({
-      kind: "fiber",
-      fromLabel: proc.label,
-      toLabel: box.label,
-      length: 100,
-      unit: "m",
-    });
-  };
-
-  const handleAddCatCable = (boxId: string) => {
-    const box = fiberBoxes.find(b => b.id === boxId);
-    if (!box) return;
-    addCable({
-      kind: "cat",
-      fromLabel: box.label,
-      toLabel: "LED Tile",
-      length: 10,
-      unit: "m",
-    });
-  };
-
   // Totals
   const totals = useMemo(() => {
     const fiberCables = cables.filter(c => c.kind === "fiber");
     const catCables = cables.filter(c => c.kind === "cat");
-    const fiberTotalM = fiberCables.reduce((sum, c) => sum + (c.unit === "ft" ? c.length * 0.3048 : c.length), 0);
-    const fiberTotalFt = fiberCables.reduce((sum, c) => sum + (c.unit === "m" ? c.length * 3.28084 : c.length), 0);
-    const catTotalM = catCables.reduce((sum, c) => sum + (c.unit === "ft" ? c.length * 0.3048 : c.length), 0);
-    const catTotalFt = catCables.reduce((sum, c) => sum + (c.unit === "m" ? c.length * 3.28084 : c.length), 0);
-    return { fiberTotalM, fiberTotalFt, catTotalM, catTotalFt, fiberCount: fiberCables.length, catCount: catCables.length };
+    const powerCables = cables.filter(c => c.kind === "power");
+    const toM = (c: CableRun) => c.unit === "ft" ? c.length * 0.3048 : c.length;
+    const toFt = (c: CableRun) => c.unit === "m" ? c.length * 3.28084 : c.length;
+    return {
+      fiberTotalM: fiberCables.reduce((s, c) => s + toM(c), 0),
+      fiberTotalFt: fiberCables.reduce((s, c) => s + toFt(c), 0),
+      catTotalM: catCables.reduce((s, c) => s + toM(c), 0),
+      catTotalFt: catCables.reduce((s, c) => s + toFt(c), 0),
+      powerTotalM: powerCables.reduce((s, c) => s + toM(c), 0),
+      powerTotalFt: powerCables.reduce((s, c) => s + toFt(c), 0),
+      fiberCount: fiberCables.length,
+      catCount: catCables.length,
+      powerCount: powerCables.length,
+    };
   }, [cables]);
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 className="text-xl font-semibold">Equipment List</h2>
+          <p className="text-sm text-muted-foreground">Auto-populated from raster groups and wiring. Edit values as needed.</p>
+        </div>
+        <Button variant="outline" onClick={regenerateGear}>
+          <RefreshCw className="size-4 mr-2" /> Regenerate from Wiring
+        </Button>
+      </div>
+
       {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Processors</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Processors</CardTitle></CardHeader>
           <CardContent><p className="text-2xl font-bold">{processors.length}</p></CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Fiber Boxes</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Data Ports</CardTitle></CardHeader>
+          <CardContent><p className="text-2xl font-bold">{dataPorts.length}</p></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Power Ports</CardTitle></CardHeader>
+          <CardContent><p className="text-2xl font-bold">{powerPorts.length}</p></CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Fiber Boxes</CardTitle></CardHeader>
           <CardContent><p className="text-2xl font-bold">{fiberBoxes.length}</p></CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Fiber Cable</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{totals.fiberTotalM.toFixed(1)}m</p>
-            <p className="text-xs text-muted-foreground">{totals.fiberTotalFt.toFixed(0)}ft ({totals.fiberCount} runs)</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Cat5e/Cat6</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{totals.catTotalM.toFixed(1)}m</p>
-            <p className="text-xs text-muted-foreground">{totals.catTotalFt.toFixed(0)}ft ({totals.catCount} runs)</p>
-          </CardContent>
+          <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Cable Runs</CardTitle></CardHeader>
+          <CardContent><p className="text-2xl font-bold">{cables.length}</p></CardContent>
         </Card>
       </div>
 
@@ -150,34 +151,10 @@ export function EquipmentView() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Cpu className="size-5" /> Processors</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="space-y-1">
-              <Label className="text-xs">Label</Label>
-              <Input
-                placeholder="Processor name"
-                value={newProcLabel}
-                onChange={(e) => setNewProcLabel(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleAddProcessor()}
-                className="w-48"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Type</Label>
-              <Select value={newProcType} onValueChange={(v) => setNewProcType(v as ProcessorType)}>
-                <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PROCESSOR_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={handleAddProcessor}><Plus className="size-4 mr-1" /> Add Processor</Button>
-          </div>
-
-          {processors.length === 0 && (
-            <p className="text-sm text-muted-foreground py-4">No processors yet. Add one to get started.</p>
+        <CardContent className="space-y-3">
+          {processors.length === 0 && !showAddProc && (
+            <p className="text-sm text-muted-foreground py-2">No processors. Add raster groups in the Raster Map tab or add one manually.</p>
           )}
-
           {processors.map((proc) => {
             const boxes = fiberBoxes.filter(b => b.processorId === proc.id);
             return (
@@ -194,11 +171,11 @@ export function EquipmentView() {
                       {PROCESSOR_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
-                  <ScreenMultiSelect
-                    value={proc.screenIds}
-                    options={screenOptions}
-                    onChange={(ids) => updateProcessor(proc.id, { screenIds: ids })}
-                  />
+                  <div className="flex flex-wrap gap-1">
+                    {proc.screenIds.map(sid => (
+                      <span key={sid} className="text-xs px-2 py-1 rounded-md bg-primary/10 text-primary font-medium">{screenName(sid)}</span>
+                    ))}
+                  </div>
                   <Button variant="ghost" size="icon" onClick={() => removeProcessor(proc.id)} className="text-destructive ml-auto">
                     <Trash2 className="size-4" />
                   </Button>
@@ -231,21 +208,8 @@ export function EquipmentView() {
                             className="w-16 text-sm"
                           />
                         </div>
-                        <ScreenMultiSelect
-                          value={box.screenIds}
-                          options={screenOptions}
-                          onChange={(ids) => updateFiberBox(box.id, { screenIds: ids })}
-                        />
                         <Button variant="ghost" size="icon" onClick={() => removeFiberBox(box.id)} className="text-destructive ml-auto">
                           <Trash2 className="size-4" />
-                        </Button>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={() => handleAddFiberCable(proc.id, box.id)}>
-                          <Cable className="size-3 mr-1" /> Add Fiber Run
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleAddCatCable(box.id)}>
-                          <Cable className="size-3 mr-1" /> Add Cat Run
                         </Button>
                       </div>
                     </div>
@@ -254,10 +218,76 @@ export function EquipmentView() {
               </div>
             );
           })}
+
+          {showAddProc ? (
+            <div className="flex flex-wrap items-end gap-2 pt-2 border-t">
+              <div className="space-y-1">
+                <Label className="text-xs">Label</Label>
+                <Input
+                  placeholder="Processor name"
+                  value={newProcLabel}
+                  onChange={(e) => setNewProcLabel(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddProcessor()}
+                  className="w-48"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Type</Label>
+                <Select value={newProcType} onValueChange={(v) => setNewProcType(v as ProcessorType)}>
+                  <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PROCESSOR_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={handleAddProcessor}><Plus className="size-4 mr-1" /> Add</Button>
+              <Button variant="ghost" onClick={() => setShowAddProc(false)}>Cancel</Button>
+            </div>
+          ) : (
+            <Button variant="outline" onClick={() => setShowAddProc(true)}><Plus className="size-4 mr-1" /> Add Processor Manually</Button>
+          )}
         </CardContent>
       </Card>
 
-      {/* Cable list */}
+      {/* Data Ports */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Cable className="size-5" /> Data Ports (Cat Runs)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {dataPorts.length === 0 && <p className="text-sm text-muted-foreground py-2">No data ports. Set up wiring in the Wiring Diagram tab.</p>}
+          {dataPorts.map((dp) => (
+            <div key={dp.id} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20 text-sm">
+              <span className="font-mono font-medium px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">{dp.label}</span>
+              {dp.backupLabel && (
+                <span className="font-mono text-xs px-2 py-0.5 rounded bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">Backup: {dp.backupLabel}</span>
+              )}
+              <span className="text-muted-foreground">{screenName(dp.screenId)}</span>
+              <span className="text-muted-foreground">{dp.tileCount} tiles</span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Power Ports */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Zap className="size-5" /> Power Ports</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {powerPorts.length === 0 && <p className="text-sm text-muted-foreground py-2">No power ports. Enable power wiring in the Wiring Diagram tab.</p>}
+          {powerPorts.map((pp) => (
+            <div key={pp.id} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20 text-sm">
+              <span className="font-mono font-medium px-2 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">{pp.label}</span>
+              <span className="text-muted-foreground">{screenName(pp.screenId)}</span>
+              <span className="text-muted-foreground">{pp.tileCount} tiles</span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Cable Runs */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Ruler className="size-5" /> Cable Runs</CardTitle>
@@ -266,8 +296,8 @@ export function EquipmentView() {
           {cables.length === 0 && <p className="text-sm text-muted-foreground py-2">No cable runs defined yet.</p>}
           {cables.map((cable) => (
             <div key={cable.id} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20">
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cable.kind === "fiber" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"}`}>
-                {cable.kind === "fiber" ? "Fiber" : "Cat5e/6"}
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${cable.kind === "fiber" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" : cable.kind === "power" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" : "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"}`}>
+                {cable.kind === "fiber" ? "Fiber" : cable.kind === "power" ? "Power" : "Cat5e/6"}
               </span>
               <Input
                 value={cable.fromLabel}
@@ -299,31 +329,35 @@ export function EquipmentView() {
               </Button>
             </div>
           ))}
+          <Button variant="outline" size="sm" onClick={() => addCable({ kind: "cat", fromLabel: "", toLabel: "", length: 10, unit: "m" })}>
+            <Plus className="size-3 mr-1" /> Add Cable Run
+          </Button>
         </CardContent>
       </Card>
-    </div>
-  );
-}
 
-function ScreenMultiSelect({ value, options, onChange }: { value: string[]; options: { id: string; name: string }[]; onChange: (ids: string[]) => void }) {
-  const toggle = (id: string) => {
-    onChange(value.includes(id) ? value.filter(v => v !== id) : [...value, id]);
-  };
-  return (
-    <div className="space-y-1">
-      <Label className="text-xs">Screens</Label>
-      <div className="flex flex-wrap gap-1 min-h-[32px] rounded-md border p-1 bg-background">
-        {options.length === 0 && <span className="text-xs text-muted-foreground px-1 py-1">No screens</span>}
-        {options.map(opt => (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => toggle(opt.id)}
-            className={`text-xs px-2 py-1 rounded-md font-medium transition-colors ${value.includes(opt.id) ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
-          >
-            {opt.name}
-          </button>
-        ))}
+      {/* Cable totals */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Fiber Total</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-lg font-bold">{totals.fiberTotalM.toFixed(1)}m</p>
+            <p className="text-xs text-muted-foreground">{totals.fiberTotalFt.toFixed(0)}ft ({totals.fiberCount} runs)</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Cat5e/6 Total</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-lg font-bold">{totals.catTotalM.toFixed(1)}m</p>
+            <p className="text-xs text-muted-foreground">{totals.catTotalFt.toFixed(0)}ft ({totals.catCount} runs)</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-xs font-medium text-muted-foreground">Power Total</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-lg font-bold">{totals.powerTotalM.toFixed(1)}m</p>
+            <p className="text-xs text-muted-foreground">{totals.powerTotalFt.toFixed(0)}ft ({totals.powerCount} runs)</p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
