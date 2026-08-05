@@ -627,6 +627,3 @@ export function EquipmentView() {
     </div>
   );
 }
-
-
-export { EquipmentView }
