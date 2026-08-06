@@ -130,7 +130,7 @@ export function DeliverablesView() {
           ${rasterMapConfig ? `
             <p><strong>Canvas:</strong> ${rasterMapConfig.totalWidth} x ${rasterMapConfig.totalHeight} px</p>
             <p><strong>Content Area:</strong> ${rasterMapConfig.contentWidth} x ${rasterMapConfig.contentHeight} px</p>
-            <p><strong>Export Preset:</strong> ${rasterMapConfig.resolutionType.toUpperCase()}</p>
+            <p><strong>Export Preset:</strong> RASTER_MAP_${(currentScreen.name || 'Screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_${rasterMapConfig.outputWidth}x${rasterMapConfig.outputHeight}.png</p>
           ` : '<p>No raster map generated.</p>'}
         </div>
 
@@ -150,16 +150,18 @@ export function DeliverablesView() {
           </div>
         ` : ''}
 
-        <div class="section">
-          <div class="section-title">Reference Maps</div>
-          <div class="grid">
-            ${uploadedMaps.map((map, i) => `
-              <div class="image-container">
-                <img src="${map}" alt="Reference ${i+1}" />
-              </div>
-            `).join('')}
+        ${uploadedMaps.length > 0 ? `
+          <div class="section">
+            <div class="section-title">Reference Maps</div>
+            <div class="grid">
+              ${uploadedMaps.map((map, i) => `
+                <div class="image-container">
+                  <img src="${map}" alt="Reference ${i+1}" />
+                </div>
+              `).join('')}
+            </div>
           </div>
-        </div>
+        ` : ''}
       </body>
       </html>
     `;
@@ -266,17 +268,23 @@ export function DeliverablesView() {
                       <p className="text-lg font-mono font-bold">{rasterMapConfig.contentWidth} x {rasterMapConfig.contentHeight} px</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground uppercase">Slice Count</p>
-                      <p className="text-lg font-mono font-bold">{rasterMapConfig.slices.length} Slices</p>
+                      <p className="text-xs text-muted-foreground uppercase">Canvas Count</p>
+                      <p className="text-lg font-mono font-bold">{rasterMapConfig.slices.length} Canvases</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground uppercase">Export Preset</p>
-                      <p className="text-lg font-mono font-bold uppercase">{rasterMapConfig.resolutionType}</p>
+                      <a
+                        href={rasterMapConfig.previewImage || '#'}
+                        download={`RASTER_MAP_${(currentScreen.name || 'Screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_${rasterMapConfig.outputWidth}x${rasterMapConfig.outputHeight}.png`}
+                        className="text-sm font-mono font-bold uppercase text-primary hover:underline break-all"
+                      >
+                        RASTER_MAP_{(currentScreen.name || 'Screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_{rasterMapConfig.outputWidth}x{rasterMapConfig.outputHeight}.png
+                      </a>
                     </div>
                   </div>
                 ) : (
                   <div className="p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-lg text-yellow-600 dark:text-yellow-400 text-sm">
-                    No raster map generated yet. Switch to the Raster Map tab to define output resolution.
+                    No pixel map generated yet. Switch to the Raster Map tab to define output resolution.
                   </div>
                 )}
 
@@ -298,7 +306,7 @@ export function DeliverablesView() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
-                <Layout className="size-5 text-primary" /> Generated Raster Map
+                <Layout className="size-5 text-primary" /> Generated Pixel Map
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -315,7 +323,7 @@ export function DeliverablesView() {
                 </div>
               ) : (
                 <div className="h-40 border-2 border-dashed rounded-lg flex items-center justify-center text-muted-foreground text-sm text-center px-8">
-                  Generate a raster map to see the deliverable preview here.
+                  Generate a pixel map to see the deliverable preview here.
                 </div>
               )}
             </CardContent>
@@ -338,26 +346,27 @@ export function DeliverablesView() {
               />
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                {uploadedMaps.map((map, idx) => (
-                  <div key={idx} className="relative group aspect-video rounded-lg border bg-muted overflow-hidden">
-                    <img src={map} alt={`Uploaded reference ${idx}`} className="w-full h-full object-cover" />
-                    <Button 
-                      variant="destructive" 
-                      size="icon" 
-                      className="absolute top-1 right-1 size-6 opacity-0 group-hover:opacity-100 transition-opacity no-print"
-                      onClick={() => removeUploadedMap(idx)}
-                    >
-                      <Trash2 className="size-3" />
-                    </Button>
-                  </div>
-                ))}
-                {uploadedMaps.length === 0 && (
-                  <div className="col-span-2 h-40 border-2 border-dashed rounded-lg flex items-center justify-center text-muted-foreground text-sm text-center px-8">
-                    Upload external pixel maps or reference images for the content team.
-                  </div>
-                )}
-              </div>
+              {uploadedMaps.length > 0 ? (
+                <div className="grid grid-cols-2 gap-4">
+                  {uploadedMaps.map((map, idx) => (
+                    <div key={idx} className="relative group aspect-video rounded-lg border bg-muted overflow-hidden">
+                      <img src={map} alt={`Uploaded reference ${idx}`} className="w-full h-full object-cover" />
+                      <Button 
+                        variant="destructive" 
+                        size="icon" 
+                        className="absolute top-1 right-1 size-6 opacity-0 group-hover:opacity-100 transition-opacity no-print"
+                        onClick={() => removeUploadedMap(idx)}
+                      >
+                        <Trash2 className="size-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-40 border-2 border-dashed rounded-lg flex items-center justify-center text-muted-foreground text-sm text-center px-8">
+                  Upload external pixel maps or reference images for the content team.
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

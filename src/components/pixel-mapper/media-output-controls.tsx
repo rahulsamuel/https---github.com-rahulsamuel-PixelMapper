@@ -178,7 +178,7 @@ export function MediaOutputControls() {
 
       {/* Preset buttons */}
       <div>
-        <Label className="font-semibold">Raster Map Generation</Label>
+        <Label className="font-semibold">Pixel Map Generation</Label>
         <p className="text-sm text-muted-foreground pb-2">Generate for the active raster output.</p>
         <div className="space-y-2">
           <Button
@@ -251,7 +251,7 @@ export function MediaOutputControls() {
           className="w-full"
           disabled={!customWidth || !customHeight || anyTileTooBig(parseInt(customWidth), parseInt(customHeight))}
         >
-          Generate Custom Map
+          Generate Pixel Map
         </Button>
       </div>
 

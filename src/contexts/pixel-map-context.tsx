@@ -2268,7 +2268,9 @@ const handleRightHalfTileChange = (add: boolean) => {
     else if (outputWidth && outputHeight) resolutionType = 'custom';
 
     const slices: RasterSlice[] = [];
-    const baseFilename = filename.replace('.png', '');
+    const screenNameForFile = (groupScreens[0]?.name || 'Screen').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const sizeLabel = `${finalOutputWidth}x${finalOutputHeight}`;
+    const baseFilename = `RASTER_MAP_${screenNameForFile}_${sizeLabel}`;
 
     const effectiveTotalContentWidth = screenArrangement.reduce((max, s) => Math.max(max, s.x + s.width), 0);
     const effectiveTotalContentHeight = screenArrangement.reduce((max, s) => Math.max(max, s.y + s.height), 0);
@@ -2303,7 +2305,7 @@ const handleRightHalfTileChange = (add: boolean) => {
             const sliceX = col * finalOutputWidth;
             const sliceY = row * finalOutputHeight;
             const sliceFilename = (numCols > 1 || numRows > 1)
-                ? `${baseFilename}-R${row + 1}-C${col + 1}.png`
+                ? `${baseFilename}_R${row + 1}-C${col + 1}.png`
                 : `${baseFilename}.png`;
             slices.push({ key: `${row}-${col}`, filename: sliceFilename, x: sliceX, y: sliceY, width: finalOutputWidth, height: finalOutputHeight });
         }
@@ -2757,7 +2759,9 @@ const handleRightHalfTileChange = (add: boolean) => {
 
     const node = rasterMapRef.current;
     const { totalWidth, totalHeight } = rasterMapConfig;
-    const downloadFilename = `full-raster-map.png`;
+    const screenNameForFile = (currentScreen.name || 'Screen').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const sizeLabel = `${rasterMapConfig.outputWidth}x${rasterMapConfig.outputHeight}`;
+    const downloadFilename = `RASTER_MAP_${screenNameForFile}_${sizeLabel}.png`;
 
     toPng(node, {
       cacheBust: true,
