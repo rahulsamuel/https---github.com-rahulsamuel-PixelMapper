@@ -2,10 +2,10 @@
 "use client";
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
-import type { RasterMapConfig } from "@/contexts/pixel-map-context";
+import type { RasterMapConfig, Screen, ActiveBounds } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
-import { FileDown, FileCode, Printer, Monitor, Video, Music, Image, Layers, Cpu } from "lucide-react";
-import { useRef, useState, useMemo, useCallback } from "react";
+import { FileDown, FileCode, Printer, Monitor, Video, Music, Image, Layers, Cpu, Download } from "lucide-react";
+import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { useToast } from "@/hooks/use-toast";
@@ -23,9 +23,6 @@ interface LedProduct {
 
 function gcd(a: number, b: number): number {
   return b === 0 ? a : gcd(b, a % b);
-}
-function fmt(n: number, d = 2) {
-  return n.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
 }
 
 export function DeliverablesView() {
@@ -46,11 +43,14 @@ export function DeliverablesView() {
     imageFormat,
     products,
     rasterMapConfigs,
+    createScreenContentCanvas,
+    includeTextOverlaysInDownload,
   } = usePixelMap();
 
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [pixelMapImages, setPixelMapImages] = useState<Record<string, string>>({});
 
   const safeFileName = useMemo(() => {
     const name = (projectName || currentScreen.name || 'Untitled').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -58,6 +58,24 @@ export function DeliverablesView() {
     const ver = (versionNumber || '1.0').replace(/[^a-zA-Z0-9_-]/g, '_');
     return `CONTENT_DELIVERABLES_${name}_${num}_${ver}`;
   }, [projectName, currentScreen.name, projectNumber, versionNumber]);
+
+  // Generate per-screen pixel map previews using the canvas renderer
+  useEffect(() => {
+    const generatePreviews = () => {
+      const images: Record<string, string> = {};
+      for (const screen of screens) {
+        const rasterConfig = rasterMapConfigs?.[screen.rasterGroupId ?? 'raster-1'];
+        const arrangement = rasterConfig?.screenArrangement?.find(a => a.screenId === screen.id);
+        const bounds = arrangement?.activeBounds ?? null;
+        const canvas = createScreenContentCanvas?.(screen, bounds, includeTextOverlaysInDownload);
+        if (canvas) {
+          images[screen.id] = canvas.toDataURL('image/png');
+        }
+      }
+      setPixelMapImages(images);
+    };
+    generatePreviews();
+  }, [screens, rasterMapConfigs, createScreenContentCanvas, includeTextOverlaysInDownload]);
 
   const screenData = useMemo(() => {
     return screens.map((screen, idx) => {
@@ -68,30 +86,29 @@ export function DeliverablesView() {
       const g = gcd(resWidth, resHeight);
       const aspectRatio = `${resWidth / g}:${resHeight / g}`;
       const product = products.find((p: LedProduct) => p.id === screen.selectedProductId);
-      const tileWidthMm = product?.tileWidthMm ?? 500;
-      const tileHeightMm = product?.tileHeightMm ?? 500;
-      const widthMm = screen.dimensions.screenWidth * tileWidthMm;
-      const heightMm = screen.dimensions.screenHeight * tileHeightMm;
-      const widthIn = widthMm / 25.4;
-      const heightIn = heightMm / 25.4;
-      const widthFt = widthIn / 12;
-      const heightFt = heightIn / 12;
       const ledProductDimensions = product ? `${product.tileWidthPx} × ${product.tileHeightPx} px` : 'N/A';
       const ledManufacturer = product?.manufacturer ?? 'N/A';
       const ledProductName = product?.productName ?? 'N/A';
       const screenRes = `${resWidth.toLocaleString()} × ${resHeight.toLocaleString()} px`;
       const contentFileName = `${(projectName || screen.name || 'screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_${idx + 1}_${(projectNumber || 'NA').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
-      const pixelMapConfig = rasterMapConfigs?.[screen.rasterGroupId ?? 'raster-1'];
-      const previewImage = pixelMapConfig?.previewImage;
+      const previewImage = pixelMapImages[screen.id];
 
       return {
         screen, idx, activeTileCount, resWidth, resHeight, totalPixels, aspectRatio,
-        product, widthMm, heightMm, widthFt, heightFt,
-        ledProductDimensions, ledManufacturer, ledProductName,
+        product, ledProductDimensions, ledManufacturer, ledProductName,
         screenRes, contentFileName, previewImage,
       };
     });
-  }, [screens, products, rasterMapConfigs, projectNumber, projectName]);
+  }, [screens, products, projectNumber, projectName, pixelMapImages]);
+
+  // Get raster output dimensions for "Total Required Resolution"
+  const totalRequiredResolution = useMemo(() => {
+    const config = rasterMapConfigs?.[currentScreen.rasterGroupId ?? 'raster-1'];
+    if (config && config.outputWidth && config.outputHeight) {
+      return `${config.outputWidth.toLocaleString()} × ${config.outputHeight.toLocaleString()} px`;
+    }
+    return 'N/A';
+  }, [rasterMapConfigs, currentScreen.rasterGroupId]);
 
   const handleDownloadPdf = useCallback(async () => {
     if (!contentRef.current) return;
@@ -130,6 +147,7 @@ export function DeliverablesView() {
       samplingRate,
       audioBitRate,
       imageFormat,
+      totalRequiredResolution,
       screenData,
     });
     const blob = new Blob([htmlContent], { type: 'text/html' });
@@ -140,7 +158,16 @@ export function DeliverablesView() {
     link.click();
     URL.revokeObjectURL(url);
     toast({ title: "HTML Exported", description: "Standalone content deliverables downloaded." });
-  }, [projectName, currentScreen.name, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioEmbedded, samplingRate, audioBitRate, imageFormat, screenData, safeFileName, toast]);
+  }, [projectName, currentScreen.name, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioEmbedded, samplingRate, audioBitRate, imageFormat, totalRequiredResolution, screenData, safeFileName, toast]);
+
+  const handleDownloadPixelMap = useCallback((sd: typeof screenData[number]) => {
+    if (!sd.previewImage) return;
+    const link = document.createElement('a');
+    link.href = sd.previewImage;
+    link.download = `${sd.contentFileName}_pixel-map.png`;
+    link.click();
+    toast({ title: "Pixel Map Downloaded", description: `${sd.screen.name} pixel map saved as PNG.` });
+  }, [toast]);
 
   return (
     <div className="w-[1000px] space-y-6 pb-20" style={{ background: '#E2E8F0' }}>
@@ -211,10 +238,9 @@ export function DeliverablesView() {
 
             {/* Section 2: Media Server & Playback Requirements */}
             <ReportSection icon={<Video className="size-4" />} title="Media Server & Playback Requirements">
-              <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <SpecCard label="Selected Media Server" value={mediaServer || 'None'} />
-                <SpecCard label="Total Required Resolution" value={screenData.length > 0 ? `${screenData[0].resWidth} × ${screenData[0].resHeight} px` : 'N/A'} />
-                <SpecCard label="Number of Outputs" value={String(screens.length)} />
+                <SpecCard label="Total Required Resolution" value={totalRequiredResolution} />
               </div>
 
               <div className="grid grid-cols-3 gap-4">
@@ -256,10 +282,18 @@ export function DeliverablesView() {
               {screenData.map((sd) => (
                 <div key={sd.screen.id} className="border border-slate-200 rounded-lg overflow-hidden mb-4 last:mb-0">
                   <div className="grid grid-cols-2">
-                    {/* Left: Preview */}
-                    <div className="bg-slate-900 flex items-center justify-center p-6 min-h-[200px]">
+                    {/* Left: Pixel map preview (clickable to download) */}
+                    <div className="bg-slate-900 flex flex-col items-center justify-center p-6 min-h-[200px] relative group">
                       {sd.previewImage ? (
-                        <img src={sd.previewImage} alt={`Pixel map ${sd.screen.name}`} className="max-w-full max-h-[250px] object-contain" />
+                        <>
+                          <img src={sd.previewImage} alt={`Pixel map ${sd.screen.name}`} className="max-w-full max-h-[250px] object-contain" />
+                          <button
+                            onClick={() => handleDownloadPixelMap(sd)}
+                            className="no-print mt-3 flex items-center gap-1.5 text-xs bg-blue-600 text-white rounded px-3 py-1.5 hover:bg-blue-700 transition-colors"
+                          >
+                            <Download className="size-3" /> Download PNG
+                          </button>
+                        </>
                       ) : (
                         <div className="text-slate-500 text-sm text-center">
                           <Layers className="size-8 mx-auto mb-2 opacity-50" />
@@ -365,9 +399,10 @@ function buildHtmlReport(opts: {
   samplingRate: string;
   audioBitRate: string;
   imageFormat: string;
+  totalRequiredResolution: string;
   screenData: any[];
 }): string {
-  const { projectName, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioEmbedded, samplingRate, audioBitRate, imageFormat, screenData } = opts;
+  const { projectName, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioEmbedded, samplingRate, audioBitRate, imageFormat, totalRequiredResolution, screenData } = opts;
 
   const screenConfigHtml = screenData.map(sd => `
     <div class="screen-card">
@@ -383,10 +418,10 @@ function buildHtmlReport(opts: {
       </div>
     </div>`).join('');
 
-  const pixelMapHtml = screenData.map(sd => `
+  const pixelMapHtml = screenData.map((sd, i) => `
     <div class="screen-card">
       <div class="screen-grid">
-        <div class="preview-block">${sd.previewImage ? `<img src="${sd.previewImage}" alt="${sd.screen.name}" />` : '<div class="empty-preview">No preview available</div>'}</div>
+        <div class="preview-block">${sd.previewImage ? `<a href="${sd.previewImage}" download="${sd.contentFileName}_pixel-map.png" class="pixel-map-download" title="Click to download pixel map"><img src="${sd.previewImage}" alt="${sd.screen.name}" /><span class="download-badge"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download PNG</span></a>` : '<div class="empty-preview">No preview available</div>'}</div>
         <div class="screen-info">
           <h4>${sd.screen.name}</h4>
           <div class="detail-row"><span>Screen Resolution</span><strong>${sd.screenRes}</strong></div>
@@ -444,7 +479,7 @@ function buildHtmlReport(opts: {
   .detail-row strong { color: var(--slate-800); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
   .detail-row strong.mono { font-family: 'Inter', sans-serif; }
   .detail-row strong.small { font-size: 10px; word-break: break-all; }
-  .spec-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
+  .spec-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; }
   .spec-card { background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: 10px; padding: 20px; }
   .spec-card .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate-500); font-weight: 600; margin-bottom: 8px; }
   .spec-card .value { font-size: 14px; font-weight: 700; color: var(--slate-800); font-variant-numeric: tabular-nums; }
@@ -454,6 +489,11 @@ function buildHtmlReport(opts: {
   .notes-box { background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: 10px; padding: 20px 24px; font-size: 14px; line-height: 1.7; color: var(--slate-600); white-space: pre-wrap; }
   .footer { padding: 24px 48px; background: var(--slate-50); border-top: 1px solid var(--slate-200); text-align: center; font-size: 12px; color: var(--slate-400); font-weight: 500; }
   .footer a { color: var(--blue-600); text-decoration: none; font-weight: 600; }
+  .pixel-map-download { display: flex; flex-direction: column; align-items: center; text-decoration: none; position: relative; }
+  .pixel-map-download img { transition: opacity 0.2s; }
+  .pixel-map-download:hover img { opacity: 0.7; }
+  .download-badge { display: flex; align-items: center; gap: 6px; margin-top: 10px; background: var(--blue-600); color: white; font-size: 12px; font-weight: 600; padding: 6px 14px; border-radius: 6px; opacity: 0; transition: opacity 0.2s; }
+  .pixel-map-download:hover .download-badge { opacity: 1; }
 </style>
 </head>
 <body>
@@ -483,8 +523,7 @@ function buildHtmlReport(opts: {
       <div class="section-label">Media Server &amp; Playback Requirements</div>
       <div class="spec-grid">
         <div class="spec-card"><div class="label">Selected Media Server</div><div class="value">${mediaServer}</div></div>
-        <div class="spec-card"><div class="label">Total Required Resolution</div><div class="value">${screenData.length > 0 ? screenData[0].screenRes : 'N/A'}</div></div>
-        <div class="spec-card"><div class="label">Number of Outputs</div><div class="value">${screenData.length}</div></div>
+        <div class="spec-card"><div class="label">Total Required Resolution</div><div class="value">${totalRequiredResolution}</div></div>
       </div>
       <div class="subcard-grid">
         <div class="subcard">

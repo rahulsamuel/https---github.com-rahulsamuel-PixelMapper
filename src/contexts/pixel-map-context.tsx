@@ -429,6 +429,7 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   activeTab: string;
   setActiveTab: Dispatch<SetStateAction<string>>;
   activeBounds: ActiveBounds | null;
+  createScreenContentCanvas: (screen: Screen, screenActiveBounds: ActiveBounds | null, drawOverlays?: boolean) => HTMLCanvasElement | null;
   rasterMapConfig: RasterMapConfig | null;
   setRasterMapConfig: (config: RasterMapConfig | null) => void;
   rasterMapConfigs: Record<string, RasterMapConfig>;
@@ -3695,6 +3696,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     activeTab,
     setActiveTab,
     activeBounds,
+    createScreenContentCanvas,
     rasterMapConfig,
     setRasterMapConfig,
     rasterMapConfigs,
