@@ -26,7 +26,6 @@ import { ManualDataWiringModal } from "../pixel-mapper/manual-data-wiring-modal"
 import { DeliverablesView } from "./deliverables-view";
 import { EquipmentView } from "./equipment-view";
 import { ProjectDetailsControls } from "../pixel-mapper/project-details-controls";
-import { DeliverablesControls } from "../pixel-mapper/deliverables-controls";
 import {
   Accordion,
   AccordionContent,
@@ -488,20 +487,12 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               )}
 
               {activeTab === 'deliverables' && (
-                <>
                 <AccordionItem value="project-details" className="border-none">
                   <AccordionSectionTrigger icon={<Info className="size-5" />} title="Project Info" />
                   <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
                     <ProjectDetailsControls />
                   </AccordionContent>
                 </AccordionItem>
-                <AccordionItem value="deliverables-specs" className="border-none">
-                  <AccordionSectionTrigger icon={<FileText className="size-5" />} title="Content Specs" />
-                  <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
-                    <DeliverablesControls />
-                  </AccordionContent>
-                </AccordionItem>
-                </>
               )}
 
             </Accordion>

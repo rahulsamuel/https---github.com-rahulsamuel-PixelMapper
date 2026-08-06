@@ -336,7 +336,12 @@ export interface ProjectData {
   projectNotes?: string;
   mediaServer?: string;
   preferredCodec?: string;
+  videoContainer?: string;
+  frameRate?: string;
   audioFormat?: string;
+  audioEmbedded?: boolean;
+  samplingRate?: string;
+  audioBitRate?: string;
   imageFormat?: string;
   rasterMapConfigs?: Record<string, RasterMapConfig>;
   rasterGroups?: RasterGroup[];
@@ -496,8 +501,18 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setMediaServer: Dispatch<SetStateAction<string>>;
   preferredCodec: string;
   setPreferredCodec: Dispatch<SetStateAction<string>>;
+  videoContainer: string;
+  setVideoContainer: Dispatch<SetStateAction<string>>;
+  frameRate: string;
+  setFrameRate: Dispatch<SetStateAction<string>>;
   audioFormat: string;
   setAudioFormat: Dispatch<SetStateAction<string>>;
+  audioEmbedded: boolean;
+  setAudioEmbedded: Dispatch<SetStateAction<boolean>>;
+  samplingRate: string;
+  setSamplingRate: Dispatch<SetStateAction<string>>;
+  audioBitRate: string;
+  setAudioBitRate: Dispatch<SetStateAction<string>>;
   imageFormat: string;
   setImageFormat: Dispatch<SetStateAction<string>>;
   getProjectData: () => ProjectData;
@@ -688,7 +703,12 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [uploadedMaps, setUploadedMaps] = useState<string[]>([]);
   const [mediaServer, setMediaServer] = useState("disguise");
   const [preferredCodec, setPreferredCodec] = useState("HAP");
-  const [audioFormat, setAudioFormat] = useState("WAV 48kHz 24-bit Stereo");
+  const [videoContainer, setVideoContainer] = useState("MOV");
+  const [frameRate, setFrameRate] = useState("60");
+  const [audioFormat, setAudioFormat] = useState("WAV");
+  const [audioEmbedded, setAudioEmbedded] = useState(false);
+  const [samplingRate, setSamplingRate] = useState("48 kHz");
+  const [audioBitRate, setAudioBitRate] = useState("24-bit");
   const [imageFormat, setImageFormat] = useState("PNG");
 
   const addUploadedMap = (dataUri: string) => setUploadedMaps(prev => [...prev, dataUri]);
@@ -2870,7 +2890,12 @@ const handleRightHalfTileChange = (add: boolean) => {
       projectNotes,
       mediaServer,
       preferredCodec,
+      videoContainer,
+      frameRate,
       audioFormat,
+      audioEmbedded,
+      samplingRate,
+      audioBitRate,
       imageFormat,
       rasterMapConfigs,
       rasterGroups,
@@ -2883,7 +2908,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       rackDrawing,
       gear,
     };
-  }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, audioFormat, imageFormat, rasterMapConfigs, rasterGroups, activeRasterGroupId, rasterBgColor, uploadedMaps, includeTextOverlaysInDownload]);
+  }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioFormat, audioEmbedded, samplingRate, audioBitRate, imageFormat, rasterMapConfigs, rasterGroups, activeRasterGroupId, rasterBgColor, uploadedMaps, includeTextOverlaysInDownload]);
 
   const loadProjectData = useCallback((data: ProjectData) => {
     let maxId = 0;
@@ -2907,7 +2932,12 @@ const handleRightHalfTileChange = (add: boolean) => {
     if (data.projectNotes) setProjectNotes(data.projectNotes);
     if (data.mediaServer) setMediaServer(data.mediaServer);
     if (data.preferredCodec) setPreferredCodec(data.preferredCodec);
+    if (data.videoContainer) setVideoContainer(data.videoContainer);
+    if (data.frameRate) setFrameRate(data.frameRate);
     if (data.audioFormat) setAudioFormat(data.audioFormat);
+    if (data.audioEmbedded !== undefined) setAudioEmbedded(data.audioEmbedded);
+    if (data.samplingRate) setSamplingRate(data.samplingRate);
+    if (data.audioBitRate) setAudioBitRate(data.audioBitRate);
     if (data.imageFormat) setImageFormat(data.imageFormat);
 
     if (data.rasterMapConfigs) setRasterMapConfigs(data.rasterMapConfigs);
@@ -3133,7 +3163,12 @@ const handleRightHalfTileChange = (add: boolean) => {
           if (data.projectNotes) setProjectNotes(data.projectNotes);
           if (data.mediaServer) setMediaServer(data.mediaServer);
           if (data.preferredCodec) setPreferredCodec(data.preferredCodec);
+          if (data.videoContainer) setVideoContainer(data.videoContainer);
+          if (data.frameRate) setFrameRate(data.frameRate);
           if (data.audioFormat) setAudioFormat(data.audioFormat);
+          if (data.audioEmbedded !== undefined) setAudioEmbedded(data.audioEmbedded);
+          if (data.samplingRate) setSamplingRate(data.samplingRate);
+          if (data.audioBitRate) setAudioBitRate(data.audioBitRate);
           if (data.imageFormat) setImageFormat(data.imageFormat);
 
           if (data.rasterMapConfigs) setRasterMapConfigs(data.rasterMapConfigs);
@@ -3776,8 +3811,18 @@ const handleRightHalfTileChange = (add: boolean) => {
     setMediaServer,
     preferredCodec,
     setPreferredCodec,
+    videoContainer,
+    setVideoContainer,
+    frameRate,
+    setFrameRate,
     audioFormat,
     setAudioFormat,
+    audioEmbedded,
+    setAudioEmbedded,
+    samplingRate,
+    setSamplingRate,
+    audioBitRate,
+    setAudioBitRate,
     imageFormat,
     setImageFormat,
     lastRasterArgs: currentScreen.lastRasterArgs,
