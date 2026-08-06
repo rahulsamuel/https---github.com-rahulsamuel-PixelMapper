@@ -456,7 +456,7 @@ export function EquipmentView() {
             {Array.from(groupedProcessors.entries()).map(([processorGroupKey, { groupId, sliceKey, primary, backup }], index) => (
               <div key={processorGroupKey} className="space-y-2">
                 <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground border-b pb-1">
-                  <Layers className="size-4" /> {sliceKey && sliceKey !== "default" ? `Raster ${index + 1}` : groupName(groupId)}
+                  <Layers className="size-4" /> {groupName(groupId)}{sliceKey && sliceKey !== "default" ? ` (Slice ${sliceKey})` : ''}
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="space-y-1">
@@ -515,7 +515,8 @@ export function EquipmentView() {
               const sc = sliceColor(sliceKey);
               const slicePrimary = primaryDataPorts.filter(dp => (dp.sliceKey ?? "default") === sliceKey);
               const sliceBackup = backupDataPorts.filter(dp => (dp.sliceKey ?? "default") === sliceKey);
-              const sliceLabel = sliceKey === "default" ? "All Rasters" : `Raster ${sliceKeys.indexOf(sliceKey) + 1}`;
+              const ownerGroup = slicePrimary[0]?.rasterGroupId ?? sliceBackup[0]?.rasterGroupId;
+              const sliceLabel = sliceKey === "default" ? (ownerGroup ? groupName(ownerGroup) : "All Rasters") : (ownerGroup ? `${groupName(ownerGroup)} (Slice ${sliceKey})` : `Slice ${sliceKey}`);
               return (
                 <div key={sliceKey} className={`rounded-lg border p-3 space-y-3 ${sc.border}`}>
                   <div className="flex items-center gap-2 text-sm font-semibold">

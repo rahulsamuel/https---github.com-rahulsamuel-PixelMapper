@@ -288,6 +288,7 @@ export interface DataPortEntry {
   tileCount: number;
   isBackup: boolean;
   sliceKey?: string;
+  rasterGroupId?: string;
 }
 
 export interface PowerPortEntry {
@@ -1453,8 +1454,8 @@ const handleRightHalfTileChange = (add: boolean) => {
 
       const slices = groupConfig?.slices ?? [];
       const sliceEntries = slices.length > 0
-        ? slices.map((s, i) => ({ key: s.key, label: `Raster ${i + 1}`, index: i }))
-        : [{ key: 'default', label: `Raster ${groupIdx + 1}`, index: 0 }];
+        ? slices.map((s, i) => ({ key: s.key, label: slices.length > 1 ? `${group.name} ${i + 1}` : group.name, index: i }))
+        : [{ key: 'default', label: group.name, index: 0 }];
 
       sliceEntries.forEach(({ key: sliceKey, label: sliceLabel, index: sliceIdx }) => {
         const primaryProcId = `proc-${group.id}-${sliceKey}`;
@@ -1473,7 +1474,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         });
         processors.push({
           id: backupProcId,
-          label: `${sliceLabel} (Backup)`,
+          label: slices.length > 1 ? `${group.name} ${sliceIdx + 1} (Backup)` : `${group.name} (Backup)`,
           type: procType,
           screenIds,
           rasterGroupId: group.id,
@@ -1624,6 +1625,7 @@ const handleRightHalfTileChange = (add: boolean) => {
             tileCount,
             isBackup: false,
             sliceKey,
+            rasterGroupId: owningGroup?.id,
           });
 
           // Backup data port entry — mirrors the primary, one per primary port
@@ -1637,6 +1639,7 @@ const handleRightHalfTileChange = (add: boolean) => {
               tileCount,
               isBackup: true,
               sliceKey,
+              rasterGroupId: owningGroup?.id,
             });
           }
 
