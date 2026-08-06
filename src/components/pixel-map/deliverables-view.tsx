@@ -91,12 +91,14 @@ export function DeliverablesView() {
       const ledProductName = product?.productName ?? 'N/A';
       const screenRes = `${resWidth.toLocaleString()} × ${resHeight.toLocaleString()} px`;
       const contentFileName = `${(projectName || screen.name || 'screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_${idx + 1}_${(projectNumber || 'NA').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+      const safeScreenName = (screen.name || 'screen').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const pixelMapFileName = `PIXEL_MAP_${safeScreenName}_${resWidth}x${resHeight}.png`;
       const previewImage = pixelMapImages[screen.id];
 
       return {
         screen, idx, activeTileCount, resWidth, resHeight, totalPixels, aspectRatio,
         product, ledProductDimensions, ledManufacturer, ledProductName,
-        screenRes, contentFileName, previewImage,
+        screenRes, contentFileName, pixelMapFileName, previewImage,
       };
     });
   }, [screens, products, projectNumber, projectName, pixelMapImages]);
@@ -164,7 +166,7 @@ export function DeliverablesView() {
     if (!sd.previewImage) return;
     const link = document.createElement('a');
     link.href = sd.previewImage;
-    link.download = `${sd.contentFileName}_pixel-map.png`;
+    link.download = sd.pixelMapFileName;
     link.click();
     toast({ title: "Pixel Map Downloaded", description: `${sd.screen.name} pixel map saved as PNG.` });
   }, [toast]);
@@ -421,7 +423,7 @@ function buildHtmlReport(opts: {
   const pixelMapHtml = screenData.map((sd, i) => `
     <div class="screen-card">
       <div class="screen-grid">
-        <div class="preview-block">${sd.previewImage ? `<a href="${sd.previewImage}" download="${sd.contentFileName}_pixel-map.png" class="pixel-map-download" title="Click to download pixel map"><img src="${sd.previewImage}" alt="${sd.screen.name}" /><span class="download-badge"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download PNG</span></a>` : '<div class="empty-preview">No preview available</div>'}</div>
+        <div class="preview-block">${sd.previewImage ? `<a href="${sd.previewImage}" download="${sd.pixelMapFileName}" class="pixel-map-download" title="Click to download pixel map"><img src="${sd.previewImage}" alt="${sd.screen.name}" /><span class="download-badge"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download PNG</span></a>` : '<div class="empty-preview">No preview available</div>'}</div>
         <div class="screen-info">
           <h4>${sd.screen.name}</h4>
           <div class="detail-row"><span>Screen Resolution</span><strong>${sd.screenRes}</strong></div>
