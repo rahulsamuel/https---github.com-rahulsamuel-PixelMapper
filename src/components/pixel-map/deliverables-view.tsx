@@ -242,7 +242,7 @@ export function DeliverablesView() {
             <ReportSection icon={<Video className="size-4" />} title="Media Server & Playback Requirements">
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <SpecCard label="Selected Media Server" value={mediaServer || 'None'} />
-                <SpecCard label="Total Required Resolution" value={totalRequiredResolution} />
+                <SpecCard label="Media Server Output Resolution" value={totalRequiredResolution} />
               </div>
 
               <div className="grid grid-cols-3 gap-4">
