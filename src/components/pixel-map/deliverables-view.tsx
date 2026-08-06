@@ -4,80 +4,11 @@
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import type { RasterMapConfig } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
-import { FileUp, Trash2, Layout, FileImage, FileDown, FileCode, Printer, Video, Music, ClipboardList, Cpu, Zap, Ruler, Weight, Monitor, Layers } from "lucide-react";
-import { useRef, useState, useMemo, useCallback, useEffect } from "react";
+import { FileUp, Trash2, Layout, FileImage, FileDown, FileCode, Printer, Video, ClipboardList, Layers } from "lucide-react";
+import { useRef, useState, useMemo, useCallback } from "react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase/client";
-
-interface LedProduct {
-  id: string;
-  manufacturer: string;
-  productName: string;
-  tileWidthPx: number;
-  tileHeightPx: number;
-  tileWidthMm?: number | null;
-  tileHeightMm?: number | null;
-  tileWeightKg?: number | null;
-  wattsPerTile?: number;
-  maxPowerWPerSqm?: number | null;
-  avgPowerWPerSqm?: number | null;
-  pixelPitchMm?: number | null;
-  maxBrightnessNit?: number | null;
-  [key: string]: any;
-}
-
-interface Processor {
-  id: string;
-  manufacturer: string;
-  modelName: string;
-  outputPortCount: number;
-  pixelsPerPort: number;
-  baseRefreshRateHz: number;
-  totalPixelCapacity: number;
-  distributionPerPort: number;
-  distributionUnitName: string | null;
-  [key: string]: any;
-}
-
-const MEDIA_SERVERS = [
-  { value: 'disguise', label: 'Disguise' },
-  { value: 'disguise-vx4', label: 'Disguise VX4+' },
-  { value: 'disguise-vx1', label: 'Disguise VX1' },
-  { value: 'resolume', label: 'Resolume' },
-  { value: ' hippotizer', label: 'Hippotizer' },
-  { value: 'dataton', label: 'Dataton WATCHOUT' },
-  { value: 'arkaos', label: 'ArKaos' },
-  { value: 'other', label: 'Other' },
-];
-
-function greatestCommonDivisor(a: number, b: number): number {
-  return b === 0 ? a : greatestCommonDivisor(b, a % b);
-}
-
-function formatNumber(num: number, digits = 2) {
-  return num.toLocaleString(undefined, {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  });
-}
-
-function mmToFeetInches(mm: number): string {
-  const totalInches = mm / 25.4;
-  const feet = Math.floor(totalInches / 12);
-  const inches = totalInches - feet * 12;
-  const wholeInches = Math.floor(inches);
-  const fracInches = Math.round((inches - wholeInches) * 16);
-  let fracStr = '';
-  if (fracInches === 0) fracStr = '';
-  else if (fracInches === 16) { wholeInches + 1; fracStr = ''; }
-  else {
-    const gcd = greatestCommonDivisor(fracInches, 16);
-    fracStr = ` ${fracInches / gcd}/${16 / gcd}`;
-  }
-  return `${feet}' ${wholeInches}${fracStr}"`;
-}
 
 export function DeliverablesView() {
   const {
@@ -87,7 +18,6 @@ export function DeliverablesView() {
     versionNumber,
     projectNotes,
     rasterMapConfig,
-    rasterMapConfigs,
     rasterGroups,
     uploadedMaps,
     addUploadedMap,
@@ -96,7 +26,6 @@ export function DeliverablesView() {
     preferredCodec,
     audioFormat,
     imageFormat,
-    products,
     projectName,
   } = usePixelMap();
 
@@ -104,160 +33,6 @@ export function DeliverablesView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
-  const [processors, setProcessors] = useState<Processor[]>([]);
-
-  // Fetch processors client-side for data requirements calculations
-  useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase.from('processor_library').select('*').eq('is_active', true).order('manufacturer').order('model_name');
-      if (!error && data) {
-        setProcessors(data.map((row: any) => ({
-          id: row.id,
-          manufacturer: row.manufacturer,
-          modelName: row.model_name,
-          outputPortCount: Number(row.output_port_count),
-          pixelsPerPort: Number(row.pixels_per_port),
-          baseRefreshRateHz: Number(row.base_refresh_rate_hz),
-          totalPixelCapacity: Number(row.total_pixel_capacity),
-          distributionPerPort: Number(row.distribution_per_port ?? 1),
-          distributionUnitName: row.distribution_unit_name,
-        })));
-      }
-    })();
-  }, []);
-
-  // Read power-data settings from localStorage (saved by the Power Data tab)
-  const powerData = useMemo(() => {
-    const readLS = (key: string): any => {
-      try {
-        const raw = localStorage.getItem(key);
-        return raw ? JSON.parse(raw) : undefined;
-      } catch { return undefined; }
-    };
-    return {
-      selectedProductId: readLS('power-data:selectedProductId'),
-      selectedProcessorId: readLS('power-data:selectedProcessorId'),
-      circuitVoltage: readLS('power-data:circuitVoltage') ?? '208',
-      circuitAmperage: readLS('power-data:circuitAmperage') ?? '20',
-      safetyMargin: readLS('power-data:safetyMargin') ?? '80',
-      refreshRate: readLS('power-data:refreshRate') ?? '60',
-      bitDepth: readLS('power-data:bitDepth') ?? '8',
-    };
-  }, []);
-
-  // Compute per-screen deliverable data
-  const screenData = useMemo(() => {
-    return screens.map(screen => {
-      const activeTileCount = screen.tiles.filter(t => !t.deleted).length;
-      const resWidth = screen.dimensions.screenWidth * screen.dimensions.tileWidth;
-      const resHeight = screen.dimensions.screenHeight * screen.dimensions.tileHeight;
-      const totalPixels = resWidth * resHeight;
-      const gcd = greatestCommonDivisor(resWidth, resHeight);
-      const aspectRatio = `${resWidth / gcd}:${resHeight / gcd} (${formatNumber(resWidth / resHeight, 2)}:1)`;
-
-      // Physical dimensions
-      const product = products.find((p: LedProduct) => p.id === screen.selectedProductId);
-      const tileWidthMm = product?.tileWidthMm ?? 500;
-      const tileHeightMm = product?.tileHeightMm ?? 500;
-      const tileWeightKg = product?.tileWeightKg ?? 0;
-      const wattsPerTile = product?.wattsPerTile ?? 0;
-
-      const widthMm = screen.dimensions.screenWidth * tileWidthMm;
-      const heightMm = screen.dimensions.screenHeight * tileHeightMm;
-      const widthIn = widthMm / 25.4;
-      const heightIn = heightMm / 25.4;
-      const widthFt = widthIn / 12;
-      const heightFt = heightIn / 12;
-      const totalWeightKg = activeTileCount * tileWeightKg;
-      const totalWeightLbs = totalWeightKg * 2.20462;
-
-      // Power consumption
-      const screenAreaM2 = (widthMm / 1000) * (heightMm / 1000);
-      const totalTilesPower = activeTileCount * wattsPerTile;
-      const maxPowerPerM2 = product?.maxPowerWPerSqm != null ? product.maxPowerWPerSqm : (screenAreaM2 > 0 ? totalTilesPower / screenAreaM2 : 0);
-      const avgPowerPerM2 = product?.avgPowerWPerSqm != null ? product.avgPowerWPerSqm : maxPowerPerM2 * 0.4;
-      const totalMaxPower = screenAreaM2 > 0 ? maxPowerPerM2 * screenAreaM2 : totalTilesPower;
-      const totalAvgPower = screenAreaM2 > 0 ? avgPowerPerM2 * screenAreaM2 : totalTilesPower * 0.4;
-
-      // Data requirements
-      const selectedProcessor = processors.find(p => p.id === powerData.selectedProcessorId);
-      const pixelsPerTile = screen.dimensions.tileWidth * screen.dimensions.tileHeight;
-      const baseHz = selectedProcessor?.baseRefreshRateHz ?? 60;
-      const rateHz = parseFloat(powerData.refreshRate) || 60;
-      const depth = parseFloat(powerData.bitDepth) || 8;
-      const rawPxPerPort = selectedProcessor?.pixelsPerPort ?? 0;
-      const pixelsPerPort = Math.floor(rawPxPerPort * (baseHz / rateHz) * (8 / depth));
-      const dist = selectedProcessor?.distributionPerPort ?? 1;
-      const tilesPerDataPort = pixelsPerTile > 0 && pixelsPerPort > 0 ? Math.floor(pixelsPerPort / pixelsPerTile) : 0;
-      const tilesPerDistUnit = tilesPerDataPort * dist;
-      const totalPortsNeeded = tilesPerDataPort > 0 ? Math.ceil(activeTileCount / tilesPerDataPort) : 0;
-      const processorsNeeded = selectedProcessor && selectedProcessor.outputPortCount > 0
-        ? Math.ceil(totalPortsNeeded / selectedProcessor.outputPortCount)
-        : (totalPortsNeeded > 0 ? 1 : 0);
-
-      // Power requirements
-      const v = parseFloat(powerData.circuitVoltage) || 0;
-      const a = parseFloat(powerData.circuitAmperage) || 0;
-      const margin = (parseFloat(powerData.safetyMargin) || 80) / 100;
-      const circuitWatts = v * a * margin;
-      const tileWatts = wattsPerTile;
-      const tilesPerCircuit = tileWatts > 0 ? Math.floor(circuitWatts / tileWatts) : 0;
-      const circuitsNeeded = tilesPerCircuit > 0 ? Math.ceil(activeTileCount / tilesPerCircuit) : 0;
-
-      // Current draw
-      const phaseDivisor = 1; // simplified; could read from calculator tab
-      const maxAmps = totalMaxPower / (v * phaseDivisor);
-      const avgAmps = totalAvgPower / (v * phaseDivisor);
-
-      return {
-        screen,
-        product,
-        activeTileCount,
-        resWidth,
-        resHeight,
-        totalPixels,
-        aspectRatio,
-        widthMm,
-        heightMm,
-        widthIn,
-        heightIn,
-        widthFt,
-        heightFt,
-        totalWeightKg,
-        totalWeightLbs,
-        maxPowerPerM2,
-        avgPowerPerM2,
-        totalMaxPower,
-        totalAvgPower,
-        maxAmps,
-        avgAmps,
-        selectedProcessor,
-        pixelsPerPort,
-        tilesPerDataPort,
-        tilesPerDistUnit,
-        totalPortsNeeded,
-        processorsNeeded,
-        tilesPerCircuit,
-        circuitsNeeded,
-        circuitWatts,
-      };
-    });
-  }, [screens, products, processors, powerData]);
-
-  // Aggregate totals across all screens
-  const totals = useMemo(() => {
-    return screenData.reduce((acc, sd) => {
-      acc.totalPixels += sd.totalPixels;
-      acc.totalTiles += sd.activeTileCount;
-      acc.totalWeightKg += sd.totalWeightKg;
-      acc.totalMaxPower += sd.totalMaxPower;
-      acc.totalAvgPower += sd.totalAvgPower;
-      acc.totalPortsNeeded += sd.totalPortsNeeded;
-      acc.totalCircuitsNeeded += sd.circuitsNeeded;
-      acc.totalProcessorsNeeded = Math.max(acc.totalProcessorsNeeded, sd.processorsNeeded);
-      return acc;
-    }, { totalPixels: 0, totalTiles: 0, totalWeightKg: 0, totalMaxPower: 0, totalAvgPower: 0, totalPortsNeeded: 0, totalCircuitsNeeded: 0, totalProcessorsNeeded: 0 });
-  }, [screenData]);
 
   const safeFileName = useMemo(() => {
     const name = (projectName || currentScreen.name || 'Untitled').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -309,21 +84,18 @@ export function DeliverablesView() {
 
   const handleDownloadHtml = useCallback(() => {
     const htmlContent = buildHtmlReport({
-      screenData,
-      totals,
       projectName: projectName || currentScreen.name,
       projectNumber,
       versionNumber,
       projectNotes,
       rasterMapConfig,
-      rasterMapConfigs,
       rasterGroups,
       uploadedMaps,
       mediaServer,
       preferredCodec,
       audioFormat,
       imageFormat,
-      powerData,
+      screens,
     });
 
     const blob = new Blob([htmlContent], { type: 'text/html' });
@@ -335,11 +107,11 @@ export function DeliverablesView() {
     URL.revokeObjectURL(url);
 
     toast({ title: "HTML Exported", description: "Standalone content deliverables downloaded." });
-  }, [screenData, totals, projectName, currentScreen.name, projectNumber, versionNumber, projectNotes, rasterMapConfig, rasterMapConfigs, rasterGroups, uploadedMaps, mediaServer, preferredCodec, audioFormat, imageFormat, powerData, safeFileName, toast]);
+  }, [projectName, currentScreen.name, projectNumber, versionNumber, projectNotes, rasterMapConfig, rasterGroups, uploadedMaps, mediaServer, preferredCodec, audioFormat, imageFormat, screens, safeFileName, toast]);
 
   // Memoize the heavy preview content so it only re-renders when data actually changes
   const previewContent = useMemo(() => {
-    const mediaServerLabel = MEDIA_SERVERS.find(m => m.value === mediaServer)?.label || mediaServer;
+    const mediaServerLabel = mediaServer || 'None';
 
     return (
       <div className="max-w-[900px] mx-auto bg-white rounded-2xl overflow-hidden">
@@ -367,93 +139,7 @@ export function DeliverablesView() {
             <DetailRow label="Project Number" value={projectNumber || 'Unassigned'} />
             <DetailRow label="Revision" value={versionNumber || '1.0'} />
             <DetailRow label="Total Screens" value={String(screens.length)} />
-            <DetailRow label="Total Tiles" value={String(totals.totalTiles)} />
-            <DetailRow label="Total Pixels" value={totals.totalPixels.toLocaleString()} />
           </Section>
-
-          {/* Per-Screen Breakdown */}
-          {screenData.map((sd, idx) => (
-            <div key={sd.screen.id}>
-              {/* Screen Resolution & Properties */}
-              <Section icon={<Monitor className="size-4" />} title={`Screen ${idx + 1}: ${sd.screen.name} — Resolution & Properties`}>
-                <div className="grid grid-cols-2 gap-4">
-                  <SpecCard label="Resolution" value={`${sd.resWidth.toLocaleString()} × ${sd.resHeight.toLocaleString()} px`} />
-                  <SpecCard label="Tile Configuration" value={`${sd.screen.dimensions.screenWidth}×${sd.screen.dimensions.screenHeight} tiles (${sd.activeTileCount} total)`} />
-                  <SpecCard label="Total Pixels" value={sd.totalPixels.toLocaleString()} />
-                  <SpecCard label="Aspect Ratio" value={sd.aspectRatio} />
-                </div>
-              </Section>
-
-              {/* Physical Dimensions */}
-              <Section icon={<Ruler className="size-4" />} title={`Screen ${idx + 1}: Physical Dimensions`}>
-                <div className="grid grid-cols-2 gap-4">
-                  <SpecCard label="Metric (Total)" value={`${formatNumber(sd.widthMm / 1000, 2)} × ${formatNumber(sd.heightMm / 1000, 2)} m`} />
-                  <SpecCard label="Imperial (Total)" value={`${formatNumber(sd.widthFt, 2)}' × ${formatNumber(sd.heightFt, 2)}'`} />
-                  <SpecCard label="Millimeters" value={`${formatNumber(sd.widthMm, 1)} × ${formatNumber(sd.heightMm, 1)} mm`} />
-                  <SpecCard label="Inches" value={`${formatNumber(sd.widthIn, 1)}" × ${formatNumber(sd.heightIn, 1)}"`} />
-                </div>
-              </Section>
-
-              {/* Total Weight */}
-              <Section icon={<Weight className="size-4" />} title={`Screen ${idx + 1}: Total Weight`}>
-                <div className="grid grid-cols-2 gap-4">
-                  <SpecCard label="Metric" value={`${formatNumber(sd.totalWeightKg, 1)} kg`} />
-                  <SpecCard label="Imperial" value={`${formatNumber(sd.totalWeightLbs, 1)} lbs`} />
-                </div>
-              </Section>
-
-              {/* Power Consumption */}
-              <Section icon={<Zap className="size-4" />} title={`Screen ${idx + 1}: Power Consumption`}>
-                <div className="grid grid-cols-2 gap-4">
-                  <SpecCard label="Power/m² (Max)" value={`${formatNumber(sd.maxPowerPerM2, 0)} W/m²`} />
-                  <SpecCard label="Power/m² (Avg)" value={`${formatNumber(sd.avgPowerPerM2, 0)} W/m²`} />
-                  <SpecCard label="Total Power (Max)" value={`${formatNumber(sd.totalMaxPower, 2)} W`} />
-                  <SpecCard label="Total Power (Avg)" value={`${formatNumber(sd.totalAvgPower, 2)} W`} />
-                  <SpecCard label="Current Draw (Max)" value={`${formatNumber(sd.maxAmps, 2)} A`} />
-                  <SpecCard label="Current Draw (Avg)" value={`${formatNumber(sd.avgAmps, 2)} A`} />
-                </div>
-              </Section>
-
-              {/* Data Requirements */}
-              <Section icon={<Cpu className="size-4" />} title={`Screen ${idx + 1}: Data Requirements`}>
-                <div className="grid grid-cols-2 gap-4">
-                  <SpecCard label="Total Panels" value={String(sd.activeTileCount)} />
-                  <SpecCard label="Total Pixels" value={sd.totalPixels.toLocaleString()} />
-                  <SpecCard label="Screen Resolution" value={`${sd.resWidth} × ${sd.resHeight} px`} />
-                  <SpecCard label="Processors Required" value={String(sd.processorsNeeded)} />
-                  <SpecCard label="Panels per Port" value={String(sd.tilesPerDataPort)} />
-                  <SpecCard label="Total Ports Needed" value={String(sd.totalPortsNeeded)} />
-                </div>
-                {sd.selectedProcessor && (
-                  <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                      {sd.selectedProcessor.manufacturer} {sd.selectedProcessor.modelName} Specifications
-                    </p>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div><span className="text-slate-500">Max Outputs:</span> <span className="font-semibold text-slate-800">{sd.selectedProcessor.outputPortCount}</span></div>
-                      <div><span className="text-slate-500">Pixels per Port:</span> <span className="font-semibold text-slate-800">{sd.pixelsPerPort.toLocaleString()}</span></div>
-                      <div><span className="text-slate-500">Base Refresh:</span> <span className="font-semibold text-slate-800">{sd.selectedProcessor.baseRefreshRateHz} Hz</span></div>
-                      {sd.selectedProcessor.distributionPerPort > 1 && (
-                        <div><span className="text-slate-500">Distribution:</span> <span className="font-semibold text-slate-800">×{sd.selectedProcessor.distributionPerPort} {sd.selectedProcessor.distributionUnitName ?? ''}</span></div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </Section>
-
-              {/* Power Requirements */}
-              <Section icon={<Zap className="size-4" />} title={`Screen ${idx + 1}: Power Requirements (${powerData.circuitVoltage}V)`}>
-                <div className="grid grid-cols-2 gap-4">
-                  <SpecCard label="Panels per Circuit" value={String(sd.tilesPerCircuit)} />
-                  <SpecCard label="Total Circuits Needed" value={String(sd.circuitsNeeded)} />
-                  <SpecCard label="Circuit Rating" value={`${powerData.circuitVoltage}V · ${powerData.circuitAmperage}A`} />
-                  <SpecCard label="Usable Capacity" value={`${Math.round(sd.circuitWatts)}W`} />
-                </div>
-              </Section>
-
-              {idx < screenData.length - 1 && <div className="border-t border-slate-200 my-8" />}
-            </div>
-          ))}
 
           {/* Media Server & Playback Requirements */}
           <Section icon={<Video className="size-4" />} title="Media Server & Playback Requirements">
@@ -461,8 +147,8 @@ export function DeliverablesView() {
               <SpecCard label="Total Required Resolution" value={rasterMapConfig ? `${rasterMapConfig.outputWidth} × ${rasterMapConfig.outputHeight} px` : 'Not generated'} />
               <SpecCard label="Number of Outputs (Rasters)" value={String(rasterGroups.length)} />
               <SpecCard label="Selected Media Server" value={mediaServerLabel} />
-              <SpecCard label="Preferred Codec" value={preferredCodec} />
-              <SpecCard label="Image Format" value={imageFormat} />
+              <SpecCard label="Preferred Codec" value={preferredCodec || 'None'} />
+              <SpecCard label="Image Format" value={imageFormat || 'None'} />
               <SpecCard label="Audio Format" value={audioFormat || 'No audio required'} />
             </div>
           </Section>
@@ -540,7 +226,7 @@ export function DeliverablesView() {
         </div>
       </div>
     );
-  }, [screenData, totals, screens.length, projectName, currentScreen.name, projectNumber, versionNumber, projectNotes, rasterMapConfig, rasterMapConfigs, rasterGroups, uploadedMaps, mediaServer, preferredCodec, audioFormat, imageFormat, powerData, safeFileName, handleFileUpload, removeUploadedMap]);
+  }, [screens.length, projectName, currentScreen.name, projectNumber, versionNumber, projectNotes, rasterMapConfig, rasterGroups, uploadedMaps, mediaServer, preferredCodec, audioFormat, imageFormat, safeFileName, handleFileUpload, removeUploadedMap]);
 
   return (
     <div className="w-[1000px] space-y-6 pb-20">
@@ -606,92 +292,20 @@ function SpecCard({ label, value, small }: { label: string; value: string; small
 // ─── HTML Report Builder ────────────────────────────
 
 function buildHtmlReport(opts: {
-  screenData: any[];
-  totals: any;
   projectName: string;
   projectNumber: string;
   versionNumber: string;
   projectNotes: string;
   rasterMapConfig: RasterMapConfig | null;
-  rasterMapConfigs: Record<string, RasterMapConfig>;
   rasterGroups: any[];
   uploadedMaps: string[];
   mediaServer: string;
   preferredCodec: string;
   audioFormat: string;
   imageFormat: string;
-  powerData: any;
+  screens: any[];
 }): string {
-  const { screenData, totals, projectName, projectNumber, versionNumber, projectNotes, rasterMapConfig, rasterGroups, uploadedMaps, mediaServer, preferredCodec, audioFormat, imageFormat, powerData } = opts;
-
-  const screenSections = screenData.map((sd: any, idx: number) => `
-    <div class="section">
-      <div class="section-label">Screen ${idx + 1}: ${sd.screen.name} — Resolution & Properties</div>
-      <div class="spec-grid">
-        <div class="spec-card"><div class="spec-label">Resolution</div><div class="spec-value mono">${sd.resWidth.toLocaleString()} × ${sd.resHeight.toLocaleString()} px</div></div>
-        <div class="spec-card"><div class="spec-label">Tile Configuration</div><div class="spec-value mono">${sd.screen.dimensions.screenWidth}×${sd.screen.dimensions.screenHeight} (${sd.activeTileCount} total)</div></div>
-        <div class="spec-card"><div class="spec-label">Total Pixels</div><div class="spec-value mono">${sd.totalPixels.toLocaleString()}</div></div>
-        <div class="spec-card"><div class="spec-label">Aspect Ratio</div><div class="spec-value">${sd.aspectRatio}</div></div>
-      </div>
-    </div>
-    <div class="section">
-      <div class="section-label">Screen ${idx + 1}: Physical Dimensions</div>
-      <div class="spec-grid">
-        <div class="spec-card"><div class="spec-label">Metric (Total)</div><div class="spec-value mono">${(sd.widthMm / 1000).toFixed(2)} × ${(sd.heightMm / 1000).toFixed(2)} m</div></div>
-        <div class="spec-card"><div class="spec-label">Imperial (Total)</div><div class="spec-value mono">${sd.widthFt.toFixed(2)}' × ${sd.heightFt.toFixed(2)}'</div></div>
-        <div class="spec-card"><div class="spec-label">Millimeters</div><div class="spec-value mono">${sd.widthMm.toFixed(1)} × ${sd.heightMm.toFixed(1)} mm</div></div>
-        <div class="spec-card"><div class="spec-label">Inches</div><div class="spec-value mono">${sd.widthIn.toFixed(1)}" × ${sd.heightIn.toFixed(1)}"</div></div>
-      </div>
-    </div>
-    <div class="section">
-      <div class="section-label">Screen ${idx + 1}: Total Weight</div>
-      <div class="spec-grid">
-        <div class="spec-card"><div class="spec-label">Metric</div><div class="spec-value mono">${sd.totalWeightKg.toFixed(1)} kg</div></div>
-        <div class="spec-card"><div class="spec-label">Imperial</div><div class="spec-value mono">${sd.totalWeightLbs.toFixed(1)} lbs</div></div>
-      </div>
-    </div>
-    <div class="section">
-      <div class="section-label">Screen ${idx + 1}: Power Consumption</div>
-      <div class="spec-grid">
-        <div class="spec-card"><div class="spec-label">Power/m² (Max)</div><div class="spec-value mono">${sd.maxPowerPerM2.toFixed(0)} W/m²</div></div>
-        <div class="spec-card"><div class="spec-label">Power/m² (Avg)</div><div class="spec-value mono">${sd.avgPowerPerM2.toFixed(0)} W/m²</div></div>
-        <div class="spec-card"><div class="spec-label">Total Power (Max)</div><div class="spec-value mono">${sd.totalMaxPower.toFixed(2)} W</div></div>
-        <div class="spec-card"><div class="spec-label">Total Power (Avg)</div><div class="spec-value mono">${sd.totalAvgPower.toFixed(2)} W</div></div>
-        <div class="spec-card"><div class="spec-label">Current Draw (Max)</div><div class="spec-value mono">${sd.maxAmps.toFixed(2)} A</div></div>
-        <div class="spec-card"><div class="spec-label">Current Draw (Avg)</div><div class="spec-value mono">${sd.avgAmps.toFixed(2)} A</div></div>
-      </div>
-    </div>
-    <div class="section">
-      <div class="section-label">Screen ${idx + 1}: Data Requirements</div>
-      <div class="spec-grid">
-        <div class="spec-card"><div class="spec-label">Total Panels</div><div class="spec-value mono">${sd.activeTileCount}</div></div>
-        <div class="spec-card"><div class="spec-label">Total Pixels</div><div class="spec-value mono">${sd.totalPixels.toLocaleString()}</div></div>
-        <div class="spec-card"><div class="spec-label">Screen Resolution</div><div class="spec-value mono">${sd.resWidth} × ${sd.resHeight} px</div></div>
-        <div class="spec-card"><div class="spec-label">Processors Required</div><div class="spec-value mono">${sd.processorsNeeded}</div></div>
-        <div class="spec-card"><div class="spec-label">Panels per Port</div><div class="spec-value mono">${sd.tilesPerDataPort}</div></div>
-        <div class="spec-card"><div class="spec-label">Total Ports Needed</div><div class="spec-value mono">${sd.totalPortsNeeded}</div></div>
-      </div>
-      ${sd.selectedProcessor ? `
-      <div class="processor-spec">
-        <p class="proc-title">${sd.selectedProcessor.manufacturer} ${sd.selectedProcessor.modelName} Specifications</p>
-        <div class="proc-grid">
-          <div><span class="proc-label">Max Outputs:</span> <span class="proc-val">${sd.selectedProcessor.outputPortCount}</span></div>
-          <div><span class="proc-label">Pixels per Port:</span> <span class="proc-val">${sd.pixelsPerPort.toLocaleString()}</span></div>
-          <div><span class="proc-label">Base Refresh:</span> <span class="proc-val">${sd.selectedProcessor.baseRefreshRateHz} Hz</span></div>
-          ${sd.selectedProcessor.distributionPerPort > 1 ? `<div><span class="proc-label">Distribution:</span> <span class="proc-val">×${sd.selectedProcessor.distributionPerPort} ${sd.selectedProcessor.distributionUnitName ?? ''}</span></div>` : ''}
-        </div>
-      </div>` : ''}
-    </div>
-    <div class="section">
-      <div class="section-label">Screen ${idx + 1}: Power Requirements (${powerData.circuitVoltage}V)</div>
-      <div class="spec-grid">
-        <div class="spec-card"><div class="spec-label">Panels per Circuit</div><div class="spec-value mono">${sd.tilesPerCircuit}</div></div>
-        <div class="spec-card"><div class="spec-label">Total Circuits Needed</div><div class="spec-value mono">${sd.circuitsNeeded}</div></div>
-        <div class="spec-card"><div class="spec-label">Circuit Rating</div><div class="spec-value mono">${powerData.circuitVoltage}V · ${powerData.circuitAmperage}A</div></div>
-        <div class="spec-card"><div class="spec-label">Usable Capacity</div><div class="spec-value mono">${Math.round(sd.circuitWatts)}W</div></div>
-      </div>
-    </div>
-  `).join('');
+  const { projectName, projectNumber, versionNumber, projectNotes, rasterMapConfig, rasterGroups, uploadedMaps, mediaServer, preferredCodec, audioFormat, imageFormat, screens } = opts;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -731,11 +345,6 @@ function buildHtmlReport(opts: {
   .spec-card .spec-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate-500); font-weight: 600; margin-bottom: 8px; }
   .spec-card .spec-value { font-size: 16px; font-weight: 700; color: var(--slate-800); font-family: 'Space Grotesk', sans-serif; }
   .spec-card .spec-value.mono { font-family: 'Inter', sans-serif; font-variant-numeric: tabular-nums; }
-  .processor-spec { margin-top: 16px; padding: 16px 20px; background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: 10px; }
-  .proc-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate-500); margin-bottom: 12px; }
-  .proc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; font-size: 14px; }
-  .proc-label { color: var(--slate-500); }
-  .proc-val { font-weight: 600; color: var(--slate-800); }
   .notes-box { background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: 10px; padding: 20px 24px; font-size: 14px; line-height: 1.7; color: var(--slate-600); white-space: pre-wrap; }
   .image-block { border: 1px solid var(--slate-200); border-radius: 10px; overflow: hidden; background: var(--slate-900); }
   .image-block img { width: 100%; display: block; }
@@ -762,11 +371,8 @@ function buildHtmlReport(opts: {
       <div class="detail-row"><div class="detail-label">Project Name</div><div class="detail-value">${projectName}</div></div>
       <div class="detail-row"><div class="detail-label">Project Number</div><div class="detail-value">${projectNumber || 'Unassigned'}</div></div>
       <div class="detail-row"><div class="detail-label">Revision</div><div class="detail-value">${versionNumber || '1.0'}</div></div>
-      <div class="detail-row"><div class="detail-label">Total Screens</div><div class="detail-value">${screenData.length}</div></div>
-      <div class="detail-row"><div class="detail-label">Total Tiles</div><div class="detail-value">${totals.totalTiles}</div></div>
-      <div class="detail-row"><div class="detail-label">Total Pixels</div><div class="detail-value">${totals.totalPixels.toLocaleString()}</div></div>
+      <div class="detail-row"><div class="detail-label">Total Screens</div><div class="detail-value">${screens.length}</div></div>
     </div>
-    ${screenSections}
     <div class="section">
       <div class="section-label">Media Server & Playback Requirements</div>
       <div class="spec-grid">
@@ -811,4 +417,3 @@ function buildHtmlReport(opts: {
 </body>
 </html>`;
 }
-
