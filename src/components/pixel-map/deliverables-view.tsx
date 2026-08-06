@@ -4,7 +4,7 @@
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
 import { FileUp, Trash2, Layout, FileImage, FileDown, FileCode, Printer, Video, Music, ClipboardList } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, useMemo, useCallback } from "react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { useToast } from "@/hooks/use-toast";
@@ -30,7 +30,7 @@ export function DeliverablesView() {
   const contentRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -43,9 +43,9 @@ export function DeliverablesView() {
       reader.readAsDataURL(file);
     }
     e.target.value = '';
-  };
+  }, [addUploadedMap]);
 
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = useCallback(async () => {
     if (!contentRef.current) return;
     setIsExporting(true);
     try {
@@ -69,9 +69,10 @@ export function DeliverablesView() {
     } finally {
       setIsExporting(false);
     }
-  };
+  }, [projectNumber, versionNumber, toast]);
 
-  const handleDownloadHtml = () => {
+  const handleDownloadHtml = useCallback(() => {
+    const safeName = (currentScreen.name || 'Screen').replace(/[^a-zA-Z0-9_-]/g, '_');
     const htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -339,7 +340,7 @@ export function DeliverablesView() {
         </div>
         <div class="spec-card">
           <div class="spec-label">Export Preset</div>
-          <div class="spec-value mono" style="font-size:12px;word-break:break-all">RASTER_MAP_${(currentScreen.name || 'Screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_${rasterMapConfig.outputWidth}x${rasterMapConfig.outputHeight}.png</div>
+          <div class="spec-value mono" style="font-size:12px;word-break:break-all">RASTER_MAP_${safeName}_${rasterMapConfig.outputWidth}x${rasterMapConfig.outputHeight}.png</div>
         </div>
       </div>` : '<div class="empty-state">No pixel map generated. Switch to the Raster Map tab to define output resolution.</div>'}
     </div>
@@ -383,7 +384,203 @@ export function DeliverablesView() {
     URL.revokeObjectURL(url);
     
     toast({ title: "HTML Exported", description: "Standalone project summary downloaded." });
-  };
+  }, [currentScreen, projectNumber, versionNumber, projectNotes, rasterMapConfig, uploadedMaps, mediaServer, preferredCodec, audioFormat, imageFormat, toast]);
+
+  // Memoize the heavy preview content so it only re-renders when data actually changes,
+  // not on every context tick (presence pings, autosave timers, realtime sync).
+  const previewContent = useMemo(() => {
+    const safeName = (currentScreen.name || 'Screen').replace(/[^a-zA-Z0-9_-]/g, '_');
+    return (
+      <div className="max-w-[900px] mx-auto bg-white rounded-2xl overflow-hidden">
+        {/* Header */}
+        <div className="px-12 py-10 text-white" style={{ background: '#0F172A' }}>
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="font-headline text-3xl font-bold tracking-tight">Project Deliverables</h1>
+              <p className="text-sm text-slate-400 mt-2">{currentScreen.name}</p>
+            </div>
+            <div className="text-right">
+              <span className="inline-block text-sm font-semibold px-4 py-1.5 rounded-full" style={{ background: '#2563EB' }}>
+                v{versionNumber || '1.0'}
+              </span>
+              <p className="text-sm text-slate-400 mt-3">Ref: {projectNumber || 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="p-12 space-y-10">
+          {/* Project Details */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <ClipboardList className="size-4" style={{ color: '#2563EB' }} />
+              <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
+                Project Details
+              </h3>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
+            <div>
+              <div className="flex py-2.5 border-b border-slate-100">
+                <span className="w-48 text-sm text-slate-500 font-medium shrink-0">Project Name</span>
+                <span className="text-sm text-slate-800 font-semibold">{currentScreen.name}</span>
+              </div>
+              <div className="flex py-2.5 border-b border-slate-100">
+                <span className="w-48 text-sm text-slate-500 font-medium shrink-0">Project Number</span>
+                <span className="text-sm text-slate-800 font-semibold">{projectNumber || 'Unassigned'}</span>
+              </div>
+              <div className="flex py-2.5">
+                <span className="w-48 text-sm text-slate-500 font-medium shrink-0">Revision</span>
+                <span className="text-sm text-slate-800 font-semibold">{versionNumber || '1.0'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Playback Specs */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <Video className="size-4" style={{ color: '#2563EB' }} />
+              <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
+                Playback Specifications
+              </h3>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Media Server</p>
+                <p className="text-base font-headline font-bold text-slate-800">{mediaServer}</p>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Preferred Codec</p>
+                <p className="text-base font-headline font-bold text-slate-800">{preferredCodec}</p>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Image Format</p>
+                <p className="text-base font-headline font-bold text-slate-800">{imageFormat}</p>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 flex items-center gap-1">
+                  <Music className="size-3" /> Audio Format
+                </p>
+                <p className="text-base font-headline font-bold text-slate-800">{audioFormat || 'No audio required'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Content Specs */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <Layout className="size-4" style={{ color: '#2563EB' }} />
+              <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
+                Content Specifications
+              </h3>
+              <div className="flex-1 h-px bg-slate-200" />
+            </div>
+            {rasterMapConfig ? (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Canvas Resolution</p>
+                  <p className="text-base font-bold text-slate-800 tabular-nums">{rasterMapConfig.totalWidth} × {rasterMapConfig.totalHeight} px</p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Content Area</p>
+                  <p className="text-base font-bold text-slate-800 tabular-nums">{rasterMapConfig.contentWidth} × {rasterMapConfig.contentHeight} px</p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Canvas Count</p>
+                  <p className="text-base font-bold text-slate-800 tabular-nums">{rasterMapConfig.slices.length} Canvases</p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Export Preset</p>
+                  <p className="text-xs font-bold text-slate-800 break-all" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    RASTER_MAP_{safeName}_{rasterMapConfig.outputWidth}x{rasterMapConfig.outputHeight}.png
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-10 text-center text-slate-400 text-sm bg-slate-50 border border-dashed border-slate-300 rounded-lg">
+                No pixel map generated. Switch to the Raster Map tab to define output resolution.
+              </div>
+            )}
+          </div>
+
+          {/* Delivery Instructions */}
+          {projectNotes && (
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <ClipboardList className="size-4" style={{ color: '#2563EB' }} />
+                <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
+                  Delivery Instructions
+                </h3>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-5 text-sm leading-relaxed text-slate-600 whitespace-pre-wrap">
+                {projectNotes}
+              </div>
+            </div>
+          )}
+
+          {/* Generated Pixel Map */}
+          {rasterMapConfig?.previewImage && (
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Layout className="size-4" style={{ color: '#2563EB' }} />
+                <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
+                  Generated Pixel Map
+                </h3>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+              <div className="border border-slate-200 rounded-lg overflow-hidden bg-black">
+                <img src={rasterMapConfig.previewImage} alt="Generated Pixel Map" className="w-full block" />
+              </div>
+            </div>
+          )}
+
+          {/* Reference Maps */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <FileImage className="size-4" style={{ color: '#2563EB' }} />
+              <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
+                Reference Maps
+              </h3>
+              <div className="flex-1 h-px bg-slate-200" />
+              <Button size="sm" variant="outline" className="no-print h-7" onClick={() => fileInputRef.current?.click()}>
+                <FileUp className="size-3.5 mr-1.5" /> Upload
+              </Button>
+              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
+            </div>
+            {uploadedMaps.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4">
+                {uploadedMaps.map((map, idx) => (
+                  <div key={idx} className="relative group border border-slate-200 rounded-lg overflow-hidden bg-slate-900">
+                    <img src={map} alt={`Reference ${idx + 1}`} className="w-full block" />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 size-7 opacity-0 group-hover:opacity-100 transition-opacity no-print"
+                      onClick={() => removeUploadedMap(idx)}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-10 text-center text-slate-400 text-sm bg-slate-50 border border-dashed border-slate-300 rounded-lg">
+                Upload external pixel maps or reference images for the content team.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-12 py-6 bg-slate-50 border-t border-slate-200 text-center">
+          <p className="text-xs text-slate-400 font-medium">
+            Generated by PixelMapper · {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+        </div>
+      </div>
+    );
+  }, [currentScreen, projectNumber, versionNumber, projectNotes, rasterMapConfig, uploadedMaps, mediaServer, preferredCodec, audioFormat, imageFormat, handleFileUpload, removeUploadedMap]);
 
   return (
     <div className="w-[1000px] space-y-6 pb-20">
@@ -399,195 +596,8 @@ export function DeliverablesView() {
         </Button>
       </div>
 
-      <div ref={contentRef} className="rounded-2xl overflow-hidden shadow-2xl" style={{ background: '#0F172A' }}>
-        <div className="max-w-[900px] mx-auto bg-white rounded-2xl overflow-hidden">
-          {/* Header */}
-          <div className="px-12 py-10 text-white" style={{ background: '#0F172A' }}>
-            <div className="flex justify-between items-start">
-              <div>
-                <h1 className="font-headline text-3xl font-bold tracking-tight">Project Deliverables</h1>
-                <p className="text-sm text-slate-400 mt-2">{currentScreen.name}</p>
-              </div>
-              <div className="text-right">
-                <span className="inline-block text-sm font-semibold px-4 py-1.5 rounded-full" style={{ background: '#2563EB' }}>
-                  v{versionNumber || '1.0'}
-                </span>
-                <p className="text-sm text-slate-400 mt-3">Ref: {projectNumber || 'N/A'}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Body */}
-          <div className="p-12 space-y-10">
-            {/* Project Details */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <ClipboardList className="size-4" style={{ color: '#2563EB' }} />
-                <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
-                  Project Details
-                </h3>
-                <div className="flex-1 h-px bg-slate-200" />
-              </div>
-              <div>
-                <div className="flex py-2.5 border-b border-slate-100">
-                  <span className="w-48 text-sm text-slate-500 font-medium shrink-0">Project Name</span>
-                  <span className="text-sm text-slate-800 font-semibold">{currentScreen.name}</span>
-                </div>
-                <div className="flex py-2.5 border-b border-slate-100">
-                  <span className="w-48 text-sm text-slate-500 font-medium shrink-0">Project Number</span>
-                  <span className="text-sm text-slate-800 font-semibold">{projectNumber || 'Unassigned'}</span>
-                </div>
-                <div className="flex py-2.5">
-                  <span className="w-48 text-sm text-slate-500 font-medium shrink-0">Revision</span>
-                  <span className="text-sm text-slate-800 font-semibold">{versionNumber || '1.0'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Playback Specs */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Video className="size-4" style={{ color: '#2563EB' }} />
-                <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
-                  Playback Specifications
-                </h3>
-                <div className="flex-1 h-px bg-slate-200" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Media Server</p>
-                  <p className="text-base font-headline font-bold text-slate-800">{mediaServer}</p>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Preferred Codec</p>
-                  <p className="text-base font-headline font-bold text-slate-800">{preferredCodec}</p>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Image Format</p>
-                  <p className="text-base font-headline font-bold text-slate-800">{imageFormat}</p>
-                </div>
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 flex items-center gap-1">
-                    <Music className="size-3" /> Audio Format
-                  </p>
-                  <p className="text-base font-headline font-bold text-slate-800">{audioFormat || 'No audio required'}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Content Specs */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Layout className="size-4" style={{ color: '#2563EB' }} />
-                <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
-                  Content Specifications
-                </h3>
-                <div className="flex-1 h-px bg-slate-200" />
-              </div>
-              {rasterMapConfig ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Canvas Resolution</p>
-                    <p className="text-base font-bold text-slate-800 tabular-nums">{rasterMapConfig.totalWidth} × {rasterMapConfig.totalHeight} px</p>
-                  </div>
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Content Area</p>
-                    <p className="text-base font-bold text-slate-800 tabular-nums">{rasterMapConfig.contentWidth} × {rasterMapConfig.contentHeight} px</p>
-                  </div>
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Canvas Count</p>
-                    <p className="text-base font-bold text-slate-800 tabular-nums">{rasterMapConfig.slices.length} Canvases</p>
-                  </div>
-                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Export Preset</p>
-                    <p className="text-xs font-bold text-slate-800 break-all" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                      RASTER_MAP_{(currentScreen.name || 'Screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_{rasterMapConfig.outputWidth}x{rasterMapConfig.outputHeight}.png
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-10 text-center text-slate-400 text-sm bg-slate-50 border border-dashed border-slate-300 rounded-lg">
-                  No pixel map generated. Switch to the Raster Map tab to define output resolution.
-                </div>
-              )}
-            </div>
-
-            {/* Delivery Instructions */}
-            {projectNotes && (
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <ClipboardList className="size-4" style={{ color: '#2563EB' }} />
-                  <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
-                    Delivery Instructions
-                  </h3>
-                  <div className="flex-1 h-px bg-slate-200" />
-                </div>
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5 text-sm leading-relaxed text-slate-600 whitespace-pre-wrap">
-                  {projectNotes}
-                </div>
-              </div>
-            )}
-
-            {/* Generated Pixel Map */}
-            {rasterMapConfig?.previewImage && (
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <Layout className="size-4" style={{ color: '#2563EB' }} />
-                  <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
-                    Generated Pixel Map
-                  </h3>
-                  <div className="flex-1 h-px bg-slate-200" />
-                </div>
-                <div className="border border-slate-200 rounded-lg overflow-hidden bg-black">
-                  <img src={rasterMapConfig.previewImage} alt="Generated Pixel Map" className="w-full block" />
-                </div>
-              </div>
-            )}
-
-            {/* Reference Maps */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <FileImage className="size-4" style={{ color: '#2563EB' }} />
-                <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
-                  Reference Maps
-                </h3>
-                <div className="flex-1 h-px bg-slate-200" />
-                <Button size="sm" variant="outline" className="no-print h-7" onClick={() => fileInputRef.current?.click()}>
-                  <FileUp className="size-3.5 mr-1.5" /> Upload
-                </Button>
-                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
-              </div>
-              {uploadedMaps.length > 0 ? (
-                <div className="grid grid-cols-2 gap-4">
-                  {uploadedMaps.map((map, idx) => (
-                    <div key={idx} className="relative group border border-slate-200 rounded-lg overflow-hidden bg-slate-900">
-                      <img src={map} alt={`Reference ${idx + 1}`} className="w-full block" />
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2 size-7 opacity-0 group-hover:opacity-100 transition-opacity no-print"
-                        onClick={() => removeUploadedMap(idx)}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-10 text-center text-slate-400 text-sm bg-slate-50 border border-dashed border-slate-300 rounded-lg">
-                  Upload external pixel maps or reference images for the content team.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="px-12 py-6 bg-slate-50 border-t border-slate-200 text-center">
-            <p className="text-xs text-slate-400 font-medium">
-              Generated by PixelMapper · {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-            </p>
-          </div>
-        </div>
+      <div ref={contentRef} className="rounded-2xl overflow-hidden" style={{ background: '#0F172A' }}>
+        {previewContent}
       </div>
     </div>
   );
