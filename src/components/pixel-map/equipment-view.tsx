@@ -524,38 +524,37 @@ export function EquipmentView() {
                     <span className="text-muted-foreground text-xs font-normal">{slicePrimary.length} primary · {sliceBackup.length} backup</span>
                   </div>
 
-                  {/* Primary data ports for this slice */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wide">
-                      <span className="size-2 rounded-full bg-green-500 shrink-0" /> Primary
-                    </div>
-                    {slicePrimary.length === 0 && <p className="text-xs text-muted-foreground py-0.5">No primary ports in this raster.</p>}
-                    {slicePrimary.map((dp) => (
-                      <div key={dp.id} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20 text-sm flex-wrap">
-                        <span className={`font-mono font-medium px-2 py-0.5 rounded ${sc.bg} ${sc.text}`}>{dp.label}</span>
-                        {dp.backupLabel && (
-                          <span className="font-mono text-xs px-2 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">Backup: {dp.backupLabel}</span>
-                        )}
-                        <span className="text-muted-foreground">{screenName(dp.screenId)}</span>
-                        <span className="text-muted-foreground text-xs">{dp.tileCount} tiles</span>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {/* Primary data ports for this slice */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wide">
+                        <span className="size-2 rounded-full bg-green-500 shrink-0" /> Primary
                       </div>
-                    ))}
-                  </div>
+                      {slicePrimary.length === 0 && <p className="text-xs text-muted-foreground py-0.5">No primary ports in this raster.</p>}
+                      {slicePrimary.map((dp) => (
+                        <div key={dp.id} className="flex items-center gap-2 rounded-md border p-2 bg-muted/20 text-sm flex-wrap">
+                          <span className={`font-mono font-medium px-2 py-0.5 rounded ${sc.bg} ${sc.text}`}>{dp.label}</span>
+                          <span className="text-muted-foreground">{screenName(dp.screenId)}</span>
+                          <span className="text-muted-foreground text-xs">{dp.tileCount} tiles</span>
+                        </div>
+                      ))}
+                    </div>
 
-                  {/* Backup data ports for this slice */}
-                  <div className="space-y-1.5 pt-1.5 border-t">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide">
-                      <Shield className="size-3.5 shrink-0" /> Backup
-                    </div>
-                    {sliceBackup.length === 0 && <p className="text-xs text-muted-foreground py-0.5">No backup ports in this raster.</p>}
-                    {sliceBackup.map((dp) => (
-                      <div key={dp.id} className="flex items-center gap-2 rounded-md border p-2 bg-red-50/40 dark:bg-red-950/20 border-red-200 dark:border-red-900 text-sm flex-wrap">
-                        <Shield className="size-3.5 text-red-500 shrink-0" />
-                        <span className={`font-mono font-medium px-2 py-0.5 rounded ${sc.bg} ${sc.text}`}>{dp.label}</span>
-                        <span className="text-muted-foreground">{screenName(dp.screenId)}</span>
-                        <span className="text-muted-foreground text-xs">{dp.tileCount} tiles</span>
+                    {/* Backup data ports for this slice */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-red-600 dark:text-red-400 uppercase tracking-wide">
+                        <Shield className="size-3.5 shrink-0" /> Backup
                       </div>
-                    ))}
+                      {sliceBackup.length === 0 && <p className="text-xs text-muted-foreground py-0.5">No backup ports in this raster.</p>}
+                      {sliceBackup.map((dp) => (
+                        <div key={dp.id} className="flex items-center gap-2 rounded-md border p-2 bg-red-50/40 dark:bg-red-950/20 border-red-200 dark:border-red-900 text-sm flex-wrap">
+                          <Shield className="size-3.5 text-red-500 shrink-0" />
+                          <span className={`font-mono font-medium px-2 py-0.5 rounded ${sc.bg} ${sc.text}`}>{dp.label}</span>
+                          <span className="text-muted-foreground">{screenName(dp.screenId)}</span>
+                          <span className="text-muted-foreground text-xs">{dp.tileCount} tiles</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               );

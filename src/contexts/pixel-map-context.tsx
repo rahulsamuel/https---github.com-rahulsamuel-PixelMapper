@@ -1446,6 +1446,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     rasterGroups.forEach((group, groupIdx) => {
       const groupConfig = rasterMapConfigs[group.id];
       const screenIds = groupConfig?.screenArrangement?.map(s => s.screenId) ?? [];
+      if (screenIds.length === 0) return;
       const screenForType = screens.find(s => screenIds.includes(s.id)) ?? screens[0];
       const procType = screenForType?.processorType ?? 'Brompton';
       const meta = getBoxMeta(procType);
