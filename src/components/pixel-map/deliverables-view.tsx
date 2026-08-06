@@ -82,7 +82,7 @@ export function DeliverablesView() {
       const ledProductName = product?.productName ?? 'N/A';
       const screenRes = `${resWidth.toLocaleString()} × ${resHeight.toLocaleString()} px`;
       const contentFileName = `${(projectName || screen.name || 'screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_${idx + 1}_${(projectNumber || 'NA').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
-      const pixelMapConfig = rasterMapConfigs?.find(r => r.screenId === screen.id);
+      const pixelMapConfig = Array.isArray(rasterMapConfigs) ? rasterMapConfigs.find(r => r.screenId === screen.id) : undefined;
       const previewImage = pixelMapConfig?.previewImage;
 
       return {
