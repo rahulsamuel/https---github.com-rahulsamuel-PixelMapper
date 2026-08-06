@@ -525,7 +525,7 @@ function buildHtmlReport(opts: {
       <div class="section-label">Media Server &amp; Playback Requirements</div>
       <div class="spec-grid">
         <div class="spec-card"><div class="label">Selected Media Server</div><div class="value">${mediaServer}</div></div>
-        <div class="spec-card"><div class="label">Total Required Resolution</div><div class="value">${totalRequiredResolution}</div></div>
+        <div class="spec-card"><div class="label">Media Server Output Resolution</div><div class="value">${totalRequiredResolution}</div></div>
       </div>
       <div class="subcard-grid">
         <div class="subcard">
