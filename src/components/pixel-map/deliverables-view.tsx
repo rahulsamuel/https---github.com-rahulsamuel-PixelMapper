@@ -2,11 +2,8 @@
 "use client";
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { FileUp, Trash2, Layout, FileImage, ClipboardList, FileDown, FileCode, Printer, Video, Music } from "lucide-react";
+import { FileUp, Trash2, Layout, FileImage, FileDown, FileCode, Printer, Video, Music, ClipboardList } from "lucide-react";
 import { useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
@@ -53,7 +50,7 @@ export function DeliverablesView() {
     setIsExporting(true);
     try {
       const dataUrl = await toPng(contentRef.current, {
-        backgroundColor: '#ffffff',
+        backgroundColor: '#0F172A',
         pixelRatio: 2,
       });
 
@@ -75,96 +72,307 @@ export function DeliverablesView() {
   };
 
   const handleDownloadHtml = () => {
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Deliverables Summary - ${currentScreen.name}</title>
-        <style>
-          body { font-family: sans-serif; padding: 40px; color: #333; line-height: 1.6; }
-          .header { background: #273a5e; color: white; padding: 20px; border-radius: 8px; margin-bottom: 30px; display: flex; justify-content: space-between; }
-          .section { margin-bottom: 40px; border: 1px solid #eee; border-radius: 8px; padding: 20px; }
-          .section-title { font-weight: bold; color: #273a5e; text-transform: uppercase; margin-bottom: 15px; border-bottom: 2px solid #273a5e; display: inline-block; }
-          .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-          .image-container { margin-top: 10px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
-          img { max-width: 100%; display: block; }
-          .badge { background: #eee; padding: 4px 12px; border-radius: 20px; font-weight: bold; }
-          pre { white-space: pre-wrap; font-family: inherit; }
-          .tech-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-          .tech-item { padding: 8px; background: #f9f9f9; border-radius: 4px; }
-          .tech-label { font-size: 10px; color: #666; text-transform: uppercase; }
-          .tech-value { font-weight: bold; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div>
-            <h1>Content Deliverable Summary</h1>
-            <p>${currentScreen.name}</p>
-          </div>
-          <div style="text-align: right">
-            <span class="badge">v${versionNumber}</span>
-            <p>Ref: ${projectNumber || 'N/A'}</p>
-          </div>
+    const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Deliverables - ${currentScreen.name}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --slate-900: #0F172A;
+    --slate-800: #1E293B;
+    --slate-700: #334155;
+    --slate-600: #475569;
+    --slate-500: #64748B;
+    --slate-400: #94A3B8;
+    --slate-300: #CBD5E1;
+    --slate-200: #E2E8F0;
+    --slate-100: #F1F5F9;
+    --slate-50: #F8FAFC;
+    --blue-700: #1D4ED8;
+    --blue-600: #2563EB;
+    --blue-500: #3B82F6;
+    --blue-50: #EFF6FF;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--slate-900);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--slate-700);
+    padding: 48px 24px;
+    display: flex;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+  }
+  .report {
+    width: 100%;
+    max-width: 900px;
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
+  }
+  .report-header {
+    background: var(--slate-900);
+    color: white;
+    padding: 40px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .report-header h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  .report-header .subtitle {
+    font-size: 14px;
+    color: var(--slate-400);
+    margin-top: 8px;
+    font-weight: 400;
+  }
+  .report-header .meta {
+    text-align: right;
+  }
+  .report-header .version-badge {
+    display: inline-block;
+    background: var(--blue-600);
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: 999px;
+    letter-spacing: 0.02em;
+  }
+  .report-header .ref {
+    font-size: 13px;
+    color: var(--slate-400);
+    margin-top: 12px;
+    font-family: 'Inter', sans-serif;
+  }
+  .report-body { padding: 48px; }
+  .section { margin-bottom: 40px; }
+  .section:last-child { margin-bottom: 0; }
+  .section-label {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--blue-600);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--slate-200);
+  }
+  .detail-row {
+    display: flex;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--slate-100);
+  }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label {
+    width: 200px;
+    font-size: 13px;
+    color: var(--slate-500);
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .detail-value {
+    font-size: 14px;
+    color: var(--slate-800);
+    font-weight: 600;
+  }
+  .spec-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .spec-card {
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .spec-card .spec-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--slate-500);
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .spec-card .spec-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--slate-800);
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  .spec-card .spec-value.mono {
+    font-family: 'Inter', sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+  .notes-box {
+    background: var(--slate-50);
+    border: 1px solid var(--slate-200);
+    border-radius: 10px;
+    padding: 20px 24px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: var(--slate-600);
+    white-space: pre-wrap;
+  }
+  .image-block {
+    border: 1px solid var(--slate-200);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--slate-900);
+  }
+  .image-block img {
+    width: 100%;
+    display: block;
+  }
+  .image-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .empty-state {
+    padding: 40px;
+    text-align: center;
+    color: var(--slate-400);
+    font-size: 14px;
+    background: var(--slate-50);
+    border: 1px dashed var(--slate-300);
+    border-radius: 10px;
+  }
+  .footer {
+    padding: 24px 48px;
+    background: var(--slate-50);
+    border-top: 1px solid var(--slate-200);
+    text-align: center;
+    font-size: 12px;
+    color: var(--slate-400);
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+<div class="report">
+  <div class="report-header">
+    <div>
+      <h1>Project Deliverables</h1>
+      <div class="subtitle">${currentScreen.name}</div>
+    </div>
+    <div class="meta">
+      <span class="version-badge">v${versionNumber || '1.0'}</span>
+      <div class="ref">Ref: ${projectNumber || 'N/A'}</div>
+    </div>
+  </div>
+
+  <div class="report-body">
+    <div class="section">
+      <div class="section-label">Project Details</div>
+      <div class="detail-row">
+        <div class="detail-label">Project Name</div>
+        <div class="detail-value">${currentScreen.name}</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">Project Number</div>
+        <div class="detail-value">${projectNumber || 'Unassigned'}</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-label">Revision</div>
+        <div class="detail-value">${versionNumber || '1.0'}</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Playback Specifications</div>
+      <div class="spec-grid">
+        <div class="spec-card">
+          <div class="spec-label">Media Server</div>
+          <div class="spec-value">${mediaServer}</div>
         </div>
-
-        <div class="section">
-          <div class="section-title">Project Details</div>
-          <p><strong>Project Name:</strong> ${currentScreen.name}</p>
-          <p><strong>Project #:</strong> ${projectNumber || 'N/A'}</p>
-          <p><strong>Revision:</strong> ${versionNumber}</p>
+        <div class="spec-card">
+          <div class="spec-label">Preferred Codec</div>
+          <div class="spec-value">${preferredCodec}</div>
         </div>
-
-        <div class="section">
-          <div class="section-title">Technical Specifications</div>
-          <div class="tech-grid">
-            <div class="tech-item"><div class="tech-label">Media Server</div><div class="tech-value">${mediaServer}</div></div>
-            <div class="tech-item"><div class="tech-label">Codec</div><div class="tech-value">${preferredCodec}</div></div>
-            <div class="tech-item"><div class="tech-label">Image Format</div><div class="tech-value">${imageFormat}</div></div>
-            <div class="tech-item"><div class="tech-label">Audio Format</div><div class="tech-value">${audioFormat}</div></div>
-          </div>
+        <div class="spec-card">
+          <div class="spec-label">Image Format</div>
+          <div class="spec-value">${imageFormat}</div>
         </div>
-
-        <div class="section">
-          <div class="section-title">Mapping Specifications</div>
-          ${rasterMapConfig ? `
-            <p><strong>Canvas:</strong> ${rasterMapConfig.totalWidth} x ${rasterMapConfig.totalHeight} px</p>
-            <p><strong>Content Area:</strong> ${rasterMapConfig.contentWidth} x ${rasterMapConfig.contentHeight} px</p>
-            <p><strong>Export Preset:</strong> RASTER_MAP_${(currentScreen.name || 'Screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_${rasterMapConfig.outputWidth}x${rasterMapConfig.outputHeight}.png</p>
-          ` : '<p>No raster map generated.</p>'}
+        <div class="spec-card">
+          <div class="spec-label">Audio Format</div>
+          <div class="spec-value">${audioFormat || 'No audio required'}</div>
         </div>
+      </div>
+    </div>
 
-        ${projectNotes ? `
-          <div class="section">
-            <div class="section-title">Notes / Delivery Instructions</div>
-            <pre>${projectNotes}</pre>
-          </div>
-        ` : ''}
+    <div class="section">
+      <div class="section-label">Content Specifications</div>
+      ${rasterMapConfig ? `
+      <div class="spec-grid">
+        <div class="spec-card">
+          <div class="spec-label">Canvas Resolution</div>
+          <div class="spec-value mono">${rasterMapConfig.totalWidth} × ${rasterMapConfig.totalHeight} px</div>
+        </div>
+        <div class="spec-card">
+          <div class="spec-label">Content Area</div>
+          <div class="spec-value mono">${rasterMapConfig.contentWidth} × ${rasterMapConfig.contentHeight} px</div>
+        </div>
+        <div class="spec-card">
+          <div class="spec-label">Canvas Count</div>
+          <div class="spec-value mono">${rasterMapConfig.slices.length} Canvases</div>
+        </div>
+        <div class="spec-card">
+          <div class="spec-label">Export Preset</div>
+          <div class="spec-value mono" style="font-size:12px;word-break:break-all">RASTER_MAP_${(currentScreen.name || 'Screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_${rasterMapConfig.outputWidth}x${rasterMapConfig.outputHeight}.png</div>
+        </div>
+      </div>` : '<div class="empty-state">No pixel map generated. Switch to the Raster Map tab to define output resolution.</div>'}
+    </div>
 
-        ${rasterMapConfig?.previewImage ? `
-          <div class="section">
-            <div class="section-title">Raster Map Preview</div>
-            <div class="image-container">
-              <img src="${rasterMapConfig.previewImage}" alt="Raster Map" />
-            </div>
-          </div>
-        ` : ''}
+    ${projectNotes ? `
+    <div class="section">
+      <div class="section-label">Delivery Instructions</div>
+      <div class="notes-box">${projectNotes}</div>
+    </div>` : ''}
 
-        ${uploadedMaps.length > 0 ? `
-          <div class="section">
-            <div class="section-title">Reference Maps</div>
-            <div class="grid">
-              ${uploadedMaps.map((map, i) => `
-                <div class="image-container">
-                  <img src="${map}" alt="Reference ${i+1}" />
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        ` : ''}
-      </body>
-      </html>
-    `;
+    ${rasterMapConfig?.previewImage ? `
+    <div class="section">
+      <div class="section-label">Generated Pixel Map</div>
+      <div class="image-block">
+        <img src="${rasterMapConfig.previewImage}" alt="Generated Pixel Map" />
+      </div>
+    </div>` : ''}
+
+    ${uploadedMaps.length > 0 ? `
+    <div class="section">
+      <div class="section-label">Reference Maps</div>
+      <div class="image-grid">
+        ${uploadedMaps.map((map, i) => `<div class="image-block"><img src="${map}" alt="Reference ${i+1}" /></div>`).join('')}
+      </div>
+    </div>` : ''}
+  </div>
+
+  <div class="footer">
+    Generated by PixelMapper · ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+  </div>
+</div>
+</body>
+</html>`;
 
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
@@ -178,8 +386,8 @@ export function DeliverablesView() {
   };
 
   return (
-    <div className="w-[1000px] space-y-8 pb-20">
-      <div className="flex justify-end gap-3 mb-4 no-print">
+    <div className="w-[1000px] space-y-6 pb-20">
+      <div className="flex justify-end gap-3 mb-2 no-print">
         <Button variant="outline" size="sm" onClick={handleDownloadHtml}>
           <FileCode className="size-4 mr-2" /> Export HTML
         </Button>
@@ -191,184 +399,194 @@ export function DeliverablesView() {
         </Button>
       </div>
 
-      <div ref={contentRef} className="space-y-8 bg-background p-1 rounded-xl">
-        <Card className="shadow-xl">
-          <CardHeader className="bg-primary text-primary-foreground rounded-t-lg">
+      <div ref={contentRef} className="rounded-2xl overflow-hidden shadow-2xl" style={{ background: '#0F172A' }}>
+        <div className="max-w-[900px] mx-auto bg-white rounded-2xl overflow-hidden">
+          {/* Header */}
+          <div className="px-12 py-10 text-white" style={{ background: '#0F172A' }}>
             <div className="flex justify-between items-start">
               <div>
-                <CardTitle className="text-3xl font-headline font-bold">Content Deliverable Summary</CardTitle>
-                <CardDescription className="text-primary-foreground/80 mt-2">
-                  Project Documentation & Delivery Package
-                </CardDescription>
+                <h1 className="font-headline text-3xl font-bold tracking-tight">Project Deliverables</h1>
+                <p className="text-sm text-slate-400 mt-2">{currentScreen.name}</p>
               </div>
               <div className="text-right">
-                <Badge variant="secondary" className="text-lg px-4 py-1">v{versionNumber || "1.0"}</Badge>
-                <p className="text-sm mt-2 opacity-80">Ref: {projectNumber || "N/A"}</p>
+                <span className="inline-block text-sm font-semibold px-4 py-1.5 rounded-full" style={{ background: '#2563EB' }}>
+                  v{versionNumber || '1.0'}
+                </span>
+                <p className="text-sm text-slate-400 mt-3">Ref: {projectNumber || 'N/A'}</p>
               </div>
             </div>
-          </CardHeader>
-          <CardContent className="pt-8">
-            <div className="grid grid-cols-3 gap-8">
-              <div className="space-y-6">
-                <div>
-                  <div className="flex items-center gap-2 text-primary mb-4">
-                    <ClipboardList className="size-5" />
-                    <h3 className="font-bold uppercase tracking-wider text-sm">Project Details</h3>
-                  </div>
-                  <div className="space-y-2">
-                    <p className="text-sm"><span className="text-muted-foreground">Project Name:</span> <span className="font-semibold">{currentScreen.name}</span></p>
-                    <p className="text-sm"><span className="text-muted-foreground">Project #:</span> <span className="font-semibold">{projectNumber || "Unassigned"}</span></p>
-                    <p className="text-sm"><span className="text-muted-foreground">Revision:</span> <span className="font-semibold">{versionNumber || "1.0"}</span></p>
-                  </div>
+          </div>
+
+          {/* Body */}
+          <div className="p-12 space-y-10">
+            {/* Project Details */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <ClipboardList className="size-4" style={{ color: '#2563EB' }} />
+                <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
+                  Project Details
+                </h3>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+              <div>
+                <div className="flex py-2.5 border-b border-slate-100">
+                  <span className="w-48 text-sm text-slate-500 font-medium shrink-0">Project Name</span>
+                  <span className="text-sm text-slate-800 font-semibold">{currentScreen.name}</span>
                 </div>
-
-                <Separator />
-
-                <div>
-                  <div className="flex items-center gap-2 text-primary mb-4">
-                    <Video className="size-5" />
-                    <h3 className="font-bold uppercase tracking-wider text-sm">Playback Specs</h3>
-                  </div>
-                  <div className="grid gap-3">
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-muted-foreground uppercase font-bold">Server / System</p>
-                      <p className="text-sm font-semibold">{mediaServer}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-muted-foreground uppercase font-bold">Preferred Codec</p>
-                      <p className="text-sm font-semibold">{preferredCodec}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-muted-foreground uppercase font-bold">Image Format</p>
-                      <p className="text-sm font-semibold">{imageFormat}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] text-muted-foreground uppercase font-bold text-primary flex items-center gap-1">
-                        <Music className="size-3" /> Audio Requirements
-                      </p>
-                      <p className="text-xs font-medium italic">{audioFormat || "No audio required"}</p>
-                    </div>
-                  </div>
+                <div className="flex py-2.5 border-b border-slate-100">
+                  <span className="w-48 text-sm text-slate-500 font-medium shrink-0">Project Number</span>
+                  <span className="text-sm text-slate-800 font-semibold">{projectNumber || 'Unassigned'}</span>
+                </div>
+                <div className="flex py-2.5">
+                  <span className="w-48 text-sm text-slate-500 font-medium shrink-0">Revision</span>
+                  <span className="text-sm text-slate-800 font-semibold">{versionNumber || '1.0'}</span>
                 </div>
               </div>
+            </div>
 
-              <div className="col-span-2 space-y-4">
-                <div className="flex items-center gap-2 text-primary">
-                  <Layout className="size-5" />
-                  <h3 className="font-bold uppercase tracking-wider text-sm">Content Specifications</h3>
+            {/* Playback Specs */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Video className="size-4" style={{ color: '#2563EB' }} />
+                <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
+                  Playback Specifications
+                </h3>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Media Server</p>
+                  <p className="text-base font-headline font-bold text-slate-800">{mediaServer}</p>
                 </div>
-                {rasterMapConfig ? (
-                  <div className="grid grid-cols-2 gap-4 bg-muted/30 p-4 rounded-lg border">
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground uppercase">Canvas Resolution</p>
-                      <p className="text-lg font-mono font-bold">{rasterMapConfig.totalWidth} x {rasterMapConfig.totalHeight} px</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground uppercase">Content Area</p>
-                      <p className="text-lg font-mono font-bold">{rasterMapConfig.contentWidth} x {rasterMapConfig.contentHeight} px</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground uppercase">Canvas Count</p>
-                      <p className="text-lg font-mono font-bold">{rasterMapConfig.slices.length} Canvases</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground uppercase">Export Preset</p>
-                      <a
-                        href={rasterMapConfig.previewImage || '#'}
-                        download={`RASTER_MAP_${(currentScreen.name || 'Screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_${rasterMapConfig.outputWidth}x${rasterMapConfig.outputHeight}.png`}
-                        className="text-sm font-mono font-bold uppercase text-primary hover:underline break-all"
-                      >
-                        RASTER_MAP_{(currentScreen.name || 'Screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_{rasterMapConfig.outputWidth}x{rasterMapConfig.outputHeight}.png
-                      </a>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-4 bg-yellow-500/10 border border-yellow-500/50 rounded-lg text-yellow-600 dark:text-yellow-400 text-sm">
-                    No pixel map generated yet. Switch to the Raster Map tab to define output resolution.
-                  </div>
-                )}
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Preferred Codec</p>
+                  <p className="text-base font-headline font-bold text-slate-800">{preferredCodec}</p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Image Format</p>
+                  <p className="text-base font-headline font-bold text-slate-800">{imageFormat}</p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2 flex items-center gap-1">
+                    <Music className="size-3" /> Audio Format
+                  </p>
+                  <p className="text-base font-headline font-bold text-slate-800">{audioFormat || 'No audio required'}</p>
+                </div>
+              </div>
+            </div>
 
-                {projectNotes && (
-                  <div className="mt-6">
-                    <Separator className="my-4" />
-                    <h3 className="font-bold uppercase tracking-wider text-sm text-primary mb-2">Delivery Instructions</h3>
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
-                      {projectNotes}
+            {/* Content Specs */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Layout className="size-4" style={{ color: '#2563EB' }} />
+                <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
+                  Content Specifications
+                </h3>
+                <div className="flex-1 h-px bg-slate-200" />
+              </div>
+              {rasterMapConfig ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Canvas Resolution</p>
+                    <p className="text-base font-bold text-slate-800 tabular-nums">{rasterMapConfig.totalWidth} × {rasterMapConfig.totalHeight} px</p>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Content Area</p>
+                    <p className="text-base font-bold text-slate-800 tabular-nums">{rasterMapConfig.contentWidth} × {rasterMapConfig.contentHeight} px</p>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Canvas Count</p>
+                    <p className="text-base font-bold text-slate-800 tabular-nums">{rasterMapConfig.slices.length} Canvases</p>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-2">Export Preset</p>
+                    <p className="text-xs font-bold text-slate-800 break-all" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      RASTER_MAP_{(currentScreen.name || 'Screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_{rasterMapConfig.outputWidth}x{rasterMapConfig.outputHeight}.png
                     </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-2 gap-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Layout className="size-5 text-primary" /> Generated Pixel Map
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {rasterMapConfig?.previewImage ? (
-                <div className="relative group overflow-hidden rounded-lg border bg-black aspect-video flex items-center justify-center">
-                  <img 
-                    src={rasterMapConfig.previewImage} 
-                    alt="Current Raster Map" 
-                    className="max-h-full max-w-full object-contain"
-                  />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center no-print">
-                    <p className="text-white text-xs font-mono">Current Map: {rasterMapConfig.outputWidth}x{rasterMapConfig.outputHeight}</p>
                   </div>
                 </div>
               ) : (
-                <div className="h-40 border-2 border-dashed rounded-lg flex items-center justify-center text-muted-foreground text-sm text-center px-8">
-                  Generate a pixel map to see the deliverable preview here.
+                <div className="p-10 text-center text-slate-400 text-sm bg-slate-50 border border-dashed border-slate-300 rounded-lg">
+                  No pixel map generated. Switch to the Raster Map tab to define output resolution.
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileImage className="size-5 text-primary" /> Reference Maps
-              </CardTitle>
-              <Button size="sm" variant="outline" className="no-print" onClick={() => fileInputRef.current?.click()}>
-                <FileUp className="size-4 mr-2" /> Upload
-              </Button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept="image/*" 
-                onChange={handleFileUpload} 
-              />
-            </CardHeader>
-            <CardContent>
+            {/* Delivery Instructions */}
+            {projectNotes && (
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <ClipboardList className="size-4" style={{ color: '#2563EB' }} />
+                  <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
+                    Delivery Instructions
+                  </h3>
+                  <div className="flex-1 h-px bg-slate-200" />
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5 text-sm leading-relaxed text-slate-600 whitespace-pre-wrap">
+                  {projectNotes}
+                </div>
+              </div>
+            )}
+
+            {/* Generated Pixel Map */}
+            {rasterMapConfig?.previewImage && (
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <Layout className="size-4" style={{ color: '#2563EB' }} />
+                  <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
+                    Generated Pixel Map
+                  </h3>
+                  <div className="flex-1 h-px bg-slate-200" />
+                </div>
+                <div className="border border-slate-200 rounded-lg overflow-hidden bg-black">
+                  <img src={rasterMapConfig.previewImage} alt="Generated Pixel Map" className="w-full block" />
+                </div>
+              </div>
+            )}
+
+            {/* Reference Maps */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <FileImage className="size-4" style={{ color: '#2563EB' }} />
+                <h3 className="font-headline text-xs font-semibold uppercase tracking-wider" style={{ color: '#2563EB' }}>
+                  Reference Maps
+                </h3>
+                <div className="flex-1 h-px bg-slate-200" />
+                <Button size="sm" variant="outline" className="no-print h-7" onClick={() => fileInputRef.current?.click()}>
+                  <FileUp className="size-3.5 mr-1.5" /> Upload
+                </Button>
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
+              </div>
               {uploadedMaps.length > 0 ? (
                 <div className="grid grid-cols-2 gap-4">
                   {uploadedMaps.map((map, idx) => (
-                    <div key={idx} className="relative group aspect-video rounded-lg border bg-muted overflow-hidden">
-                      <img src={map} alt={`Uploaded reference ${idx}`} className="w-full h-full object-cover" />
-                      <Button 
-                        variant="destructive" 
-                        size="icon" 
-                        className="absolute top-1 right-1 size-6 opacity-0 group-hover:opacity-100 transition-opacity no-print"
+                    <div key={idx} className="relative group border border-slate-200 rounded-lg overflow-hidden bg-slate-900">
+                      <img src={map} alt={`Reference ${idx + 1}`} className="w-full block" />
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2 size-7 opacity-0 group-hover:opacity-100 transition-opacity no-print"
                         onClick={() => removeUploadedMap(idx)}
                       >
-                        <Trash2 className="size-3" />
+                        <Trash2 className="size-3.5" />
                       </Button>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="h-40 border-2 border-dashed rounded-lg flex items-center justify-center text-muted-foreground text-sm text-center px-8">
+                <div className="p-10 text-center text-slate-400 text-sm bg-slate-50 border border-dashed border-slate-300 rounded-lg">
                   Upload external pixel maps or reference images for the content team.
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="px-12 py-6 bg-slate-50 border-t border-slate-200 text-center">
+            <p className="text-xs text-slate-400 font-medium">
+              Generated by PixelMapper · {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
         </div>
       </div>
     </div>
