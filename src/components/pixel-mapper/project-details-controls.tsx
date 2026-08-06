@@ -36,7 +36,6 @@ export function ProjectDetailsControls() {
     preferredCodec, setPreferredCodec,
     videoContainer, setVideoContainer,
     frameRate, setFrameRate,
-    audioFormat, setAudioFormat,
     audioEmbedded, setAudioEmbedded,
     samplingRate, setSamplingRate,
     audioBitRate, setAudioBitRate,
@@ -123,15 +122,6 @@ export function ProjectDetailsControls() {
         <p className="text-xs text-muted-foreground -mt-2">
           {audioEmbedded ? "Audio will be embedded in the video file." : "Audio will be delivered as a separate file."}
         </p>
-
-        <div className="space-y-2">
-          <Label>Audio Format</Label>
-          <Input
-            placeholder="e.g. WAV"
-            value={audioFormat}
-            onChange={(e) => setAudioFormat(e.target.value)}
-          />
-        </div>
 
         <div className="space-y-2">
           <Label>Sampling Rate</Label>
