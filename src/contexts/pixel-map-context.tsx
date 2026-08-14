@@ -2271,15 +2271,15 @@ const handleRightHalfTileChange = (add: boolean) => {
         const screenEffectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
         const screenEffectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
 
-        const contentWidth = Array.from({ length: maxX - minX + 1 }, (_, i) => {
-            const x = minX + i;
+        const contentWidth = Array.from({ length: screenActiveBounds.maxX - screenActiveBounds.minX + 1 }, (_, i) => {
+            const x = screenActiveBounds.minX + i;
             const isLeftHalf = screen.leftHalfTile && x === 0;
             const isRightHalf = screen.rightHalfTile && x === (screenEffectiveWidth - 1);
             return (isLeftHalf || isRightHalf) ? screen.dimensions.tileWidth / 2 : screen.dimensions.tileWidth;
         }).reduce((a, b) => a + b, 0);
 
-        const contentHeight = Array.from({ length: maxY - minY + 1 }, (_, i) => {
-            const y = minY + i;
+        const contentHeight = Array.from({ length: screenActiveBounds.maxY - screenActiveBounds.minY + 1 }, (_, i) => {
+            const y = screenActiveBounds.minY + i;
             const isTopHalf = screen.topHalfTile && y === 0;
             const isBottomHalf = screen.bottomHalfTile && y === (screenEffectiveHeight - 1);
             return (isTopHalf || isBottomHalf) ? screen.dimensions.tileHeight / 2 : screen.dimensions.tileHeight;
