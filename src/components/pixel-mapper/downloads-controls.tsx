@@ -9,26 +9,28 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
+import { useMemo } from "react";
 
 export function DownloadsControls() {
     const {
         handleDownloadPng,
     isPngDownloading,
-        handleDownloadWiringDiagram,
-        handleDownloadCompositeWiringDiagram,
-        downloadRasterSlices,
-        handleDownloadFullRaster,
-        rasterMapConfig,
-        activeBounds,
-        activeTab,
-        screens,
-        includeTextOverlaysInDownload,
-        setIncludeTextOverlaysInDownload,
-        wallLayoutTileSize,
-        setWallLayoutTileSize,
-        handleDownloadWallLayout,
-        isWallLayoutDownloading,
-    } = usePixelMap();
+    handleDownloadWiringDiagram,
+    handleDownloadCompositeWiringDiagram,
+    downloadRasterSlices,
+    handleDownloadFullRaster,
+    rasterMapConfig,
+    activeBounds,
+    activeTab,
+    screens,
+    currentScreen,
+    includeTextOverlaysInDownload,
+    setIncludeTextOverlaysInDownload,
+    wallLayoutLegend,
+    setWallLayoutLegend,
+    handleDownloadWallLayout,
+    isWallLayoutDownloading,
+} = usePixelMap();
 
     const isGridEmpty = !activeBounds;
     const isGridTab = activeTab === 'grid';
@@ -77,6 +79,35 @@ export function DownloadsControls() {
         slicesDownloadTooltip = "Generate a raster map with slices first.";
     }
 
+    // Collect unique colors present in the current screen for the legend editor
+    const legendColors = useMemo(() => {
+        const screenEffW = currentScreen.dimensions.screenWidth + (currentScreen.leftHalfTile ? 1 : 0) + (currentScreen.rightHalfTile ? 1 : 0);
+        const colors: { color: string; label: string }[] = [];
+        const seen = new Set<string>();
+        for (let i = 0; i < currentScreen.tiles.length; i++) {
+            const tile = currentScreen.tiles[i];
+            if (tile.deleted) continue;
+            let bg = (i % screenEffW + Math.floor(i / screenEffW)) % 2 === 0 ? currentScreen.tileColor : currentScreen.tileColorTwo;
+            if (currentScreen.onOffMode) bg = '#FFFFFF';
+            else if (tile.color) bg = tile.color;
+            if (!seen.has(bg)) {
+                seen.add(bg);
+                const existing = wallLayoutLegend.find(e => e.color === bg);
+                colors.push({ color: bg, label: existing?.label ?? '' });
+            }
+        }
+        return colors;
+    }, [currentScreen, wallLayoutLegend]);
+
+    const updateLegendLabel = (color: string, label: string) => {
+        setWallLayoutLegend(prev => {
+            const existing = prev.find(e => e.color === color);
+            if (existing) {
+                return prev.map(e => e.color === color ? { ...e, label } : e);
+            }
+            return [...prev, { color, label }];
+        });
+    };
 
     return (
         <TooltipProvider>
@@ -193,19 +224,29 @@ export function DownloadsControls() {
                 <Separator className="my-3" />
                 <div className="space-y-2">
                     <Label className="text-xs font-medium">Wall Layout Export</Label>
-                    <p className="text-xs text-muted-foreground">Export a large-scale layout image with color legend and tile-count dimensions.</p>
-                    <div className="flex items-center gap-2">
-                        <Label htmlFor="wallTileSize" className="text-xs whitespace-nowrap">Tile size (px)</Label>
-                        <Input
-                            id="wallTileSize"
-                            type="number"
-                            value={wallLayoutTileSize}
-                            onChange={(e) => setWallLayoutTileSize(Math.max(20, Number(e.target.value) || 80))}
-                            min="20"
-                            max="500"
-                            className="h-8 w-20"
-                        />
-                    </div>
+                    <p className="text-xs text-muted-foreground">Exports the exact pixel map with tile-count dimensions and a color legend.</p>
+
+                    {legendColors.length > 0 && (
+                        <div className="space-y-1.5 rounded-md border bg-muted/20 p-2">
+                            <Label className="text-xs font-medium text-muted-foreground">Legend Labels</Label>
+                            {legendColors.map(({ color, label }) => (
+                                <div key={color} className="flex items-center gap-2">
+                                    <div
+                                        className="h-5 w-5 shrink-0 rounded border border-black/20"
+                                        style={{ backgroundColor: color }}
+                                    />
+                                    <Input
+                                        type="text"
+                                        value={label}
+                                        onChange={(e) => updateLegendLabel(color, e.target.value)}
+                                        placeholder={color}
+                                        className="h-7 flex-1 text-xs"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
                     {isGridEmpty ? (
                         <Tooltip>
                             <TooltipTrigger asChild>

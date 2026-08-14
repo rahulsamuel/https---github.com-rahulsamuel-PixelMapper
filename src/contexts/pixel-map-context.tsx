@@ -363,6 +363,7 @@ export interface ProjectData {
   powerData?: PowerDataTabData;
   rackDrawing?: RackDrawingTabData;
   gear?: GearConfig;
+  wallLayoutLegend?: WallLayoutLegendEntry[];
 }
 
 interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nextTileId' | 'moduleColors'> {
@@ -404,8 +405,6 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   handleDownloadWiringDiagram: () => void;
   handleDownloadCompositeWiringDiagram: () => void;
   handleDownloadFullRaster: () => void;
-  wallLayoutTileSize: number;
-  setWallLayoutTileSize: Dispatch<SetStateAction<number>>;
   wallLayoutLegend: WallLayoutLegendEntry[];
   setWallLayoutLegend: Dispatch<SetStateAction<WallLayoutLegendEntry[]>>;
   handleDownloadWallLayout: () => void;
@@ -703,7 +702,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [isManualDataModalOpen, setIsManualDataModalOpen] = useState(false);
   const [selectedTileForData, setSelectedTileForData] = useState<number | null>(null);
   const [isPngDownloading, setIsPngDownloading] = useState(false);
-  const [wallLayoutTileSize, setWallLayoutTileSize] = useState(80);
   const [wallLayoutLegend, setWallLayoutLegend] = useState<WallLayoutLegendEntry[]>([]);
   const [isWallLayoutDownloading, setIsWallLayoutDownloading] = useState(false);
   const [includeTextOverlaysInDownload, setIncludeTextOverlaysInDownload] = useState(true);
@@ -2884,35 +2882,22 @@ const handleRightHalfTileChange = (add: boolean) => {
     setIsWallLayoutDownloading(true);
     setTimeout(() => {
       try {
-        const tilePx = Math.max(20, Math.round(wallLayoutTileSize));
-        const gap = Math.max(2, Math.round(tilePx * 0.04));
-        const border = Math.max(1, Math.round(tilePx * 0.02));
+        const screenCanvas = createScreenContentCanvas(currentScreen, activeBounds, includeTextOverlaysInDownload);
+        if (!screenCanvas) { setIsWallLayoutDownloading(false); return; }
+
+        const gridPixelW = screenCanvas.width;
+        const gridPixelH = screenCanvas.height;
 
         const screenEffW = currentScreen.dimensions.screenWidth + (currentScreen.leftHalfTile ? 1 : 0) + (currentScreen.rightHalfTile ? 1 : 0);
         const screenEffH = currentScreen.dimensions.screenHeight + (currentScreen.topHalfTile ? 1 : 0) + (currentScreen.bottomHalfTile ? 1 : 0);
 
-        const getTileW = (x: number) => {
-          if (currentScreen.leftHalfTile && x === 0) return tilePx / 2;
-          if (currentScreen.rightHalfTile && x === screenEffW - 1) return tilePx / 2;
-          return tilePx;
-        };
-        const getTileH = (y: number) => {
-          if (currentScreen.topHalfTile && y === 0) return tilePx / 2;
-          if (currentScreen.bottomHalfTile && y === screenEffH - 1) return tilePx / 2;
-          return tilePx;
-        };
-
-        const ab = activeBounds;
-        const gridPixelW = Array.from({ length: ab.maxX - ab.minX + 1 }, (_, i) => getTileW(ab.minX + i)).reduce((a, b) => a + b, 0);
-        const gridPixelH = Array.from({ length: ab.maxY - ab.minY + 1 }, (_, i) => getTileH(ab.minY + i)).reduce((a, b) => a + b, 0);
-
-        const dimPad = tilePx * 1.5;
-        const legendWidth = 280;
+        const dimPad = Math.max(80, Math.round(gridPixelW * 0.06));
+        const legendWidth = 300;
         const legendPad = 24;
-        const legendEntryHeight = 36;
-        const legendTitleHeight = 40;
+        const legendEntryHeight = 40;
+        const legendTitleHeight = 44;
 
-        // Collect unique colors from tiles
+        // Collect unique colors from tiles, preserving order of first appearance
         const colorMap = new Map<string, string>();
         for (let i = 0; i < currentScreen.tiles.length; i++) {
           const tile = currentScreen.tiles[i];
@@ -2943,35 +2928,12 @@ const handleRightHalfTileChange = (add: boolean) => {
         const gridOriginX = dimPad;
         const gridOriginY = dimPad;
 
-        // Draw tiles
-        let drawY = gridOriginY;
-        for (let y = ab.minY; y <= ab.maxY; y++) {
-          let drawX = gridOriginX;
-          for (let x = ab.minX; x <= ab.maxX; x++) {
-            const tw = getTileW(x);
-            const th = getTileH(y);
-            const index = y * screenEffW + x;
-            const tile = currentScreen.tiles[index];
-            if (tile && !tile.deleted) {
-              let bg = (x + y) % 2 === 0 ? currentScreen.tileColor : currentScreen.tileColorTwo;
-              if (currentScreen.onOffMode) bg = '#FFFFFF';
-              else if (tile.color) bg = tile.color;
-              ctx.fillStyle = bg;
-              ctx.fillRect(drawX, drawY, tw - gap, th - gap);
-              if (border > 0) {
-                ctx.strokeStyle = currentScreen.borderColor;
-                ctx.lineWidth = border;
-                ctx.strokeRect(drawX, drawY, tw - gap, th - gap);
-              }
-            }
-            drawX += tw;
-          }
-          drawY += getTileH(y);
-        }
+        // Draw the exact screen canvas
+        ctx.drawImage(screenCanvas, gridOriginX, gridOriginY);
 
-        // Draw dimensions (width bottom, height right) — tiles mode
-        const fontSize = Math.max(16, Math.round(tilePx * 0.28));
-        const arrowSize = Math.max(6, fontSize * 0.4);
+        // Draw tile-count dimensions outside the grid (black arrows)
+        const fontSize = Math.max(20, Math.round(dimPad * 0.22));
+        const arrowSize = Math.max(8, fontSize * 0.4);
         const padding = fontSize * 1.5;
         ctx.strokeStyle = '#000000';
         ctx.fillStyle = '#000000';
@@ -2979,11 +2941,11 @@ const handleRightHalfTileChange = (add: boolean) => {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.font = `bold ${fontSize}px sans-serif`;
-        ctx.shadowColor = 'rgba(255,255,255,0.8)';
+        ctx.shadowColor = 'rgba(255,255,255,0.9)';
         ctx.shadowBlur = fontSize * 0.3;
 
-        // Width dimension (bottom)
-        const wLabel = `${ab.maxX - ab.minX + 1} tiles`;
+        // Width dimension (bottom, outside grid)
+        const wLabel = `${screenEffW} tiles`;
         ctx.beginPath();
         ctx.moveTo(gridOriginX, gridOriginY + gridPixelH);
         ctx.lineTo(gridOriginX, gridOriginY + gridPixelH + padding + arrowSize);
@@ -3006,8 +2968,8 @@ const handleRightHalfTileChange = (add: boolean) => {
         ctx.fill();
         ctx.fillText(wLabel, gridOriginX + gridPixelW / 2, gridOriginY + gridPixelH + padding + fontSize * 0.7);
 
-        // Height dimension (right)
-        const hLabel = `${ab.maxY - ab.minY + 1} tiles`;
+        // Height dimension (right, outside grid)
+        const hLabel = `${screenEffH} tiles`;
         ctx.beginPath();
         ctx.moveTo(gridOriginX + gridPixelW, gridOriginY);
         ctx.lineTo(gridOriginX + gridPixelW + padding + arrowSize, gridOriginY);
@@ -3079,7 +3041,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         setIsWallLayoutDownloading(false);
       }
     }, 50);
-  }, [activeBounds, currentScreen, wallLayoutTileSize, wallLayoutLegend, toast]);
+  }, [activeBounds, currentScreen, createScreenContentCanvas, includeTextOverlaysInDownload, wallLayoutLegend, toast]);
 
 
   const getProjectData = useCallback((): ProjectData => {
@@ -3148,6 +3110,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       powerData,
       rackDrawing,
       gear,
+      wallLayoutLegend,
     };
   }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioFormat, audioEmbedded, samplingRate, audioBitRate, imageFormat, rasterMapConfigs, rasterGroups, activeRasterGroupId, rasterBgColor, uploadedMaps, includeTextOverlaysInDownload]);
 
@@ -3212,6 +3175,9 @@ const handleRightHalfTileChange = (add: boolean) => {
     }
     if (data.gear) {
       gearRef.current = data.gear;
+    }
+    if (data.wallLayoutLegend) {
+      setWallLayoutLegend(data.wallLayoutLegend);
     }
   }, []);
 
@@ -3873,8 +3839,6 @@ const handleRightHalfTileChange = (add: boolean) => {
     setBorderColor,
     handleDownloadPng,
     isPngDownloading,
-    wallLayoutTileSize,
-    setWallLayoutTileSize,
     wallLayoutLegend,
     setWallLayoutLegend,
     handleDownloadWallLayout,
