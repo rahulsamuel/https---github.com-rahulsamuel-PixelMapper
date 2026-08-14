@@ -159,6 +159,11 @@ export interface RasterMapConfig {
   screenArrangement: ScreenArrangement[];
 }
 
+export interface WallLayoutLegendEntry {
+  color: string;
+  label: string;
+}
+
 interface RasterArgs {
   filename: string;
   outputWidth?: number;
@@ -399,6 +404,12 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   handleDownloadWiringDiagram: () => void;
   handleDownloadCompositeWiringDiagram: () => void;
   handleDownloadFullRaster: () => void;
+  wallLayoutTileSize: number;
+  setWallLayoutTileSize: Dispatch<SetStateAction<number>>;
+  wallLayoutLegend: WallLayoutLegendEntry[];
+  setWallLayoutLegend: Dispatch<SetStateAction<WallLayoutLegendEntry[]>>;
+  handleDownloadWallLayout: () => void;
+  isWallLayoutDownloading: boolean;
   generateRasterMap: (filename: string, outputWidth?: number, outputHeight?: number) => void;
   downloadRasterSlices: () => void;
   downloadSingleSlice: (sliceKey: string) => void;
@@ -692,6 +703,9 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [isManualDataModalOpen, setIsManualDataModalOpen] = useState(false);
   const [selectedTileForData, setSelectedTileForData] = useState<number | null>(null);
   const [isPngDownloading, setIsPngDownloading] = useState(false);
+  const [wallLayoutTileSize, setWallLayoutTileSize] = useState(80);
+  const [wallLayoutLegend, setWallLayoutLegend] = useState<WallLayoutLegendEntry[]>([]);
+  const [isWallLayoutDownloading, setIsWallLayoutDownloading] = useState(false);
   const [includeTextOverlaysInDownload, setIncludeTextOverlaysInDownload] = useState(true);
   const [selectionRect, setSelectionRect] = useState<{ startX: number; startY: number; endX: number; endY: number } | null>(null);
   const [selectedTileIds, setSelectedTileIds] = useState<number[]>([]);
@@ -2067,13 +2081,13 @@ const handleRightHalfTileChange = (add: boolean) => {
                     case 'inches': return fmtInches(mm);
                     case 'decimal-feet': return fmtDecimalFeet(mm);
                     case 'feet-inches': return fmtFeetInches(mm);
-                    case 'tiles': return `${screenEffW} × ${screenEffH} tiles`;
+                    case 'tiles': return `${screenEffW} tiles`;
                     default: return `${fmtFeetInches(mm)} / ${fmtMm(mm)}`;
                 }
             };
 
-            const wLabel = unit === 'tiles' ? `${screenEffW} × ${screenEffH} tiles` : fmtLabel(physWmm);
-            const hLabel = unit === 'tiles' ? '' : fmtLabel(physHmm);
+            const wLabel = unit === 'tiles' ? `${screenEffW} tiles` : fmtLabel(physWmm);
+            const hLabel = unit === 'tiles' ? `${screenEffH} tiles` : fmtLabel(physHmm);
             const fontSize = screen.dimensionLabelSize ?? 24;
             const color = screen.dimensionLabelColor ?? '#ffffff';
             const padding = fontSize * 1.5;
@@ -2112,8 +2126,8 @@ const handleRightHalfTileChange = (add: boolean) => {
             masterCtx.fill();
             masterCtx.fillText(wLabel, contentWidth / 2, contentHeight - padding - fontSize * 0.7);
 
-            // Height dimension (right, inside grid) — skip for tiles mode
-            if (unit !== 'tiles') {
+            // Height dimension (right, inside grid)
+            {
             masterCtx.beginPath();
             masterCtx.moveTo(contentWidth, 0);
             masterCtx.lineTo(contentWidth - padding - arrowSize, 0);
@@ -2861,6 +2875,211 @@ const handleRightHalfTileChange = (add: boolean) => {
       .finally(() => {
       });
   }, [rasterMapRef, rasterMapConfig, toast, subscriptionStatus, includeTextOverlaysInDownload, screens, drawTextOverlaysOnCtx]);
+
+  const handleDownloadWallLayout = useCallback(() => {
+    if (!activeBounds) {
+      toast({ title: "Download Failed", description: "Grid is empty.", variant: "destructive" });
+      return;
+    }
+    setIsWallLayoutDownloading(true);
+    setTimeout(() => {
+      try {
+        const tilePx = Math.max(20, Math.round(wallLayoutTileSize));
+        const gap = Math.max(2, Math.round(tilePx * 0.04));
+        const border = Math.max(1, Math.round(tilePx * 0.02));
+
+        const screenEffW = currentScreen.dimensions.screenWidth + (currentScreen.leftHalfTile ? 1 : 0) + (currentScreen.rightHalfTile ? 1 : 0);
+        const screenEffH = currentScreen.dimensions.screenHeight + (currentScreen.topHalfTile ? 1 : 0) + (currentScreen.bottomHalfTile ? 1 : 0);
+
+        const getTileW = (x: number) => {
+          if (currentScreen.leftHalfTile && x === 0) return tilePx / 2;
+          if (currentScreen.rightHalfTile && x === screenEffW - 1) return tilePx / 2;
+          return tilePx;
+        };
+        const getTileH = (y: number) => {
+          if (currentScreen.topHalfTile && y === 0) return tilePx / 2;
+          if (currentScreen.bottomHalfTile && y === screenEffH - 1) return tilePx / 2;
+          return tilePx;
+        };
+
+        const ab = activeBounds;
+        const gridPixelW = Array.from({ length: ab.maxX - ab.minX + 1 }, (_, i) => getTileW(ab.minX + i)).reduce((a, b) => a + b, 0);
+        const gridPixelH = Array.from({ length: ab.maxY - ab.minY + 1 }, (_, i) => getTileH(ab.minY + i)).reduce((a, b) => a + b, 0);
+
+        const dimPad = tilePx * 1.5;
+        const legendWidth = 280;
+        const legendPad = 24;
+        const legendEntryHeight = 36;
+        const legendTitleHeight = 40;
+
+        // Collect unique colors from tiles
+        const colorMap = new Map<string, string>();
+        for (let i = 0; i < currentScreen.tiles.length; i++) {
+          const tile = currentScreen.tiles[i];
+          if (tile.deleted) continue;
+          let bg = (i % screenEffW + Math.floor(i / screenEffW)) % 2 === 0 ? currentScreen.tileColor : currentScreen.tileColorTwo;
+          if (currentScreen.onOffMode) bg = '#FFFFFF';
+          else if (tile.color) bg = tile.color;
+          if (!colorMap.has(bg)) {
+            const existing = wallLayoutLegend.find(e => e.color === bg);
+            colorMap.set(bg, existing?.label ?? '');
+          }
+        }
+
+        const legendEntries = Array.from(colorMap.entries());
+        const legendH = legendTitleHeight + legendEntries.length * legendEntryHeight + legendPad;
+        const totalW = gridPixelW + dimPad * 2 + legendWidth + legendPad;
+        const totalH = Math.max(gridPixelH + dimPad * 2, legendH + legendPad);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.ceil(totalW);
+        canvas.height = Math.ceil(totalH);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { setIsWallLayoutDownloading(false); return; }
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const gridOriginX = dimPad;
+        const gridOriginY = dimPad;
+
+        // Draw tiles
+        let drawY = gridOriginY;
+        for (let y = ab.minY; y <= ab.maxY; y++) {
+          let drawX = gridOriginX;
+          for (let x = ab.minX; x <= ab.maxX; x++) {
+            const tw = getTileW(x);
+            const th = getTileH(y);
+            const index = y * screenEffW + x;
+            const tile = currentScreen.tiles[index];
+            if (tile && !tile.deleted) {
+              let bg = (x + y) % 2 === 0 ? currentScreen.tileColor : currentScreen.tileColorTwo;
+              if (currentScreen.onOffMode) bg = '#FFFFFF';
+              else if (tile.color) bg = tile.color;
+              ctx.fillStyle = bg;
+              ctx.fillRect(drawX, drawY, tw - gap, th - gap);
+              if (border > 0) {
+                ctx.strokeStyle = currentScreen.borderColor;
+                ctx.lineWidth = border;
+                ctx.strokeRect(drawX, drawY, tw - gap, th - gap);
+              }
+            }
+            drawX += tw;
+          }
+          drawY += getTileH(y);
+        }
+
+        // Draw dimensions (width bottom, height right) — tiles mode
+        const fontSize = Math.max(16, Math.round(tilePx * 0.28));
+        const arrowSize = Math.max(6, fontSize * 0.4);
+        const padding = fontSize * 1.5;
+        ctx.strokeStyle = '#000000';
+        ctx.fillStyle = '#000000';
+        ctx.lineWidth = 2;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.shadowColor = 'rgba(255,255,255,0.8)';
+        ctx.shadowBlur = fontSize * 0.3;
+
+        // Width dimension (bottom)
+        const wLabel = `${ab.maxX - ab.minX + 1} tiles`;
+        ctx.beginPath();
+        ctx.moveTo(gridOriginX, gridOriginY + gridPixelH);
+        ctx.lineTo(gridOriginX, gridOriginY + gridPixelH + padding + arrowSize);
+        ctx.moveTo(gridOriginX + gridPixelW, gridOriginY + gridPixelH);
+        ctx.lineTo(gridOriginX + gridPixelW, gridOriginY + gridPixelH + padding + arrowSize);
+        ctx.moveTo(gridOriginX + arrowSize, gridOriginY + gridPixelH + padding);
+        ctx.lineTo(gridOriginX + gridPixelW - arrowSize, gridOriginY + gridPixelH + padding);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(gridOriginX, gridOriginY + gridPixelH + padding);
+        ctx.lineTo(gridOriginX + arrowSize, gridOriginY + gridPixelH + padding - arrowSize / 2);
+        ctx.lineTo(gridOriginX + arrowSize, gridOriginY + gridPixelH + padding + arrowSize / 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(gridOriginX + gridPixelW, gridOriginY + gridPixelH + padding);
+        ctx.lineTo(gridOriginX + gridPixelW - arrowSize, gridOriginY + gridPixelH + padding - arrowSize / 2);
+        ctx.lineTo(gridOriginX + gridPixelW - arrowSize, gridOriginY + gridPixelH + padding + arrowSize / 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillText(wLabel, gridOriginX + gridPixelW / 2, gridOriginY + gridPixelH + padding + fontSize * 0.7);
+
+        // Height dimension (right)
+        const hLabel = `${ab.maxY - ab.minY + 1} tiles`;
+        ctx.beginPath();
+        ctx.moveTo(gridOriginX + gridPixelW, gridOriginY);
+        ctx.lineTo(gridOriginX + gridPixelW + padding + arrowSize, gridOriginY);
+        ctx.moveTo(gridOriginX + gridPixelW, gridOriginY + gridPixelH);
+        ctx.lineTo(gridOriginX + gridPixelW + padding + arrowSize, gridOriginY + gridPixelH);
+        ctx.moveTo(gridOriginX + gridPixelW + padding, gridOriginY + arrowSize);
+        ctx.lineTo(gridOriginX + gridPixelW + padding, gridOriginY + gridPixelH - arrowSize);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(gridOriginX + gridPixelW + padding, gridOriginY);
+        ctx.lineTo(gridOriginX + gridPixelW + padding - arrowSize / 2, gridOriginY + arrowSize);
+        ctx.lineTo(gridOriginX + gridPixelW + padding + arrowSize / 2, gridOriginY + arrowSize);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(gridOriginX + gridPixelW + padding, gridOriginY + gridPixelH);
+        ctx.lineTo(gridOriginX + gridPixelW + padding - arrowSize / 2, gridOriginY + gridPixelH - arrowSize);
+        ctx.lineTo(gridOriginX + gridPixelW + padding + arrowSize / 2, gridOriginY + gridPixelH - arrowSize);
+        ctx.closePath();
+        ctx.fill();
+        ctx.save();
+        ctx.translate(gridOriginX + gridPixelW + padding + fontSize * 0.7, gridOriginY + gridPixelH / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText(hLabel, 0, 0);
+        ctx.restore();
+        ctx.shadowBlur = 0;
+
+        // Draw legend
+        const legendX = gridOriginX + gridPixelW + dimPad * 2;
+        const legendY = legendPad;
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1;
+        ctx.fillRect(legendX, legendY, legendWidth, legendH);
+        ctx.strokeRect(legendX, legendY, legendWidth, legendH);
+
+        ctx.fillStyle = '#0f172a';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.font = `bold ${Math.round(fontSize * 0.85)}px sans-serif`;
+        ctx.fillText('Legend', legendX + legendPad / 2, legendY + legendTitleHeight / 2);
+
+        ctx.font = `${Math.round(fontSize * 0.75)}px sans-serif`;
+        legendEntries.forEach(([color, label], i) => {
+          const entryY = legendY + legendTitleHeight + i * legendEntryHeight;
+          ctx.fillStyle = color;
+          ctx.strokeStyle = '#00000033';
+          ctx.lineWidth = 1;
+          const swatch = legendEntryHeight * 0.5;
+          ctx.fillRect(legendX + legendPad / 2, entryY + (legendEntryHeight - swatch) / 2, swatch, swatch);
+          ctx.strokeRect(legendX + legendPad / 2, entryY + (legendEntryHeight - swatch) / 2, swatch, swatch);
+          ctx.fillStyle = '#1e293b';
+          ctx.fillText(label || color, legendX + legendPad / 2 + swatch + 12, entryY + legendEntryHeight / 2);
+        });
+
+        const safeName = (currentScreen.name || 'screen').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const filename = `WALL_LAYOUT_${safeName}.png`;
+        const dataUrl = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = dataUrl;
+        link.click();
+        trackEvent('download', { type: 'wall-layout', filename, thumbnail: dataUrl });
+        toast({ title: "Download Started", description: "Your wall layout image is being downloaded." });
+      } catch (err) {
+        console.error("Wall layout download failed", err);
+        toast({ title: "Download Failed", description: "Could not generate the wall layout image.", variant: "destructive" });
+      } finally {
+        setIsWallLayoutDownloading(false);
+      }
+    }, 50);
+  }, [activeBounds, currentScreen, wallLayoutTileSize, wallLayoutLegend, toast]);
 
 
   const getProjectData = useCallback((): ProjectData => {
@@ -3654,6 +3873,12 @@ const handleRightHalfTileChange = (add: boolean) => {
     setBorderColor,
     handleDownloadPng,
     isPngDownloading,
+    wallLayoutTileSize,
+    setWallLayoutTileSize,
+    wallLayoutLegend,
+    setWallLayoutLegend,
+    handleDownloadWallLayout,
+    isWallLayoutDownloading,
     includeTextOverlaysInDownload,
     setIncludeTextOverlaysInDownload,
     handleDownloadWiringDiagram,

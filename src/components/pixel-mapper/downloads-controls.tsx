@@ -3,10 +3,12 @@
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
-import { Download, Loader2, Type } from "lucide-react";
+import { Download, Loader2, Type, ImagePlus } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
 
 export function DownloadsControls() {
     const {
@@ -22,6 +24,10 @@ export function DownloadsControls() {
         screens,
         includeTextOverlaysInDownload,
         setIncludeTextOverlaysInDownload,
+        wallLayoutTileSize,
+        setWallLayoutTileSize,
+        handleDownloadWallLayout,
+        isWallLayoutDownloading,
     } = usePixelMap();
 
     const isGridEmpty = !activeBounds;
@@ -183,6 +189,46 @@ export function DownloadsControls() {
                         Download Full Raster Map
                     </Button>
                 )}
+
+                <Separator className="my-3" />
+                <div className="space-y-2">
+                    <Label className="text-xs font-medium">Wall Layout Export</Label>
+                    <p className="text-xs text-muted-foreground">Export a large-scale layout image with color legend and tile-count dimensions.</p>
+                    <div className="flex items-center gap-2">
+                        <Label htmlFor="wallTileSize" className="text-xs whitespace-nowrap">Tile size (px)</Label>
+                        <Input
+                            id="wallTileSize"
+                            type="number"
+                            value={wallLayoutTileSize}
+                            onChange={(e) => setWallLayoutTileSize(Math.max(20, Number(e.target.value) || 80))}
+                            min="20"
+                            max="500"
+                            className="h-8 w-20"
+                        />
+                    </div>
+                    {isGridEmpty ? (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className="w-full">
+                                    <Button size="sm" variant="outline" className="w-full justify-start" disabled>
+                                        <ImagePlus className="mr-2" />
+                                        Download Wall Layout
+                                    </Button>
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Cannot download an empty grid.</p></TooltipContent>
+                        </Tooltip>
+                    ) : (
+                        <Button size="sm" onClick={handleDownloadWallLayout} disabled={isWallLayoutDownloading} variant="outline" className="w-full justify-start">
+                            {isWallLayoutDownloading ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <ImagePlus className="mr-2" />
+                            )}
+                            {isWallLayoutDownloading ? "Generating..." : "Download Wall Layout"}
+                        </Button>
+                    )}
+                </div>
             </div>
         </TooltipProvider>
     );

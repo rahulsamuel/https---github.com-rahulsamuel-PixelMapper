@@ -165,13 +165,13 @@ export function LedGrid() {
       case 'inches': return fmtInches(mm);
       case 'decimal-feet': return fmtDecimalFeet(mm);
       case 'feet-inches': return fmtFeetInches(mm);
-      case 'tiles': return `${effectiveScreenWidth} × ${effectiveScreenHeight} tiles`;
+      case 'tiles': return `${effectiveScreenWidth} tiles`;
       default: return `${fmtFeetInches(mm)} / ${fmtMm(mm)}`;
     }
   };
 
-  const widthLabel = dimensionUnit === 'tiles' ? `${effectiveScreenWidth} × ${effectiveScreenHeight} tiles` : (screenWmm ? fmtLabel(screenWmm) : '');
-  const heightLabel = dimensionUnit === 'tiles' ? '' : (screenHmm ? fmtLabel(screenHmm) : '');
+  const widthLabel = dimensionUnit === 'tiles' ? `${effectiveScreenWidth} tiles` : (screenWmm ? fmtLabel(screenWmm) : '');
+  const heightLabel = dimensionUnit === 'tiles' ? `${effectiveScreenHeight} tiles` : (screenHmm ? fmtLabel(screenHmm) : '');
 
   const isSelectionMode = activeTool === 'delete' || activeTool === 'color';
 
@@ -548,7 +548,7 @@ function DimensionOverlay({
           </text>
         </g>
 
-        {/* Height dimension (right, inside grid) — hidden in tiles mode */}
+        {/* Height dimension (right, inside grid) */}
         {heightLabel && (
         <g>
           <line x1={scaledW} y1={0} x2={scaledW - padding - arrowSize} y2={0} stroke={color} strokeWidth={1} />
