@@ -139,9 +139,11 @@ interface ScreenArrangement {
   showResolution: boolean;
   resolutionLabelPosition: string;
   showDimensions: boolean;
-  dimensionUnit: 'mm' | 'meters' | 'inches' | 'decimal-feet' | 'feet-inches' | 'all';
+  dimensionUnit: 'mm' | 'meters' | 'inches' | 'decimal-feet' | 'feet-inches' | 'tiles' | 'all';
   dimensionLabelSize: number;
   dimensionLabelColor: string;
+  customTileWidthMm: number;
+  customTileHeightMm: number;
 }
 
 export interface RasterMapConfig {
@@ -215,9 +217,11 @@ export interface Screen {
   resolutionLabelColor: string;
   resolutionLabelColorMode: LabelColorMode;
   showDimensions: boolean;
-  dimensionUnit: 'mm' | 'meters' | 'inches' | 'decimal-feet' | 'feet-inches' | 'all';
+  dimensionUnit: 'mm' | 'meters' | 'inches' | 'decimal-feet' | 'feet-inches' | 'tiles' | 'all';
   dimensionLabelSize: number;
   dimensionLabelColor: string;
+  customTileWidthMm: number;
+  customTileHeightMm: number;
   rasterGroupId: string;
   topHalfTile: boolean;
   bottomHalfTile: boolean;
@@ -417,9 +421,11 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setResolutionLabelColor: Dispatch<SetStateAction<string>>;
   setResolutionLabelColorMode: Dispatch<SetStateAction<LabelColorMode>>;
   setShowDimensions: Dispatch<SetStateAction<boolean>>;
-  setDimensionUnit: Dispatch<SetStateAction<'mm' | 'meters' | 'inches' | 'decimal-feet' | 'feet-inches' | 'all'>>;
+  setDimensionUnit: Dispatch<SetStateAction<'mm' | 'meters' | 'inches' | 'decimal-feet' | 'feet-inches' | 'tiles' | 'all'>>;
   setDimensionLabelSize: Dispatch<SetStateAction<number>>;
   setDimensionLabelColor: Dispatch<SetStateAction<string>>;
+  setCustomTileWidthMm: Dispatch<SetStateAction<number>>;
+  setCustomTileHeightMm: Dispatch<SetStateAction<number>>;
   addTextOverlay: () => void;
   updateTextOverlay: (id: string, updates: Partial<TextOverlay>) => void;
   removeTextOverlay: (id: string) => void;
@@ -630,6 +636,8 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     dimensionUnit: 'all',
     dimensionLabelSize: 24,
     dimensionLabelColor: '#ffffff',
+    customTileWidthMm: 0,
+    customTileHeightMm: 0,
     rasterGroupId: 'raster-1',
     topHalfTile: false,
     bottomHalfTile: false,
@@ -842,9 +850,11 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setResolutionLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, resolutionLabelColor: typeof updater === 'function' ? updater(s.resolutionLabelColor ?? '#ffffff') : updater }));
   const setResolutionLabelColorMode = (updater: SetStateAction<LabelColorMode>) => updateCurrentScreen(s => ({ ...s, resolutionLabelColorMode: typeof updater === 'function' ? updater(s.resolutionLabelColorMode ?? 'auto') : updater }));
   const setShowDimensions = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showDimensions: typeof updater === 'function' ? updater(s.showDimensions ?? false) : updater }));
-  const setDimensionUnit = (updater: SetStateAction<'mm' | 'meters' | 'inches' | 'decimal-feet' | 'feet-inches' | 'all'>) => updateCurrentScreen(s => ({ ...s, dimensionUnit: typeof updater === 'function' ? updater(s.dimensionUnit ?? 'all') : updater }));
+  const setDimensionUnit = (updater: SetStateAction<'mm' | 'meters' | 'inches' | 'decimal-feet' | 'feet-inches' | 'tiles' | 'all'>) => updateCurrentScreen(s => ({ ...s, dimensionUnit: typeof updater === 'function' ? updater(s.dimensionUnit ?? 'all') : updater }));
   const setDimensionLabelSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, dimensionLabelSize: typeof updater === 'function' ? updater(s.dimensionLabelSize ?? 24) : updater }));
   const setDimensionLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, dimensionLabelColor: typeof updater === 'function' ? updater(s.dimensionLabelColor ?? '#ffffff') : updater }));
+  const setCustomTileWidthMm = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, customTileWidthMm: typeof updater === 'function' ? updater(s.customTileWidthMm ?? 0) : updater }));
+  const setCustomTileHeightMm = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, customTileHeightMm: typeof updater === 'function' ? updater(s.customTileHeightMm ?? 0) : updater }));
   const setProcessorType = (updater: SetStateAction<ProcessorType>) => updateCurrentScreen(s => ({ ...s, processorType: typeof updater === 'function' ? updater(s.processorType) : updater }));
 
   const drawTextOverlaysOnCtx = useCallback((
@@ -2028,11 +2038,14 @@ const handleRightHalfTileChange = (add: boolean) => {
     // Draw dimensions overlay
     if (screen.showDimensions) {
         const product = products.find(p => p.id === screen.selectedProductId);
-        const tileWmm = product?.tileWidthMm as number | undefined;
-        const tileHmm = product?.tileHeightMm as number | undefined;
-        if (tileWmm && tileHmm) {
-            const screenEffW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
-            const screenEffH = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+        const tileWmm = (product?.tileWidthMm as number | undefined) || screen.customTileWidthMm || 0;
+        const tileHmm = (product?.tileHeightMm as number | undefined) || screen.customTileHeightMm || 0;
+        const screenEffW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+        const screenEffH = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+        const unit = screen.dimensionUnit ?? 'all';
+        const hasPhysical = tileWmm > 0 && tileHmm > 0;
+
+        if (hasPhysical || unit === 'tiles') {
             const physWmm = tileWmm * screenEffW;
             const physHmm = tileHmm * screenEffH;
 
@@ -2047,7 +2060,6 @@ const handleRightHalfTileChange = (add: boolean) => {
                 const inchStr = formatFractionalInch(remainingInches);
                 return `${feet}' ${inchStr}"`;
             };
-            const unit = screen.dimensionUnit ?? 'all';
             const fmtLabel = (mm: number) => {
                 switch (unit) {
                     case 'mm': return fmtMm(mm);
@@ -2055,12 +2067,13 @@ const handleRightHalfTileChange = (add: boolean) => {
                     case 'inches': return fmtInches(mm);
                     case 'decimal-feet': return fmtDecimalFeet(mm);
                     case 'feet-inches': return fmtFeetInches(mm);
+                    case 'tiles': return `${screenEffW} × ${screenEffH} tiles`;
                     default: return `${fmtFeetInches(mm)} / ${fmtMm(mm)}`;
                 }
             };
 
-            const wLabel = fmtLabel(physWmm);
-            const hLabel = fmtLabel(physHmm);
+            const wLabel = unit === 'tiles' ? `${screenEffW} × ${screenEffH} tiles` : fmtLabel(physWmm);
+            const hLabel = unit === 'tiles' ? '' : fmtLabel(physHmm);
             const fontSize = screen.dimensionLabelSize ?? 24;
             const color = screen.dimensionLabelColor ?? '#ffffff';
             const padding = fontSize * 1.5;
@@ -2099,7 +2112,8 @@ const handleRightHalfTileChange = (add: boolean) => {
             masterCtx.fill();
             masterCtx.fillText(wLabel, contentWidth / 2, contentHeight - padding - fontSize * 0.7);
 
-            // Height dimension (right, inside grid)
+            // Height dimension (right, inside grid) — skip for tiles mode
+            if (unit !== 'tiles') {
             masterCtx.beginPath();
             masterCtx.moveTo(contentWidth, 0);
             masterCtx.lineTo(contentWidth - padding - arrowSize, 0);
@@ -2125,6 +2139,7 @@ const handleRightHalfTileChange = (add: boolean) => {
             masterCtx.rotate(-Math.PI / 2);
             masterCtx.fillText(hLabel, 0, 0);
             masterCtx.restore();
+            }
 
             masterCtx.shadowBlur = 0;
         }
@@ -2271,6 +2286,8 @@ const handleRightHalfTileChange = (add: boolean) => {
             dimensionUnit: screen.dimensionUnit ?? 'all',
             dimensionLabelSize: screen.dimensionLabelSize ?? 24,
             dimensionLabelColor: screen.dimensionLabelColor ?? '#ffffff',
+            customTileWidthMm: screen.customTileWidthMm ?? 0,
+            customTileHeightMm: screen.customTileHeightMm ?? 0,
         });
 
         if (screen.rasterOffset.x + contentWidth > totalContentWidth) {
@@ -3689,6 +3706,10 @@ const handleRightHalfTileChange = (add: boolean) => {
     setDimensionLabelSize,
     dimensionLabelColor: currentScreen.dimensionLabelColor ?? '#ffffff',
     setDimensionLabelColor,
+    customTileWidthMm: currentScreen.customTileWidthMm ?? 0,
+    setCustomTileWidthMm,
+    customTileHeightMm: currentScreen.customTileHeightMm ?? 0,
+    setCustomTileHeightMm,
     addTextOverlay,
     updateTextOverlay,
     removeTextOverlay,

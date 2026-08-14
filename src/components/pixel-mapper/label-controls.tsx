@@ -384,6 +384,7 @@ export function LabelControls() {
                   <SelectItem value="inches">Inches</SelectItem>
                   <SelectItem value="mm">Millimeters</SelectItem>
                   <SelectItem value="meters">Meters</SelectItem>
+                  <SelectItem value="tiles">Tiles (count)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

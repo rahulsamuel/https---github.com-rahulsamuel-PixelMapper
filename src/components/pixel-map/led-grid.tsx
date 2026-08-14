@@ -37,6 +37,8 @@ export function LedGrid() {
     dimensionUnit,
     dimensionLabelSize,
     dimensionLabelColor,
+    customTileWidthMm,
+    customTileHeightMm,
     zoom,
     onOffMode,
     sliceOffsetLabels,
@@ -140,8 +142,8 @@ export function LedGrid() {
   const resolutionText = `Pixel: ${totalGridPixelWidth} x ${totalGridPixelHeight}`;
 
   // Physical dimension calculations
-  const tileWmm = selectedProduct?.tileWidthMm as number | undefined;
-  const tileHmm = selectedProduct?.tileHeightMm as number | undefined;
+  const tileWmm = (selectedProduct?.tileWidthMm as number | undefined) || customTileWidthMm || 0;
+  const tileHmm = (selectedProduct?.tileHeightMm as number | undefined) || customTileHeightMm || 0;
   const screenWmm = tileWmm ? tileWmm * effectiveScreenWidth : 0;
   const screenHmm = tileHmm ? tileHmm * effectiveScreenHeight : 0;
 
@@ -163,12 +165,13 @@ export function LedGrid() {
       case 'inches': return fmtInches(mm);
       case 'decimal-feet': return fmtDecimalFeet(mm);
       case 'feet-inches': return fmtFeetInches(mm);
+      case 'tiles': return `${effectiveScreenWidth} × ${effectiveScreenHeight} tiles`;
       default: return `${fmtFeetInches(mm)} / ${fmtMm(mm)}`;
     }
   };
 
-  const widthLabel = screenWmm ? fmtLabel(screenWmm) : '';
-  const heightLabel = screenHmm ? fmtLabel(screenHmm) : '';
+  const widthLabel = dimensionUnit === 'tiles' ? `${effectiveScreenWidth} × ${effectiveScreenHeight} tiles` : (screenWmm ? fmtLabel(screenWmm) : '');
+  const heightLabel = dimensionUnit === 'tiles' ? '' : (screenHmm ? fmtLabel(screenHmm) : '');
 
   const isSelectionMode = activeTool === 'delete' || activeTool === 'color';
 
@@ -337,7 +340,7 @@ export function LedGrid() {
                 {resolutionText}
             </div>
         )}
-        {showDimensions && selectedProduct && screenWmm > 0 && screenHmm > 0 && (
+        {showDimensions && ((screenWmm > 0 && screenHmm > 0) || dimensionUnit === 'tiles') && (
           <DimensionOverlay
             gridWidth={totalGridPixelWidth}
             gridHeight={totalGridPixelHeight}
@@ -545,7 +548,8 @@ function DimensionOverlay({
           </text>
         </g>
 
-        {/* Height dimension (right, inside grid) */}
+        {/* Height dimension (right, inside grid) — hidden in tiles mode */}
+        {heightLabel && (
         <g>
           <line x1={scaledW} y1={0} x2={scaledW - padding - arrowSize} y2={0} stroke={color} strokeWidth={1} />
           <line x1={scaledW} y1={scaledH} x2={scaledW - padding - arrowSize} y2={scaledH} stroke={color} strokeWidth={1} />
@@ -565,6 +569,7 @@ function DimensionOverlay({
             {heightLabel}
           </text>
         </g>
+        )}
       </svg>
     </div>
   );

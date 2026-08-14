@@ -56,6 +56,10 @@ export function DimensionControls() {
     randomizeModuleColors,
     setRandomizeModuleColors,
     regenerateModuleColors,
+    customTileWidthMm,
+    setCustomTileWidthMm,
+    customTileHeightMm,
+    setCustomTileHeightMm,
    } = usePixelMap();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,6 +116,34 @@ export function DimensionControls() {
                 />
             </div>
         </div>
+        {isCustom && (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="customTileWidthMm">Tile Width (mm)</Label>
+              <Input
+                id="customTileWidthMm"
+                name="customTileWidthMm"
+                type="number"
+                value={customTileWidthMm || ''}
+                onChange={(e) => setCustomTileWidthMm(Math.max(0, Number(e.target.value) || 0))}
+                min="0"
+                placeholder="e.g. 500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customTileHeightMm">Tile Height (mm)</Label>
+              <Input
+                id="customTileHeightMm"
+                name="customTileHeightMm"
+                type="number"
+                value={customTileHeightMm || ''}
+                onChange={(e) => setCustomTileHeightMm(Math.max(0, Number(e.target.value) || 0))}
+                min="0"
+                placeholder="e.g. 500"
+              />
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
                 <Label htmlFor="screenWidth">Screen Width (full tiles)</Label>
