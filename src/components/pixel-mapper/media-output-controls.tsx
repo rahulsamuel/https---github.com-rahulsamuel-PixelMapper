@@ -477,6 +477,101 @@ function ScreenRasterControls({
           </Select>
         </div>
       )}
+
+      {/* Raster crop controls */}
+      <Separator className="my-2" />
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-medium">Crop Screen in Raster</Label>
+          <Switch
+            checked={!!screen.rasterCrop}
+            onCheckedChange={val => {
+              if (val) {
+                const effW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+                const effH = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+                updateScreenById(screen.id, s => ({ ...s, rasterCrop: { minX: 0, minY: 0, maxX: effW - 1, maxY: effH - 1 } }));
+              } else {
+                updateScreenById(screen.id, s => ({ ...s, rasterCrop: null }));
+              }
+            }}
+            className="scale-90"
+          />
+        </div>
+        {screen.rasterCrop && (
+          <>
+            <p className="text-xs text-muted-foreground">Choose which tiles appear in the raster output. Reduce the range to crop.</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-1">
+                <Label className="text-xs">Start Tile X</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={screen.rasterCrop.minX}
+                  onChange={e => {
+                    const val = Math.max(0, Number(e.target.value) || 0);
+                    updateScreenById(screen.id, s => s.rasterCrop ? ({ ...s, rasterCrop: { ...s.rasterCrop, minX: Math.min(val, s.rasterCrop.maxX) } }) : s);
+                  }}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs">End Tile X</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={screen.rasterCrop.maxX}
+                  onChange={e => {
+                    const effW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+                    const val = Math.min(effW - 1, Math.max(0, Number(e.target.value) || 0));
+                    updateScreenById(screen.id, s => s.rasterCrop ? ({ ...s, rasterCrop: { ...s.rasterCrop, maxX: Math.max(val, s.rasterCrop.minX) } }) : s);
+                  }}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs">Start Tile Y</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={screen.rasterCrop.minY}
+                  onChange={e => {
+                    const val = Math.max(0, Number(e.target.value) || 0);
+                    updateScreenById(screen.id, s => s.rasterCrop ? ({ ...s, rasterCrop: { ...s.rasterCrop, minY: Math.min(val, s.rasterCrop.maxY) } }) : s);
+                  }}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs">End Tile Y</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={screen.rasterCrop.maxY}
+                  onChange={e => {
+                    const effH = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+                    const val = Math.min(effH - 1, Math.max(0, Number(e.target.value) || 0));
+                    updateScreenById(screen.id, s => s.rasterCrop ? ({ ...s, rasterCrop: { ...s.rasterCrop, maxY: Math.max(val, s.rasterCrop.minY) } }) : s);
+                  }}
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full h-7 text-xs"
+              onClick={() => {
+                const effW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+                const effH = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+                updateScreenById(screen.id, s => ({ ...s, rasterCrop: { minX: 0, minY: 0, maxX: effW - 1, maxY: effH - 1 } }));
+              }}
+            >
+              <RotateCcw className="mr-1.5 h-3 w-3" />
+              Reset Crop to Full Screen
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -241,6 +241,7 @@ export interface Screen {
   moduleBorderColor: string;
   randomizeModuleColors: boolean;
   moduleColors: string[][];
+  rasterCrop: ActiveBounds | null;
 }
 
 export interface CalculatorTabData {
@@ -662,6 +663,7 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     moduleBorderColor: "#000000",
     randomizeModuleColors: false,
     moduleColors: [],
+    rasterCrop: null,
   };
 };
 
@@ -2248,19 +2250,24 @@ const handleRightHalfTileChange = (add: boolean) => {
         const activeTiles = screen.tiles.map((t, i) => ({...t, index: i})).filter(t => !t.deleted);
         if (activeTiles.length === 0) continue;
 
-        let minX = screen.dimensions.screenWidth, minY = Infinity, maxX = -1, maxY = -1;
         const currentEffectiveScreenWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
 
-        activeTiles.forEach(tile => {
-            const x = tile.index % currentEffectiveScreenWidth;
-            const y = Math.floor(tile.index / currentEffectiveScreenWidth);
-            if (x < minX) minX = x;
-            if (x > maxX) maxX = x;
-            if (y < minY) minY = y;
-            if (y > maxY) maxY = y;
-        });
+        let screenActiveBounds: ActiveBounds;
 
-        const screenActiveBounds = { minX, minY, maxX, maxY };
+        if (screen.rasterCrop) {
+            screenActiveBounds = screen.rasterCrop;
+        } else {
+            let minX = screen.dimensions.screenWidth, minY = Infinity, maxX = -1, maxY = -1;
+            activeTiles.forEach(tile => {
+                const x = tile.index % currentEffectiveScreenWidth;
+                const y = Math.floor(tile.index / currentEffectiveScreenWidth);
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            });
+            screenActiveBounds = { minX, minY, maxX, maxY };
+        }
         const screenEffectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
         const screenEffectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
 
