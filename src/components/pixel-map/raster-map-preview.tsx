@@ -19,7 +19,6 @@ export function RasterMapPreview() {
     rasterMapRef,
     rasterBgColor,
     screens,
-    downloadSingleSlice,
     downloadRasterSlices,
   } = usePixelMap();
 
@@ -241,13 +240,6 @@ export function RasterMapPreview() {
                 <div className="flex flex-col items-center gap-1 p-2 rounded-md bg-background/85">
                   <p className="font-bold whitespace-nowrap text-sm">{slice.filename.split('/').pop()?.replace('.png', '').replace('raster-map-', '')}</p>
                   <p className="font-mono text-xs whitespace-nowrap text-muted-foreground">Size: {slice.width}x{slice.height}</p>
-                  <button
-                    className="mt-1 flex items-center gap-1 text-xs bg-primary text-primary-foreground rounded px-2 py-1 hover:bg-primary/90 transition-colors"
-                    onClick={() => downloadSingleSlice(slice.key)}
-                  >
-                    <Download className="h-3 w-3" />
-                    Download
-                  </button>
                 </div>
               </div>
             </div>
