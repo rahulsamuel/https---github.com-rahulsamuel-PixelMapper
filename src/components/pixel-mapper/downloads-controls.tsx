@@ -33,6 +33,7 @@ export function DownloadsControls() {
 } = usePixelMap();
 
     const isGridEmpty = !activeBounds;
+    const hasTextOverlays = (currentScreen.textOverlays?.length ?? 0) > 0;
     const isGridTab = activeTab === 'grid';
     const isWiringTab = activeTab === 'wiring';
     const isRasterTab = activeTab === 'raster';
@@ -113,13 +114,14 @@ export function DownloadsControls() {
         <TooltipProvider>
             <div className="space-y-2">
                 <div className="flex items-center justify-between px-1 py-1 border rounded-md bg-muted/30">
-                    <Label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <Label className={`flex items-center gap-1.5 text-xs ${hasTextOverlays ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'}`}>
                         <Type className="h-3.5 w-3.5" />
                         Include text overlays
                     </Label>
                     <Switch
-                        checked={includeTextOverlaysInDownload}
-                        onCheckedChange={setIncludeTextOverlaysInDownload}
+                        checked={includeTextOverlaysInDownload && hasTextOverlays}
+                        onCheckedChange={hasTextOverlays ? setIncludeTextOverlaysInDownload : undefined}
+                        disabled={!hasTextOverlays}
                     />
                 </div>
                 {pngDownloadDisabled ? (

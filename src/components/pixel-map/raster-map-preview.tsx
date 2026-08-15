@@ -41,78 +41,19 @@ export function RasterMapPreview() {
       if (!screen || !displayConfig.slices.length) continue;
 
       const { tileWidth, tileHeight } = screen.dimensions;
-      const effW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
-      const effH = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
-      const ab = arrangement.activeBounds;
-      const { outputWidth, outputHeight } = displayConfig;
-
       const items: { x: number; y: number; tileX: number; tileY: number; label: string }[] = [];
 
-      const tilesBySlice = new Map<string, number[]>();
-      const activeTiles = screen.tiles.map((_, i) => i).filter(i => !screen.tiles[i].deleted);
-
-      activeTiles.forEach(index => {
-        const tx = index % effW;
-        const ty = Math.floor(index / effW);
-        if (tx < ab.minX || tx > ab.maxX || ty < ab.minY || ty > ab.maxY) return;
-
-        let tcy = 0;
-        for (let i = ab.minY; i < ty; i++) {
-          const isTop = screen.topHalfTile && i === 0;
-          const isBot = screen.bottomHalfTile && i === effH - 1;
-          tcy += (isTop || isBot) ? tileHeight / 2 : tileHeight;
-        }
-        let tcx = 0;
-        for (let i = ab.minX; i < tx; i++) {
-          const isL = screen.leftHalfTile && i === 0;
-          const isR = screen.rightHalfTile && i === effW - 1;
-          tcx += (isL || isR) ? tileWidth / 2 : tileWidth;
-        }
-
-        const absX = tcx + arrangement.x;
-        const absY = tcy + arrangement.y;
-        const sliceKey = `${Math.floor(absY / outputHeight)}-${Math.floor(absX / outputWidth)}`;
-        if (!tilesBySlice.has(sliceKey)) tilesBySlice.set(sliceKey, []);
-        tilesBySlice.get(sliceKey)!.push(index);
+      // Each segment gets its own coordinate label. Do not combine segments by screen ID.
+      items.push({
+        x: 0,
+        y: 0,
+        tileX: tileWidth / 2,
+        tileY: tileHeight / 2,
+        label: `(${arrangement.x},${arrangement.y})`,
       });
 
-      tilesBySlice.forEach((sliceIndices, sliceKey) => {
-        if (!sliceIndices.length) return;
-        const slice = displayConfig.slices.find(s => s.key === sliceKey);
-        if (!slice) return;
-        const firstIndex = sliceIndices[0];
-        const tx = firstIndex % effW;
-        const ty = Math.floor(firstIndex / effW);
-
-        let tcy = 0;
-        for (let i = ab.minY; i < ty; i++) {
-          const isTop = screen.topHalfTile && i === 0;
-          const isBot = screen.bottomHalfTile && i === effH - 1;
-          tcy += (isTop || isBot) ? tileHeight / 2 : tileHeight;
-        }
-        let tcx = 0;
-        for (let i = ab.minX; i < tx; i++) {
-          const isL = screen.leftHalfTile && i === 0;
-          const isR = screen.rightHalfTile && i === effW - 1;
-          tcx += (isL || isR) ? tileWidth / 2 : tileWidth;
-        }
-
-        const absX = tcx + arrangement.x;
-        const absY = tcy + arrangement.y;
-        const offsetXInSlice = absX - slice.x;
-        const offsetYInSlice = absY - slice.y;
-
-        // Position relative to the screen arrangement box
-        items.push({
-          x: tcx,
-          y: tcy,
-          tileX: tileWidth / 2,
-          tileY: tileHeight / 2,
-          label: `(${offsetXInSlice},${offsetYInSlice})`,
-        });
-      });
-
-      result.set(arrangement.screenId, items);
+      result.set(`${arrangement.screenId}-${arrangement.segmentId}`, items);
+      result.set(`${arrangement.screenId}-${arrangement.segmentId}`, items);
     }
 
     return result;
@@ -247,7 +188,7 @@ export function RasterMapPreview() {
 
           {/* Screen arrangement borders + tile offset overlays */}
           {screenArrangement.map(sa => {
-            const offsetItems = tileOffsetsByScreen.get(sa.screenId) ?? [];
+            const offsetItems = tileOffsetsByScreen.get(`${sa.screenId}-${sa.segmentId}`) ?? [];
             const screen = screens.find(s => s.id === sa.screenId);
             const screenOverlays = screen?.textOverlays ?? [];
 
@@ -261,6 +202,7 @@ export function RasterMapPreview() {
                   width: sa.width,
                   height: sa.height,
                   boxSizing: 'border-box',
+                  overflow: 'hidden',
                 }}
               >
                 {/* Tile offset labels (HTML overlay only — screen names are drawn in canvas) */}
@@ -291,34 +233,57 @@ export function RasterMapPreview() {
                   </div>
                 ))}
 
-                {/* Text overlays */}
-                {screenOverlays.map(overlay => (
-                  <div
-                    key={overlay.id}
-                    className="absolute z-20 pointer-events-none"
-                    style={{
-                      left: overlay.x,
-                      top: overlay.y,
-                      transform: `rotate(${overlay.rotation}deg)`,
-                      transformOrigin: 'center',
-                    }}
-                  >
-                    <div
-                      className="font-bold whitespace-nowrap"
-                      style={{
-                        fontSize: `${overlay.fontSize}px`,
-                        color: overlay.colorMode === 'auto' ? '#FFFFFF' : overlay.color,
-                        fontWeight: overlay.fontWeight,
-                        backgroundColor: overlay.showBackground ? overlay.backgroundColor : 'transparent',
-                        padding: overlay.showBackground ? '4px 10px' : '0',
-                        borderRadius: overlay.showBackground ? '4px' : '0',
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {overlay.text || ' '}
-                    </div>
-                  </div>
-                ))}
+                {/* Text overlays — positioned in full-screen coordinate space, clipped to this piece */}
+                {(() => {
+                  const { tileWidth: tw, tileHeight: th } = screen.dimensions;
+                  const effW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+                  const effH = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+                  const ab = sa.activeBounds;
+                  let cropOffsetX = 0;
+                  for (let i = 0; i < ab.minX; i++) {
+                    const isL = screen.leftHalfTile && i === 0;
+                    const isR = screen.rightHalfTile && i === effW - 1;
+                    cropOffsetX += (isL || isR) ? tw / 2 : tw;
+                  }
+                  let cropOffsetY = 0;
+                  for (let i = 0; i < ab.minY; i++) {
+                    const isT = screen.topHalfTile && i === 0;
+                    const isB = screen.bottomHalfTile && i === effH - 1;
+                    cropOffsetY += (isT || isB) ? th / 2 : th;
+                  }
+                  return screenOverlays.map(overlay => {
+                    const shiftedX = overlay.x - cropOffsetX;
+                    const shiftedY = overlay.y - cropOffsetY;
+                    if (shiftedX > sa.width || shiftedY > sa.height || shiftedX + overlay.fontSize * (overlay.text?.length ?? 4) < 0 || shiftedY + overlay.fontSize < 0) return null;
+                    return (
+                      <div
+                        key={overlay.id}
+                        className="absolute z-20 pointer-events-none"
+                        style={{
+                          left: shiftedX,
+                          top: shiftedY,
+                          transform: `rotate(${overlay.rotation}deg)`,
+                          transformOrigin: 'center',
+                        }}
+                      >
+                        <div
+                          className="font-bold whitespace-nowrap"
+                          style={{
+                            fontSize: `${overlay.fontSize}px`,
+                            color: overlay.colorMode === 'auto' ? '#FFFFFF' : overlay.color,
+                            fontWeight: overlay.fontWeight,
+                            backgroundColor: overlay.showBackground ? overlay.backgroundColor : 'transparent',
+                            padding: overlay.showBackground ? '4px 10px' : '0',
+                            borderRadius: overlay.showBackground ? '4px' : '0',
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          {overlay.text || ' '}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             );
           })}
