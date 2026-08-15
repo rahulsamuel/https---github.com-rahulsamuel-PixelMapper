@@ -169,8 +169,8 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
     setZoom(newZoom > 0 ? newZoom : 1, true);
   };
   
-  const AccordionSectionTrigger = ({ icon, title }: { icon: React.ReactNode, title: string }) => (
-    <AccordionTrigger className="bg-card hover:bg-muted/50 px-4 py-3 rounded-lg text-base font-semibold border data-[state=closed]:shadow-sm">
+  const AccordionSectionTrigger = ({ icon, title, colorClass }: { icon: React.ReactNode, title: string, colorClass?: string }) => (
+    <AccordionTrigger className={`bg-card hover:bg-muted/50 px-4 py-3 rounded-lg text-base font-semibold border data-[state=closed]:shadow-sm ${colorClass ?? ''}`}>
       <div className="flex items-center gap-3">
         {icon}
         <span>{title}</span>
@@ -283,7 +283,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               className="p-4 flex flex-col gap-2"
             >
               <AccordionItem value="project" className="border-none">
-                <AccordionSectionTrigger icon={<Package className="size-5" />} title="Project" />
+                <AccordionSectionTrigger icon={<Package className="size-5" />} title="Project" colorClass="border-l-4 border-l-blue-500" />
                 <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
                   <div>
                     <div className="mb-4">
@@ -304,7 +304,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               </AccordionItem>
 
               <AccordionItem value="screens" className="border-none">
-                <AccordionSectionTrigger icon={<ScreenShare className="size-5" />} title="Screens" />
+                <AccordionSectionTrigger icon={<ScreenShare className="size-5" />} title="Screens" colorClass="border-l-4 border-l-emerald-500" />
                 <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
                   <TooltipProvider delayDuration={300}>
                   <div className="space-y-2">
@@ -387,7 +387,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               {activeTab === 'grid' && (
                 <>
                   <AccordionItem value="grid-setup" className="border-none">
-                    <AccordionSectionTrigger icon={<LayoutGrid className="size-5" />} title="Grid Setup" />
+                    <AccordionSectionTrigger icon={<LayoutGrid className="size-5" />} title="Grid Setup" colorClass="border-l-4 border-l-amber-500" />
                     <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
                       <div>
                         <div className="mb-4">
@@ -407,7 +407,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                     </AccordionContent>
                   </AccordionItem>
                   <AccordionItem value="labeling" className="border-none">
-                    <AccordionSectionTrigger icon={<CaseSensitive className="size-5" />} title="Labeling" />
+                    <AccordionSectionTrigger icon={<CaseSensitive className="size-5" />} title="Labeling" colorClass="border-l-4 border-l-orange-500" />
                      <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
                        <p className="text-sm text-muted-foreground pb-4">Customize the labels on the LED tiles.</p>
                        <LabelControls />
@@ -418,7 +418,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
 
               {activeTab === 'wiring' && (
                 <AccordionItem value="wiring" className="border-none">
-                  <AccordionSectionTrigger icon={<GitBranch className="size-5" />} title="Wiring" />
+                  <AccordionSectionTrigger icon={<GitBranch className="size-5" />} title="Wiring" colorClass="border-l-4 border-l-rose-500" />
                   <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
                      <div>
                       <div className="mb-4">
@@ -441,7 +441,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               
               {(activeTab === 'grid' || activeTab === 'wiring') && (
                 <AccordionItem value="editing" className="border-none">
-                  <AccordionSectionTrigger icon={<Wand2 className="size-5" />} title="Editing Tools" />
+                  <AccordionSectionTrigger icon={<Wand2 className="size-5" />} title="Editing Tools" colorClass="border-l-4 border-l-violet-500" />
                   <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
                     <p className="text-sm text-muted-foreground pb-4">Select a tool to apply to the grid or restore deleted tiles.</p>
                     <div className="space-y-4 pt-4">
@@ -478,7 +478,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
 
               {activeTab === 'raster' && (
                 <AccordionItem value="export" className="border-none">
-                  <AccordionSectionTrigger icon={<FileOutput className="size-5" />} title="Media Output" />
+                  <AccordionSectionTrigger icon={<FileOutput className="size-5" />} title="Media Output" colorClass="border-l-4 border-l-cyan-500" />
                   <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
                     <p className="text-sm text-muted-foreground pb-4">Create raster maps for media servers.</p>
                     <MediaOutputControls />
@@ -488,7 +488,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
 
               {activeTab === 'deliverables' && (
                 <AccordionItem value="project-details" className="border-none">
-                  <AccordionSectionTrigger icon={<Info className="size-5" />} title="Project Info" />
+                  <AccordionSectionTrigger icon={<Info className="size-5" />} title="Project Info" colorClass="border-l-4 border-l-teal-500" />
                   <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
                     <ProjectDetailsControls />
                   </AccordionContent>
@@ -533,11 +533,11 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
 
                <div className="flex-1 flex justify-center">
                 <TabsList>
-                  <TabsTrigger value="grid">LED Grid</TabsTrigger>
-                  <TabsTrigger value="wiring">Wiring Diagram</TabsTrigger>
-                  <TabsTrigger value="raster">Raster Map</TabsTrigger>
-                  <TabsTrigger value="equipment">Equipment</TabsTrigger>
-                  <TabsTrigger value="deliverables">Deliverables</TabsTrigger>
+                  <TabsTrigger value="grid" className="data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-400 data-[state=active]:shadow-sm border-b-2 border-b-transparent data-[state=active]:border-b-amber-500">LED Grid</TabsTrigger>
+                  <TabsTrigger value="wiring" className="data-[state=active]:bg-rose-500/15 data-[state=active]:text-rose-700 dark:data-[state=active]:text-rose-400 data-[state=active]:shadow-sm border-b-2 border-b-transparent data-[state=active]:border-b-rose-500">Wiring Diagram</TabsTrigger>
+                  <TabsTrigger value="raster" className="data-[state=active]:bg-cyan-500/15 data-[state=active]:text-cyan-700 dark:data-[state=active]:text-cyan-400 data-[state=active]:shadow-sm border-b-2 border-b-transparent data-[state=active]:border-b-cyan-500">Raster Map</TabsTrigger>
+                  <TabsTrigger value="equipment" className="data-[state=active]:bg-slate-500/15 data-[state=active]:text-slate-700 dark:data-[state=active]:text-slate-300 data-[state=active]:shadow-sm border-b-2 border-b-transparent data-[state=active]:border-b-slate-500">Equipment</TabsTrigger>
+                  <TabsTrigger value="deliverables" className="data-[state=active]:bg-teal-500/15 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-400 data-[state=active]:shadow-sm border-b-2 border-b-transparent data-[state=active]:border-b-teal-500">Deliverables</TabsTrigger>
                 </TabsList>
                </div>
 
