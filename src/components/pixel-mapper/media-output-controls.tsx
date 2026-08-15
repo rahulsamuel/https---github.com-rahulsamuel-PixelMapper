@@ -518,15 +518,39 @@ function ScreenRasterControls({
             }));
           };
 
+          // Compute which tiles are already covered by existing segments
+          const coveredTiles = new Set<string>();
+          (screen.rasterSegments ?? []).forEach(seg => {
+            for (let x = seg.bounds.minX; x <= seg.bounds.maxX; x++) {
+              for (let y = seg.bounds.minY; y <= seg.bounds.maxY; y++) {
+                coveredTiles.add(`${x},${y}`);
+              }
+            }
+          });
+          const totalTiles = effW * effH;
+          const remainingCount = totalTiles - coveredTiles.size;
+
+          // Find the next available tile (first uncovered tile in row-major order)
+          let nextX = 0, nextY = 0, found = false;
+          for (let y = 0; y < effH && !found; y++) {
+            for (let x = 0; x < effW && !found; x++) {
+              if (!coveredTiles.has(`${x},${y}`)) {
+                nextX = x; nextY = y; found = true;
+              }
+            }
+          }
+
           const addSegment = () => {
-            updateScreenById(screen.id, s => ({
-              ...s,
-              rasterSegments: [...(s.rasterSegments ?? []), {
-                id: `seg-${Date.now()}`,
-                bounds: { minX: 0, minY: 0, maxX: Math.min(effW - 1, 5), maxY: Math.min(effH - 1, 5) },
-                offset: { x: 0, y: 0 },
-              }],
-            }));
+            if (!found) return;
+            const newSeg: RasterSegment = {
+              id: `seg-${Date.now()}`,
+              bounds: { minX: nextX, minY: nextY, maxX: effW - 1, maxY: effH - 1 },
+              offset: { x: 0, y: 0 },
+            };
+            updateScreenById(screen.id, s => {
+              const segs = [...(s.rasterSegments ?? []), newSeg];
+              return { ...s, rasterSegments: segs };
+            });
           };
 
           const removeSegment = (segId: string) => {
@@ -539,6 +563,12 @@ function ScreenRasterControls({
           return (
             <>
               <p className="text-xs text-muted-foreground">Split this screen into pieces. Each piece shows a tile range and its own X/Y position in the raster.</p>
+              <div className="flex items-center justify-between rounded-md bg-muted/40 px-2 py-1.5">
+                <span className="text-xs text-muted-foreground">Tiles remaining:</span>
+                <span className={`text-xs font-medium ${remainingCount > 0 ? 'text-amber-600' : 'text-green-600'}`}>
+                  {remainingCount} / {totalTiles}
+                </span>
+              </div>
               {screen.rasterSegments.map((seg, idx) => (
                 <div key={seg.id} className="rounded-md border border-border/60 p-2 space-y-2 bg-muted/30">
                   <div className="flex items-center justify-between">
@@ -629,9 +659,9 @@ function ScreenRasterControls({
                   </div>
                 </div>
               ))}
-              <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={addSegment}>
+              <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={addSegment} disabled={remainingCount === 0}>
                 <Plus className="mr-1.5 h-3 w-3" />
-                Add Piece
+                {remainingCount > 0 ? `Add Piece (from tile ${nextX + 1},${nextY + 1})` : 'All tiles covered'}
               </Button>
             </>
           );

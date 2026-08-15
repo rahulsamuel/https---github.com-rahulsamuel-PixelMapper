@@ -1958,6 +1958,49 @@ const handleRightHalfTileChange = (add: boolean) => {
     const contentWidth = contentPixelWidth;
     const contentHeight = contentPixelHeight;
 
+    // Full-screen pixel dimensions (used for overlay positioning in full-screen coordinate space)
+    const fullScreenWidth = (() => {
+        let w = 0;
+        for (let x = 0; x < screenEffectiveWidth; x++) {
+            const isL = screen.leftHalfTile && x === 0;
+            const isR = screen.rightHalfTile && x === (screenEffectiveWidth - 1);
+            w += (isL || isR) ? tileWidth / 2 : tileWidth;
+        }
+        return w;
+    })();
+    const fullScreenHeight = (() => {
+        let h = 0;
+        for (let y = 0; y < screenEffectiveHeight; y++) {
+            const isT = screen.topHalfTile && y === 0;
+            const isB = screen.bottomHalfTile && y === (screenEffectiveHeight - 1);
+            h += (isT || isB) ? tileHeight / 2 : tileHeight;
+        }
+        return h;
+    })();
+
+    // Pixel offset of the crop region within the full screen
+    const cropOffsetX = (() => {
+        let ox = 0;
+        for (let x = 0; x < screenActiveBounds.minX; x++) {
+            const isL = screen.leftHalfTile && x === 0;
+            const isR = screen.rightHalfTile && x === (screenEffectiveWidth - 1);
+            ox += (isL || isR) ? tileWidth / 2 : tileWidth;
+        }
+        return ox;
+    })();
+    const cropOffsetY = (() => {
+        let oy = 0;
+        for (let y = 0; y < screenActiveBounds.minY; y++) {
+            const isT = screen.topHalfTile && y === 0;
+            const isB = screen.bottomHalfTile && y === (screenEffectiveHeight - 1);
+            oy += (isT || isB) ? tileHeight / 2 : tileHeight;
+        }
+        return oy;
+    })();
+
+    const isCropped = screenActiveBounds.minX !== 0 || screenActiveBounds.minY !== 0 ||
+        screenActiveBounds.maxX !== screenEffectiveWidth - 1 || screenActiveBounds.maxY !== screenEffectiveHeight - 1;
+
     const masterCanvas = document.createElement('canvas');
     masterCanvas.width = contentWidth;
     masterCanvas.height = contentHeight;
@@ -2009,62 +2052,68 @@ const handleRightHalfTileChange = (add: boolean) => {
         currentDrawY += rowPixelHeight;
     }
 
-    // Draw screen name overlay
+    // Draw screen name overlay — positioned in full-screen coordinate space, clipped to crop region
     if (screen.showScreenName && screen.name) {
         const fontSize = screen.screenNameLabelFontSize;
         const color = screen.screenNameLabelColorMode === 'auto'
             ? '#ffffff'
             : screen.screenNameLabelColor;
+        masterCtx.save();
+        if (isCropped) masterCtx.beginPath(), masterCtx.rect(0, 0, contentWidth, contentHeight), masterCtx.clip();
         masterCtx.fillStyle = color;
         masterCtx.font = `bold ${fontSize}px sans-serif`;
         masterCtx.textAlign = 'center';
         masterCtx.textBaseline = 'middle';
         const pos = screen.screenNameLabelPosition;
-        let tx = contentWidth / 2;
-        let ty = contentHeight / 2;
+        let tx = fullScreenWidth / 2;
+        let ty = fullScreenHeight / 2;
         const pad = fontSize * 0.6;
         if (pos === 'top-left') { tx = pad; ty = pad; masterCtx.textAlign = 'left'; }
-        else if (pos === 'top-right') { tx = contentWidth - pad; ty = pad; masterCtx.textAlign = 'right'; }
-        else if (pos === 'bottom-left') { tx = pad; ty = contentHeight - pad; masterCtx.textAlign = 'left'; }
-        else if (pos === 'bottom-right') { tx = contentWidth - pad; ty = contentHeight - pad; masterCtx.textAlign = 'right'; }
+        else if (pos === 'top-right') { tx = fullScreenWidth - pad; ty = pad; masterCtx.textAlign = 'right'; }
+        else if (pos === 'bottom-left') { tx = pad; ty = fullScreenHeight - pad; masterCtx.textAlign = 'left'; }
+        else if (pos === 'bottom-right') { tx = fullScreenWidth - pad; ty = fullScreenHeight - pad; masterCtx.textAlign = 'right'; }
         masterCtx.shadowColor = 'rgba(0,0,0,0.8)';
         masterCtx.shadowBlur = fontSize * 0.3;
-        masterCtx.fillText(screen.name, tx, ty);
+        masterCtx.fillText(screen.name, tx - cropOffsetX, ty - cropOffsetY);
         masterCtx.shadowBlur = 0;
+        masterCtx.restore();
     }
 
-    // Draw resolution overlay
+    // Draw resolution overlay — positioned in full-screen coordinate space
     if (screen.showResolution) {
         const fontSize = screen.resolutionLabelFontSize ?? 32;
         const color = (screen.resolutionLabelColorMode ?? 'auto') === 'auto' ? '#ffffff' : (screen.resolutionLabelColor ?? '#ffffff');
+        masterCtx.save();
+        if (isCropped) masterCtx.beginPath(), masterCtx.rect(0, 0, contentWidth, contentHeight), masterCtx.clip();
         masterCtx.fillStyle = color;
         masterCtx.font = `bold ${fontSize}px sans-serif`;
         masterCtx.textBaseline = 'middle';
         const pos = screen.resolutionLabelPosition ?? 'bottom-right';
-        const resText = `Pixel: ${contentWidth} x ${contentHeight}`;
+        const resText = `Pixel: ${fullScreenWidth} x ${fullScreenHeight}`;
         const pad = fontSize * 0.6;
-        let tx = contentWidth / 2;
-        let ty = contentHeight / 2;
+        let tx = fullScreenWidth / 2;
+        let ty = fullScreenHeight / 2;
         masterCtx.textAlign = 'center';
         if (pos === 'top-left')      { tx = pad; ty = pad; masterCtx.textAlign = 'left'; }
-        else if (pos === 'top-center')   { tx = contentWidth / 2; ty = pad; }
-        else if (pos === 'top-right')    { tx = contentWidth - pad; ty = pad; masterCtx.textAlign = 'right'; }
-        else if (pos === 'bottom-left')  { tx = pad; ty = contentHeight - pad; masterCtx.textAlign = 'left'; }
-        else if (pos === 'bottom-center'){ tx = contentWidth / 2; ty = contentHeight - pad; }
-        else if (pos === 'bottom-right') { tx = contentWidth - pad; ty = contentHeight - pad; masterCtx.textAlign = 'right'; }
+        else if (pos === 'top-center')   { tx = fullScreenWidth / 2; ty = pad; }
+        else if (pos === 'top-right')    { tx = fullScreenWidth - pad; ty = pad; masterCtx.textAlign = 'right'; }
+        else if (pos === 'bottom-left')  { tx = pad; ty = fullScreenHeight - pad; masterCtx.textAlign = 'left'; }
+        else if (pos === 'bottom-center'){ tx = fullScreenWidth / 2; ty = fullScreenHeight - pad; }
+        else if (pos === 'bottom-right') { tx = fullScreenWidth - pad; ty = fullScreenHeight - pad; masterCtx.textAlign = 'right'; }
         masterCtx.shadowColor = 'rgba(0,0,0,0.8)';
         masterCtx.shadowBlur = fontSize * 0.3;
-        masterCtx.fillText(resText, tx, ty);
+        masterCtx.fillText(resText, tx - cropOffsetX, ty - cropOffsetY);
         masterCtx.shadowBlur = 0;
+        masterCtx.restore();
     }
 
-    // Draw dimensions overlay
+    // Draw dimensions overlay — positioned in full-screen coordinate space
     if (screen.showDimensions) {
         const product = products.find(p => p.id === screen.selectedProductId);
         const tileWmm = (product?.tileWidthMm as number | undefined) || screen.customTileWidthMm || 0;
         const tileHmm = (product?.tileHeightMm as number | undefined) || screen.customTileHeightMm || 0;
-        const screenEffW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
-        const screenEffH = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+        const screenEffW = screenEffectiveWidth;
+        const screenEffH = screenEffectiveHeight;
         const unit = screen.dimensionUnit ?? 'all';
         const hasPhysical = tileWmm > 0 && tileHmm > 0;
 
@@ -2103,6 +2152,9 @@ const handleRightHalfTileChange = (add: boolean) => {
             const arrowSize = Math.max(6, fontSize * 0.4);
             const stroke = 2;
 
+            masterCtx.save();
+            if (isCropped) masterCtx.beginPath(), masterCtx.rect(0, 0, contentWidth, contentHeight), masterCtx.clip();
+            masterCtx.translate(-cropOffsetX, -cropOffsetY);
             masterCtx.strokeStyle = color;
             masterCtx.fillStyle = color;
             masterCtx.lineWidth = stroke;
@@ -2114,74 +2166,82 @@ const handleRightHalfTileChange = (add: boolean) => {
 
             // Width dimension (bottom, inside grid)
             masterCtx.beginPath();
-            masterCtx.moveTo(0, contentHeight);
-            masterCtx.lineTo(0, contentHeight - padding - arrowSize);
-            masterCtx.moveTo(contentWidth, contentHeight);
-            masterCtx.lineTo(contentWidth, contentHeight - padding - arrowSize);
-            masterCtx.moveTo(arrowSize, contentHeight - padding);
-            masterCtx.lineTo(contentWidth - arrowSize, contentHeight - padding);
+            masterCtx.moveTo(0, fullScreenHeight);
+            masterCtx.lineTo(0, fullScreenHeight - padding - arrowSize);
+            masterCtx.moveTo(fullScreenWidth, fullScreenHeight);
+            masterCtx.lineTo(fullScreenWidth, fullScreenHeight - padding - arrowSize);
+            masterCtx.moveTo(arrowSize, fullScreenHeight - padding);
+            masterCtx.lineTo(fullScreenWidth - arrowSize, fullScreenHeight - padding);
             masterCtx.stroke();
             masterCtx.beginPath();
-            masterCtx.moveTo(0, contentHeight - padding);
-            masterCtx.lineTo(arrowSize, contentHeight - padding - arrowSize / 2);
-            masterCtx.lineTo(arrowSize, contentHeight - padding + arrowSize / 2);
+            masterCtx.moveTo(0, fullScreenHeight - padding);
+            masterCtx.lineTo(arrowSize, fullScreenHeight - padding - arrowSize / 2);
+            masterCtx.lineTo(arrowSize, fullScreenHeight - padding + arrowSize / 2);
             masterCtx.closePath();
             masterCtx.fill();
             masterCtx.beginPath();
-            masterCtx.moveTo(contentWidth, contentHeight - padding);
-            masterCtx.lineTo(contentWidth - arrowSize, contentHeight - padding - arrowSize / 2);
-            masterCtx.lineTo(contentWidth - arrowSize, contentHeight - padding + arrowSize / 2);
+            masterCtx.moveTo(fullScreenWidth, fullScreenHeight - padding);
+            masterCtx.lineTo(fullScreenWidth - arrowSize, fullScreenHeight - padding - arrowSize / 2);
+            masterCtx.lineTo(fullScreenWidth - arrowSize, fullScreenHeight - padding + arrowSize / 2);
             masterCtx.closePath();
             masterCtx.fill();
-            masterCtx.fillText(wLabel, contentWidth / 2, contentHeight - padding - fontSize * 0.7);
+            masterCtx.fillText(wLabel, fullScreenWidth / 2, fullScreenHeight - padding - fontSize * 0.7);
 
             // Height dimension (right, inside grid)
             {
             masterCtx.beginPath();
-            masterCtx.moveTo(contentWidth, 0);
-            masterCtx.lineTo(contentWidth - padding - arrowSize, 0);
-            masterCtx.moveTo(contentWidth, contentHeight);
-            masterCtx.lineTo(contentWidth - padding - arrowSize, contentHeight);
-            masterCtx.moveTo(contentWidth - padding, arrowSize);
-            masterCtx.lineTo(contentWidth - padding, contentHeight - arrowSize);
+            masterCtx.moveTo(fullScreenWidth, 0);
+            masterCtx.lineTo(fullScreenWidth - padding - arrowSize, 0);
+            masterCtx.moveTo(fullScreenWidth, fullScreenHeight);
+            masterCtx.lineTo(fullScreenWidth - padding - arrowSize, fullScreenHeight);
+            masterCtx.moveTo(fullScreenWidth - padding, arrowSize);
+            masterCtx.lineTo(fullScreenWidth - padding, fullScreenHeight - arrowSize);
             masterCtx.stroke();
             masterCtx.beginPath();
-            masterCtx.moveTo(contentWidth - padding, 0);
-            masterCtx.lineTo(contentWidth - padding - arrowSize / 2, arrowSize);
-            masterCtx.lineTo(contentWidth - padding + arrowSize / 2, arrowSize);
+            masterCtx.moveTo(fullScreenWidth - padding, 0);
+            masterCtx.lineTo(fullScreenWidth - padding - arrowSize / 2, arrowSize);
+            masterCtx.lineTo(fullScreenWidth - padding + arrowSize / 2, arrowSize);
             masterCtx.closePath();
             masterCtx.fill();
             masterCtx.beginPath();
-            masterCtx.moveTo(contentWidth - padding, contentHeight);
-            masterCtx.lineTo(contentWidth - padding - arrowSize / 2, contentHeight - arrowSize);
-            masterCtx.lineTo(contentWidth - padding + arrowSize / 2, contentHeight - arrowSize);
+            masterCtx.moveTo(fullScreenWidth - padding, fullScreenHeight);
+            masterCtx.lineTo(fullScreenWidth - padding - arrowSize / 2, fullScreenHeight - arrowSize);
+            masterCtx.lineTo(fullScreenWidth - padding + arrowSize / 2, fullScreenHeight - arrowSize);
             masterCtx.closePath();
             masterCtx.fill();
             masterCtx.save();
-            masterCtx.translate(contentWidth - padding - fontSize * 0.7, contentHeight / 2);
+            masterCtx.translate(fullScreenWidth - padding - fontSize * 0.7, fullScreenHeight / 2);
             masterCtx.rotate(-Math.PI / 2);
             masterCtx.fillText(hLabel, 0, 0);
             masterCtx.restore();
             }
 
             masterCtx.shadowBlur = 0;
+            masterCtx.restore();
         }
     }
 
-    // Draw logo overlay
+    // Draw logo overlay — positioned in full-screen coordinate space, clipped to crop region
     if (drawOverlays && screen.logoOverlay) {
       try {
         const logoImg = new Image();
         logoImg.src = screen.logoOverlay.imageData;
         if (logoImg.complete) {
-          masterCtx.drawImage(logoImg, screen.logoOverlay.x, screen.logoOverlay.y, screen.logoOverlay.width, screen.logoOverlay.height);
+          masterCtx.save();
+          if (isCropped) masterCtx.beginPath(), masterCtx.rect(0, 0, contentWidth, contentHeight), masterCtx.clip();
+          masterCtx.drawImage(logoImg, screen.logoOverlay.x - cropOffsetX, screen.logoOverlay.y - cropOffsetY, screen.logoOverlay.width, screen.logoOverlay.height);
+          masterCtx.restore();
         }
       } catch {}
     }
 
-    // Draw text overlays
+    // Draw text overlays — positioned in full-screen coordinate space, clipped to crop region
     if (drawOverlays && screen.textOverlays) {
-      drawTextOverlaysOnCtx(masterCtx, screen.textOverlays, contentWidth, contentHeight);
+      masterCtx.save();
+      if (isCropped) masterCtx.beginPath(), masterCtx.rect(0, 0, contentWidth, contentHeight), masterCtx.clip();
+      const shiftedOverlays = screen.textOverlays.map(o => ({ ...o, x: o.x - cropOffsetX, y: o.y - cropOffsetY }));
+      drawTextOverlaysOnCtx(masterCtx, shiftedOverlays, contentWidth, contentHeight);
+      masterCtx.restore();
     }
 
     return masterCanvas;
@@ -2441,22 +2501,9 @@ const handleRightHalfTileChange = (add: boolean) => {
     }
     setRasterMapConfigs(newConfigs);
 
-    // Auto-sync the raster groups list to match the number of slices in the
-    // active group's config. When a screen is too big for one raster, the
-    // config is split into multiple slices — each slice should appear as its
-    // own "Raster N" entry so the count matches the processors in Equipment.
-    const activeConfig = newConfigs[activeRasterGroupId];
-    if (activeConfig && activeConfig.slices.length > 1) {
-      const sliceCount = activeConfig.slices.length;
-      setRasterGroups(prev => {
-        if (prev.length >= sliceCount) return prev;
-        const next = [...prev];
-        for (let i = prev.length; i < sliceCount; i++) {
-          next.push({ id: `raster-${i + 1}`, name: `Raster ${i + 1}` });
-        }
-        return next;
-      });
-    }
+    // Note: we intentionally do NOT auto-create extra "Raster N" groups when a
+    // screen is split into multiple raster slices. The slice count is a rendering
+    // detail, not a user-facing group. Users create groups manually as needed.
   }, [currentScreen.lastRasterArgs, rasterGroups, buildRasterConfigForGroup, activeRasterGroupId]);
 
 
