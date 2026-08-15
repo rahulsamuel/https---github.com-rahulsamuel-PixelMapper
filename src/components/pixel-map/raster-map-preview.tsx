@@ -253,7 +253,7 @@ export function RasterMapPreview() {
 
             return (
               <div
-                key={sa.screenId}
+                key={`${sa.screenId}-${sa.segmentId}`}
                 className="absolute pointer-events-none border border-destructive"
                 style={{
                   left: sa.x,

@@ -122,8 +122,15 @@ export interface RasterSlice {
   height: number;
 }
 
+export interface RasterSegment {
+  id: string;
+  bounds: ActiveBounds;
+  offset: { x: number; y: number };
+}
+
 interface ScreenArrangement {
   screenId: string;
+  segmentId: string;
   screenName: string;
   x: number;
   y: number;
@@ -242,6 +249,7 @@ export interface Screen {
   randomizeModuleColors: boolean;
   moduleColors: string[][];
   rasterCrop: ActiveBounds | null;
+  rasterSegments?: RasterSegment[];
 }
 
 export interface CalculatorTabData {
@@ -664,6 +672,7 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     randomizeModuleColors: false,
     moduleColors: [],
     rasterCrop: null,
+    rasterSegments: [],
   };
 };
 
@@ -2250,70 +2259,102 @@ const handleRightHalfTileChange = (add: boolean) => {
         const activeTiles = screen.tiles.map((t, i) => ({...t, index: i})).filter(t => !t.deleted);
         if (activeTiles.length === 0) continue;
 
-        const currentEffectiveScreenWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
-
-        let screenActiveBounds: ActiveBounds;
-
-        if (screen.rasterCrop) {
-            screenActiveBounds = screen.rasterCrop;
-        } else {
-            let minX = screen.dimensions.screenWidth, minY = Infinity, maxX = -1, maxY = -1;
-            activeTiles.forEach(tile => {
-                const x = tile.index % currentEffectiveScreenWidth;
-                const y = Math.floor(tile.index / currentEffectiveScreenWidth);
-                if (x < minX) minX = x;
-                if (x > maxX) maxX = x;
-                if (y < minY) minY = y;
-                if (y > maxY) maxY = y;
-            });
-            screenActiveBounds = { minX, minY, maxX, maxY };
-        }
         const screenEffectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
         const screenEffectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
 
-        const contentWidth = Array.from({ length: screenActiveBounds.maxX - screenActiveBounds.minX + 1 }, (_, i) => {
-            const x = screenActiveBounds.minX + i;
-            const isLeftHalf = screen.leftHalfTile && x === 0;
-            const isRightHalf = screen.rightHalfTile && x === (screenEffectiveWidth - 1);
-            return (isLeftHalf || isRightHalf) ? screen.dimensions.tileWidth / 2 : screen.dimensions.tileWidth;
-        }).reduce((a, b) => a + b, 0);
+        const computeContentSize = (bounds: ActiveBounds) => {
+            const cw = Array.from({ length: bounds.maxX - bounds.minX + 1 }, (_, i) => {
+                const x = bounds.minX + i;
+                const isLeftHalf = screen.leftHalfTile && x === 0;
+                const isRightHalf = screen.rightHalfTile && x === (screenEffectiveWidth - 1);
+                return (isLeftHalf || isRightHalf) ? screen.dimensions.tileWidth / 2 : screen.dimensions.tileWidth;
+            }).reduce((a, b) => a + b, 0);
+            const ch = Array.from({ length: bounds.maxY - bounds.minY + 1 }, (_, i) => {
+                const y = bounds.minY + i;
+                const isTopHalf = screen.topHalfTile && y === 0;
+                const isBottomHalf = screen.bottomHalfTile && y === (screenEffectiveHeight - 1);
+                return (isTopHalf || isBottomHalf) ? screen.dimensions.tileHeight / 2 : screen.dimensions.tileHeight;
+            }).reduce((a, b) => a + b, 0);
+            return { cw, ch };
+        };
 
-        const contentHeight = Array.from({ length: screenActiveBounds.maxY - screenActiveBounds.minY + 1 }, (_, i) => {
-            const y = screenActiveBounds.minY + i;
-            const isTopHalf = screen.topHalfTile && y === 0;
-            const isBottomHalf = screen.bottomHalfTile && y === (screenEffectiveHeight - 1);
-            return (isTopHalf || isBottomHalf) ? screen.dimensions.tileHeight / 2 : screen.dimensions.tileHeight;
-        }).reduce((a, b) => a + b, 0);
+        const segments = (screen.rasterSegments && screen.rasterSegments.length > 0)
+            ? screen.rasterSegments
+            : null;
 
-        screenArrangement.push({
-            screenId: screen.id,
-            screenName: screen.name,
-            x: screen.rasterOffset.x,
-            y: screen.rasterOffset.y,
-            width: contentWidth,
-            height: contentHeight,
-            activeBounds: screenActiveBounds,
-            showScreenName: screen.showScreenName,
-            screenNameLabelPosition: screen.screenNameLabelPosition,
-            screenNameLabelFontSize: screen.screenNameLabelFontSize,
-            screenNameLabelColor: screen.screenNameLabelColor,
-            screenNameLabelColorMode: screen.screenNameLabelColorMode,
-            showSliceOffsetLabels: screen.showSliceOffsetLabels,
-            showResolution: screen.showResolution ?? false,
-            resolutionLabelPosition: screen.resolutionLabelPosition ?? 'bottom-right',
-            showDimensions: screen.showDimensions ?? false,
-            dimensionUnit: screen.dimensionUnit ?? 'all',
-            dimensionLabelSize: screen.dimensionLabelSize ?? 24,
-            dimensionLabelColor: screen.dimensionLabelColor ?? '#ffffff',
-            customTileWidthMm: screen.customTileWidthMm ?? 0,
-            customTileHeightMm: screen.customTileHeightMm ?? 0,
-        });
-
-        if (screen.rasterOffset.x + contentWidth > totalContentWidth) {
-            totalContentWidth = screen.rasterOffset.x + contentWidth;
-        }
-        if (screen.rasterOffset.y + contentHeight > totalContentHeight) {
-            totalContentHeight = screen.rasterOffset.y + contentHeight;
+        if (segments) {
+            for (const seg of segments) {
+                const { cw, ch } = computeContentSize(seg.bounds);
+                screenArrangement.push({
+                    screenId: screen.id,
+                    segmentId: seg.id,
+                    screenName: screen.name,
+                    x: seg.offset.x,
+                    y: seg.offset.y,
+                    width: cw,
+                    height: ch,
+                    activeBounds: seg.bounds,
+                    showScreenName: screen.showScreenName,
+                    screenNameLabelPosition: screen.screenNameLabelPosition,
+                    screenNameLabelFontSize: screen.screenNameLabelFontSize,
+                    screenNameLabelColor: screen.screenNameLabelColor,
+                    screenNameLabelColorMode: screen.screenNameLabelColorMode,
+                    showSliceOffsetLabels: screen.showSliceOffsetLabels,
+                    showResolution: screen.showResolution ?? false,
+                    resolutionLabelPosition: screen.resolutionLabelPosition ?? 'bottom-right',
+                    showDimensions: screen.showDimensions ?? false,
+                    dimensionUnit: screen.dimensionUnit ?? 'all',
+                    dimensionLabelSize: screen.dimensionLabelSize ?? 24,
+                    dimensionLabelColor: screen.dimensionLabelColor ?? '#ffffff',
+                    customTileWidthMm: screen.customTileWidthMm ?? 0,
+                    customTileHeightMm: screen.customTileHeightMm ?? 0,
+                });
+                if (seg.offset.x + cw > totalContentWidth) totalContentWidth = seg.offset.x + cw;
+                if (seg.offset.y + ch > totalContentHeight) totalContentHeight = seg.offset.y + ch;
+            }
+        } else {
+            let screenActiveBounds: ActiveBounds;
+            if (screen.rasterCrop) {
+                screenActiveBounds = screen.rasterCrop;
+            } else {
+                let minX = screen.dimensions.screenWidth, minY = Infinity, maxX = -1, maxY = -1;
+                activeTiles.forEach(tile => {
+                    const x = tile.index % screenEffectiveWidth;
+                    const y = Math.floor(tile.index / screenEffectiveWidth);
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                });
+                screenActiveBounds = { minX, minY, maxX, maxY };
+            }
+            const { cw, ch } = computeContentSize(screenActiveBounds);
+            screenArrangement.push({
+                screenId: screen.id,
+                segmentId: 'default',
+                screenName: screen.name,
+                x: screen.rasterOffset.x,
+                y: screen.rasterOffset.y,
+                width: cw,
+                height: ch,
+                activeBounds: screenActiveBounds,
+                showScreenName: screen.showScreenName,
+                screenNameLabelPosition: screen.screenNameLabelPosition,
+                screenNameLabelFontSize: screen.screenNameLabelFontSize,
+                screenNameLabelColor: screen.screenNameLabelColor,
+                screenNameLabelColorMode: screen.screenNameLabelColorMode,
+                showSliceOffsetLabels: screen.showSliceOffsetLabels,
+                showResolution: screen.showResolution ?? false,
+                resolutionLabelPosition: screen.resolutionLabelPosition ?? 'bottom-right',
+                showDimensions: screen.showDimensions ?? false,
+                dimensionUnit: screen.dimensionUnit ?? 'all',
+                dimensionLabelSize: screen.dimensionLabelSize ?? 24,
+                dimensionLabelColor: screen.dimensionLabelColor ?? '#ffffff',
+                customTileWidthMm: screen.customTileWidthMm ?? 0,
+                customTileHeightMm: screen.customTileHeightMm ?? 0,
+            });
+            if (screen.rasterOffset.x + cw > totalContentWidth) totalContentWidth = screen.rasterOffset.x + cw;
+            if (screen.rasterOffset.y + ch > totalContentHeight) totalContentHeight = screen.rasterOffset.y + ch;
         }
     }
 

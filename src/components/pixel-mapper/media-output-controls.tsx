@@ -2,7 +2,7 @@
 "use client";
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
-import type { Screen, RasterMapConfig, RasterGroup } from "@/contexts/pixel-map-context";
+import type { Screen, RasterMapConfig, RasterGroup, RasterSegment } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
 import { FileOutput, RotateCcw, Plus, Trash2, Pencil, Check, X } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -478,99 +478,164 @@ function ScreenRasterControls({
         </div>
       )}
 
-      {/* Raster crop controls */}
+      {/* Raster crop segments */}
       <Separator className="my-2" />
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label className="text-xs font-medium">Crop Screen in Raster</Label>
+          <Label className="text-xs font-medium">Crop & Arrange in Raster</Label>
           <Switch
-            checked={!!screen.rasterCrop}
+            checked={(screen.rasterSegments?.length ?? 0) > 0}
             onCheckedChange={val => {
               if (val) {
                 const effW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
                 const effH = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
-                updateScreenById(screen.id, s => ({ ...s, rasterCrop: { minX: 0, minY: 0, maxX: effW - 1, maxY: effH - 1 } }));
+                updateScreenById(screen.id, s => ({
+                  ...s,
+                  rasterCrop: null,
+                  rasterSegments: [{
+                    id: 'seg-1',
+                    bounds: { minX: 0, minY: 0, maxX: effW - 1, maxY: effH - 1 },
+                    offset: { x: 0, y: 0 },
+                  }],
+                }));
               } else {
-                updateScreenById(screen.id, s => ({ ...s, rasterCrop: null }));
+                updateScreenById(screen.id, s => ({ ...s, rasterSegments: [] }));
               }
             }}
             className="scale-90"
           />
         </div>
-        {screen.rasterCrop && (
-          <>
-            <p className="text-xs text-muted-foreground">Choose which tiles appear in the raster output. Reduce the range to crop.</p>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="grid gap-1">
-                <Label className="text-xs">Start Tile X</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={screen.rasterCrop.minX}
-                  onChange={e => {
-                    const val = Math.max(0, Number(e.target.value) || 0);
-                    updateScreenById(screen.id, s => s.rasterCrop ? ({ ...s, rasterCrop: { ...s.rasterCrop, minX: Math.min(val, s.rasterCrop.maxX) } }) : s);
-                  }}
-                  className="h-8 text-xs"
-                />
-              </div>
-              <div className="grid gap-1">
-                <Label className="text-xs">End Tile X</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={screen.rasterCrop.maxX}
-                  onChange={e => {
-                    const effW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
-                    const val = Math.min(effW - 1, Math.max(0, Number(e.target.value) || 0));
-                    updateScreenById(screen.id, s => s.rasterCrop ? ({ ...s, rasterCrop: { ...s.rasterCrop, maxX: Math.max(val, s.rasterCrop.minX) } }) : s);
-                  }}
-                  className="h-8 text-xs"
-                />
-              </div>
-              <div className="grid gap-1">
-                <Label className="text-xs">Start Tile Y</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={screen.rasterCrop.minY}
-                  onChange={e => {
-                    const val = Math.max(0, Number(e.target.value) || 0);
-                    updateScreenById(screen.id, s => s.rasterCrop ? ({ ...s, rasterCrop: { ...s.rasterCrop, minY: Math.min(val, s.rasterCrop.maxY) } }) : s);
-                  }}
-                  className="h-8 text-xs"
-                />
-              </div>
-              <div className="grid gap-1">
-                <Label className="text-xs">End Tile Y</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={screen.rasterCrop.maxY}
-                  onChange={e => {
-                    const effH = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
-                    const val = Math.min(effH - 1, Math.max(0, Number(e.target.value) || 0));
-                    updateScreenById(screen.id, s => s.rasterCrop ? ({ ...s, rasterCrop: { ...s.rasterCrop, maxY: Math.max(val, s.rasterCrop.minY) } }) : s);
-                  }}
-                  className="h-8 text-xs"
-                />
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full h-7 text-xs"
-              onClick={() => {
-                const effW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
-                const effH = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
-                updateScreenById(screen.id, s => ({ ...s, rasterCrop: { minX: 0, minY: 0, maxX: effW - 1, maxY: effH - 1 } }));
-              }}
-            >
-              <RotateCcw className="mr-1.5 h-3 w-3" />
-              Reset Crop to Full Screen
-            </Button>
-          </>
-        )}
+        {screen.rasterSegments && screen.rasterSegments.length > 0 && (() => {
+          const effW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+          const effH = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+
+          const updateSegment = (segId: string, patch: Partial<RasterSegment>) => {
+            updateScreenById(screen.id, s => ({
+              ...s,
+              rasterSegments: (s.rasterSegments ?? []).map(seg =>
+                seg.id === segId ? { ...seg, ...patch, bounds: { ...seg.bounds, ...(patch.bounds ?? {}) }, offset: { ...seg.offset, ...(patch.offset ?? {}) } } : seg
+              ),
+            }));
+          };
+
+          const addSegment = () => {
+            updateScreenById(screen.id, s => ({
+              ...s,
+              rasterSegments: [...(s.rasterSegments ?? []), {
+                id: `seg-${Date.now()}`,
+                bounds: { minX: 0, minY: 0, maxX: Math.min(effW - 1, 5), maxY: Math.min(effH - 1, 5) },
+                offset: { x: 0, y: 0 },
+              }],
+            }));
+          };
+
+          const removeSegment = (segId: string) => {
+            updateScreenById(screen.id, s => ({
+              ...s,
+              rasterSegments: (s.rasterSegments ?? []).filter(seg => seg.id !== segId),
+            }));
+          };
+
+          return (
+            <>
+              <p className="text-xs text-muted-foreground">Split this screen into pieces. Each piece shows a tile range and its own X/Y position in the raster.</p>
+              {screen.rasterSegments.map((seg, idx) => (
+                <div key={seg.id} className="rounded-md border border-border/60 p-2 space-y-2 bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium">Piece {idx + 1}</span>
+                    {screen.rasterSegments!.length > 1 && (
+                      <button onClick={() => removeSegment(seg.id)} className="text-muted-foreground hover:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="grid gap-0.5">
+                      <Label className="text-[10px]">Start Tile X</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={effW}
+                        value={seg.bounds.minX + 1}
+                        onChange={e => {
+                          const v = Math.max(1, Math.min(effW, Number(e.target.value) || 1)) - 1;
+                          updateSegment(seg.id, { bounds: { ...seg.bounds, minX: Math.min(v, seg.bounds.maxX) } });
+                        }}
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                    <div className="grid gap-0.5">
+                      <Label className="text-[10px]">End Tile X</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={effW}
+                        value={seg.bounds.maxX + 1}
+                        onChange={e => {
+                          const v = Math.max(1, Math.min(effW, Number(e.target.value) || 1)) - 1;
+                          updateSegment(seg.id, { bounds: { ...seg.bounds, maxX: Math.max(v, seg.bounds.minX) } });
+                        }}
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                    <div className="grid gap-0.5">
+                      <Label className="text-[10px]">Start Tile Y</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={effH}
+                        value={seg.bounds.minY + 1}
+                        onChange={e => {
+                          const v = Math.max(1, Math.min(effH, Number(e.target.value) || 1)) - 1;
+                          updateSegment(seg.id, { bounds: { ...seg.bounds, minY: Math.min(v, seg.bounds.maxY) } });
+                        }}
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                    <div className="grid gap-0.5">
+                      <Label className="text-[10px]">End Tile Y</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={effH}
+                        value={seg.bounds.maxY + 1}
+                        onChange={e => {
+                          const v = Math.max(1, Math.min(effH, Number(e.target.value) || 1)) - 1;
+                          updateSegment(seg.id, { bounds: { ...seg.bounds, maxY: Math.max(v, seg.bounds.minY) } });
+                        }}
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="grid gap-0.5">
+                      <Label className="text-[10px]">Position X</Label>
+                      <Input
+                        type="number"
+                        value={seg.offset.x}
+                        onChange={e => updateSegment(seg.id, { offset: { x: Number(e.target.value) || 0, y: seg.offset.y } })}
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                    <div className="grid gap-0.5">
+                      <Label className="text-[10px]">Position Y</Label>
+                      <Input
+                        type="number"
+                        value={seg.offset.y}
+                        onChange={e => updateSegment(seg.id, { offset: { x: seg.offset.x, y: Number(e.target.value) || 0 } })}
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={addSegment}>
+                <Plus className="mr-1.5 h-3 w-3" />
+                Add Piece
+              </Button>
+            </>
+          );
+        })()}
       </div>
     </div>
   );
