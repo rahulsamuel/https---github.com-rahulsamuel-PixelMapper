@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
+export const dynamic = 'force-dynamic';
+
 export default async function EditProductPage({ params }: { params: { id: string } }) {
     const { id } = params;
     const { data: product, error } = await getLedProductById(id);

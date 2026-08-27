@@ -22,6 +22,7 @@ import {
   CheckSquare, Square, Database,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase/client';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -135,7 +136,7 @@ function toDefaults(p: ParsedProduct): Partial<FormData> {
   };
 }
 
-function buildFormData(d: Partial<FormData>, source: string): globalThis.FormData {
+function buildFormData(d: Partial<FormData>, source: string, accessToken: string): globalThis.FormData {
   const fd = new globalThis.FormData();
   const append = (k: string, v: unknown) => {
     if (v !== undefined && v !== null && v !== '') fd.append(k, String(v));
@@ -169,6 +170,7 @@ function buildFormData(d: Partial<FormData>, source: string): globalThis.FormDat
   fd.append('applicationFloor', String(d.applicationFloor ?? false));
   append('productImageUrl', d.productImageUrl);
   append('specSheetUrl', source);
+  append('accessToken', accessToken);
   return fd;
 }
 
@@ -525,6 +527,7 @@ export function LedProductForm() {
   const { toast } = useToast();
   const { isAdmin, user } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);
+  const [accessToken, setAccessToken] = useState('');
 
   const [step, setStep] = useState<WizardStep>('input');
   const [parsedProducts, setParsedProducts] = useState<ParsedProduct[]>([]);
@@ -549,6 +552,13 @@ export function LedProductForm() {
   useEffect(() => {
     if (imgUrl && imgUrl.startsWith('http')) setPreviewImg(imgUrl);
   }, [imgUrl]);
+
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) setAccessToken(session.access_token);
+    })();
+  }, []);
 
   useEffect(() => {
     if (!state.message) return;
@@ -583,7 +593,7 @@ export function LedProductForm() {
     let failed = 0;
     for (const p of selected) {
       const defaults = toDefaults(p);
-      const fd = buildFormData(defaults, specSource);
+      const fd = buildFormData(defaults, specSource, accessToken);
       const result = await addProductAction(initialState, fd);
       if (result.success) saved++;
       else failed++;
@@ -685,6 +695,7 @@ export function LedProductForm() {
         <Form {...form}>
           <form ref={formRef} action={formAction} className="space-y-6">
             <input type="hidden" name="createdBy" value={user?.id ?? ''} />
+            <input type="hidden" name="accessToken" value={accessToken} />
             <input type="hidden" name="applicationIndoor" value={String(form.watch('applicationIndoor'))} />
             <input type="hidden" name="applicationOutdoor" value={String(form.watch('applicationOutdoor'))} />
             <input type="hidden" name="applicationFloor" value={String(form.watch('applicationFloor'))} />

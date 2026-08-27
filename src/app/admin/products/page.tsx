@@ -1,6 +1,9 @@
 import { getLedProducts } from "@/services/supabase";
 import { LedProductAdmin } from "@/components/admin/led-product-admin";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function ProductsPage() {
   const { data: products, error } = await getLedProducts();
 

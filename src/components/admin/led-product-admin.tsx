@@ -30,6 +30,7 @@ import {
 import Link from 'next/link';
 import type { LedProduct } from '@/services/supabase';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase/client';
 
 interface Props {
   products: LedProduct[];
@@ -294,7 +295,10 @@ export function LedProductAdmin({ products }: Props) {
     setDeleting(true);
     setDeleteError(null);
     const { deleteProduct } = await import('@/app/admin/products/actions');
-    const result = await deleteProduct(deleteTarget.id, new FormData());
+    const { data: { session } } = await supabase.auth.getSession();
+    const fd = new FormData();
+    if (session?.access_token) fd.append('accessToken', session.access_token);
+    const result = await deleteProduct(deleteTarget.id, fd);
     if (result.success) {
       setProductList(prev => prev.filter(p => p.id !== deleteTarget.id));
       setDeleteTarget(null);

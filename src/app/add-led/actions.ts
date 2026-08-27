@@ -1,7 +1,10 @@
 'use server';
 
-import { addLedProduct } from '@/services/supabase';
+import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 const formSchema = z.object({
   manufacturer: z.string().min(2, { message: "Manufacturer name must be at least 2 characters." }).transform(val => val.toUpperCase()),
@@ -46,7 +49,28 @@ export type FormState = {
   success: boolean;
 };
 
+async function verifyAdmin(accessToken: string | null): Promise<boolean> {
+  if (!accessToken) return false;
+  try {
+    const client = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    });
+    const { data: { user } } = await client.auth.getUser(accessToken);
+    if (!user) return false;
+    return user.app_metadata?.['is_admin'] === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function addProductAction(prevState: FormState, formData: FormData): Promise<FormState> {
+  const accessToken = (formData.get('accessToken') as string) || null;
+
+  const isAdmin = await verifyAdmin(accessToken);
+  if (!isAdmin) {
+    return { success: false, message: 'Access denied. Only admins can add products.' };
+  }
+
   const rawData: Record<string, unknown> = {
     ...Object.fromEntries(formData.entries()),
     applicationIndoor: formData.get('applicationIndoor') === 'true',
@@ -79,39 +103,45 @@ export async function addProductAction(prevState: FormState, formData: FormData)
   const d = validatedFields.data;
 
   try {
-    const { success, error } = await addLedProduct({
-      manufacturer: d.manufacturer,
-      productName: d.productName,
-      tileWidthPx: d.tileWidthPx,
-      tileHeightPx: d.tileHeightPx,
-      wattsPerTile: d.maxPowerConsumption,
-      pixelPitchMm: d.pixelPitchMm,
-      tileWidthMm: d.tileWidthMm,
-      tileHeightMm: d.tileHeightMm,
-      tileDepthMm: d.tileDepthMm,
-      tileWeightKg: d.tileWeightKg,
-      maxPowerWPerSqm: d.maxPowerWPerSqm,
-      avgPowerWPerSqm: d.avgPowerWPerSqm,
-      maxBrightnessNit: d.maxBrightness,
-      refreshRateHz: d.refreshRate,
-      grayscaleBit: d.grayscaleBit,
-      contrastRatio: d.contrastRatio,
-      colorTemperatureK: d.colorTemperatureK,
-      viewingAngleH: d.viewingAngleH,
-      viewingAngleV: d.viewingAngleV,
-      driveMode: d.driveMode,
-      ledType: d.ledType,
-      ipRating: d.ipRating,
-      certification: d.certification,
-      applicationIndoor: d.applicationIndoor,
-      applicationOutdoor: d.applicationOutdoor,
-      applicationFloor: d.applicationFloor,
-      productImageUrl: d.productImageUrl || null,
-      specSheetUrl: d.specSheetUrl || null,
-      createdBy: (formData.get('createdBy') as string) || undefined,
+    const client = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
     });
 
-    if (!success) throw new Error(error);
+    const { error } = await client.from("led_products").insert({
+      manufacturer: d.manufacturer,
+      product_name: d.productName,
+      tile_width_px: d.tileWidthPx,
+      tile_height_px: d.tileHeightPx,
+      watts_per_tile: d.maxPowerConsumption,
+      pixel_pitch_mm: d.pixelPitchMm ?? null,
+      tile_width_mm: d.tileWidthMm ?? null,
+      tile_height_mm: d.tileHeightMm ?? null,
+      tile_depth_mm: d.tileDepthMm ?? null,
+      tile_weight_kg: d.tileWeightKg ?? null,
+      max_power_w_per_sqm: d.maxPowerWPerSqm ?? null,
+      avg_power_w_per_sqm: d.avgPowerWPerSqm ?? null,
+      max_brightness_nit: d.maxBrightness ?? null,
+      refresh_rate_hz: d.refreshRate ?? null,
+      grayscale_bit: d.grayscaleBit ?? null,
+      contrast_ratio: d.contrastRatio ?? null,
+      color_temperature_k: d.colorTemperatureK ?? null,
+      viewing_angle_h: d.viewingAngleH ?? null,
+      viewing_angle_v: d.viewingAngleV ?? null,
+      drive_mode: d.driveMode ?? null,
+      led_type: d.ledType ?? null,
+      ip_rating: d.ipRating ?? null,
+      certification: d.certification ?? null,
+      application_indoor: d.applicationIndoor ?? false,
+      application_outdoor: d.applicationOutdoor ?? false,
+      application_floor: d.applicationFloor ?? false,
+      product_image_url: d.productImageUrl || null,
+      spec_sheet_url: d.specSheetUrl || null,
+      created_by: (formData.get('createdBy') as string) || null,
+    });
+
+    if (error) {
+      return { success: false, message: error.message };
+    }
 
     return { success: true, message: 'Product has been added to the database successfully!' };
   } catch (error) {

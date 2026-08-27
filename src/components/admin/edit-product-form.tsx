@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useActionState, useEffect } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
 import { useForm } from 'react-hook-form';
@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { updateProductAction, type FormState } from '@/app/admin/products/[id]/edit/actions';
 import { Checkbox } from '../ui/checkbox';
+import { supabase } from '@/lib/supabase/client';
 
 const formSchema = z.object({
   manufacturer: z.string().min(2, { message: "Manufacturer name must be at least 2 characters." }),
@@ -69,6 +70,14 @@ export function EditProductForm({ product }: { product: any }) {
   const [state, formAction] = useActionState(updateProductActionWithId, initialState);
   const { toast } = useToast();
   const router = useRouter();
+  const [accessToken, setAccessToken] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) setAccessToken(session.access_token);
+    })();
+  }, []);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -126,6 +135,7 @@ export function EditProductForm({ product }: { product: any }) {
             action={formAction}
             className="space-y-8"
         >
+            <input type="hidden" name="accessToken" value={accessToken} />
             <FormSection title="Basic Information">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="manufacturer" render={({ field }) => (
