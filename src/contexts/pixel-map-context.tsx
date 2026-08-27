@@ -1927,29 +1927,61 @@ const handleRightHalfTileChange = (add: boolean) => {
       return;
     }
 
-    // Compute pixel positions of each column/row to find which tiles overlap
-    let colX = 0;
-    const colRanges: { x: number; w: number }[] = [];
-    for (let i = 0; i < effectiveScreenWidth; i++) {
-      const isLeftHalf = leftHalfTile && i === 0;
-      const isRightHalf = rightHalfTile && i === effectiveScreenWidth - 1;
-      const w = (isLeftHalf || isRightHalf) ? dimensions.tileWidth / 2 : dimensions.tileWidth;
-      colRanges.push({ x: colX, w });
-      colX += w;
-    }
-    let rowY = 0;
+    // Build column pixel ranges and tile-index lookup from the actual layout
+    const colRanges: { x: number; w: number; tileIndex: (y: number) => number }[] = [];
     const rowRanges: { y: number; h: number }[] = [];
-    for (let i = 0; i < effectiveScreenHeight; i++) {
-      const isTopHalf = topHalfTile && i === 0;
-      const isBottomHalf = bottomHalfTile && i === effectiveScreenHeight - 1;
-      const h = (isTopHalf || isBottomHalf) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
-      rowRanges.push({ y: rowY, h });
-      rowY += h;
+
+    if (currentScreen.sections.length > 0) {
+      let colX = 0;
+      let tileOffset = 0;
+      for (const section of currentScreen.sections) {
+        for (let cx = 0; cx < section.columnCount; cx++) {
+          const start = tileOffset;
+          colRanges.push({
+            x: colX,
+            w: section.tileWidthPx,
+            tileIndex: (y: number) => start + y * section.columnCount + cx,
+          });
+          colX += section.tileWidthPx;
+        }
+        tileOffset += section.columnCount * effectiveScreenHeight;
+      }
+      let rowY = 0;
+      const sectionTileHeight = currentScreen.sections[0]?.tileHeightPx ?? dimensions.tileHeight;
+      for (let i = 0; i < effectiveScreenHeight; i++) {
+        const isTopHalf = topHalfTile && i === 0;
+        const isBottomHalf = bottomHalfTile && i === effectiveScreenHeight - 1;
+        const h = (isTopHalf || isBottomHalf) ? sectionTileHeight / 2 : sectionTileHeight;
+        rowRanges.push({ y: rowY, h });
+        rowY += h;
+      }
+    } else {
+      let colX = 0;
+      for (let i = 0; i < effectiveScreenWidth; i++) {
+        const isLeftHalf = leftHalfTile && i === 0;
+        const isRightHalf = rightHalfTile && i === effectiveScreenWidth - 1;
+        const w = (isLeftHalf || isRightHalf) ? dimensions.tileWidth / 2 : dimensions.tileWidth;
+        const colIndex = i;
+        colRanges.push({
+          x: colX,
+          w,
+          tileIndex: (y: number) => y * effectiveScreenWidth + colIndex,
+        });
+        colX += w;
+      }
+      let rowY = 0;
+      for (let i = 0; i < effectiveScreenHeight; i++) {
+        const isTopHalf = topHalfTile && i === 0;
+        const isBottomHalf = bottomHalfTile && i === effectiveScreenHeight - 1;
+        const h = (isTopHalf || isBottomHalf) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
+        rowRanges.push({ y: rowY, h });
+        rowY += h;
+      }
     }
 
     const ids: number[] = [];
-    for (let y = 0; y < effectiveScreenHeight; y++) {
-      for (let x = 0; x < effectiveScreenWidth; x++) {
+    for (let y = 0; y < rowRanges.length; y++) {
+      for (let x = 0; x < colRanges.length; x++) {
         const col = colRanges[x];
         const row = rowRanges[y];
         const tileLeft = col.x;
@@ -1957,7 +1989,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         const tileTop = row.y;
         const tileBottom = row.y + row.h;
         if (tileRight > minX && tileLeft < maxX && tileBottom > minY && tileTop < maxY) {
- const index = y * effectiveScreenWidth + x;
+          const index = col.tileIndex(y);
           const tile = currentScreen.tiles[index];
           if (tile) ids.push(tile.id);
         }
@@ -1973,7 +2005,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     } else if (currentScreen.activeTool === 'color') {
       setTiles(prev => prev.map(tile => ids.includes(tile.id) ? { ...tile, color: currentScreen.brushColor, deleted: false } : tile));
     }
-  }, [selectionRect, effectiveScreenWidth, effectiveScreenHeight, leftHalfTile, rightHalfTile, topHalfTile, bottomHalfTile, dimensions, currentScreen.activeTool, currentScreen.brushColor, currentScreen.tiles, setTiles]);
+  }, [selectionRect, effectiveScreenWidth, effectiveScreenHeight, leftHalfTile, rightHalfTile, topHalfTile, bottomHalfTile, dimensions, currentScreen.activeTool, currentScreen.brushColor, currentScreen.tiles, currentScreen.sections, setTiles]);
 
   const restoreDeletedTiles = useCallback(() => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, deleted: false })));
