@@ -2522,18 +2522,30 @@ const handleRightHalfTileChange = (add: boolean) => {
         const screenEffectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
         const screenEffectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
 
+        const sectionLayout = screen.sections.length > 0;
+        const sectionWidth = sectionLayout
+            ? screen.sections.reduce((sum, section) => sum + section.columnCount, 0)
+            : screenEffectiveWidth;
         const computeContentSize = (bounds: ActiveBounds) => {
-            const cw = Array.from({ length: bounds.maxX - bounds.minX + 1 }, (_, i) => {
-                const x = bounds.minX + i;
-                const isLeftHalf = screen.leftHalfTile && x === 0;
-                const isRightHalf = screen.rightHalfTile && x === (screenEffectiveWidth - 1);
-                return (isLeftHalf || isRightHalf) ? screen.dimensions.tileWidth / 2 : screen.dimensions.tileWidth;
-            }).reduce((a, b) => a + b, 0);
+            const cw = sectionLayout
+                ? screen.sections.reduce((sum, section, sectionIndex) => {
+                    const start = screen.sections.slice(0, sectionIndex).reduce((offset, previous) => offset + previous.columnCount, 0);
+                    const minX = Math.max(bounds.minX, start);
+                    const maxX = Math.min(bounds.maxX, start + section.columnCount - 1);
+                    return sum + (maxX >= minX ? (maxX - minX + 1) * section.tileWidthPx : 0);
+                }, 0)
+                : Array.from({ length: bounds.maxX - bounds.minX + 1 }, (_, i) => {
+                    const x = bounds.minX + i;
+                    const isLeftHalf = screen.leftHalfTile && x === 0;
+                    const isRightHalf = screen.rightHalfTile && x === (screenEffectiveWidth - 1);
+                    return (isLeftHalf || isRightHalf) ? screen.dimensions.tileWidth / 2 : screen.dimensions.tileWidth;
+                }).reduce((a, b) => a + b, 0);
+            const sectionHeight = sectionLayout ? (screen.sections[0]?.tileHeightPx ?? screen.dimensions.tileHeight) : screen.dimensions.tileHeight;
             const ch = Array.from({ length: bounds.maxY - bounds.minY + 1 }, (_, i) => {
                 const y = bounds.minY + i;
-                const isTopHalf = screen.topHalfTile && y === 0;
-                const isBottomHalf = screen.bottomHalfTile && y === (screenEffectiveHeight - 1);
-                return (isTopHalf || isBottomHalf) ? screen.dimensions.tileHeight / 2 : screen.dimensions.tileHeight;
+                const isTopHalf = !sectionLayout && screen.topHalfTile && y === 0;
+                const isBottomHalf = !sectionLayout && screen.bottomHalfTile && y === (screenEffectiveHeight - 1);
+                return (isTopHalf || isBottomHalf) ? screen.dimensions.tileHeight / 2 : sectionHeight;
             }).reduce((a, b) => a + b, 0);
             return { cw, ch };
         };
@@ -2574,25 +2586,32 @@ const handleRightHalfTileChange = (add: boolean) => {
                 if (seg.offset.y + ch > totalContentHeight) totalContentHeight = seg.offset.y + ch;
             }
         } else {
-            let screenActiveBounds: ActiveBounds;
+            let minX = sectionLayout ? sectionWidth : screenEffectiveWidth;
+            let minY = Infinity;
+            let maxX = -1;
+            let maxY = -1;
+            let tileOffset = 0;
+            let columnOffset = 0;
+            for (const section of sectionLayout ? screen.sections : [{ columnCount: screenEffectiveWidth }]) {
+                for (let index = 0; index < section.columnCount * screenEffectiveHeight; index++) {
+                    const tile = activeTiles.find(activeTile => activeTile.index === tileOffset + index);
+                    if (!tile) continue;
+                    const x = columnOffset + (index % section.columnCount);
+                    const y = Math.floor(index / section.columnCount);
+                    minX = Math.min(minX, x);
+                    maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
+                }
+                tileOffset += section.columnCount * screenEffectiveHeight;
+                columnOffset += section.columnCount;
+            }
+            const naturalBounds = { minX, minY, maxX, maxY };
             const crop = screen.rasterCrop;
             const cropValid = crop
-                && crop.minX >= 0 && crop.maxX < screenEffectiveWidth
-                && crop.minY >= 0 && crop.maxY < screenEffectiveHeight;
-            if (cropValid) {
-                screenActiveBounds = crop!;
-            } else {
-                let minX = screen.dimensions.screenWidth, minY = Infinity, maxX = -1, maxY = -1;
-                activeTiles.forEach(tile => {
-                    const x = tile.index % screenEffectiveWidth;
-                    const y = Math.floor(tile.index / screenEffectiveWidth);
-                    if (x < minX) minX = x;
-                    if (x > maxX) maxX = x;
-                    if (y < minY) minY = y;
-                    if (y > maxY) maxY = y;
-                });
-                screenActiveBounds = { minX, minY, maxX, maxY };
-            }
+                && crop.minX >= naturalBounds.minX && crop.minY >= naturalBounds.minY
+                && crop.maxX <= naturalBounds.maxX && crop.maxY <= naturalBounds.maxY;
+            const screenActiveBounds = cropValid ? crop! : naturalBounds;
             const { cw, ch } = computeContentSize(screenActiveBounds);
             screenArrangement.push({
                 screenId: screen.id,
