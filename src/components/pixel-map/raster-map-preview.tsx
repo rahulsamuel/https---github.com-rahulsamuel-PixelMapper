@@ -190,7 +190,8 @@ export function RasterMapPreview() {
           {screenArrangement.map(sa => {
             const offsetItems = tileOffsetsByScreen.get(`${sa.screenId}-${sa.segmentId}`) ?? [];
             const screen = screens.find(s => s.id === sa.screenId);
-            const screenOverlays = screen?.textOverlays ?? [];
+            if (!screen) return null;
+            const screenOverlays = screen.textOverlays ?? [];
 
             return (
               <div
