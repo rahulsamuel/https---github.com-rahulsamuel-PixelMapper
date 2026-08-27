@@ -59,6 +59,7 @@ export function LedGrid() {
     removeTextOverlay,
     logoOverlay,
     setLogoOverlay,
+    showLogoOverlay,
     activeTool,
     selectionRect,
     selectedTileIds,
@@ -521,7 +522,7 @@ export function LedGrid() {
             onRemove={removeTextOverlay}
           />
         ))}
-        {logoOverlay && (
+        {logoOverlay && showLogoOverlay && (
           <DraggableLogoOverlay
             overlay={logoOverlay}
             zoom={zoom}

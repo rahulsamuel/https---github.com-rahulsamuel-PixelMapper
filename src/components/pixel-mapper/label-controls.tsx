@@ -70,6 +70,8 @@ export function LabelControls() {
     removeTextOverlay,
     logoOverlay,
     setLogoOverlay,
+    showLogoOverlay,
+    setShowLogoOverlay,
     effectiveScreenWidth,
     effectiveScreenHeight,
   } = usePixelMap();
@@ -556,7 +558,12 @@ export function LabelControls() {
       <Separator />
 
       <div>
-        <h4 className="text-sm font-semibold mb-2">Logo Overlay</h4>
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="text-sm font-semibold">Logo Overlay</h4>
+          {logoOverlay && (
+            <Switch checked={showLogoOverlay} onCheckedChange={setShowLogoOverlay} />
+          )}
+        </div>
         <p className="text-xs text-muted-foreground mb-3">Upload a logo to place on the LED grid. Drag to reposition, use the slider to resize.</p>
         {logoOverlay ? (
           <div className="space-y-3">

@@ -153,6 +153,7 @@ interface ScreenArrangement {
   dimensionLabelColor: string;
   customTileWidthMm: number;
   customTileHeightMm: number;
+  showLogoOverlay: boolean;
 }
 
 export interface RasterMapConfig {
@@ -258,6 +259,7 @@ export interface Screen {
   nextTileId: number;
   textOverlays: TextOverlay[];
   logoOverlay: LogoOverlay | null;
+  showLogoOverlay: boolean;
   showModules: boolean;
   moduleBorderColor: string;
   randomizeModuleColors: boolean;
@@ -463,6 +465,8 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   updateTextOverlay: (id: string, updates: Partial<TextOverlay>) => void;
   removeTextOverlay: (id: string) => void;
   setLogoOverlay: Dispatch<SetStateAction<LogoOverlay | null>>;
+  showLogoOverlay: boolean;
+  setShowLogoOverlay: Dispatch<SetStateAction<boolean>>;
   setOnOffMode: Dispatch<SetStateAction<boolean>>;
   zoom: number;
   setZoom: (value: number | ((prev: number) => number), applyToAllTabs?: boolean) => void;
@@ -689,6 +693,7 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     nextTileId: idCounter + initialTiles.length,
     textOverlays: [],
     logoOverlay: null,
+    showLogoOverlay: true,
     showModules: false,
     moduleBorderColor: "#000000",
     randomizeModuleColors: false,
@@ -1029,6 +1034,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   }, [updateCurrentScreen]);
 
   const setLogoOverlay = (updater: SetStateAction<LogoOverlay | null>) => updateCurrentScreen(s => ({ ...s, logoOverlay: typeof updater === 'function' ? updater(s.logoOverlay ?? null) : updater }));
+  const setShowLogoOverlay = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showLogoOverlay: typeof updater === 'function' ? updater(s.showLogoOverlay ?? true) : updater }));
 
   const addRasterGroup = useCallback(() => {
     const newId = `raster-${Date.now()}`;
@@ -2422,7 +2428,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     }
 
     // Draw logo overlay — positioned in full-screen coordinate space, clipped to crop region
-    if (drawOverlays && screen.logoOverlay) {
+    if (drawOverlays && screen.logoOverlay && screen.showLogoOverlay !== false) {
       try {
         const logoImg = new Image();
         logoImg.src = screen.logoOverlay.imageData;
@@ -2465,7 +2471,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         const ctx = canvas.getContext('2d');
 
         // Draw logo overlay asynchronously (image needs to load)
-        if (ctx && includeTextOverlaysInDownload && currentScreen.logoOverlay) {
+        if (ctx && includeTextOverlaysInDownload && currentScreen.logoOverlay && currentScreen.showLogoOverlay !== false) {
           try {
             const logoImg = await new Promise<HTMLImageElement>((resolve, reject) => {
               const img = new Image();
@@ -2581,6 +2587,7 @@ const handleRightHalfTileChange = (add: boolean) => {
                     dimensionLabelColor: screen.dimensionLabelColor ?? '#ffffff',
                     customTileWidthMm: screen.customTileWidthMm ?? 0,
                     customTileHeightMm: screen.customTileHeightMm ?? 0,
+                    showLogoOverlay: screen.showLogoOverlay ?? true,
                 });
                 if (seg.offset.x + cw > totalContentWidth) totalContentWidth = seg.offset.x + cw;
                 if (seg.offset.y + ch > totalContentHeight) totalContentHeight = seg.offset.y + ch;
@@ -2637,6 +2644,7 @@ const handleRightHalfTileChange = (add: boolean) => {
                 dimensionLabelColor: screen.dimensionLabelColor ?? '#ffffff',
                 customTileWidthMm: screen.customTileWidthMm ?? 0,
                 customTileHeightMm: screen.customTileHeightMm ?? 0,
+                showLogoOverlay: screen.showLogoOverlay ?? true,
             });
             if (screen.rasterOffset.x + cw > totalContentWidth) totalContentWidth = screen.rasterOffset.x + cw;
             if (screen.rasterOffset.y + ch > totalContentHeight) totalContentHeight = screen.rasterOffset.y + ch;
@@ -4330,6 +4338,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     rasterGroupId: currentScreen.rasterGroupId,
     textOverlays: currentScreen.textOverlays,
     logoOverlay: currentScreen.logoOverlay ?? null,
+    showLogoOverlay: currentScreen.showLogoOverlay ?? true,
+    setShowLogoOverlay,
     gear: gearRef.current,
     gearVersion,
     addProcessor,
