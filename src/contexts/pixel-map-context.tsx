@@ -251,8 +251,6 @@ export interface Screen {
   moduleColors: string[][];
   rasterCrop: ActiveBounds | null;
   rasterSegments?: RasterSegment[];
-  baseUnitWidth?: number;
-  baseUnitHeight?: number;
 }
 
 export interface CalculatorTabData {
@@ -571,10 +569,6 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   updateCable: (id: string, patch: Partial<CableRun>) => void;
   removeCable: (id: string) => void;
   regenerateGear: () => void;
-  setTileProduct: (tileId: number, productId: string | null) => void;
-  getTileDimensions: (tile: Tile, screen: Screen) => { width: number; height: number };
-  getBaseUnit: (screen: Screen) => { width: number; height: number };
-  getTileSpan: (tile: Tile, screen: Screen) => { spanX: number; spanY: number };
 }
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
@@ -833,47 +827,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       tiles: typeof updater === 'function' ? updater(screen.tiles) : updater,
     }));
   };
-
-  const setTileProduct = useCallback((tileId: number, productId: string | null) => {
-    updateCurrentScreen(screen => ({
-      ...screen,
-      tiles: screen.tiles.map(t => t.id === tileId ? { ...t, productId } : t),
-    }));
-  }, [updateCurrentScreen]);
-
-  const getTileDimensions = useCallback((tile: Tile, screen: Screen): { width: number; height: number } => {
-    if (tile.productId && tile.productId !== 'custom') {
-      const product = products.find(p => p.id === tile.productId);
-      if (product) return { width: product.tileWidthPx, height: product.tileHeightPx };
-    }
-    return { width: screen.dimensions.tileWidth, height: screen.dimensions.tileHeight };
-  }, [products]);
-
-  const getBaseUnit = useCallback((screen: Screen): { width: number; height: number } => {
-    if (screen.baseUnitWidth && screen.baseUnitHeight) {
-      return { width: screen.baseUnitWidth, height: screen.baseUnitHeight };
-    }
-    let minW = screen.dimensions.tileWidth;
-    let minH = screen.dimensions.tileHeight;
-    for (const tile of screen.tiles) {
-      if (tile.deleted || !tile.productId || tile.productId === 'custom') continue;
-      const product = products.find(p => p.id === tile.productId);
-      if (product) {
-        minW = Math.min(minW, product.tileWidthPx);
-        minH = Math.min(minH, product.tileHeightPx);
-      }
-    }
-    return { width: minW, height: minH };
-  }, [products]);
-
-  const getTileSpan = useCallback((tile: Tile, screen: Screen): { spanX: number; spanY: number } => {
-    const base = getBaseUnit(screen);
-    const dims = getTileDimensions(tile, screen);
-    return {
-      spanX: Math.max(1, Math.round(dims.width / base.width)),
-      spanY: Math.max(1, Math.round(dims.height / base.height)),
-    };
-  }, [getBaseUnit, getTileDimensions]);
 
   const setTileColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, tileColor: typeof updater === 'function' ? updater(s.tileColor) : updater }));
   const setTileColorTwo = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, tileColorTwo: typeof updater === 'function' ? updater(s.tileColorTwo) : updater }));
@@ -4200,10 +4153,6 @@ const handleRightHalfTileChange = (add: boolean) => {
     updateCable,
     removeCable,
     regenerateGear,
-    setTileProduct,
-    getTileDimensions,
-    getBaseUnit,
-    getTileSpan,
   };
 
   return (

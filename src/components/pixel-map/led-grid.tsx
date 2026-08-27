@@ -64,7 +64,6 @@ export function LedGrid() {
     handleGridMouseDown,
     handleGridMouseMove,
     handleGridMouseUp,
-    getTileSpan,
   } = usePixelMap();
 
   const selectedProduct = useMemo(() => products.find(p => p.id === currentScreen.selectedProductId) ?? null, [products, currentScreen.selectedProductId]);
@@ -212,30 +211,19 @@ export function LedGrid() {
             const tileEffectiveHeight = getTileHeight(y);
             const tileEffectiveWidth = getTileWidth(x);
 
-            // Compute grid span for tiles with product overrides
-            const span = tile.productId && tile.productId !== 'custom'
-              ? getTileSpan(tile, currentScreen)
-              : { spanX: 1, spanY: 1 };
-
             const tileDynamicStyle: React.CSSProperties = {
-              width: `${tileEffectiveWidth * span.spanX}px`,
-              height: `${tileEffectiveHeight * span.spanY}px`,
+              width: `${tileEffectiveWidth}px`,
+              height: `${tileEffectiveHeight}px`,
               borderWidth: `${borderWidth}px`,
               borderColor: borderColor,
               backgroundColor: randomizeModuleColors ? 'transparent' : bgColor,
               borderStyle: tile.deleted ? 'none' : 'solid',
               boxSizing: 'border-box',
-              ...(span.spanX > 1 || span.spanY > 1 ? {
-                gridColumn: `${x + 1} / span ${span.spanX}`,
-                gridRow: `${y + 1} / span ${span.spanY}`,
-              } : {}),
             };
 
-            const numModulesX = Math.floor((tileEffectiveWidth * span.spanX) / dimensions.moduleWidth);
-            const numModulesY = Math.floor((tileEffectiveHeight * span.spanY) / dimensions.moduleHeight);
+            const numModulesX = Math.floor(tileEffectiveWidth / dimensions.moduleWidth);
+            const numModulesY = Math.floor(tileEffectiveHeight / dimensions.moduleHeight);
             const totalModules = numModulesX * numModulesY;
-
-            const hasOverride = tile.productId && tile.productId !== 'custom';
 
             return (
               <button
@@ -287,11 +275,6 @@ export function LedGrid() {
                   >
                     {labels[index]}
                   </span>
-                )}
-                {hasOverride && !tile.deleted && (
-                  <div className="absolute top-0 right-0 bg-blue-500 text-white text-[8px] font-bold px-0.5 rounded-bl z-20" title={tile.productId ?? ''}>
-                    {products.find(p => p.id === tile.productId)?.productName?.slice(0, 6) ?? 'OVR'}
-                  </div>
                 )}
               </button>
             );
