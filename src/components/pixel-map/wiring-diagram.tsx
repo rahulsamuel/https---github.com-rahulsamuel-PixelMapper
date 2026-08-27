@@ -165,8 +165,8 @@ export function WiringDiagram() {
       const tile = tiles[originalIndex];
       if (!tile) return;
 
-      const row = rowData[y];
-      const col = colData[x];
+      const row = rowData[coordinate.y];
+      const col = colData[visualX];
       if (!row || !col) return;
 
       const drawX = isWiringMirrored ? totalGridPixelWidth - col.xPos - col.width : col.xPos;

@@ -1,6 +1,6 @@
 
 
-import type { Tile } from "@/contexts/pixel-map-context";
+import type { Tile, ScreenSection } from "@/contexts/pixel-map-context";
 
 interface Dimensions {
   tileWidth: number;
@@ -78,11 +78,11 @@ export interface WiringInfo {
   sliceOffsetLabel?: string;
 }
 
-export function getPathOrder(indices: number[], pattern: WiringPattern, screenWidth: number, screenHeight: number, runLength?: number): number[] {
-  const getCoords = (index: number) => ({
+export function getPathOrder(indices: number[], pattern: WiringPattern, screenWidth: number, screenHeight: number, runLength?: number, coordResolver?: (index: number) => { x: number; y: number }): number[] {
+  const getCoords = coordResolver ?? ((index: number) => ({
     x: index % screenWidth,
     y: Math.floor(index / screenWidth),
-  });
+  }));
 
   if (pattern === 'custom-serpentine-h' || pattern === 'custom-serpentine-h-start-right' ||
       pattern === 'custom-serpentine-v' || pattern === 'custom-serpentine-v-start-bottom') {
@@ -614,6 +614,7 @@ interface GetWiringDataArgs {
     leftHalfTile: boolean;
     rightHalfTile: boolean;
     screenId: string;
+    sections?: ScreenSection[];
 }
 
 export function getWiringData({
@@ -628,16 +629,37 @@ export function getWiringData({
   rasterMapConfig,
   topHalfTile,
   bottomHalfTile,
-  screenId
+  leftHalfTile,
+  rightHalfTile,
+  screenId,
+  sections,
 }: GetWiringDataArgs): WiringInfo[] {
   const { screenWidth, screenHeight, tileWidth, tileHeight } = dimensions;
   if (!tiles || tiles.length === 0) {
     return [];
   }
 
+  const hasSections = sections && sections.length > 0;
+  const visualWidth = hasSections ? sections.reduce((sum, s) => sum + s.columnCount, 0) : screenWidth;
+
+  const getVisualCoords = (index: number): { x: number; y: number } => {
+    if (!hasSections) return { x: index % screenWidth, y: Math.floor(index / screenWidth) };
+    let tileOffset = 0;
+    let colOffset = 0;
+    for (const section of sections) {
+      const sectionTiles = section.columnCount * screenHeight;
+      if (index < tileOffset + sectionTiles) {
+        const localIndex = index - tileOffset;
+        return { x: colOffset + (localIndex % section.columnCount), y: Math.floor(localIndex / section.columnCount) };
+      }
+      tileOffset += sectionTiles;
+      colOffset += section.columnCount;
+    }
+    return { x: index % screenWidth, y: Math.floor(index / screenWidth) };
+  };
+
   const allTilesData: WiringInfo[] = tiles.map((tile, index) => ({
-    x: index % screenWidth,
-    y: Math.floor(index / screenWidth),
+    ...getVisualCoords(index),
     dataLabel: "",
     powerPortLabel: tile.powerPortLabel || "", // Preserve manual labels
     backupLabel: "",
@@ -671,8 +693,8 @@ export function getWiringData({
 
           const startGridIdx = gridIndices[0];
           const pathOrder = isCustomSerpentine(pattern)
-            ? generateManualSerpentinePath(startGridIdx, activeTileIndices, pattern, screenWidth, screenHeight, circuitRunLength || 4)
-            : getPathOrder(activeTileIndices, pattern, screenWidth, screenHeight, circuitRunLength);
+            ? generateManualSerpentinePath(startGridIdx, activeTileIndices, pattern, visualWidth, screenHeight, circuitRunLength || 4)
+            : getPathOrder(activeTileIndices, pattern, visualWidth, screenHeight, circuitRunLength, hasSections ? getVisualCoords : undefined);
 
           let trueStartPathIndex: number;
           if (isCustomSerpentine(pattern)) {
@@ -716,8 +738,7 @@ export function getWiringData({
             const sliceTiles: number[] = [];
             
             activeTileIndices.forEach(index => {
-                const x = index % screenWidth;
-                const y = Math.floor(index / screenWidth);
+                const { x, y } = getVisualCoords(index);
 
                 const {minX, minY} = currentScreenArrangement.activeBounds;
                 let tileContentY = 0;
@@ -726,7 +747,12 @@ export function getWiringData({
                     const isBottomRow = bottomHalfTile && i === screenHeight - 1;
                     tileContentY += (isTopRow || isBottomRow) ? tileHeight / 2 : tileHeight;
                 }
-                const tileContentX = (x - minX) * tileWidth;
+                let tileContentX = 0;
+                for (let i = minX; i < x; i++) {
+                    const isLeftHalf = leftHalfTile && i === 0;
+                    const isRightHalf = rightHalfTile && i === visualWidth - 1;
+                    tileContentX += (isLeftHalf || isRightHalf) ? tileWidth / 2 : tileWidth;
+                }
 
                 const absoluteContentX = tileContentX + currentScreenArrangement.x;
                 const absoluteContentY = tileContentY + currentScreenArrangement.y;
@@ -742,14 +768,14 @@ export function getWiringData({
             });
 
             if (sliceTiles.length > 0) {
-                const pathOrder = getPathOrder(sliceTiles, wiringPattern, screenWidth, screenHeight);
+                const pathOrder = getPathOrder(sliceTiles, wiringPattern, visualWidth, screenHeight, undefined, hasSections ? getVisualCoords : undefined);
                 const tilesPath = pathOrder.map(index => ({ tile: allTilesData[index], index }));
                 groupCounter = applyDataWiring(tilesPath, wiringPortConfig, dataPortStartNumber, processorType, groupCounter);
             }
         });
     }
   } else {
-    const dataPathOrder = getPathOrder(activeTileIndices, wiringPattern, screenWidth, screenHeight);
+    const dataPathOrder = getPathOrder(activeTileIndices, wiringPattern, visualWidth, screenHeight, undefined, hasSections ? getVisualCoords : undefined);
     const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
     applyDataWiring(dataTilesPath, wiringPortConfig, dataPortStartNumber, processorType, dataPortStartNumber - 1);
   }
@@ -773,8 +799,8 @@ export function getWiringData({
 
           const startGridIdx = gridIndices[0];
           const pathOrder = isCustomSerpentine(pattern)
-            ? generateManualSerpentinePath(startGridIdx, activeTileIndices, pattern, screenWidth, screenHeight, circuitRunLength || 4)
-            : getPathOrder(activeTileIndices, pattern, screenWidth, screenHeight, circuitRunLength);
+            ? generateManualSerpentinePath(startGridIdx, activeTileIndices, pattern, visualWidth, screenHeight, circuitRunLength || 4)
+            : getPathOrder(activeTileIndices, pattern, visualWidth, screenHeight, circuitRunLength, hasSections ? getVisualCoords : undefined);
 
           let trueStartPathIndex: number;
           if (isCustomSerpentine(pattern)) {
@@ -808,7 +834,7 @@ export function getWiringData({
   } else {
     // Automatic power wiring
     allTilesData.forEach(t => t.powerPortLabel = '');
-    const powerPathOrder = getPathOrder(activeTileIndices, powerWiringPattern, screenWidth, screenHeight);
+    const powerPathOrder = getPathOrder(activeTileIndices, powerWiringPattern, visualWidth, screenHeight, undefined, hasSections ? getVisualCoords : undefined);
     const powerTilesPath = powerPathOrder.map(index => ({ tile: allTilesData[index], index }));
     const powerCounters = { powerCounter: 1, powerGroupCounter: 0 };
     applyPowerWiring(powerTilesPath, tilesPerPowerString, powerCounters);

@@ -1168,7 +1168,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       leftHalfTile: currentScreen.leftHalfTile,
       rightHalfTile: currentScreen.rightHalfTile,
       processorType: currentScreen.processorType,
-      screenId: currentScreen.id
+      screenId: currentScreen.id,
+      sections: currentScreen.sections,
     })
   }, [currentScreen, effectiveScreenHeight, effectiveScreenWidth, rasterMapConfigs]);
 
@@ -1680,6 +1681,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         rightHalfTile: screen.rightHalfTile,
         processorType: screen.processorType,
         screenId: screen.id,
+        sections: screen.sections,
       });
 
       // Helper: compute which slice a tile (x,y) belongs to, based on raster map config.
@@ -3759,6 +3761,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         leftHalfTile: screen.leftHalfTile,
         rightHalfTile: screen.rightHalfTile,
         screenId: screen.id,
+        sections: screen.sections,
     });
     
     const screenLabels = (() => {
