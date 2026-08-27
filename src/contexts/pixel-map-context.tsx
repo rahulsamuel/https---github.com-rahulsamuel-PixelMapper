@@ -2971,59 +2971,21 @@ const handleRightHalfTileChange = (add: boolean) => {
     const node = wiringDiagramRef.current as HTMLElement;
     const screenName = (currentScreen.name || "Screen").replace(/[^a-zA-Z0-9_-]/g, '_');
 
-    const hasSections = currentScreen.sections.length > 0;
-    const sectionTileW = hasSections ? currentScreen.sections[0].tileWidthPx : dimensions.tileWidth;
-    const sectionTileH = hasSections ? currentScreen.sections[0].tileHeightPx : dimensions.tileHeight;
-
-    const colWidthFor = (x: number) => {
-      const isLeftHalf = leftHalfTile && x === 0;
-      const isRightHalf = rightHalfTile && x === (effectiveScreenWidth - 1);
-      return (isLeftHalf || isRightHalf) ? sectionTileW / 2 : sectionTileW;
-    };
-    const rowHeightFor = (y: number) => {
-      const isTopHalf = topHalfTile && y === 0;
-      const isBottomHalf = bottomHalfTile && y === (effectiveScreenHeight - 1);
-      return (isTopHalf || isBottomHalf) ? sectionTileH / 2 : sectionTileH;
-    };
-
-    // Export the full screen, not just the active (non-deleted) region.
-    const contentPixelHeight = (() => {
-        let height = 0;
-        for (let y = 0; y < effectiveScreenHeight; y++) {
-            height += rowHeightFor(y);
-        }
-        return height;
-    })();
-
-    const contentPixelWidth = (() => {
-        let width = 0;
-        for (let x = 0; x < effectiveScreenWidth; x++) {
-            width += colWidthFor(x);
-        }
-        return width;
-    })();
-
-    const cropWidth = contentPixelWidth;
-    const cropHeight = contentPixelHeight;
-    const sx = 0;
-    const sy = 0;
-
     const generateAndDownload = async (type: 'data' | 'power' | 'both', isMirrored: boolean, filename: string) => {
       // Composite the stacked canvases directly to avoid html-to-image capturing
       // extra whitespace from the surrounding scroll container.
       const canvases = Array.from(node.querySelectorAll('canvas')) as HTMLCanvasElement[];
       if (canvases.length === 0) return;
 
-      const outW = cropWidth;
-      const outH = cropHeight;
-      // Use the rendered canvas scale so the export always covers the full grid.
-      const sourceScale = canvases[0].width / outW;
-      const totalGridPixelWidth = canvases[0].width / sourceScale;
-      const originX = isMirrored ? (totalGridPixelWidth - sx - cropWidth) : sx;
-      const srcSx = originX * sourceScale;
-      const srcSy = sy * sourceScale;
-      const srcW = outW * sourceScale;
-      const srcH = outH * sourceScale;
+      // The base wiring canvas already matches the LED grid's rendered dimensions.
+      // Use its bitmap size so the export cannot add a blank strip from a separate calculation.
+      const sourceScale = Math.min(window.devicePixelRatio || 1, 2);
+      const outW = Math.round(canvases[0].width / sourceScale);
+      const outH = Math.round(canvases[0].height / sourceScale);
+      const srcSx = 0;
+      const srcSy = 0;
+      const srcW = canvases[0].width;
+      const srcH = canvases[0].height;
 
       const output = document.createElement('canvas');
       output.width = outW;
@@ -3086,7 +3048,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         variant: "destructive",
       });
     }
-  }, [wiringDiagramRef, currentScreen, wiringData, drawTextOverlaysOnCtx, includeTextOverlaysInDownload, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, subscriptionStatus]);
+  }, [wiringDiagramRef, currentScreen, wiringData, drawTextOverlaysOnCtx, includeTextOverlaysInDownload, toast, activeBounds, subscriptionStatus]);
 
   const handleDownloadFullRaster = useCallback(() => {
     if (subscriptionStatus !== 'pro') {
