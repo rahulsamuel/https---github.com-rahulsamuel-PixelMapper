@@ -3014,17 +3014,16 @@ const handleRightHalfTileChange = (add: boolean) => {
       const canvases = Array.from(node.querySelectorAll('canvas')) as HTMLCanvasElement[];
       if (canvases.length === 0) return;
 
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const outW = cropWidth;
       const outH = cropHeight;
-      // The canvas bitmap already has mirrored content baked in, so for the
-      // rear view the crop origin is on the right side of the bitmap.
-      const totalGridPixelWidth = canvases[0].width / dpr;
+      // Use the rendered canvas scale so the export always covers the full grid.
+      const sourceScale = canvases[0].width / outW;
+      const totalGridPixelWidth = canvases[0].width / sourceScale;
       const originX = isMirrored ? (totalGridPixelWidth - sx - cropWidth) : sx;
-      const srcSx = originX * dpr;
-      const srcSy = sy * dpr;
-      const srcW = outW * dpr;
-      const srcH = outH * dpr;
+      const srcSx = originX * sourceScale;
+      const srcSy = sy * sourceScale;
+      const srcW = outW * sourceScale;
+      const srcH = outH * sourceScale;
 
       const output = document.createElement('canvas');
       output.width = outW;
@@ -3034,13 +3033,11 @@ const handleRightHalfTileChange = (add: boolean) => {
       octx.fillRect(0, 0, outW, outH);
 
       for (const cvs of canvases) {
-        const wiringType = cvs.getAttribute('data-wiring-type') as 'data' | 'power' | null;
-        if (wiringType) {
+        const wiringType = cvs.getAttribute('data-wiring-type');
+        if (wiringType === 'overlay') continue;
+        if (wiringType === 'data' || wiringType === 'power') {
           const shouldShow = type === 'both' || type === wiringType;
           if (!shouldShow) continue;
-        } else {
-          // Skip the overlay canvas here; text overlays are drawn separately below.
-          continue;
         }
         octx.drawImage(cvs, srcSx, srcSy, srcW, srcH, 0, 0, outW, outH);
       }

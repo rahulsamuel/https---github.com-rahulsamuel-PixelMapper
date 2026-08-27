@@ -578,7 +578,7 @@ export function WiringDiagram() {
       />
       <canvas
         ref={overlayCanvasRef}
-        data-wiring-type={null as any}
+        data-wiring-type="overlay"
         style={{
           position: 'absolute',
           top: 0,
