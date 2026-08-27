@@ -2963,13 +2963,26 @@ const handleRightHalfTileChange = (add: boolean) => {
     const node = wiringDiagramRef.current as HTMLElement;
     const screenName = (currentScreen.name || "Screen").replace(/[^a-zA-Z0-9_-]/g, '_');
 
+    const hasSections = currentScreen.sections.length > 0;
+    const sectionTileW = hasSections ? currentScreen.sections[0].tileWidthPx : dimensions.tileWidth;
+    const sectionTileH = hasSections ? currentScreen.sections[0].tileHeightPx : dimensions.tileHeight;
+
+    const colWidthFor = (x: number) => {
+      const isLeftHalf = leftHalfTile && x === 0;
+      const isRightHalf = rightHalfTile && x === (effectiveScreenWidth - 1);
+      return (isLeftHalf || isRightHalf) ? sectionTileW / 2 : sectionTileW;
+    };
+    const rowHeightFor = (y: number) => {
+      const isTopHalf = topHalfTile && y === 0;
+      const isBottomHalf = bottomHalfTile && y === (effectiveScreenHeight - 1);
+      return (isTopHalf || isBottomHalf) ? sectionTileH / 2 : sectionTileH;
+    };
+
     const contentPixelHeight = (() => {
         if (!activeBounds) return 0;
         let height = 0;
         for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
-            const isTopHalf = topHalfTile && y === 0;
-            const isBottomHalf = bottomHalfTile && y === (effectiveScreenHeight - 1);
-            height += (isTopHalf || isBottomHalf) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
+            height += rowHeightFor(y);
         }
         return height;
     })();
@@ -2978,23 +2991,19 @@ const handleRightHalfTileChange = (add: boolean) => {
         if (!activeBounds) return 0;
         let width = 0;
         for (let x = activeBounds.minX; x <= activeBounds.maxX; x++) {
-            const isLeftHalf = leftHalfTile && x === 0;
-            const isRightHalf = rightHalfTile && x === (effectiveScreenWidth - 1);
-            width += (isLeftHalf || isRightHalf) ? dimensions.tileWidth / 2 : dimensions.tileWidth;
+            width += colWidthFor(x);
         }
         return width;
     })();
 
     let yPosOfMinY = 0;
     for (let i = 0; i < activeBounds.minY; i++) {
-        const isTopHalfRow = topHalfTile && i === 0;
-        yPosOfMinY += isTopHalfRow ? dimensions.tileHeight / 2 : dimensions.tileHeight;
+        yPosOfMinY += rowHeightFor(i);
     }
 
     let xPosOfMinX = 0;
     for (let i = 0; i < activeBounds.minX; i++) {
-        const isLeftHalfCol = leftHalfTile && i === 0;
-        xPosOfMinX += isLeftHalfCol ? dimensions.tileWidth / 2 : dimensions.tileWidth;
+        xPosOfMinX += colWidthFor(i);
     }
 
     const cropWidth = contentPixelWidth;
@@ -3080,7 +3089,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         variant: "destructive",
       });
     }
-  }, [wiringDiagramRef, currentScreen.name, currentScreen.textOverlays, currentScreen.showDataLabels, currentScreen.showPowerLabels, currentScreen.isWiringMirrored, drawTextOverlaysOnCtx, includeTextOverlaysInDownload, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, subscriptionStatus]);
+  }, [wiringDiagramRef, currentScreen, wiringData, drawTextOverlaysOnCtx, includeTextOverlaysInDownload, toast, activeBounds, dimensions, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, subscriptionStatus]);
 
   const handleDownloadFullRaster = useCallback(() => {
     if (subscriptionStatus !== 'pro') {

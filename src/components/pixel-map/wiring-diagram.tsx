@@ -35,6 +35,7 @@ export function WiringDiagram() {
     dataLabelColor,
     powerLabelColor,
     showSliceOffsetLabels,
+    sliceOffsetLabels,
     topHalfTile,
     bottomHalfTile,
     leftHalfTile,
@@ -210,13 +211,13 @@ export function WiringDiagram() {
           ctx.globalAlpha = 1;
         }
 
-        if (showSliceOffsetLabels && wiringData[index]?.sliceOffsetLabel) {
+        if (showSliceOffsetLabels && sliceOffsetLabels[originalIndex]) {
           ctx.fillStyle = 'rgba(0,0,0,0.6)';
           ctx.fillRect(drawX + 2, drawY + 2, 40, 14);
           ctx.fillStyle = '#ffffff';
           ctx.font = 'bold 9px monospace';
           ctx.textBaseline = 'top';
-          ctx.fillText(wiringData[index].sliceOffsetLabel!, drawX + 4, drawY + 3);
+          ctx.fillText(sliceOffsetLabels[originalIndex], drawX + 4, drawY + 3);
         }
       }
     });
@@ -224,7 +225,7 @@ export function WiringDiagram() {
     tiles, wiringData, rowData, colData, totalGridPixelWidth, totalGridPixelHeight,
     onOffMode, tileColor, tileColorTwo, borderWidth, borderColor,
     showLabels, labels, labelFontSize, labelColor, labelColorMode,
-    isWiringMirrored, showSliceOffsetLabels, effectiveScreenWidth, visualTileCoordinates,
+    isWiringMirrored, showSliceOffsetLabels, sliceOffsetLabels, effectiveScreenWidth, visualTileCoordinates,
   ]);
 
   // ── Draw data layer (data labels + data arrows) ────────────────────────
