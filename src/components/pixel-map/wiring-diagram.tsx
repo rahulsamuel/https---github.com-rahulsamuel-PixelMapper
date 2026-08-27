@@ -41,6 +41,7 @@ export function WiringDiagram() {
     rightHalfTile,
     effectiveScreenHeight,
     effectiveScreenWidth,
+    sections,
     wiringData,
     handleTileClick,
   } = usePixelMap();
@@ -52,30 +53,38 @@ export function WiringDiagram() {
   const rowData = useMemo(() => {
     const data: { yPos: number; height: number }[] = [];
     let currentY = 0;
+    const sectionHeight = sections[0]?.tileHeightPx ?? dimensions.tileHeight;
     for (let i = 0; i < effectiveScreenHeight; i++) {
       const isTopHalfRow = topHalfTile && i === 0;
       const isBottomHalfRow = bottomHalfTile && i === effectiveScreenHeight - 1;
-      let rowHeight = dimensions.tileHeight;
-      if (isTopHalfRow || isBottomHalfRow) rowHeight /= 2;
+      const rowHeight = (isTopHalfRow || isBottomHalfRow) ? sectionHeight / 2 : sectionHeight;
       data.push({ yPos: currentY, height: rowHeight });
       currentY += rowHeight;
     }
     return data;
-  }, [dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight]);
+  }, [dimensions, topHalfTile, bottomHalfTile, effectiveScreenHeight, sections]);
 
   const colData = useMemo(() => {
     const data: { xPos: number; width: number }[] = [];
     let currentX = 0;
+    if (sections.length > 0) {
+      for (const section of sections) {
+        for (let i = 0; i < section.columnCount; i++) {
+          data.push({ xPos: currentX, width: section.tileWidthPx });
+          currentX += section.tileWidthPx;
+        }
+      }
+      return data;
+    }
     for (let i = 0; i < effectiveScreenWidth; i++) {
       const isLeftHalf = leftHalfTile && i === 0;
       const isRightHalf = rightHalfTile && i === effectiveScreenWidth - 1;
-      let colWidth = dimensions.tileWidth;
-      if (isLeftHalf || isRightHalf) colWidth /= 2;
+      const colWidth = (isLeftHalf || isRightHalf) ? dimensions.tileWidth / 2 : dimensions.tileWidth;
       data.push({ xPos: currentX, width: colWidth });
       currentX += colWidth;
     }
     return data;
-  }, [dimensions, leftHalfTile, rightHalfTile, effectiveScreenWidth]);
+  }, [dimensions, leftHalfTile, rightHalfTile, effectiveScreenWidth, sections]);
 
   const totalGridPixelWidth = useMemo(
     () => colData.reduce((acc, c) => acc + c.width, 0),
@@ -86,10 +95,37 @@ export function WiringDiagram() {
     [rowData],
   );
 
+  const visualTileCoordinates = useMemo(() => {
+    const coordinates: { x: number; y: number }[] = [];
+    if (sections.length === 0) {
+      for (let index = 0; index < tiles.length; index++) coordinates.push({ x: index % effectiveScreenWidth, y: Math.floor(index / effectiveScreenWidth) });
+      return coordinates;
+    }
+    let tileOffset = 0;
+    let columnOffset = 0;
+    for (const section of sections) {
+      for (let y = 0; y < effectiveScreenHeight; y++) {
+        for (let x = 0; x < section.columnCount; x++) {
+          coordinates[tileOffset + y * section.columnCount + x] = { x: columnOffset + x, y };
+        }
+      }
+      tileOffset += section.columnCount * effectiveScreenHeight;
+      columnOffset += section.columnCount;
+    }
+    return coordinates;
+  }, [sections, tiles.length, effectiveScreenWidth, effectiveScreenHeight]);
+
+  const tileIndexForVisualCoordinate = useCallback((x: number, y: number) => {
+    const coordinateIndex = visualTileCoordinates.findIndex(coordinate => coordinate?.x === x && coordinate?.y === y);
+    return coordinateIndex >= 0 ? coordinateIndex : null;
+  }, [visualTileCoordinates]);
+
   const getTileCenter = useCallback(
-    (x: number, y: number) => {
-      const col = colData[x];
-      const row = rowData[y];
+    (tileIndex: number) => {
+      const coord = visualTileCoordinates[tileIndex];
+      if (!coord) return null;
+      const col = colData[coord.x];
+      const row = rowData[coord.y];
       if (!col || !row) return null;
       const cx = isWiringMirrored
         ? totalGridPixelWidth - col.xPos - col.width / 2
@@ -97,7 +133,7 @@ export function WiringDiagram() {
       const cy = row.yPos + row.height / 2;
       return { cx, cy };
     },
-    [colData, rowData, isWiringMirrored, totalGridPixelWidth],
+    [colData, rowData, isWiringMirrored, totalGridPixelWidth, visualTileCoordinates],
   );
 
   // ── Draw base layer (tiles, borders, custom labels) ────────────────────
@@ -122,7 +158,10 @@ export function WiringDiagram() {
     ctx.fillRect(0, 0, w, h);
 
     wiringData.forEach(({ x, y, isDeleted }, index) => {
-      const originalIndex = y * effectiveScreenWidth + x;
+      const originalIndex = index;
+      const coordinate = visualTileCoordinates[originalIndex];
+      if (!coordinate) return;
+      const visualX = coordinate.x;
       const tile = tiles[originalIndex];
       if (!tile) return;
 
@@ -185,7 +224,7 @@ export function WiringDiagram() {
     tiles, wiringData, rowData, colData, totalGridPixelWidth, totalGridPixelHeight,
     onOffMode, tileColor, tileColorTwo, borderWidth, borderColor,
     showLabels, labels, labelFontSize, labelColor, labelColorMode,
-    isWiringMirrored, showSliceOffsetLabels, effectiveScreenWidth,
+    isWiringMirrored, showSliceOffsetLabels, effectiveScreenWidth, visualTileCoordinates,
   ]);
 
   // ── Draw data layer (data labels + data arrows) ────────────────────────
@@ -210,10 +249,13 @@ export function WiringDiagram() {
     if (!showDataLabels) return;
 
     // Data label circles
-    wiringData.forEach(({ x, y, dataLabel, backupLabel, isDeleted }) => {
+    wiringData.forEach((entry, index) => {
+      const { dataLabel, backupLabel, isDeleted } = entry;
       if (isDeleted || (!backupLabel && !dataLabel)) return;
-      const row = rowData[y];
-      const col = colData[x];
+      const coord = visualTileCoordinates[index];
+      if (!coord) return;
+      const row = rowData[coord.y];
+      const col = colData[coord.x];
       if (!row || !col) return;
 
       const drawX = isWiringMirrored ? totalGridPixelWidth - col.xPos - col.width : col.xPos;
@@ -240,10 +282,13 @@ export function WiringDiagram() {
     ctx.strokeStyle = dataLabelColor;
     ctx.fillStyle = dataLabelColor;
     ctx.lineWidth = 3;
-    wiringData.forEach(({ x, y, nextTile, isDeleted }) => {
+    wiringData.forEach((entry, index) => {
+      const { nextTile, isDeleted } = entry;
       if (isDeleted || !nextTile) return;
-      const start = getTileCenter(x, y);
-      const end = getTileCenter(nextTile.x, nextTile.y);
+      const nextIndex = visualTileCoordinates.findIndex(c => c && c.x === nextTile.x && c.y === nextTile.y);
+      if (nextIndex < 0) return;
+      const start = getTileCenter(index);
+      const end = getTileCenter(nextIndex);
       if (!start || !end) return;
 
       const dx = end.cx - start.cx;
@@ -275,7 +320,7 @@ export function WiringDiagram() {
   }, [
     wiringData, rowData, colData, totalGridPixelWidth, totalGridPixelHeight,
     showDataLabels, showPowerLabels, dataLabelSize, dataLabelColor,
-    arrowheadSize, arrowheadLength, arrowGap, isWiringMirrored, getTileCenter,
+    arrowheadSize, arrowheadLength, arrowGap, isWiringMirrored, getTileCenter, visualTileCoordinates,
   ]);
 
   // ── Draw power layer (power labels + power arrows) ─────────────────────
@@ -300,17 +345,19 @@ export function WiringDiagram() {
     if (!showPowerLabels) return;
 
     // Power label circles
-    wiringData.forEach(({ x, y, powerPortLabel, isDeleted }) => {
+    wiringData.forEach((entry, index) => {
+      const { powerPortLabel, isDeleted } = entry;
       if (isDeleted || !powerPortLabel) return;
-      const row = rowData[y];
-      const col = colData[x];
+      const coord = visualTileCoordinates[index];
+      if (!coord) return;
+      const row = rowData[coord.y];
+      const col = colData[coord.x];
       if (!row || !col) return;
 
       const drawX = isWiringMirrored ? totalGridPixelWidth - col.xPos - col.width : col.xPos;
       const cx = drawX + col.width / 2;
       const cy = row.yPos + row.height / 2;
-      const hasData = showDataLabels && wiringData[y * effectiveScreenWidth + x];
-      const dataInfo = hasData ? wiringData[y * effectiveScreenWidth + x] : null;
+      const dataInfo = showDataLabels ? entry : null;
       const offset = (dataInfo && (dataInfo.backupLabel || dataInfo.dataLabel))
         ? (powerLabelSize / 2) + 2
         : 0;
@@ -333,10 +380,13 @@ export function WiringDiagram() {
     ctx.strokeStyle = powerLabelColor;
     ctx.fillStyle = powerLabelColor;
     ctx.lineWidth = 2;
-    wiringData.forEach(({ x, y, nextPowerTile, isDeleted }) => {
+    wiringData.forEach((entry, index) => {
+      const { nextPowerTile, isDeleted } = entry;
       if (isDeleted || !nextPowerTile) return;
-      const start = getTileCenter(x, y);
-      const end = getTileCenter(nextPowerTile.x, nextPowerTile.y);
+      const nextIndex = visualTileCoordinates.findIndex(c => c && c.x === nextPowerTile.x && c.y === nextPowerTile.y);
+      if (nextIndex < 0) return;
+      const start = getTileCenter(index);
+      const end = getTileCenter(nextIndex);
       if (!start || !end) return;
 
       const dx = end.cx - start.cx;
@@ -369,7 +419,7 @@ export function WiringDiagram() {
     wiringData, rowData, colData, totalGridPixelWidth, totalGridPixelHeight,
     showPowerLabels, showDataLabels, powerLabelSize, powerLabelColor,
     powerArrowheadSize, powerArrowheadLength, powerArrowGap, isWiringMirrored,
-    effectiveScreenWidth, getTileCenter,
+    getTileCenter, visualTileCoordinates,
   ]);
 
   // ── Click handling ─────────────────────────────────────────────────────
@@ -392,15 +442,17 @@ export function WiringDiagram() {
             ? totalGridPixelWidth - col.xPos - col.width
             : col.xPos;
           if (canvasX >= drawX && canvasX < drawX + col.width) {
-            const tileIndex = yi * effectiveScreenWidth + xi;
-            const tile = tiles[tileIndex];
-            if (tile) handleTileClick(tile.id);
+            const tileIndex = tileIndexForVisualCoordinate(xi, yi);
+            if (tileIndex !== null) {
+              const tile = tiles[tileIndex];
+              if (tile) handleTileClick(tile.id);
+            }
             return;
           }
         }
       }
     },
-    [rowData, colData, tiles, handleTileClick, isWiringMirrored, totalGridPixelWidth, totalGridPixelHeight, effectiveScreenWidth],
+    [rowData, colData, tiles, handleTileClick, isWiringMirrored, totalGridPixelWidth, totalGridPixelHeight, tileIndexForVisualCoordinate],
   );
 
   if (tiles.length === 0) {

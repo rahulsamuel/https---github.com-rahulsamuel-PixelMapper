@@ -1395,42 +1395,64 @@ const handleRightHalfTileChange = (add: boolean) => {
 
     const { tileHeight, tileWidth } = currentScreen.dimensions;
     const { slices, outputWidth, outputHeight } = currentGroupConfig;
-    const rasterMapConfig = currentGroupConfig;
-    
-    const newLabels = Array(effectiveScreenWidth * effectiveScreenHeight).fill('');
+    const sectionLayout = currentScreen.sections.length > 0;
+
+    const newLabels = Array(currentScreen.tiles.length).fill('');
     const activeTileIndices = currentScreen.tiles.map((_, i) => i).filter(i => !currentScreen.tiles[i].deleted);
+
+    const getTilePixelPos = (index: number): { px: number; py: number } | null => {
+      if (!sectionLayout) {
+        const x = index % effectiveScreenWidth;
+        const y = Math.floor(index / effectiveScreenWidth);
+        if (x < activeBounds.minX || x > activeBounds.maxX || y < activeBounds.minY || y > activeBounds.maxY) return null;
+        let py = 0;
+        for (let i = activeBounds.minY; i < y; i++) {
+          const isTopRow = topHalfTile && i === 0;
+          const isBottomRow = bottomHalfTile && i === effectiveScreenHeight - 1;
+          py += (isTopRow || isBottomRow) ? tileHeight / 2 : tileHeight;
+        }
+        let px = 0;
+        for (let i = activeBounds.minX; i < x; i++) {
+          const isLeftHalf = leftHalfTile && i === 0;
+          const isRightHalf = rightHalfTile && i === effectiveScreenWidth - 1;
+          px += (isLeftHalf || isRightHalf) ? tileWidth / 2 : tileWidth;
+        }
+        return { px, py };
+      }
+      let tileOffset = 0;
+      let colOffset = 0;
+      for (const section of currentScreen.sections) {
+        const sectionTiles = section.columnCount * effectiveScreenHeight;
+        if (index < tileOffset + sectionTiles) {
+          const localIndex = index - tileOffset;
+          const localX = localIndex % section.columnCount;
+          const localY = Math.floor(localIndex / section.columnCount);
+          if (localX < activeBounds.minX - colOffset || localX > activeBounds.maxX - colOffset || localY < activeBounds.minY || localY > activeBounds.maxY) return null;
+          let py = 0;
+          for (let i = activeBounds.minY; i < localY; i++) {
+            const isTopRow = topHalfTile && i === 0;
+            const isBottomRow = bottomHalfTile && i === effectiveScreenHeight - 1;
+            py += (isTopRow || isBottomRow) ? section.tileHeightPx / 2 : section.tileHeightPx;
+          }
+          let px = 0;
+          for (let i = 0; i < localX; i++) px += section.tileWidthPx;
+          return { px, py };
+        }
+        tileOffset += sectionTiles;
+        colOffset += section.columnCount;
+      }
+      return null;
+    };
 
     const tilesBySlice = new Map<string, number[]>();
     activeTileIndices.forEach(index => {
-      const x = index % effectiveScreenWidth;
-      const y = Math.floor(index / effectiveScreenWidth);
-
-      if (x < activeBounds.minX || x > activeBounds.maxX || y < activeBounds.minY || y > activeBounds.maxY) {
-                return;
-              }
-      
-      let tileContentY = 0;
-      for (let i = activeBounds.minY; i < y; i++) {
-        const isTopRow = topHalfTile && i === 0;
-        const isBottomRow = bottomHalfTile && i === effectiveScreenHeight - 1;
-        tileContentY += (isTopRow || isBottomRow) ? tileHeight / 2 : tileHeight;
-      }
-      
-      let tileContentX = 0;
-      for (let i = activeBounds.minX; i < x; i++) {
-          const isLeftHalf = leftHalfTile && i === 0;
-          const isRightHalf = rightHalfTile && i === effectiveScreenWidth - 1;
-          tileContentX += (isLeftHalf || isRightHalf) ? tileWidth / 2 : tileWidth;
-      }
-
-
-      const absoluteContentX = tileContentX + currentScreen.rasterOffset.x;
-      const absoluteContentY = tileContentY + currentScreen.rasterOffset.y;
-
+      const pos = getTilePixelPos(index);
+      if (!pos) return;
+      const absoluteContentX = pos.px + currentScreen.rasterOffset.x;
+      const absoluteContentY = pos.py + currentScreen.rasterOffset.y;
       const sliceCol = Math.floor(absoluteContentX / outputWidth);
       const sliceRow = Math.floor(absoluteContentY / outputHeight);
       const sliceKey = `${sliceRow}-${sliceCol}`;
-      
       if (!tilesBySlice.has(sliceKey)) tilesBySlice.set(sliceKey, []);
       tilesBySlice.get(sliceKey)!.push(index);
     });
@@ -1438,33 +1460,15 @@ const handleRightHalfTileChange = (add: boolean) => {
     tilesBySlice.forEach((sliceIndices, sliceKey) => {
       const pathOrder = getPathOrder(sliceIndices, currentScreen.wiringPattern, effectiveScreenWidth, effectiveScreenHeight);
       const currentSlice = slices.find(s => s.key === sliceKey);
-      
+
       if (currentSlice && pathOrder.length > 0) {
         const firstTileIndex = pathOrder[0];
-        
-        const x = firstTileIndex % effectiveScreenWidth;
-        const y = Math.floor(firstTileIndex / effectiveScreenWidth);
-
-        let tileContentY = 0;
-        for (let i = activeBounds.minY; i < y; i++) {
-            const isTopRow = topHalfTile && i === 0;
-            const isBottomRow = bottomHalfTile && i === effectiveScreenHeight - 1;
-            tileContentY += (isTopRow || isBottomRow) ? tileHeight / 2 : tileHeight;
-        }
-
-        let tileContentX = 0;
-        for (let i = activeBounds.minX; i < x; i++) {
-            const isLeftHalf = leftHalfTile && i === 0;
-            const isRightHalf = rightHalfTile && i === effectiveScreenWidth - 1;
-            tileContentX += (isLeftHalf || isRightHalf) ? tileWidth / 2 : tileWidth;
-        }
-
-        const absoluteContentX = tileContentX + currentScreen.rasterOffset.x;
-        const absoluteContentY = tileContentY + currentScreen.rasterOffset.y;
-
+        const pos = getTilePixelPos(firstTileIndex);
+        if (!pos) return;
+        const absoluteContentX = pos.px + currentScreen.rasterOffset.x;
+        const absoluteContentY = pos.py + currentScreen.rasterOffset.y;
         const offsetXInSlice = absoluteContentX - currentSlice.x;
         const offsetYInSlice = absoluteContentY - currentSlice.y;
-
         newLabels[firstTileIndex] = `(${offsetXInSlice},${offsetYInSlice})`;
       }
     });
