@@ -2575,8 +2575,12 @@ const handleRightHalfTileChange = (add: boolean) => {
             }
         } else {
             let screenActiveBounds: ActiveBounds;
-            if (screen.rasterCrop) {
-                screenActiveBounds = screen.rasterCrop;
+            const crop = screen.rasterCrop;
+            const cropValid = crop
+                && crop.minX >= 0 && crop.maxX < screenEffectiveWidth
+                && crop.minY >= 0 && crop.maxY < screenEffectiveHeight;
+            if (cropValid) {
+                screenActiveBounds = crop!;
             } else {
                 let minX = screen.dimensions.screenWidth, minY = Infinity, maxX = -1, maxY = -1;
                 activeTiles.forEach(tile => {
