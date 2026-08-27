@@ -70,7 +70,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
     renameScreen,
     deleteScreen,
     duplicateScreen,
-    zoom, setZoom, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels,
+    zoom, setZoom, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, effectiveScreenWidthFromSections, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels, sections,
     isManualPowerModalOpen, setIsManualPowerModalOpen, selectedTileForPower, applyManualPowerWiring,
     isManualDataModalOpen, setIsManualDataModalOpen, selectedTileForData, applyManualDataWiring,
     isSyncing,
@@ -101,7 +101,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
 
   const totalWidth = useMemo(() => {
     if (!activeBounds || !currentScreen) return 0;
-    
+    if (sections.length > 0) return sections.reduce((sum, section) => sum + section.columnCount * section.tileWidthPx, 0);
     let width = 0;
     for (let x = activeBounds.minX; x <= activeBounds.maxX; x++) {
       const isLeftHalf = currentScreen.leftHalfTile && x === 0;
@@ -109,20 +109,20 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
       width += (isLeftHalf || isRightHalf) ? dimensions.tileWidth / 2 : dimensions.tileWidth;
     }
     return width;
-  }, [activeBounds, dimensions.tileWidth, effectiveScreenWidth, currentScreen]);
+  }, [activeBounds, dimensions.tileWidth, effectiveScreenWidth, currentScreen, sections]);
   
   const totalHeight = useMemo(() => {
     if (!activeBounds || !currentScreen) return 0;
-    
+    const sectionTileHeight = sections[0]?.tileHeightPx;
     let height = 0;
     for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
       const isTopHalfRow = currentScreen.topHalfTile && y === 0;
       const isBottomHalfRow = currentScreen.bottomHalfTile && y === effectiveScreenHeight - 1;
-      height += (isTopHalfRow || isBottomHalfRow) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
+      const tileHeight = sectionTileHeight ?? dimensions.tileHeight;
+      height += (isTopHalfRow || isBottomHalfRow) ? tileHeight / 2 : tileHeight;
     }
-
     return height;
-  }, [activeBounds, dimensions.tileHeight, effectiveScreenHeight, currentScreen]);
+  }, [activeBounds, dimensions.tileHeight, effectiveScreenHeight, currentScreen, sections]);
 
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev * 1.2, 5));
@@ -197,17 +197,20 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
   
   const fullGridHeight = useMemo(() => {
     if (!currentScreen) return 0;
+    const sectionTileHeight = sections[0]?.tileHeightPx;
     let height = 0;
     for (let i = 0; i < effectiveScreenHeight; i++) {
         const isTopHalfRow = currentScreen.topHalfTile && i === 0;
         const isBottomHalfRow = currentScreen.bottomHalfTile && i === effectiveScreenHeight - 1;
-        height += (isTopHalfRow || isBottomHalfRow) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
+        const tileHeight = sectionTileHeight ?? dimensions.tileHeight;
+        height += (isTopHalfRow || isBottomHalfRow) ? tileHeight / 2 : tileHeight;
     }
     return height;
-  }, [effectiveScreenHeight, dimensions.tileHeight, currentScreen]);
+  }, [effectiveScreenHeight, dimensions.tileHeight, currentScreen, sections]);
 
   const fullGridWidth = useMemo(() => {
     if (!currentScreen) return 0;
+    if (sections.length > 0) return sections.reduce((sum, section) => sum + section.columnCount * section.tileWidthPx, 0);
     let width = 0;
     for (let i = 0; i < effectiveScreenWidth; i++) {
         const isLeftHalf = currentScreen.leftHalfTile && i === 0;
@@ -215,7 +218,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
         width += (isLeftHalf || isRightHalf) ? dimensions.tileWidth / 2 : dimensions.tileWidth;
     }
     return width;
-  }, [effectiveScreenWidth, dimensions.tileWidth, currentScreen]);
+  }, [effectiveScreenWidth, dimensions.tileWidth, currentScreen, sections, effectiveScreenWidthFromSections]);
 
   useEffect(() => {
     if (viewportRef.current && fullGridWidth > 0 && fullGridHeight > 0 && !hasAutoFitted) {

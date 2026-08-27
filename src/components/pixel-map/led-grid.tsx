@@ -49,6 +49,7 @@ export function LedGrid() {
     rightHalfTile,
     effectiveScreenHeight,
     effectiveScreenWidth,
+    effectiveScreenWidthFromSections,
     showModules,
     moduleBorderColor,
     randomizeModuleColors,
@@ -178,9 +179,15 @@ export function LedGrid() {
   const resolutionText = `Pixel: ${totalGridPixelWidth} x ${totalGridPixelHeight}`;
 
   // Physical dimension calculations
-  const tileWmm = (selectedProduct?.tileWidthMm as number | undefined) || customTileWidthMm || 0;
-  const tileHmm = (selectedProduct?.tileHeightMm as number | undefined) || customTileHeightMm || 0;
-  const screenWmm = tileWmm ? tileWmm * effectiveScreenWidth : 0;
+  const tileWmm = hasSections
+    ? sections.reduce((sum, section) => sum + (section.tileWidthMm || 0) * section.columnCount, 0) / Math.max(1, effectiveScreenWidthFromSections)
+    : (selectedProduct?.tileWidthMm as number | undefined) || customTileWidthMm || 0;
+  const tileHmm = hasSections
+    ? (sections[0]?.tileHeightMm || 0)
+    : (selectedProduct?.tileHeightMm as number | undefined) || customTileHeightMm || 0;
+  const screenWmm = hasSections
+    ? sections.reduce((sum, section) => sum + (section.tileWidthMm || 0) * section.columnCount, 0)
+    : tileWmm ? tileWmm * effectiveScreenWidth : 0;
   const screenHmm = tileHmm ? tileHmm * effectiveScreenHeight : 0;
 
   const fmtMm = (mm: number) => `${Math.round(mm)}mm`;
@@ -201,12 +208,12 @@ export function LedGrid() {
       case 'inches': return fmtInches(mm);
       case 'decimal-feet': return fmtDecimalFeet(mm);
       case 'feet-inches': return fmtFeetInches(mm);
-      case 'tiles': return `${effectiveScreenWidth} tiles`;
+      case 'tiles': return `${effectiveScreenWidthFromSections} tiles`;
       default: return `${fmtFeetInches(mm)} / ${fmtMm(mm)}`;
     }
   };
 
-  const widthLabel = dimensionUnit === 'tiles' ? `${effectiveScreenWidth} tiles` : (screenWmm ? fmtLabel(screenWmm) : '');
+  const widthLabel = dimensionUnit === 'tiles' ? `${effectiveScreenWidthFromSections} tiles` : (screenWmm ? fmtLabel(screenWmm) : '');
   const heightLabel = dimensionUnit === 'tiles' ? `${effectiveScreenHeight} tiles` : (screenHmm ? fmtLabel(screenHmm) : '');
 
   const isSelectionMode = activeTool === 'delete' || activeTool === 'color';
