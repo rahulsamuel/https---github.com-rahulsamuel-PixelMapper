@@ -178,11 +178,22 @@ interface RasterArgs {
   outputHeight?: number;
 }
 
+export interface ScreenSection {
+  id: string;
+  productId: string;
+  columnCount: number;
+  tileWidthPx: number;
+  tileHeightPx: number;
+  tileWidthMm: number;
+  tileHeightMm: number;
+}
+
 export interface Screen {
   id: string;
   name: string;
   dimensions: Dimensions;
   tiles: Tile[];
+  sections: ScreenSection[];
   tileColor: string;
   tileColorTwo: string;
   borderWidth: number;
@@ -569,6 +580,11 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   updateCable: (id: string, patch: Partial<CableRun>) => void;
   removeCable: (id: string) => void;
   regenerateGear: () => void;
+  sections: ScreenSection[];
+  addSection: (productId: string, columnCount: number) => void;
+  updateSection: (id: string, patch: Partial<ScreenSection>) => void;
+  removeSection: (id: string) => void;
+  effectiveScreenWidthFromSections: number;
 }
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
@@ -674,6 +690,7 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     moduleColors: [],
     rasterCrop: null,
     rasterSegments: [],
+    sections: [],
   };
 };
 
@@ -827,6 +844,58 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       tiles: typeof updater === 'function' ? updater(screen.tiles) : updater,
     }));
   };
+
+  const regenerateTilesForSections = useCallback((screen: Screen): { tiles: Tile[]; nextTileId: number } => {
+    const totalCols = screen.sections.reduce((sum, s) => sum + s.columnCount, 0);
+    const rows = screen.dimensions.screenHeight;
+    const totalTiles = totalCols * rows;
+    if (totalTiles <= 0 || totalTiles > 4096) return { tiles: [], nextTileId: screen.nextTileId };
+    let nextId = screen.nextTileId;
+    const newTiles: Tile[] = Array.from({ length: totalTiles }, () => ({ id: nextId++, deleted: false }));
+    return { tiles: newTiles, nextTileId: nextId };
+  }, []);
+
+  const addSection = useCallback((productId: string, columnCount: number) => {
+    updateCurrentScreen(screen => {
+      const product = products.find(p => p.id === productId);
+      const newSection: ScreenSection = {
+        id: crypto.randomUUID(),
+        productId,
+        columnCount: Math.max(1, columnCount),
+        tileWidthPx: product?.tileWidthPx ?? screen.dimensions.tileWidth,
+        tileHeightPx: product?.tileHeightPx ?? screen.dimensions.tileHeight,
+        tileWidthMm: product?.tileWidthMm ?? screen.customTileWidthMm ?? 0,
+        tileHeightMm: product?.tileHeightMm ?? screen.customTileHeightMm ?? 0,
+      };
+      const updatedSections = [...screen.sections, newSection];
+      const updatedScreen = { ...screen, sections: updatedSections, dimensions: { ...screen.dimensions, screenWidth: updatedSections.reduce((sum, s) => sum + s.columnCount, 0) } };
+      const { tiles, nextTileId } = regenerateTilesForSections(updatedScreen);
+      return { ...updatedScreen, tiles, nextTileId };
+    });
+  }, [products, updateCurrentScreen, regenerateTilesForSections]);
+
+  const updateSection = useCallback((id: string, patch: Partial<ScreenSection>) => {
+    updateCurrentScreen(screen => {
+      const updatedSections = screen.sections.map(s => s.id === id ? { ...s, ...patch } : s);
+      const updatedScreen = { ...screen, sections: updatedSections, dimensions: { ...screen.dimensions, screenWidth: updatedSections.reduce((sum, s) => sum + s.columnCount, 0) } };
+      const { tiles, nextTileId } = regenerateTilesForSections(updatedScreen);
+      return { ...updatedScreen, tiles, nextTileId };
+    });
+  }, [updateCurrentScreen, regenerateTilesForSections]);
+
+  const removeSection = useCallback((id: string) => {
+    updateCurrentScreen(screen => {
+      if (screen.sections.length <= 1) return screen;
+      const updatedSections = screen.sections.filter(s => s.id !== id);
+      const updatedScreen = { ...screen, sections: updatedSections, dimensions: { ...screen.dimensions, screenWidth: updatedSections.reduce((sum, s) => sum + s.columnCount, 0) } };
+      const { tiles, nextTileId } = regenerateTilesForSections(updatedScreen);
+      return { ...updatedScreen, tiles, nextTileId };
+    });
+  }, [updateCurrentScreen, regenerateTilesForSections]);
+
+  const effectiveScreenWidthFromSections = useMemo(() => {
+    return currentScreen.sections.reduce((sum, s) => sum + s.columnCount, 0) || currentScreen.dimensions.screenWidth;
+  }, [currentScreen.sections, currentScreen.dimensions.screenWidth]);
 
   const setTileColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, tileColor: typeof updater === 'function' ? updater(s.tileColor) : updater }));
   const setTileColorTwo = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, tileColorTwo: typeof updater === 'function' ? updater(s.tileColorTwo) : updater }));
@@ -3214,7 +3283,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     let maxId = 0;
     const migratedScreens = data.screens.map((s: any) => {
       const newScreen = createNewScreen("", 0);
-      const migratedScreen = { ...newScreen, ...s };
+      const migratedScreen = { ...newScreen, ...s, sections: Array.isArray(s.sections) ? s.sections : [] };
       migratedScreen.tiles.forEach((t: Tile) => {
         if (t.id > maxId) maxId = t.id;
       });
@@ -3440,6 +3509,7 @@ const handleRightHalfTileChange = (add: boolean) => {
             name: "Imported Screen",
             zoomLevels: data.zoomLevels || { grid: data.zoom || 1, wiring: data.zoom || 1, raster: data.zoom || 1, deliverables: 1 },
             lastRasterArgs: data.lastRasterArgs || null,
+            sections: Array.isArray(data.sections) ? data.sections : [],
           });
           
           setScreens([screen]);
@@ -3448,7 +3518,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         } else {
           const migratedScreens = data.screens.map((s: any) => {
             const newScreen = createNewScreen("", 0);
-            const migratedScreen = { ...newScreen, ...s };
+            const migratedScreen = { ...newScreen, ...s, sections: Array.isArray(s.sections) ? s.sections : [] };
             migratedScreen.tiles.forEach((t: Tile) => {
               if (t.id > maxId) maxId = t.id;
             });
@@ -4153,6 +4223,11 @@ const handleRightHalfTileChange = (add: boolean) => {
     updateCable,
     removeCable,
     regenerateGear,
+    sections: currentScreen.sections,
+    addSection,
+    updateSection,
+    removeSection,
+    effectiveScreenWidthFromSections,
   };
 
   return (

@@ -64,11 +64,28 @@ export function LedGrid() {
     handleGridMouseDown,
     handleGridMouseMove,
     handleGridMouseUp,
+    sections,
   } = usePixelMap();
 
   const selectedProduct = useMemo(() => products.find(p => p.id === currentScreen.selectedProductId) ?? null, [products, currentScreen.selectedProductId]);
 
+  const hasSections = sections.length > 0;
+
   const { totalGridPixelWidth, totalGridPixelHeight } = useMemo(() => {
+    if (hasSections) {
+      let width = 0;
+      for (const section of sections) {
+        width += section.tileWidthPx * section.columnCount;
+      }
+      let height = 0;
+      for (let i = 0; i < effectiveScreenHeight; i++) {
+        const isTopHalfRow = topHalfTile && i === 0;
+        const isBottomHalfRow = bottomHalfTile && i === effectiveScreenHeight - 1;
+        const sectionTileHeight = sections[0]?.tileHeightPx ?? dimensions.tileHeight;
+        height += (isTopHalfRow || isBottomHalfRow) ? sectionTileHeight / 2 : sectionTileHeight;
+      }
+      return { totalGridPixelWidth: width, totalGridPixelHeight: height };
+    }
     let width = 0;
     for (let i = 0; i < effectiveScreenWidth; i++) {
         const isLeftHalf = leftHalfTile && i === 0;
@@ -83,7 +100,7 @@ export function LedGrid() {
         height += (isTopHalfRow || isBottomHalfRow) ? dimensions.tileHeight / 2 : dimensions.tileHeight;
     }
     return { totalGridPixelWidth: width, totalGridPixelHeight: height };
-  }, [dimensions, effectiveScreenWidth, effectiveScreenHeight, leftHalfTile, rightHalfTile, topHalfTile, bottomHalfTile]);
+  }, [dimensions, effectiveScreenWidth, effectiveScreenHeight, leftHalfTile, rightHalfTile, topHalfTile, bottomHalfTile, sections, hasSections]);
 
 
   if (tiles.length === 0) {
@@ -94,7 +111,13 @@ export function LedGrid() {
     );
   }
 
-  const gridStyle: React.CSSProperties = {
+  const gridStyle: React.CSSProperties = hasSections ? {
+    display: "flex",
+    width: `${totalGridPixelWidth}px`,
+    height: `${totalGridPixelHeight}px`,
+    transform: `scale(${zoom})`,
+    transformOrigin: 'top left',
+  } : {
     display: "grid",
     gridTemplateColumns: `repeat(${effectiveScreenWidth}, auto)`,
     gridTemplateRows: `repeat(${effectiveScreenHeight}, auto)`,
@@ -103,15 +126,16 @@ export function LedGrid() {
     transform: `scale(${zoom})`,
     transformOrigin: 'top left',
   };
-  
-  const getTileHeight = (y: number) => {
+
+  const getTileHeight = (y: number, sectionTileHeight?: number) => {
+    const baseHeight = sectionTileHeight ?? dimensions.tileHeight;
     const isTopHalfRow = topHalfTile && y === 0;
     const isBottomHalfRow = bottomHalfTile && y === effectiveScreenHeight - 1;
 
     if (isTopHalfRow || isBottomHalfRow) {
-      return dimensions.tileHeight / 2;
+      return baseHeight / 2;
     }
-    return dimensions.tileHeight;
+    return baseHeight;
   };
 
   const getTileWidth = (x: number) => {
@@ -123,6 +147,18 @@ export function LedGrid() {
     }
     return dimensions.tileWidth;
   };
+
+  // Compute the tile index offset for each section (for continuous labeling)
+  const sectionTileOffsets = useMemo(() => {
+    if (!hasSections) return [];
+    const offsets: number[] = [];
+    let cumulative = 0;
+    for (const section of sections) {
+      offsets.push(cumulative);
+      cumulative += section.columnCount * effectiveScreenHeight;
+    }
+    return offsets;
+  }, [sections, hasSections, effectiveScreenHeight]);
   
   const averageBackgroundColor = useMemo(() => {
     const activeTiles = tiles.filter(t => !t.deleted);
@@ -187,7 +223,121 @@ export function LedGrid() {
           onMouseUp={isSelectionMode ? handleGridMouseUp : undefined}
           onMouseLeave={isSelectionMode ? handleGridMouseUp : undefined}
         >
-          {tiles.map((tile, index) => {
+          {hasSections ? (
+            sections.map((section, sectionIdx) => {
+              const sectionWidth = section.tileWidthPx * section.columnCount;
+              const tileOffset = sectionTileOffsets[sectionIdx];
+              return (
+                <div
+                  key={section.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: `repeat(${section.columnCount}, ${section.tileWidthPx}px)`,
+                    gridTemplateRows: `repeat(${effectiveScreenHeight}, auto)`,
+                    width: `${sectionWidth}px`,
+                    height: `${totalGridPixelHeight}px`,
+                  }}
+                >
+                  {Array.from({ length: section.columnCount * effectiveScreenHeight }, (_, i) => {
+                    const localX = i % section.columnCount;
+                    const localY = Math.floor(i / section.columnCount);
+                    const index = tileOffset + i;
+                    const tile = tiles[index];
+                    if (!tile) return null;
+
+                    let bgColor;
+                    if (onOffMode) {
+                      bgColor = tile.deleted ? '#000000' : '#FFFFFF';
+                    } else {
+                      if (tile.deleted) {
+                        bgColor = '#000000';
+                      } else if (tile.color) {
+                        bgColor = tile.color;
+                      } else {
+                        bgColor = (localX + localY) % 2 === 0 ? tileColor : tileColorTwo;
+                      }
+                    }
+
+                    const currentLabelColor = labelColorMode === 'auto'
+                      ? isColorDark(bgColor) ? '#FFFFFF' : '#000000'
+                      : labelColor;
+
+                    const tileEffectiveHeight = getTileHeight(localY, section.tileHeightPx);
+                    const tileEffectiveWidth = section.tileWidthPx;
+
+                    const tileDynamicStyle: React.CSSProperties = {
+                      width: `${tileEffectiveWidth}px`,
+                      height: `${tileEffectiveHeight}px`,
+                      borderWidth: `${borderWidth}px`,
+                      borderColor: borderColor,
+                      backgroundColor: randomizeModuleColors ? 'transparent' : bgColor,
+                      borderStyle: tile.deleted ? 'none' : 'solid',
+                      boxSizing: 'border-box',
+                    };
+
+                    const numModulesX = Math.floor(tileEffectiveWidth / dimensions.moduleWidth);
+                    const numModulesY = Math.floor(tileEffectiveHeight / dimensions.moduleHeight);
+                    const totalModules = numModulesX * numModulesY;
+
+                    return (
+                      <button
+                        key={tile.id}
+                        onClick={() => handleTileClick(tile.id)}
+                        className={cn(
+                          'relative rounded-none transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-accent focus:z-10',
+                          selectedTileIds.includes(tile.id) && 'ring-2 ring-blue-500 z-10'
+                        )}
+                        style={{ ...tileDynamicStyle, cursor: isSelectionMode ? 'crosshair' : undefined }}
+                        aria-label={`Tile ${index + 1}`}
+                      >
+                        {showModules && !tile.deleted && (
+                          <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${numModulesX}, 1fr)`, gridTemplateRows: `repeat(${numModulesY}, 1fr)`}}>
+                            {Array.from({ length: totalModules }).map((_, mi) => {
+                              const moduleStyle: React.CSSProperties = {
+                                border: `1px solid ${moduleBorderColor}`,
+                                backgroundColor: randomizeModuleColors ? currentScreen.moduleColors[index]?.[mi] ?? '#000000' : bgColor,
+                              };
+                              return (
+                                <div key={mi} style={moduleStyle} />
+                              );
+                            })}
+                          </div>
+                        )}
+                        {showSliceOffsetLabels && !tile.deleted && sliceOffsetLabels[index] && (
+                            <div
+                                className="absolute top-1 left-1 bg-black/60 text-white text-xs font-mono px-1 py-0.5 rounded z-20"
+                            >
+                                {sliceOffsetLabels[index]}
+                            </div>
+                        )}
+                        {showLabels && !tile.deleted && (
+                          <span
+                            className={cn(
+                              "absolute font-bold pointer-events-none drop-shadow-sm",
+                              {
+                                  'top-1 left-2': labelPosition === 'top-left',
+                                  'top-1 right-2 text-right': labelPosition === 'top-right',
+                                  'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center': labelPosition === 'center',
+                                  'bottom-1 left-2': labelPosition === 'bottom-left',
+                                  'bottom-1 right-2 text-right': labelPosition === 'bottom-right',
+                              }
+                            )}
+                            style={{
+                              fontSize: `${labelFontSize}px`,
+                              color: currentLabelColor,
+                            }}
+                          >
+                            {labels[index]}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })
+          ) : (
+          tiles.map((tile, index) => {
             const x = index % effectiveScreenWidth;
             const y = Math.floor(index / effectiveScreenWidth);
 
@@ -278,7 +428,8 @@ export function LedGrid() {
                 )}
               </button>
             );
-          })}
+          })
+        )}
         </div>
         {selectionRect && (
           <div

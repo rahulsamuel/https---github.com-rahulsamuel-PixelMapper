@@ -2,15 +2,15 @@
 'use client';
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { useMemo } from "react";
 import { Button } from "../ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Plus, Trash2 } from "lucide-react";
 import type { LedProduct } from "@/services/supabase";
 import { LedProductCombobox } from "@/components/ui/led-product-combobox";
+import { Input } from "@/components/ui/input";
 
 function ProductInfoPanel({ product }: { product: LedProduct }) {
   const rows: { label: string; value: string }[] = [];
@@ -60,6 +60,10 @@ export function DimensionControls() {
     setCustomTileWidthMm,
     customTileHeightMm,
     setCustomTileHeightMm,
+    sections,
+    addSection,
+    updateSection,
+    removeSection,
    } = usePixelMap();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,17 +83,73 @@ export function DimensionControls() {
   return (
     <div className="space-y-4">
         <div className="space-y-2">
-            <Label>LED Product</Label>
-            <LedProductCombobox
-                products={products as { id: string; manufacturer: string; productName: string }[]}
-                value={selectedProductId}
-                onChange={setSelectedProductId}
-                includeCustom
-            />
+            <div className="flex items-center justify-between">
+              <Label>LED Product Sections</Label>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => {
+                  const defaultId = products.length > 0 ? products[0].id : 'custom';
+                  addSection(defaultId, 3);
+                }}
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Add Section
+              </Button>
+            </div>
+            {sections.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No product sections yet. Click "Add Section" to build a screen with multiple LED products side by side.</p>
+            ) : (
+              <div className="space-y-2">
+                {sections.map((section, idx) => {
+                  const product = products.find(p => p.id === section.productId);
+                  return (
+                    <div key={section.id} className="rounded-md border border-border/40 bg-muted/20 p-2 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-muted-foreground">Section {idx + 1}</span>
+                        {sections.length > 1 && (
+                          <button onClick={() => removeSection(section.id)} className="text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      <LedProductCombobox
+                        products={products as { id: string; manufacturer: string; productName: string }[]}
+                        value={section.productId}
+                        includeCustom
+                        onChange={(v) => {
+                          const newProduct = products.find(p => p.id === v);
+                          updateSection(section.id, {
+                            productId: v ?? 'custom',
+                            tileWidthPx: newProduct?.tileWidthPx ?? section.tileWidthPx,
+                            tileHeightPx: newProduct?.tileHeightPx ?? section.tileHeightPx,
+                            tileWidthMm: newProduct?.tileWidthMm ?? section.tileWidthMm,
+                            tileHeightMm: newProduct?.tileHeightMm ?? section.tileHeightMm,
+                          });
+                        }}
+                      />
+                      <div className="flex items-center gap-2">
+                        <Label className="text-[10px] whitespace-nowrap">Columns</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={section.columnCount}
+                          onChange={(e) => updateSection(section.id, { columnCount: Math.max(1, Number(e.target.value) || 1) })}
+                          className="h-7 text-xs w-20"
+                        />
+                        {product && (
+                          <span className="text-[10px] text-muted-foreground truncate">
+                            {product.tileWidthPx}×{product.tileHeightPx}px
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
         </div>
-        {selectedProduct && !isCustom && (
-          <ProductInfoPanel product={selectedProduct as LedProduct} />
-        )}
         <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
                 <Label htmlFor="tileWidth">Tile Width (px)</Label>
