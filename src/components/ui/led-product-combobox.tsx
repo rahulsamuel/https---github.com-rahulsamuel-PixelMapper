@@ -163,11 +163,11 @@ export function LedProductCombobox({
                     type="button"
                     onClick={() => handleSelect(p.id)}
                     className={cn(
-                      'w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-accent transition-colors text-left',
+                      'w-full min-w-0 flex items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-accent transition-colors text-left',
                       value === p.id && 'bg-accent/60'
                     )}
                   >
-                    <span className="truncate">{p.productName}</span>
+                    <span className="min-w-0 truncate" title={`${p.manufacturer} — ${p.productName}`}>{p.productName}</span>
                     {value === p.id && <Check className="w-4 h-4 text-primary shrink-0 ml-2" />}
                   </button>
                 ))}
