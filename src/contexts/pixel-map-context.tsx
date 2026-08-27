@@ -2078,6 +2078,7 @@ const handleRightHalfTileChange = (add: boolean) => {
 
     // Full-screen pixel dimensions (used for overlay positioning in full-screen coordinate space)
     const fullScreenWidth = (() => {
+        if (screen.sections.length > 0) return screen.sections.reduce((sum, section) => sum + section.columnCount * section.tileWidthPx, 0);
         let w = 0;
         for (let x = 0; x < screenEffectiveWidth; x++) {
             const isL = screen.leftHalfTile && x === 0;
@@ -2087,6 +2088,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         return w;
     })();
     const fullScreenHeight = (() => {
+        if (screen.sections.length > 0) return screen.sections[0].tileHeightPx * screenEffectiveHeight;
         let h = 0;
         for (let y = 0; y < screenEffectiveHeight; y++) {
             const isT = screen.topHalfTile && y === 0;
@@ -2146,9 +2148,18 @@ const handleRightHalfTileChange = (add: boolean) => {
                 if (screen.showLabels && screenLabels[index]) {
                     masterCtx.fillStyle = screen.labelColorMode === 'auto' ? (isColorDark(bgColor) ? '#FFFFFF' : '#000000') : screen.labelColor;
                     masterCtx.font = `bold ${screen.labelFontSize}px sans-serif`;
-                    masterCtx.textAlign = 'center';
-                    masterCtx.textBaseline = 'middle';
-                    masterCtx.fillText(screenLabels[index], drawX + colPixelWidth / 2, drawY + rowPixelHeight / 2);
+                    let textX = drawX + colPixelWidth / 2;
+                    let textY = drawY + rowPixelHeight / 2;
+                    switch (screen.labelPosition) {
+                      case 'top-left': masterCtx.textAlign = 'left'; masterCtx.textBaseline = 'top'; textX = drawX + 8; textY = drawY + 4; break;
+                      case 'top-center': masterCtx.textAlign = 'center'; masterCtx.textBaseline = 'top'; textY = drawY + 4; break;
+                      case 'top-right': masterCtx.textAlign = 'right'; masterCtx.textBaseline = 'top'; textX = drawX + colPixelWidth - 8; textY = drawY + 4; break;
+                      case 'bottom-left': masterCtx.textAlign = 'left'; masterCtx.textBaseline = 'bottom'; textX = drawX + 8; textY = drawY + rowPixelHeight - 4; break;
+                      case 'bottom-center': masterCtx.textAlign = 'center'; masterCtx.textBaseline = 'bottom'; textY = drawY + rowPixelHeight - 4; break;
+                      case 'bottom-right': masterCtx.textAlign = 'right'; masterCtx.textBaseline = 'bottom'; textX = drawX + colPixelWidth - 8; textY = drawY + rowPixelHeight - 4; break;
+                      default: masterCtx.textAlign = 'center'; masterCtx.textBaseline = 'middle';
+                    }
+                    masterCtx.fillText(screenLabels[index], textX, textY);
                 }
             }
     };
@@ -2239,15 +2250,19 @@ const handleRightHalfTileChange = (add: boolean) => {
     // Draw dimensions overlay — positioned in full-screen coordinate space
     if (screen.showDimensions) {
         const product = products.find(p => p.id === screen.selectedProductId);
-        const tileWmm = (product?.tileWidthMm as number | undefined) || screen.customTileWidthMm || 0;
-        const tileHmm = (product?.tileHeightMm as number | undefined) || screen.customTileHeightMm || 0;
-        const screenEffW = screenEffectiveWidth;
+        const screenEffW = screen.sections.length > 0 ? screen.sections.reduce((sum, section) => sum + section.columnCount, 0) : screenEffectiveWidth;
         const screenEffH = screenEffectiveHeight;
+        const tileWmm = screen.sections.length > 0
+          ? screen.sections.reduce((sum, section) => sum + (section.tileWidthMm || 0) * section.columnCount, 0) / Math.max(1, screenEffW)
+          : (product?.tileWidthMm as number | undefined) || screen.customTileWidthMm || 0;
+        const tileHmm = screen.sections.length > 0
+          ? (screen.sections[0].tileHeightMm || 0)
+          : (product?.tileHeightMm as number | undefined) || screen.customTileHeightMm || 0;
         const unit = screen.dimensionUnit ?? 'all';
         const hasPhysical = tileWmm > 0 && tileHmm > 0;
 
         if (hasPhysical || unit === 'tiles') {
-            const physWmm = tileWmm * screenEffW;
+            const physWmm = screen.sections.length > 0 ? screen.sections.reduce((sum, section) => sum + (section.tileWidthMm || 0) * section.columnCount, 0) : tileWmm * screenEffW;
             const physHmm = tileHmm * screenEffH;
 
             const fmtMm = (mm: number) => `${Math.round(mm)}mm`;
@@ -2348,6 +2363,18 @@ const handleRightHalfTileChange = (add: boolean) => {
             masterCtx.shadowBlur = 0;
             masterCtx.restore();
         }
+    }
+
+    if (screen.showSliceOffsetLabels && (screen.rasterOffset.x !== 0 || screen.rasterOffset.y !== 0)) {
+      masterCtx.save();
+      masterCtx.fillStyle = '#ffffff';
+      masterCtx.font = 'bold 24px sans-serif';
+      masterCtx.textAlign = 'left';
+      masterCtx.textBaseline = 'bottom';
+      masterCtx.shadowColor = 'rgba(0,0,0,0.8)';
+      masterCtx.shadowBlur = 8;
+      masterCtx.fillText(`Offset: ${screen.rasterOffset.x}, ${screen.rasterOffset.y}`, 16, contentHeight - 16);
+      masterCtx.restore();
     }
 
     // Draw logo overlay — positioned in full-screen coordinate space, clipped to crop region
