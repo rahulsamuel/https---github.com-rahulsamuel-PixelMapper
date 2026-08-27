@@ -43,6 +43,8 @@ export function WiringDiagram() {
     effectiveScreenWidth,
     wiringData,
     handleTileClick,
+    getTileSpan,
+    currentScreen,
   } = usePixelMap();
 
   const baseCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -130,10 +132,14 @@ export function WiringDiagram() {
       const col = colData[x];
       if (!row || !col) return;
 
-      const drawX = isWiringMirrored ? totalGridPixelWidth - col.xPos - col.width : col.xPos;
+      const span = tile.productId && tile.productId !== 'custom'
+        ? getTileSpan(tile, currentScreen)
+        : { spanX: 1, spanY: 1 };
+
+      const drawX = isWiringMirrored ? totalGridPixelWidth - col.xPos - col.width * span.spanX : col.xPos;
       const drawY = row.yPos;
-      const tw = col.width;
-      const th = row.height;
+      const tw = col.width * span.spanX;
+      const th = row.height * span.spanY;
 
       let bgColor: string;
       if (onOffMode) {
@@ -186,6 +192,7 @@ export function WiringDiagram() {
     onOffMode, tileColor, tileColorTwo, borderWidth, borderColor,
     showLabels, labels, labelFontSize, labelColor, labelColorMode,
     isWiringMirrored, showSliceOffsetLabels, effectiveScreenWidth,
+    getTileSpan, currentScreen,
   ]);
 
   // ── Draw data layer (data labels + data arrows) ────────────────────────

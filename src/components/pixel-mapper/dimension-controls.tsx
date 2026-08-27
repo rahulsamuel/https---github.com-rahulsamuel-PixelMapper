@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "../ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Layers } from "lucide-react";
 import type { LedProduct } from "@/services/supabase";
 import { LedProductCombobox } from "@/components/ui/led-product-combobox";
 
@@ -60,6 +60,9 @@ export function DimensionControls() {
     setCustomTileWidthMm,
     customTileHeightMm,
     setCustomTileHeightMm,
+    tiles,
+    setTileProduct,
+    getTileSpan,
    } = usePixelMap();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -276,6 +279,95 @@ export function DimensionControls() {
                 />
             </div>
         </div>
+        <Separator />
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Layers className="h-4 w-4 text-muted-foreground" />
+            <Label className="text-sm font-medium">Per-Tile Product Override</Label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Assign different products to individual tiles. Tiles without an override use the screen's default product. The grid uses the smallest tile as its base unit — larger tiles span multiple cells.
+          </p>
+          <PerTileProductList tiles={tiles} products={products as LedProduct[]} setTileProduct={setTileProduct} getTileSpan={getTileSpan} />
+        </div>
+    </div>
+  );
+}
+
+function PerTileProductList({
+  tiles,
+  products,
+  setTileProduct,
+  getTileSpan,
+}: {
+  tiles: import("@/contexts/pixel-map-context").Tile[];
+  products: LedProduct[];
+  setTileProduct: (tileId: number, productId: string | null) => void;
+  getTileSpan: (tile: import("@/contexts/pixel-map-context").Tile, screen: import("@/contexts/pixel-map-context").Screen) => { spanX: number; spanY: number };
+}) {
+  const [selectedTileId, setSelectedTileId] = useState<number | null>(null);
+  const [overrideProductId, setOverrideProductId] = useState<string>('');
+
+  const activeTiles = tiles.filter(t => !t.deleted);
+  const tilesWithOverride = activeTiles.filter(t => t.productId && t.productId !== 'custom');
+
+  const applyOverride = () => {
+    if (selectedTileId === null || !overrideProductId) return;
+    setTileProduct(selectedTileId, overrideProductId);
+    setSelectedTileId(null);
+    setOverrideProductId('');
+  };
+
+  const clearOverride = (tileId: number) => {
+    setTileProduct(tileId, null);
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label className="text-[10px]">Select Tile</Label>
+          <select
+            className="w-full h-8 text-xs rounded-md border border-input bg-background px-2"
+            value={selectedTileId ?? ''}
+            onChange={e => setSelectedTileId(e.target.value ? Number(e.target.value) : null)}
+          >
+            <option value="">Pick a tile...</option>
+            {activeTiles.map((t, i) => (
+              <option key={t.id} value={t.id}>Tile {i + 1}{t.productId ? ` (${t.productId.slice(0, 8)})` : ''}</option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[10px]">Assign Product</Label>
+          <LedProductCombobox
+            products={products as { id: string; manufacturer: string; productName: string }[]}
+            value={overrideProductId || null}
+            onChange={(v) => setOverrideProductId(v ?? '')}
+          />
+        </div>
+      </div>
+      <Button variant="outline" size="sm" className="w-full h-7 text-xs" onClick={applyOverride} disabled={!selectedTileId || !overrideProductId}>
+        Apply Product to Tile
+      </Button>
+      {tilesWithOverride.length > 0 && (
+        <div className="space-y-1 max-h-40 overflow-y-auto">
+          {tilesWithOverride.map(tile => {
+            const product = products.find(p => p.id === tile.productId);
+            const idx = tiles.findIndex(t => t.id === tile.id);
+            return (
+              <div key={tile.id} className="flex items-center justify-between rounded-md border border-border/40 bg-muted/20 px-2 py-1">
+                <span className="text-xs">
+                  Tile {idx + 1}: <span className="font-medium">{product ? `${product.manufacturer} ${product.productName}` : tile.productId}</span>
+                </span>
+                <button onClick={() => clearOverride(tile.id)} className="text-xs text-muted-foreground hover:text-destructive">
+                  Clear
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
