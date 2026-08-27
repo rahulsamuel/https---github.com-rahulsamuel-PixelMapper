@@ -37,6 +37,8 @@ export function WiringControls() {
     setDataLabelSize,
     showSliceOffsetLabels,
     setShowSliceOffsetLabels,
+    showTextOverlaysInWiring,
+    setShowTextOverlaysInWiring,
     processorType,
     setProcessorType,
     dataLabelColor,
@@ -115,6 +117,10 @@ export function WiringControls() {
        <div className="flex items-center justify-between">
         <Label htmlFor="show-slice-offsets-wiring">Show Content Offsets</Label>
         <Switch id="show-slice-offsets-wiring" checked={showSliceOffsetLabels} onCheckedChange={setShowSliceOffsetLabels} />
+      </div>
+      <div className="flex items-center justify-between">
+        <Label htmlFor="show-text-overlays-wiring">Show Text Overlays</Label>
+        <Switch id="show-text-overlays-wiring" checked={showTextOverlaysInWiring} onCheckedChange={setShowTextOverlaysInWiring} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="data-label-size">Label Size: {dataLabelSize}px</Label>

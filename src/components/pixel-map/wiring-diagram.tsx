@@ -36,6 +36,10 @@ export function WiringDiagram() {
     powerLabelColor,
     showSliceOffsetLabels,
     sliceOffsetLabels,
+    labelPosition,
+    showTextOverlaysInWiring,
+    textOverlays,
+    drawTextOverlaysOnCtx,
     topHalfTile,
     bottomHalfTile,
     leftHalfTile,
@@ -50,6 +54,7 @@ export function WiringDiagram() {
   const baseCanvasRef = useRef<HTMLCanvasElement>(null);
   const dataCanvasRef = useRef<HTMLCanvasElement>(null);
   const powerCanvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
 
   const rowData = useMemo(() => {
     const data: { yPos: number; height: number }[] = [];
@@ -206,8 +211,38 @@ export function WiringDiagram() {
           ctx.fillStyle = currentLabelColor;
           ctx.globalAlpha = 0.7;
           ctx.font = `bold ${labelFontSize}px sans-serif`;
+          ctx.textAlign = 'left';
           ctx.textBaseline = 'alphabetic';
-          ctx.fillText(labels[originalIndex], drawX + 4, drawY + labelFontSize + 2);
+          const padX = 4;
+          switch (labelPosition) {
+            case 'top-left':
+              ctx.fillText(labels[originalIndex], drawX + padX, drawY + labelFontSize + 2);
+              break;
+            case 'top-right':
+              ctx.textAlign = 'right';
+              ctx.fillText(labels[originalIndex], drawX + tw - padX, drawY + labelFontSize + 2);
+              ctx.textAlign = 'left';
+              break;
+            case 'center':
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(labels[originalIndex], drawX + tw / 2, drawY + th / 2);
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'alphabetic';
+              break;
+            case 'bottom-left':
+              ctx.textBaseline = 'bottom';
+              ctx.fillText(labels[originalIndex], drawX + padX, drawY + th - 4);
+              ctx.textBaseline = 'alphabetic';
+              break;
+            case 'bottom-right':
+              ctx.textAlign = 'right';
+              ctx.textBaseline = 'bottom';
+              ctx.fillText(labels[originalIndex], drawX + tw - padX, drawY + th - 4);
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'alphabetic';
+              break;
+          }
           ctx.globalAlpha = 1;
         }
 
@@ -226,6 +261,7 @@ export function WiringDiagram() {
     onOffMode, tileColor, tileColorTwo, borderWidth, borderColor,
     showLabels, labels, labelFontSize, labelColor, labelColorMode,
     isWiringMirrored, showSliceOffsetLabels, sliceOffsetLabels, effectiveScreenWidth, visualTileCoordinates,
+    labelPosition,
   ]);
 
   // ── Draw data layer (data labels + data arrows) ────────────────────────
@@ -423,9 +459,36 @@ export function WiringDiagram() {
     getTileCenter, visualTileCoordinates,
   ]);
 
+  // ── Draw text overlay layer ──────────────────────────────────────────
+  useEffect(() => {
+    const canvas = overlayCanvasRef.current;
+    if (!canvas || tiles.length === 0) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = totalGridPixelWidth;
+    const h = totalGridPixelHeight;
+
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    if (!showTextOverlaysInWiring) return;
+    if (!textOverlays || textOverlays.length === 0) return;
+
+    drawTextOverlaysOnCtx(ctx, textOverlays, w, h);
+  }, [
+    tiles, totalGridPixelWidth, totalGridPixelHeight,
+    showTextOverlaysInWiring, textOverlays, drawTextOverlaysOnCtx,
+  ]);
+
   // ── Click handling ─────────────────────────────────────────────────────
-  const handleCanvasClick = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleCanvasClick = useCallback(    (e: React.MouseEvent<HTMLCanvasElement>) => {
       const canvas = baseCanvasRef.current;
       if (!canvas) return;
       const rect = canvas.getBoundingClientRect();
@@ -502,6 +565,20 @@ export function WiringDiagram() {
       <canvas
         ref={powerCanvasRef}
         data-wiring-type="power"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          display: 'block',
+          transform: `scale(${zoom})`,
+          transformOrigin: 'top left',
+          pointerEvents: 'none',
+          imageRendering: zoom < 1 ? 'auto' : 'pixelated',
+        }}
+      />
+      <canvas
+        ref={overlayCanvasRef}
+        data-wiring-type={null as any}
         style={{
           position: 'absolute',
           top: 0,

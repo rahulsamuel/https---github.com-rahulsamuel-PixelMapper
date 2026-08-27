@@ -144,6 +144,7 @@ interface ScreenArrangement {
   screenNameLabelColor: string;
   screenNameLabelColorMode: string;
   showSliceOffsetLabels: boolean;
+  showTextOverlaysInWiring: boolean;
   showResolution: boolean;
   resolutionLabelPosition: string;
   showDimensions: boolean;
@@ -235,6 +236,7 @@ export interface Screen {
   dataLabelColor: string;
   powerLabelColor: string;
   showSliceOffsetLabels: boolean;
+  showTextOverlaysInWiring: boolean;
   showResolution: boolean;
   resolutionLabelPosition: LabelPosition;
   resolutionLabelFontSize: number;
@@ -468,6 +470,7 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setActiveTab: Dispatch<SetStateAction<string>>;
   activeBounds: ActiveBounds | null;
   createScreenContentCanvas: (screen: Screen, screenActiveBounds: ActiveBounds | null, drawOverlays?: boolean) => HTMLCanvasElement | null;
+  drawTextOverlaysOnCtx: (ctx: CanvasRenderingContext2D, overlays: TextOverlay[], canvasWidth: number, canvasHeight: number, offsetX?: number, offsetY?: number) => void;
   rasterMapConfig: RasterMapConfig | null;
   setRasterMapConfig: (config: RasterMapConfig | null) => void;
   rasterMapConfigs: Record<string, RasterMapConfig>;
@@ -507,6 +510,7 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setPowerLabelColor: Dispatch<SetStateAction<string>>;
   calculateAndApplyOptimalOffset: () => void;
   setShowSliceOffsetLabels: Dispatch<SetStateAction<boolean>>;
+  setShowTextOverlaysInWiring: Dispatch<SetStateAction<boolean>>;
   handleTopHalfTileChange: (add: boolean) => void;
   handleBottomHalfTileChange: (add: boolean) => void;
   handleLeftHalfTileChange: (add: boolean) => void;
@@ -663,6 +667,7 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     dataLabelColor: '#22c55e',
     powerLabelColor: '#ef4444',
     showSliceOffsetLabels: true,
+    showTextOverlaysInWiring: true,
     showResolution: false,
     resolutionLabelPosition: 'bottom-right',
     resolutionLabelFontSize: 32,
@@ -937,6 +942,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setDataLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, dataLabelColor: typeof updater === 'function' ? updater(s.dataLabelColor) : updater }));
   const setPowerLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, powerLabelColor: typeof updater === 'function' ? updater(s.powerLabelColor) : updater }));
   const setShowSliceOffsetLabels = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showSliceOffsetLabels: typeof updater === 'function' ? updater(s.showSliceOffsetLabels) : updater }));
+  const setShowTextOverlaysInWiring = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showTextOverlaysInWiring: typeof updater === 'function' ? updater(s.showTextOverlaysInWiring ?? true) : updater }));
   const setShowResolution = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showResolution: typeof updater === 'function' ? updater(s.showResolution ?? false) : updater }));
   const setResolutionLabelPosition = (updater: SetStateAction<LabelPosition>) => updateCurrentScreen(s => ({ ...s, resolutionLabelPosition: typeof updater === 'function' ? updater(s.resolutionLabelPosition ?? 'bottom-right') : updater }));
   const setResolutionLabelFontSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, resolutionLabelFontSize: typeof updater === 'function' ? updater(s.resolutionLabelFontSize ?? 32) : updater }));
@@ -2554,6 +2560,7 @@ const handleRightHalfTileChange = (add: boolean) => {
                     screenNameLabelColor: screen.screenNameLabelColor,
                     screenNameLabelColorMode: screen.screenNameLabelColorMode,
                     showSliceOffsetLabels: screen.showSliceOffsetLabels,
+                    showTextOverlaysInWiring: screen.showTextOverlaysInWiring ?? true,
                     showResolution: screen.showResolution ?? false,
                     resolutionLabelPosition: screen.resolutionLabelPosition ?? 'bottom-right',
                     showDimensions: screen.showDimensions ?? false,
@@ -2598,6 +2605,7 @@ const handleRightHalfTileChange = (add: boolean) => {
                 screenNameLabelColor: screen.screenNameLabelColor,
                 screenNameLabelColorMode: screen.screenNameLabelColorMode,
                 showSliceOffsetLabels: screen.showSliceOffsetLabels,
+                showTextOverlaysInWiring: screen.showTextOverlaysInWiring ?? true,
                 showResolution: screen.showResolution ?? false,
                 resolutionLabelPosition: screen.resolutionLabelPosition ?? 'bottom-right',
                 showDimensions: screen.showDimensions ?? false,
@@ -2978,38 +2986,27 @@ const handleRightHalfTileChange = (add: boolean) => {
       return (isTopHalf || isBottomHalf) ? sectionTileH / 2 : sectionTileH;
     };
 
+    // Export the full screen, not just the active (non-deleted) region.
     const contentPixelHeight = (() => {
-        if (!activeBounds) return 0;
         let height = 0;
-        for (let y = activeBounds.minY; y <= activeBounds.maxY; y++) {
+        for (let y = 0; y < effectiveScreenHeight; y++) {
             height += rowHeightFor(y);
         }
         return height;
     })();
 
     const contentPixelWidth = (() => {
-        if (!activeBounds) return 0;
         let width = 0;
-        for (let x = activeBounds.minX; x <= activeBounds.maxX; x++) {
+        for (let x = 0; x < effectiveScreenWidth; x++) {
             width += colWidthFor(x);
         }
         return width;
     })();
 
-    let yPosOfMinY = 0;
-    for (let i = 0; i < activeBounds.minY; i++) {
-        yPosOfMinY += rowHeightFor(i);
-    }
-
-    let xPosOfMinX = 0;
-    for (let i = 0; i < activeBounds.minX; i++) {
-        xPosOfMinX += colWidthFor(i);
-    }
-
     const cropWidth = contentPixelWidth;
     const cropHeight = contentPixelHeight;
-    const sx = xPosOfMinX;
-    const sy = yPosOfMinY;
+    const sx = 0;
+    const sy = 0;
 
     const generateAndDownload = async (type: 'data' | 'power' | 'both', isMirrored: boolean, filename: string) => {
       // Composite the stacked canvases directly to avoid html-to-image capturing
@@ -3041,11 +3038,14 @@ const handleRightHalfTileChange = (add: boolean) => {
         if (wiringType) {
           const shouldShow = type === 'both' || type === wiringType;
           if (!shouldShow) continue;
+        } else {
+          // Skip the overlay canvas here; text overlays are drawn separately below.
+          continue;
         }
         octx.drawImage(cvs, srcSx, srcSy, srcW, srcH, 0, 0, outW, outH);
       }
 
-      if (includeTextOverlaysInDownload && currentScreen.textOverlays?.length) {
+      if ((currentScreen.showTextOverlaysInWiring ?? true) && currentScreen.textOverlays?.length) {
         drawTextOverlaysOnCtx(octx, currentScreen.textOverlays, outW, outH);
       }
 
@@ -4211,6 +4211,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     setActiveTab,
     activeBounds,
     createScreenContentCanvas,
+    drawTextOverlaysOnCtx,
     rasterMapConfig,
     setRasterMapConfig,
     rasterMapConfigs,
@@ -4285,6 +4286,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     calculateAndApplyOptimalOffset,
     showSliceOffsetLabels: currentScreen.showSliceOffsetLabels,
     setShowSliceOffsetLabels,
+    showTextOverlaysInWiring: currentScreen.showTextOverlaysInWiring ?? true,
+    setShowTextOverlaysInWiring,
     topHalfTile: currentScreen.topHalfTile,
     handleTopHalfTileChange,
     bottomHalfTile: currentScreen.bottomHalfTile,
@@ -4358,6 +4361,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     removeCable,
     regenerateGear,
     sections: currentScreen.sections,
+    rasterCrop: currentScreen.rasterCrop,
     addSection,
     updateSection,
     removeSection,
