@@ -92,7 +92,7 @@ export function LedProductCombobox({
   const totalResults = grouped.reduce((s, [, items]) => s + items.length, 0) + (includeCustom && (!query || 'custom'.includes(query.toLowerCase())) ? 1 : 0);
 
   return (
-    <div ref={containerRef} className={cn('relative', className)}>
+    <div ref={containerRef} className={cn('relative min-w-0', className)}>
       {/* Trigger */}
       <button
         type="button"
@@ -100,11 +100,11 @@ export function LedProductCombobox({
         className={cn(
           'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md border text-sm',
           'bg-background hover:bg-accent/40 transition-colors text-left',
-          'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1',
+          'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 min-w-0',
           open && 'ring-2 ring-ring ring-offset-1'
         )}
       >
-        <span className={cn('flex-1 truncate', !displayLabel && 'text-muted-foreground')}>
+        <span className={cn('min-w-0 flex-1 truncate', !displayLabel && 'text-muted-foreground')} title={displayLabel || undefined}>
           {displayLabel || placeholder}
         </span>
         <ChevronDown className={cn('w-4 h-4 text-muted-foreground shrink-0 transition-transform', open && 'rotate-180')} />

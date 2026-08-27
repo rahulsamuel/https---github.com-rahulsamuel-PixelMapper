@@ -5,7 +5,6 @@ import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { useMemo } from "react";
 import { Button } from "../ui/button";
 import { RefreshCw, Plus, Trash2 } from "lucide-react";
 import type { LedProduct } from "@/services/supabase";
@@ -23,11 +22,11 @@ function ProductInfoPanel({ product }: { product: LedProduct }) {
   if (product.wattsPerTile) rows.push({ label: 'Power / Tile', value: `${product.wattsPerTile}W` });
   if (rows.length === 0) return null;
   return (
-    <div className="rounded-md border bg-muted/30 overflow-hidden">
+    <div className="min-w-0 rounded-md border border-border/50 bg-background/60 overflow-hidden">
       {rows.map(({ label, value }) => (
-        <div key={label} className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 last:border-0">
-          <span className="text-xs text-muted-foreground">{label}</span>
-          <span className="text-xs font-semibold tabular-nums">{value}</span>
+        <div key={label} className="flex min-w-0 items-center justify-between gap-3 px-2.5 py-1.5 border-b border-border/30 last:border-0">
+          <span className="shrink-0 text-[11px] text-muted-foreground">{label}</span>
+          <span className="min-w-0 truncate text-right text-[11px] font-semibold tabular-nums" title={value}>{value}</span>
         </div>
       ))}
     </div>
@@ -74,10 +73,6 @@ export function DimensionControls() {
     }));
   };
 
-  const selectedProduct = useMemo(() => {
-    return products.find(p => p.id === selectedProductId) ?? null;
-  }, [products, selectedProductId]);
-
   const isCustom = selectedProductId === 'custom';
 
   return (
@@ -105,7 +100,7 @@ export function DimensionControls() {
                 {sections.map((section, idx) => {
                   const product = products.find(p => p.id === section.productId);
                   return (
-                    <div key={section.id} className="rounded-md border border-border/40 bg-muted/20 p-2 space-y-2">
+                    <div key={section.id} className="min-w-0 rounded-md border border-border/40 bg-muted/20 p-2 space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-muted-foreground">Section {idx + 1}</span>
                         {sections.length > 1 && (
@@ -115,6 +110,7 @@ export function DimensionControls() {
                         )}
                       </div>
                       <LedProductCombobox
+                        className="w-full"
                         products={products as { id: string; manufacturer: string; productName: string }[]}
                         value={section.productId}
                         includeCustom
@@ -129,8 +125,9 @@ export function DimensionControls() {
                           });
                         }}
                       />
-                      <div className="flex items-center gap-2">
-                        <Label className="text-[10px] whitespace-nowrap">Columns</Label>
+                      {product && <ProductInfoPanel product={product as LedProduct} />}
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Label className="shrink-0 text-[10px] whitespace-nowrap">Columns</Label>
                         <Input
                           type="number"
                           min="1"
