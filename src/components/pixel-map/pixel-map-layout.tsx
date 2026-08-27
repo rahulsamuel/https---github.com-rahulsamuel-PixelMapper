@@ -170,7 +170,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
   };
   
   const AccordionSectionTrigger = ({ icon, title, colorClass }: { icon: React.ReactNode, title: string, colorClass?: string }) => (
-    <AccordionTrigger className={`bg-card hover:bg-muted/50 px-4 py-3 rounded-lg text-base font-semibold border data-[state=closed]:shadow-sm ${colorClass ?? ''}`}>
+    <AccordionTrigger className={`w-full bg-card hover:bg-muted/50 px-4 py-3 rounded-lg text-base font-semibold border data-[state=closed]:shadow-sm ${colorClass ?? ''}`}>
       <div className="flex items-center gap-3">
         {icon}
         <span>{title}</span>
@@ -276,13 +276,13 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
       <div
         className={`flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden transition-[width] duration-200 ease-linear ${toolPanelOpen ? 'w-80' : 'w-0'}`}
       >
-        <div className="w-80 flex flex-col h-full min-w-0 overflow-hidden">
-          <ScrollArea className="flex-1">
+        <div className="flex w-full flex-col h-full min-w-0 overflow-hidden">
+          <ScrollArea className="flex-1 w-full">
             <Accordion
               type="multiple"
-              className="p-4 flex flex-col gap-2"
+              className="w-full p-4 flex flex-col gap-2"
             >
-              <AccordionItem value="project" className="border-none">
+              <AccordionItem value="project" className="w-full border-none">
                 <AccordionSectionTrigger icon={<Package className="size-5" />} title="Project" colorClass="border-l-4 border-l-blue-500" />
                 <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
                   <div>
@@ -303,7 +303,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                 </AccordionContent>
               </AccordionItem>
 
-              <AccordionItem value="screens" className="border-none">
+              <AccordionItem value="screens" className="w-full border-none">
                 <AccordionSectionTrigger icon={<ScreenShare className="size-5" />} title="Screens" colorClass="border-l-4 border-l-emerald-500" />
                 <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
                   <TooltipProvider delayDuration={300}>
@@ -386,7 +386,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               
               {activeTab === 'grid' && (
                 <>
-                  <AccordionItem value="grid-setup" className="border-none">
+                  <AccordionItem value="grid-setup" className="w-full border-none">
                     <AccordionSectionTrigger icon={<LayoutGrid className="size-5" />} title="Grid Setup" colorClass="border-l-4 border-l-amber-500" />
                     <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
                       <div>
@@ -406,7 +406,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                       </div>
                     </AccordionContent>
                   </AccordionItem>
-                  <AccordionItem value="labeling" className="border-none">
+                  <AccordionItem value="labeling" className="w-full border-none">
                     <AccordionSectionTrigger icon={<CaseSensitive className="size-5" />} title="Labeling" colorClass="border-l-4 border-l-orange-500" />
                      <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
                        <p className="text-sm text-muted-foreground pb-4">Customize the labels on the LED tiles.</p>
@@ -417,7 +417,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               )}
 
               {activeTab === 'wiring' && (
-                <AccordionItem value="wiring" className="border-none">
+                <AccordionItem value="wiring" className="w-full border-none">
                   <AccordionSectionTrigger icon={<GitBranch className="size-5" />} title="Wiring" colorClass="border-l-4 border-l-rose-500" />
                   <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
                      <div>
@@ -440,7 +440,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               )}
               
               {(activeTab === 'grid' || activeTab === 'wiring') && (
-                <AccordionItem value="editing" className="border-none">
+                <AccordionItem value="editing" className="w-full border-none">
                   <AccordionSectionTrigger icon={<Wand2 className="size-5" />} title="Editing Tools" colorClass="border-l-4 border-l-violet-500" />
                   <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
                     <p className="text-sm text-muted-foreground pb-4">Select a tool to apply to the grid or restore deleted tiles.</p>
@@ -477,7 +477,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               )}
 
               {activeTab === 'raster' && (
-                <AccordionItem value="export" className="border-none">
+                <AccordionItem value="export" className="w-full border-none">
                   <AccordionSectionTrigger icon={<FileOutput className="size-5" />} title="Media Output" colorClass="border-l-4 border-l-cyan-500" />
                   <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
                     <p className="text-sm text-muted-foreground pb-4">Create raster maps for media servers.</p>
@@ -487,7 +487,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               )}
 
               {activeTab === 'deliverables' && (
-                <AccordionItem value="project-details" className="border-none">
+                <AccordionItem value="project-details" className="w-full border-none">
                   <AccordionSectionTrigger icon={<Info className="size-5" />} title="Project Info" colorClass="border-l-4 border-l-teal-500" />
                   <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
                     <ProjectDetailsControls />
