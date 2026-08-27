@@ -1319,16 +1319,46 @@ const handleRightHalfTileChange = (add: boolean) => {
     if (totalTiles <= 0) return [];
 
     const newLabels = Array(totalTiles).fill('');
+    const startNumber = currentScreen.labelStartNumber || 1;
+    const sectionLayout = currentScreen.sections.length > 0;
+
+    if (sectionLayout) {
+      let tileOffset = 0;
+      let colOffset = 0;
+      for (const section of currentScreen.sections) {
+        for (let localIndex = 0; localIndex < section.columnCount * effectiveScreenHeight; localIndex++) {
+          const index = tileOffset + localIndex;
+          const tile = currentScreen.tiles[index];
+          if (!tile || tile.deleted) continue;
+          const x = localIndex % section.columnCount;
+          const y = Math.floor(localIndex / section.columnCount);
+          if (currentScreen.labelFormat === 'sequential') {
+            newLabels[index] = String(index + startNumber);
+          } else if (currentScreen.labelFormat === 'dmx-style') {
+            const universeSize = 170;
+            const dmxIndex = index + startNumber - 1;
+            const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(dmxIndex / universeSize));
+            newLabels[index] = `${universe}${(dmxIndex % universeSize) + 1}`;
+          } else if (currentScreen.labelFormat === 'row-col') {
+            newLabels[index] = `${y + startNumber}-${x + 1 + colOffset}`;
+          } else if (currentScreen.labelFormat === 'row-letter-col-number') {
+            newLabels[index] = `${String.fromCharCode('A'.charCodeAt(0) + y + startNumber - 1)}${x + 1 + colOffset}`;
+          }
+        }
+        tileOffset += section.columnCount * effectiveScreenHeight;
+        colOffset += section.columnCount;
+      }
+      return newLabels;
+    }
+
     const activeTileIndices = currentScreen.tiles.map((_, i) => i).filter(i => !currentScreen.tiles[i].deleted);
     const pathOrder = getPathOrder(activeTileIndices, currentScreen.wiringPattern, effectiveScreenWidth, effectiveScreenHeight);
-    
-    const startNumber = currentScreen.labelStartNumber || 1;
 
     if (currentScreen.labelFormat === 'sequential' || currentScreen.labelFormat === 'dmx-style') {
       pathOrder.forEach((originalIndex, pathIndex) => {
         if (currentScreen.labelFormat === 'sequential') {
           newLabels[originalIndex] = String(pathIndex + startNumber);
-        } else { // dmx-style
+        } else {
           const universeSize = 170;
           const dmxIndex = pathIndex + startNumber - 1;
           const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(dmxIndex / universeSize));
@@ -1341,7 +1371,6 @@ const handleRightHalfTileChange = (add: boolean) => {
         if (currentScreen.tiles[i] && !currentScreen.tiles[i].deleted) {
           const x = i % effectiveScreenWidth;
           const y = Math.floor(i / effectiveScreenWidth);
-          
           switch (currentScreen.labelFormat) {
             case 'row-col':
               newLabels[i] = `${y + startNumber}-${x + 1}`;
@@ -1355,7 +1384,6 @@ const handleRightHalfTileChange = (add: boolean) => {
         }
       }
     }
-    
     return newLabels;
   }, [currentScreen, effectiveScreenWidth, effectiveScreenHeight]);
 
@@ -1968,34 +1996,39 @@ const handleRightHalfTileChange = (add: boolean) => {
         const screenEffectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
         const screenEffectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
         
-        const pathOrder = getPathOrder(activeTileIndices, screen.wiringPattern, screenEffectiveWidth, screenEffectiveHeight);
         const startNumber = screen.labelStartNumber || 1;
+        const sectionLayout = screen.sections.length > 0;
+        const pathOrder = sectionLayout
+          ? screen.tiles.map((_, index) => index).filter(index => !screen.tiles[index].deleted)
+          : getPathOrder(activeTileIndices, screen.wiringPattern, screenEffectiveWidth, screenEffectiveHeight);
 
         if (screen.labelFormat === 'sequential' || screen.labelFormat === 'dmx-style') {
           pathOrder.forEach((originalIndex, pathIndex) => {
+            const labelNumber = pathIndex + startNumber;
             if (screen.labelFormat === 'sequential') {
-              newLabels[originalIndex] = String(pathIndex + startNumber);
-            } else { // dmx-style
+              newLabels[originalIndex] = String(labelNumber);
+            } else {
               const universeSize = 170;
-              const dmxIndex = pathIndex + startNumber - 1;
+              const dmxIndex = labelNumber - 1;
               const universe = String.fromCharCode('A'.charCodeAt(0) + Math.floor(dmxIndex / universeSize));
-              const address = (dmxIndex % universeSize) + 1;
-              newLabels[originalIndex] = `${universe}${address}`;
+              newLabels[originalIndex] = `${universe}${(dmxIndex % universeSize) + 1}`;
             }
           });
         } else if (screen.labelFormat !== 'none') {
-            for (let i = 0; i < totalTiles; i++) {
-                if (screen.tiles[i] && !screen.tiles[i].deleted) {
-                    const x = i % screenEffectiveWidth;
-                    const y = Math.floor(i / screenEffectiveWidth);
-                    if (screen.labelFormat === 'row-col') {
-                      newLabels[i] = `${y + startNumber}-${x + 1}`;
-                    } else if (screen.labelFormat === 'row-letter-col-number') {
-                      const rowLetter = String.fromCharCode('A'.charCodeAt(0) + y + startNumber - 1);
-                      newLabels[i] = `${rowLetter}${x + 1}`;
-                    }
-                }
+          let tileOffset = 0;
+          for (const section of screen.sections.length > 0 ? screen.sections : [{ columnCount: screenEffectiveWidth }]) {
+            for (let localIndex = 0; localIndex < section.columnCount * screenEffectiveHeight; localIndex++) {
+              const index = tileOffset + localIndex;
+              const tile = screen.tiles[index];
+              if (!tile || tile.deleted) continue;
+              const x = localIndex % section.columnCount;
+              const y = Math.floor(localIndex / section.columnCount);
+              newLabels[index] = screen.labelFormat === 'row-col'
+                ? `${y + startNumber}-${x + 1 + tileOffset / screenEffectiveHeight}`
+                : `${String.fromCharCode('A'.charCodeAt(0) + y + startNumber - 1)}${x + 1 + tileOffset / screenEffectiveHeight}`;
             }
+            tileOffset += section.columnCount * screenEffectiveHeight;
+          }
         }
         return newLabels;
     })();
@@ -2007,6 +2040,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     
     const contentPixelHeight = (() => {
         let height = 0;
+        const sectionHeight = screen.sections[0]?.tileHeightPx ?? tileHeight;
+        if (screen.sections.length > 0) return (screenActiveBounds.maxY - screenActiveBounds.minY + 1) * sectionHeight;
         for (let y = screenActiveBounds.minY; y <= screenActiveBounds.maxY; y++) {
             const isTopHalf = screen.topHalfTile && y === 0;
             const isBottomHalf = screen.bottomHalfTile && y === (screenEffectiveHeight - 1);
@@ -2016,6 +2051,19 @@ const handleRightHalfTileChange = (add: boolean) => {
     })();
     
     const contentPixelWidth = (() => {
+      if (screen.sections.length > 0) {
+        let offset = 0;
+        let width = 0;
+        for (const section of screen.sections) {
+          const start = offset;
+          const end = offset + section.columnCount - 1;
+          const minX = Math.max(screenActiveBounds.minX, start);
+          const maxX = Math.min(screenActiveBounds.maxX, end);
+          if (maxX >= minX) width += (maxX - minX + 1) * section.tileWidthPx;
+          offset += section.columnCount;
+        }
+        return width;
+      }
       let width = 0;
       for (let x = screenActiveBounds.minX; x <= screenActiveBounds.maxX; x++) {
           const isLeftHalf = screen.leftHalfTile && x === 0;
@@ -2081,42 +2129,53 @@ const handleRightHalfTileChange = (add: boolean) => {
     masterCtx.fillRect(0, 0, masterCanvas.width, masterCanvas.height);
 
     let currentDrawY = 0;
-    for (let y = screenActiveBounds.minY; y <= screenActiveBounds.maxY; y++) {
+    const drawTile = (tile: Tile | undefined, index: number, x: number, y: number, drawX: number, drawY: number, colPixelWidth: number, rowPixelHeight: number) => {
+            if (!tile) return;
+            const isActive = !tile.deleted;
+            if (isActive) {
+                let bgColor = (x + y) % 2 === 0 ? screen.tileColor : screen.tileColorTwo;
+                if (screen.onOffMode) bgColor = '#FFFFFF';
+                else if (tile.color) bgColor = tile.color;
+                masterCtx.fillStyle = bgColor;
+                masterCtx.fillRect(drawX, drawY, colPixelWidth, rowPixelHeight);
+                if (screen.borderWidth > 0) {
+                    masterCtx.strokeStyle = screen.borderColor;
+                    masterCtx.lineWidth = screen.borderWidth;
+                    masterCtx.strokeRect(drawX + screen.borderWidth / 2, drawY + screen.borderWidth / 2, colPixelWidth - screen.borderWidth, rowPixelHeight - screen.borderWidth);
+                }
+                if (screen.showLabels && screenLabels[index]) {
+                    masterCtx.fillStyle = screen.labelColorMode === 'auto' ? (isColorDark(bgColor) ? '#FFFFFF' : '#000000') : screen.labelColor;
+                    masterCtx.font = `bold ${screen.labelFontSize}px sans-serif`;
+                    masterCtx.textAlign = 'center';
+                    masterCtx.textBaseline = 'middle';
+                    masterCtx.fillText(screenLabels[index], drawX + colPixelWidth / 2, drawY + rowPixelHeight / 2);
+                }
+            }
+    };
+    if (screen.sections.length > 0) {
+      let tileOffset = 0;
+      let drawX = 0;
+      for (const section of screen.sections) {
+        for (let y = screenActiveBounds.minY; y <= screenActiveBounds.maxY; y++) {
+          for (let x = 0; x < section.columnCount; x++) {
+            const index = tileOffset + y * section.columnCount + x;
+            drawTile(screen.tiles[index], index, x, y, drawX + x * section.tileWidthPx, y * section.tileHeightPx, section.tileWidthPx, section.tileHeightPx);
+          }
+        }
+        drawX += section.columnCount * section.tileWidthPx;
+        tileOffset += section.columnCount * screenEffectiveHeight;
+      }
+    } else for (let y = screenActiveBounds.minY; y <= screenActiveBounds.maxY; y++) {
         const isTopHalfRow = screen.topHalfTile && y === 0;
         const isBottomHalfRow = screen.bottomHalfTile && y === (screenEffectiveHeight - 1);
         const rowPixelHeight = (isTopHalfRow || isBottomHalfRow) ? tileHeight / 2 : tileHeight;
-        
         let currentDrawX = 0;
         for (let x = screenActiveBounds.minX; x <= screenActiveBounds.maxX; x++) {
             const isLeftHalfCol = screen.leftHalfTile && x === 0;
             const isRightHalfCol = screen.rightHalfTile && x === (screenEffectiveWidth - 1);
             const colPixelWidth = (isLeftHalfCol || isRightHalfCol) ? tileWidth / 2 : tileWidth;
-            
             const index = y * screenEffectiveWidth + x;
-            const tile = screen.tiles[index];
-            if (tile && !tile.deleted) {
-                let bgColor = (x + y) % 2 === 0 ? screen.tileColor : screen.tileColorTwo;
-                if (screen.onOffMode) bgColor = '#FFFFFF';
-                else if (tile.color) bgColor = tile.color;
-
-                masterCtx.fillStyle = bgColor;
-                masterCtx.fillRect(currentDrawX, currentDrawY, colPixelWidth, rowPixelHeight);
-
-                if (screen.borderWidth > 0) {
-                    masterCtx.strokeStyle = screen.borderColor;
-                    masterCtx.lineWidth = screen.borderWidth;
-                    masterCtx.strokeRect(currentDrawX + screen.borderWidth / 2, currentDrawY + screen.borderWidth / 2, colPixelWidth - screen.borderWidth, rowPixelHeight - screen.borderWidth);
-                }
-
-                if (screen.showLabels && screenLabels[index]) {
-                    const currentLabelColor = screen.labelColorMode === 'auto' ? (isColorDark(bgColor) ? '#FFFFFF' : '#000000') : screen.labelColor;
-                    masterCtx.fillStyle = currentLabelColor;
-                    masterCtx.font = `bold ${screen.labelFontSize}px sans-serif`;
-                    masterCtx.textAlign = 'center';
-                    masterCtx.textBaseline = 'middle';
-                    masterCtx.fillText(screenLabels[index], currentDrawX + colPixelWidth / 2, currentDrawY + rowPixelHeight / 2);
-                }
-            }
+            drawTile(screen.tiles[index], index, x, y, currentDrawX, currentDrawY, colPixelWidth, rowPixelHeight);
             currentDrawX += colPixelWidth;
         }
         currentDrawY += rowPixelHeight;
