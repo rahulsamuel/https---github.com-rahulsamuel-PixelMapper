@@ -32,6 +32,44 @@ function gcd(a: number, b: number): number {
   return b === 0 ? a : gcd(b, a % b);
 }
 
+function formatFractionalInch(inches: number): string {
+  const whole = Math.floor(inches);
+  const frac = inches - whole;
+  const denominators = [2, 4, 8, 16, 32];
+  let bestNumerator = 0;
+  let bestDenominator = 1;
+  let bestDiff = frac;
+  for (const denom of denominators) {
+    const numerator = Math.round(frac * denom);
+    const diff = Math.abs(frac - numerator / denom);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestNumerator = numerator;
+      bestDenominator = denom;
+    }
+  }
+  if (bestNumerator === 0) return `${whole}`;
+  const gcf = (a: number, b: number): number => b === 0 ? a : gcf(b, a % b);
+  const divisor = gcf(bestNumerator, bestDenominator);
+  return `${whole} ${bestNumerator / divisor}/${bestDenominator / divisor}`;
+}
+
+function fmtFeetInches(mm: number): string {
+  const totalInches = mm / 25.4;
+  const feet = Math.floor(totalInches / 12);
+  const remainingInches = totalInches - feet * 12;
+  return `${feet}' ${formatFractionalInch(remainingInches)}"`;
+}
+
+function formatPhysicalDimensions(widthMm: number, heightMm: number): string {
+  if (!widthMm || !heightMm) return 'N/A';
+  const metricMm = `${Math.round(widthMm).toLocaleString()} × ${Math.round(heightMm).toLocaleString()} mm`;
+  const metricM = `${(widthMm / 1000).toFixed(2)} × ${(heightMm / 1000).toFixed(2)} m`;
+  const imperialIn = `${(widthMm / 25.4).toFixed(1)}" × ${(heightMm / 25.4).toFixed(1)}"`;
+  const imperialFt = `${fmtFeetInches(widthMm)} × ${fmtFeetInches(heightMm)}`;
+  return `${metricMm} (${metricM}) | ${imperialFt} (${imperialIn})`;
+}
+
 export function DeliverablesView() {
   const {
     screens,
@@ -120,6 +158,20 @@ export function DeliverablesView() {
       const ledManufacturer = Array.from(new Set(ledProducts.map(product => product.manufacturer))).join(' / ') || 'N/A';
       const ledProductName = ledProducts.map(product => product.productName).join(' / ') || 'N/A';
       const screenRes = `${resWidth.toLocaleString()} × ${resHeight.toLocaleString()} px`;
+      const effectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+      let physWmm = 0;
+      let physHmm = 0;
+      if (hasSections) {
+        physWmm = screen.sections.reduce((sum, section) => sum + (section.tileWidthMm || 0) * section.columnCount, 0);
+        physHmm = (screen.sections[0]?.tileHeightMm || 0) * effectiveHeight;
+      } else {
+        const screenProduct = products.find((p: LedProduct) => p.id === screen.selectedProductId);
+        const tileWmm = (screenProduct?.tileWidthMm as number | undefined) || screen.customTileWidthMm || 0;
+        const tileHmm = (screenProduct?.tileHeightMm as number | undefined) || screen.customTileHeightMm || 0;
+        physWmm = tileWmm * effectiveWidth;
+        physHmm = tileHmm * effectiveHeight;
+      }
+      const physicalDimensions = formatPhysicalDimensions(physWmm, physHmm);
       const containerExtension = videoContainer.trim().toLowerCase().replace(/^\./, '') || 'mp4';
       const contentFileName = `${(projectName || screen.name || 'screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_${idx + 1}_${(projectNumber || 'NA').replace(/[^a-zA-Z0-9_-]/g, '_')}.${containerExtension}`;
       const safeScreenName = (screen.name || 'screen').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -130,6 +182,7 @@ export function DeliverablesView() {
         screen, idx, activeTileCount, resWidth, resHeight, totalPixels, aspectRatio,
         ledProductDimensions, ledManufacturer, ledProductName,
         screenRes, contentFileName, pixelMapFileName, previewImage,
+        physicalDimensions,
       };
     });
   }, [screens, products, projectNumber, projectName, pixelMapImages]);
@@ -260,6 +313,7 @@ export function DeliverablesView() {
                     <div className="p-6 space-y-3">
                       <h4 className="font-headline text-sm font-bold text-slate-800 mb-3">{sd.screen.name}</h4>
                       <DataRow label="Screen Resolution" value={sd.screenRes} />
+                      <DataRow label="Physical Dimensions" value={sd.physicalDimensions} />
                       <DataRow label="Aspect Ratio" value={sd.aspectRatio} />
                       <DataRow label="Total Pixels" value={sd.totalPixels.toLocaleString()} />
                       <DataRow label="Total Panels" value={String(sd.activeTileCount)} />
@@ -461,6 +515,7 @@ function buildHtmlReport(opts: {
           <div class="detail-row"><span>LED Manufacturer</span><strong>${sd.ledManufacturer}</strong></div>
           <div class="detail-row"><span>LED Product</span><strong>${sd.ledProductName}</strong></div>
           <div class="detail-row"><span>LED Product Dimensions</span><strong>${sd.ledProductDimensions}</strong></div>
+          <div class="detail-row"><span>Physical Dimensions</span><strong>${sd.physicalDimensions}</strong></div>
           <div class="detail-row"><span>Aspect Ratio</span><strong>${sd.aspectRatio}</strong></div>
           <div class="detail-row"><span>Content File Name</span><strong class="mono small">${sd.contentFileName}</strong></div>
         </div>
