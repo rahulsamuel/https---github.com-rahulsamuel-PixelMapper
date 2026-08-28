@@ -72,6 +72,8 @@ export function LedGrid() {
 
   const selectedProduct = useMemo(() => products.find(p => p.id === currentScreen.selectedProductId) ?? null, [products, currentScreen.selectedProductId]);
 
+  const checkerboardBg = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='2' height='2'><rect x='1' width='1' height='1' fill='black'/><rect y='1' width='1' height='1' fill='black'/></svg>")`;
+
   const hasSections = sections.length > 0;
 
   const { totalGridPixelWidth, totalGridPixelHeight } = useMemo(() => {
@@ -162,7 +164,50 @@ export function LedGrid() {
     }
     return offsets;
   }, [sections, hasSections, effectiveScreenHeight]);
-  
+
+  const columnPixelOffsets = useMemo(() => {
+    if (hasSections) return [];
+    const offsets = [0];
+    for (let x = 0; x < effectiveScreenWidth; x++) {
+      const isLeftHalf = leftHalfTile && x === 0;
+      const isRightHalf = rightHalfTile && x === effectiveScreenWidth - 1;
+      offsets.push(offsets[offsets.length - 1] + ((isLeftHalf || isRightHalf) ? dimensions.tileWidth / 2 : dimensions.tileWidth));
+    }
+    return offsets;
+  }, [hasSections, effectiveScreenWidth, leftHalfTile, rightHalfTile, dimensions.tileWidth]);
+
+  const rowPixelOffsets = useMemo(() => {
+    if (hasSections) return [];
+    const offsets = [0];
+    for (let y = 0; y < effectiveScreenHeight; y++) {
+      const isTopHalf = topHalfTile && y === 0;
+      const isBottomHalf = bottomHalfTile && y === effectiveScreenHeight - 1;
+      offsets.push(offsets[offsets.length - 1] + ((isTopHalf || isBottomHalf) ? dimensions.tileHeight / 2 : dimensions.tileHeight));
+    }
+    return offsets;
+  }, [hasSections, effectiveScreenHeight, topHalfTile, bottomHalfTile, dimensions.tileHeight]);
+
+  const sectionPixelXOffsets = useMemo(() => {
+    if (!hasSections) return [];
+    const offsets = [0];
+    for (const section of sections) {
+      offsets.push(offsets[offsets.length - 1] + section.tileWidthPx * section.columnCount);
+    }
+    return offsets;
+  }, [hasSections, sections]);
+
+  const sectionRowPixelOffsets = useMemo(() => {
+    if (!hasSections) return [];
+    const sectionTileHeight = sections[0]?.tileHeightPx ?? dimensions.tileHeight;
+    const offsets = [0];
+    for (let y = 0; y < effectiveScreenHeight; y++) {
+      const isTopHalf = topHalfTile && y === 0;
+      const isBottomHalf = bottomHalfTile && y === effectiveScreenHeight - 1;
+      offsets.push(offsets[offsets.length - 1] + ((isTopHalf || isBottomHalf) ? sectionTileHeight / 2 : sectionTileHeight));
+    }
+    return offsets;
+  }, [hasSections, sections, dimensions.tileHeight, effectiveScreenHeight, topHalfTile, bottomHalfTile]);
+
   const averageBackgroundColor = useMemo(() => {
     const activeTiles = tiles.filter(t => !t.deleted);
     if (activeTiles.length === 0) return tileColor;
@@ -269,7 +314,6 @@ export function LedGrid() {
                       } else {
                         bgColor = (globalX + localY) % 2 === 0 ? tileColor : tileColorTwo;
                       }
-                      if (alternatingPixels && !tile.deleted && (globalX + localY) % 2 !== 0) bgColor = '#000000';
                     }
 
                     const currentLabelColor = labelColorMode === 'auto'
@@ -279,12 +323,17 @@ export function LedGrid() {
                     const tileEffectiveHeight = getTileHeight(localY, section.tileHeightPx);
                     const tileEffectiveWidth = section.tileWidthPx;
 
+                    const absPxX = (sectionPixelXOffsets[sectionIdx] ?? 0) + localX * section.tileWidthPx;
+                    const absPxY = sectionRowPixelOffsets[localY] ?? 0;
                     const tileDynamicStyle: React.CSSProperties = {
                       width: `${tileEffectiveWidth}px`,
                       height: `${tileEffectiveHeight}px`,
                       borderWidth: `${borderWidth}px`,
                       borderColor: borderColor,
                       backgroundColor: randomizeModuleColors ? 'transparent' : bgColor,
+                      backgroundImage: alternatingPixels && !tile.deleted ? checkerboardBg : undefined,
+                      backgroundSize: alternatingPixels && !tile.deleted ? '2px 2px' : undefined,
+                      backgroundPosition: alternatingPixels && !tile.deleted ? `${-(absPxX % 2)}px ${-(absPxY % 2)}px` : undefined,
                       borderStyle: tile.deleted ? 'none' : 'solid',
                       boxSizing: 'border-box',
                     };
@@ -309,7 +358,7 @@ export function LedGrid() {
                             {Array.from({ length: totalModules }).map((_, mi) => {
                               const moduleStyle: React.CSSProperties = {
                                 border: `1px solid ${moduleBorderColor}`,
-                                backgroundColor: randomizeModuleColors ? currentScreen.moduleColors[index]?.[mi] ?? '#000000' : bgColor,
+                                backgroundColor: alternatingPixels ? 'transparent' : (randomizeModuleColors ? currentScreen.moduleColors[index]?.[mi] ?? '#000000' : bgColor),
                               };
                               return (
                                 <div key={mi} style={moduleStyle} />
@@ -366,7 +415,6 @@ export function LedGrid() {
               } else {
                 bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
               }
-              if (alternatingPixels && !tile.deleted && (x + y) % 2 !== 0) bgColor = '#000000';
             }
 
             const currentLabelColor = labelColorMode === 'auto'
@@ -376,12 +424,17 @@ export function LedGrid() {
             const tileEffectiveHeight = getTileHeight(y);
             const tileEffectiveWidth = getTileWidth(x);
 
+            const absPxX = columnPixelOffsets[x] ?? 0;
+            const absPxY = rowPixelOffsets[y] ?? 0;
             const tileDynamicStyle: React.CSSProperties = {
               width: `${tileEffectiveWidth}px`,
               height: `${tileEffectiveHeight}px`,
               borderWidth: `${borderWidth}px`,
               borderColor: borderColor,
               backgroundColor: randomizeModuleColors ? 'transparent' : bgColor,
+              backgroundImage: alternatingPixels && !tile.deleted ? checkerboardBg : undefined,
+              backgroundSize: alternatingPixels && !tile.deleted ? '2px 2px' : undefined,
+              backgroundPosition: alternatingPixels && !tile.deleted ? `${-(absPxX % 2)}px ${-(absPxY % 2)}px` : undefined,
               borderStyle: tile.deleted ? 'none' : 'solid',
               boxSizing: 'border-box',
             };
@@ -406,7 +459,7 @@ export function LedGrid() {
                     {Array.from({ length: totalModules }).map((_, i) => {
                       const moduleStyle: React.CSSProperties = {
                         border: `1px solid ${moduleBorderColor}`,
-                        backgroundColor: randomizeModuleColors ? currentScreen.moduleColors[index]?.[i] ?? '#000000' : bgColor,
+                        backgroundColor: alternatingPixels ? 'transparent' : (randomizeModuleColors ? currentScreen.moduleColors[index]?.[i] ?? '#000000' : bgColor),
                       };
                       return (
                         <div key={i} style={moduleStyle} />

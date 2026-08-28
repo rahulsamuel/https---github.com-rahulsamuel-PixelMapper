@@ -2185,6 +2185,20 @@ const handleRightHalfTileChange = (add: boolean) => {
     masterCtx.fillStyle = 'black';
     masterCtx.fillRect(0, 0, masterCanvas.width, masterCanvas.height);
 
+    let checkerPattern: CanvasPattern | null = null;
+    if (screen.alternatingPixels) {
+        const patternCanvas = document.createElement('canvas');
+        patternCanvas.width = 2;
+        patternCanvas.height = 2;
+        const pctx = patternCanvas.getContext('2d');
+        if (pctx) {
+            pctx.fillStyle = '#000000';
+            pctx.fillRect(1, 0, 1, 1);
+            pctx.fillRect(0, 1, 1, 1);
+            checkerPattern = masterCtx.createPattern(patternCanvas, 'repeat');
+        }
+    }
+
     let currentDrawY = 0;
     const drawTile = (tile: Tile | undefined, index: number, x: number, y: number, drawX: number, drawY: number, colPixelWidth: number, rowPixelHeight: number) => {
             if (!tile) return;
@@ -2195,9 +2209,12 @@ const handleRightHalfTileChange = (add: boolean) => {
                 // for the section path the caller passes the global column too.
                 if (screen.onOffMode) bgColor = '#FFFFFF';
                 else if (tile.color) bgColor = tile.color;
-                if (screen.alternatingPixels && (x + y) % 2 !== 0) bgColor = '#000000';
                 masterCtx.fillStyle = bgColor;
                 masterCtx.fillRect(drawX, drawY, colPixelWidth, rowPixelHeight);
+                if (checkerPattern) {
+                    masterCtx.fillStyle = checkerPattern;
+                    masterCtx.fillRect(drawX, drawY, colPixelWidth, rowPixelHeight);
+                }
                 if (screen.borderWidth > 0) {
                     masterCtx.strokeStyle = screen.borderColor;
                     masterCtx.lineWidth = screen.borderWidth;
@@ -3203,11 +3220,13 @@ const handleRightHalfTileChange = (add: boolean) => {
           let bg = (i % screenEffW + Math.floor(i / screenEffW)) % 2 === 0 ? currentScreen.tileColor : currentScreen.tileColorTwo;
           if (currentScreen.onOffMode) bg = '#FFFFFF';
           else if (tile.color) bg = tile.color;
-          if (currentScreen.alternatingPixels && (i % screenEffW + Math.floor(i / screenEffW)) % 2 !== 0) bg = '#000000';
           if (!colorMap.has(bg)) {
             const existing = wallLayoutLegend.find(e => e.color === bg);
             colorMap.set(bg, existing?.label ?? '');
           }
+        }
+        if (currentScreen.alternatingPixels && !colorMap.has('#000000')) {
+          colorMap.set('#000000', wallLayoutLegend.find(e => e.color === '#000000')?.label ?? 'OFF');
         }
 
         const legendEntries = Array.from(colorMap.entries());
