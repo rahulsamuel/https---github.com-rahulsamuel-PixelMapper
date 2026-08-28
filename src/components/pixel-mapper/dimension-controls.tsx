@@ -74,6 +74,8 @@ export function DimensionControls() {
   };
 
   const isCustom = selectedProductId === 'custom';
+  const hasCustomSection = sections.some(section => section.productId === 'custom');
+  const canEditCustomDimensions = sections.length > 0 ? hasCustomSection : isCustom;
 
   return (
     <div className="space-y-4">
@@ -157,7 +159,7 @@ export function DimensionControls() {
                     value={dimensions.tileWidth}
                     onChange={handleChange}
                     min="1"
-                    disabled={!isCustom}
+                    disabled={!canEditCustomDimensions}
                 />
             </div>
             <div className="space-y-2">
@@ -169,11 +171,11 @@ export function DimensionControls() {
                     value={dimensions.tileHeight}
                     onChange={handleChange}
                     min="1"
-                    disabled={!isCustom}
+                    disabled={!canEditCustomDimensions}
                 />
             </div>
         </div>
-        {isCustom && (
+        {canEditCustomDimensions && (
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="customTileWidthMm">Tile Width (mm)</Label>
