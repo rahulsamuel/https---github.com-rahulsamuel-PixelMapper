@@ -21,6 +21,12 @@ interface LedProduct {
   [key: string]: any;
 }
 
+interface ScreenProductInfo {
+  manufacturer: string;
+  productName: string;
+  dimensions: string;
+}
+
 function gcd(a: number, b: number): number {
   return b === 0 ? a : gcd(b, a % b);
 }
@@ -80,15 +86,32 @@ export function DeliverablesView() {
   const screenData = useMemo(() => {
     return screens.map((screen, idx) => {
       const activeTileCount = screen.tiles.filter(t => !t.deleted).length;
-      const resWidth = screen.dimensions.screenWidth * screen.dimensions.tileWidth;
-      const resHeight = screen.dimensions.screenHeight * screen.dimensions.tileHeight;
+      const effectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+      const hasSections = screen.sections.length > 0;
+      const resWidth = hasSections
+        ? screen.sections.reduce((total, section) => total + section.columnCount * section.tileWidthPx, 0)
+        : screen.dimensions.screenWidth * screen.dimensions.tileWidth;
+      const resHeight = hasSections
+        ? (screen.sections[0]?.tileHeightPx ?? screen.dimensions.tileHeight) * effectiveHeight
+        : screen.dimensions.screenHeight * screen.dimensions.tileHeight;
       const totalPixels = resWidth * resHeight;
       const g = gcd(resWidth, resHeight);
       const aspectRatio = `${resWidth / g}:${resHeight / g}`;
-      const product = products.find((p: LedProduct) => p.id === screen.selectedProductId);
-      const ledProductDimensions = product ? `${product.tileWidthPx} × ${product.tileHeightPx} px` : 'N/A';
-      const ledManufacturer = product?.manufacturer ?? 'N/A';
-      const ledProductName = product?.productName ?? 'N/A';
+      const sectionProducts = hasSections
+        ? screen.sections.map(section => ({ section, product: products.find((p: LedProduct) => p.id === section.productId) }))
+        : [{ section: null, product: products.find((p: LedProduct) => p.id === screen.selectedProductId) }];
+      const ledProducts = sectionProducts.reduce<ScreenProductInfo[]>((result, entry) => {
+        if (!entry.product || result.some(item => item.productName === entry.product?.productName && item.manufacturer === entry.product?.manufacturer)) return result;
+        result.push({
+          manufacturer: entry.product.manufacturer,
+          productName: entry.product.productName,
+          dimensions: `${entry.product.tileWidthPx} × ${entry.product.tileHeightPx} px`,
+        });
+        return result;
+      }, []);
+      const ledProductDimensions = ledProducts.map(product => product.dimensions).join(' / ') || 'N/A';
+      const ledManufacturer = ledProducts.map(product => product.manufacturer).join(' / ') || 'N/A';
+      const ledProductName = ledProducts.map(product => product.productName).join(' / ') || 'N/A';
       const screenRes = `${resWidth.toLocaleString()} × ${resHeight.toLocaleString()} px`;
       const contentFileName = `${(projectName || screen.name || 'screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_${idx + 1}_${(projectNumber || 'NA').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
       const safeScreenName = (screen.name || 'screen').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -97,7 +120,7 @@ export function DeliverablesView() {
 
       return {
         screen, idx, activeTileCount, resWidth, resHeight, totalPixels, aspectRatio,
-        product, ledProductDimensions, ledManufacturer, ledProductName,
+        ledProductDimensions, ledManufacturer, ledProductName,
         screenRes, contentFileName, pixelMapFileName, previewImage,
       };
     });
