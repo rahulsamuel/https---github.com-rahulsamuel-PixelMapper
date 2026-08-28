@@ -4,13 +4,12 @@ import { useRef, useState } from "react";
 import { usePersistentState } from "@/hooks/use-persistent-state";
 import { ScreenPreview } from "./screen-preview";
 import { PreVisualControls } from "./pre-visual-controls";
-import { ModelLibrary } from "./model-library";
 import type { PreVisualScreenData, PreVisualSettings } from "./types";
 import { DEFAULT_SETTINGS } from "./types";
 import { supabase } from "@/lib/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { PanelLeftClose, PanelLeftOpen, Download, RotateCcw } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Download } from "lucide-react";
 import { toPng } from "html-to-image";
 import { cn } from "@/lib/utils";
 
@@ -98,7 +97,6 @@ export function PreVisualBuilder() {
   const [screens, setScreens] = useState<PreVisualScreenData[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [models, setModels] = useState<{ id: string; name: string; category: string; fileUrl: string; fileName: string; fileSize: number; uploadedAt: string }[]>([]);
   const exportRef = useRef<HTMLDivElement>(null);
 
   // Load screens from localStorage autosave and products from Supabase
@@ -147,13 +145,6 @@ export function PreVisualBuilder() {
         }
       } catch { /* ignore */ }
 
-      try {
-        const { data: modelData } = await supabase.from("pre_visual_models").select("*").order("uploaded_at", { ascending: false });
-        if (modelData) {
-          setModels(modelData as unknown as typeof models);
-        }
-      } catch { /* table might not exist yet */ }
-
       setLoading(false);
     })();
   }
@@ -172,7 +163,7 @@ export function PreVisualBuilder() {
   };
 
   const handleResetView = () => {
-    setSettings(prev => ({ ...prev, rotateX: -25, rotateY: 25, rotateZ: 0, zoom: 1 }));
+    setSettings(DEFAULT_SETTINGS);
   };
 
   const updateSettings = (patch: Partial<PreVisualSettings>) => {
@@ -185,18 +176,17 @@ export function PreVisualBuilder() {
       <div
         className={cn(
           "flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden transition-[width] duration-200 ease-linear",
-          panelOpen ? "w-80" : "w-0"
+          panelOpen ? "w-72" : "w-0"
         )}
       >
         <ScrollArea className="flex-1">
-          <div className="p-4 space-y-6">
+          <div className="p-4 space-y-4">
             <PreVisualControls
               settings={settings}
               onChange={updateSettings}
+              onReset={handleResetView}
               screens={screens.map(s => ({ id: s.id, name: s.name }))}
-              products={products.map(p => ({ id: p.id, name: `${p.manufacturer} ${p.productName}`, tileDepthMm: p.tileDepthMm, productImageUrl: p.productImageUrl }))}
             />
-            <ModelLibrary models={models} onModelsChange={setModels} />
           </div>
         </ScrollArea>
       </div>
@@ -218,10 +208,6 @@ export function PreVisualBuilder() {
             {selectedScreen && <span className="ml-2 text-foreground">{selectedScreen.name}</span>}
           </div>
           <div className="flex items-center gap-2 ml-auto">
-            <Button variant="ghost" size="sm" onClick={handleResetView}>
-              <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-              Reset View
-            </Button>
             <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="mr-1.5 h-3.5 w-3.5" />
               Export PNG

@@ -12,15 +12,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Eye, Box, Ruler, Grid3x3, Tag, Palette, Rotate3d } from "lucide-react";
+import { RotateCcw, Ruler, Grid3x3, Tag, Palette, Rotate3d } from "lucide-react";
 import type { PreVisualSettings, ViewMode, RenderMode } from "./types";
-import { cn } from "@/lib/utils";
 
 interface Props {
   settings: PreVisualSettings;
   onChange: (patch: Partial<PreVisualSettings>) => void;
+  onReset: () => void;
   screens: { id: string; name: string }[];
-  products: { id: string; name: string; tileDepthMm: number | null; productImageUrl: string | null }[];
 }
 
 const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
@@ -30,9 +29,9 @@ const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
   { value: "top", label: "Top" },
 ];
 
-export function PreVisualControls({ settings, onChange, screens, products }: Props) {
+export function PreVisualControls({ settings, onChange, onReset, screens }: Props) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Screen selector */}
       <div>
         <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">Screen</Label>
@@ -179,12 +178,6 @@ export function PreVisualControls({ settings, onChange, screens, products }: Pro
           checked={settings.showGrid}
           onChange={(v) => onChange({ showGrid: v })}
         />
-        <ToggleRow
-          icon={<Box className="h-3.5 w-3.5" />}
-          label="Tile Depth"
-          checked={settings.showDepth}
-          onChange={(v) => onChange({ showDepth: v })}
-        />
       </div>
 
       <Separator />
@@ -207,24 +200,11 @@ export function PreVisualControls({ settings, onChange, screens, products }: Pro
 
       <Separator />
 
-      {/* Product info */}
-      <div>
-        <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block flex items-center gap-1.5">
-          <Eye className="h-3.5 w-3.5" /> Available Products
-        </Label>
-        <div className="space-y-1.5 max-h-40 overflow-y-auto">
-          {products.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No products loaded.</p>
-          ) : (
-            products.map(p => (
-              <div key={p.id} className="text-xs text-muted-foreground flex items-center gap-2">
-                <span className="truncate flex-1">{p.name}</span>
-                {p.tileDepthMm && <span className="font-mono text-[10px]">{p.tileDepthMm}mm</span>}
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+      {/* Reset button */}
+      <Button variant="outline" size="sm" className="w-full" onClick={onReset}>
+        <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+        Reset View
+      </Button>
     </div>
   );
 }

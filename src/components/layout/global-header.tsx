@@ -108,6 +108,11 @@ export function GlobalHeader() {
                           Rack Equipment
                         </Button>
                       </Link>
+                      <Link href="/admin/models">
+                        <Button variant={pathname.startsWith('/admin/models') ? 'secondary' : 'ghost'} size="sm" className="h-8 px-3 text-sm gap-1.5">
+                          3D Models
+                        </Button>
+                      </Link>
                       <Link href="/admin/tracking">
                         <Button variant={pathname.startsWith('/admin/tracking') ? 'secondary' : 'ghost'} size="sm" className="h-8 px-3 text-sm gap-1.5">
                           Tracking
