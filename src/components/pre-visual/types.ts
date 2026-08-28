@@ -1,4 +1,4 @@
-export type ViewMode = "front" | "side" | "top" | "isometric";
+export type ViewMode = "front" | "back" | "side" | "top" | "isometric" | "isometric-left" | "isometric-right";
 
 export type RenderMode = "2d" | "3d";
 

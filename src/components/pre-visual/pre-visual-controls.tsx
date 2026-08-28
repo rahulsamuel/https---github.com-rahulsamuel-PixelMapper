@@ -24,7 +24,10 @@ interface Props {
 
 const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
   { value: "isometric", label: "Isometric" },
+  { value: "isometric-left", label: "Iso Left" },
+  { value: "isometric-right", label: "Iso Right" },
   { value: "front", label: "Front" },
+  { value: "back", label: "Back" },
   { value: "side", label: "Side" },
   { value: "top", label: "Top" },
 ];
