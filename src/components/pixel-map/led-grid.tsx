@@ -235,6 +235,9 @@ export function LedGrid() {
             sections.map((section, sectionIdx) => {
               const sectionWidth = section.tileWidthPx * section.columnCount;
               const tileOffset = sectionTileOffsets[sectionIdx];
+              const sectionColumnOffset = sections
+                .slice(0, sectionIdx)
+                .reduce((total, previousSection) => total + previousSection.columnCount, 0);
               return (
                 <div
                   key={section.id}
@@ -249,6 +252,7 @@ export function LedGrid() {
                   {Array.from({ length: section.columnCount * effectiveScreenHeight }, (_, i) => {
                     const localX = i % section.columnCount;
                     const localY = Math.floor(i / section.columnCount);
+                    const globalX = sectionColumnOffset + localX;
                     const index = tileOffset + i;
                     const tile = tiles[index];
                     if (!tile) return null;
@@ -262,7 +266,7 @@ export function LedGrid() {
                       } else if (tile.color) {
                         bgColor = tile.color;
                       } else {
-                        bgColor = (localX + localY) % 2 === 0 ? tileColor : tileColorTwo;
+                        bgColor = (globalX + localY) % 2 === 0 ? tileColor : tileColorTwo;
                       }
                     }
 
