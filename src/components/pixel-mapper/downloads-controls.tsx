@@ -85,10 +85,29 @@ export function DownloadsControls() {
         const screenEffW = currentScreen.dimensions.screenWidth + (currentScreen.leftHalfTile ? 1 : 0) + (currentScreen.rightHalfTile ? 1 : 0);
         const colors: { color: string; label: string }[] = [];
         const seen = new Set<string>();
+        const hasSections = currentScreen.sections.length > 0;
+        let globalCol = 0;
+        let sectionIdx = 0;
+        let localColInSection = 0;
         for (let i = 0; i < currentScreen.tiles.length; i++) {
             const tile = currentScreen.tiles[i];
             if (tile.deleted) continue;
-            let bg = (i % screenEffW + Math.floor(i / screenEffW)) % 2 === 0 ? currentScreen.tileColor : currentScreen.tileColorTwo;
+            let col;
+            if (hasSections) {
+              col = globalCol + localColInSection;
+              localColInSection++;
+              if (localColInSection >= currentScreen.sections[sectionIdx]?.columnCount) {
+                globalCol += currentScreen.sections[sectionIdx].columnCount;
+                localColInSection = 0;
+                sectionIdx++;
+              }
+            } else {
+              col = i % screenEffW;
+            }
+            const row = hasSections
+              ? Math.floor(i / (currentScreen.sections[0]?.columnCount || 1))
+              : Math.floor(i / screenEffW);
+            let bg = (col + row) % 2 === 0 ? currentScreen.tileColor : currentScreen.tileColorTwo;
             if (currentScreen.onOffMode) bg = '#FFFFFF';
             else if (tile.color) bg = tile.color;
             if (!seen.has(bg)) {

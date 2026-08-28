@@ -2186,6 +2186,8 @@ const handleRightHalfTileChange = (add: boolean) => {
             const isActive = !tile.deleted;
             if (isActive) {
                 let bgColor = (x + y) % 2 === 0 ? screen.tileColor : screen.tileColorTwo;
+                // x is already the global column when called from the non-section path;
+                // for the section path the caller passes the global column too.
                 if (screen.onOffMode) bgColor = '#FFFFFF';
                 else if (tile.color) bgColor = tile.color;
                 masterCtx.fillStyle = bgColor;
@@ -2216,15 +2218,17 @@ const handleRightHalfTileChange = (add: boolean) => {
     if (screen.sections.length > 0) {
       let tileOffset = 0;
       let drawX = 0;
+      let globalColOffset = 0;
       for (const section of screen.sections) {
         for (let y = screenActiveBounds.minY; y <= screenActiveBounds.maxY; y++) {
           for (let x = 0; x < section.columnCount; x++) {
             const index = tileOffset + y * section.columnCount + x;
-            drawTile(screen.tiles[index], index, x, y, drawX + x * section.tileWidthPx, y * section.tileHeightPx, section.tileWidthPx, section.tileHeightPx);
+            drawTile(screen.tiles[index], index, globalColOffset + x, y, drawX + x * section.tileWidthPx, y * section.tileHeightPx, section.tileWidthPx, section.tileHeightPx);
           }
         }
         drawX += section.columnCount * section.tileWidthPx;
         tileOffset += section.columnCount * screenEffectiveHeight;
+        globalColOffset += section.columnCount;
       }
     } else for (let y = screenActiveBounds.minY; y <= screenActiveBounds.maxY; y++) {
         const isTopHalfRow = screen.topHalfTile && y === 0;
