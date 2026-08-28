@@ -8,7 +8,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { FolderKanban, ChevronDown, Loader2, Plus, Users, Crown } from "lucide-react";
 import { getOwnedProjects, getSharedProjects, type SharedProject } from "@/lib/collaboration";
 import { useAuth } from "@/contexts/auth-context";
@@ -88,7 +87,7 @@ export function ProjectSwitcher({
             New
           </Button>
         </div>
-        <ScrollArea className="max-h-80">
+        <div className="max-h-80 overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-6 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading…
@@ -153,7 +152,7 @@ export function ProjectSwitcher({
               )}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </PopoverContent>
     </Popover>
   );
