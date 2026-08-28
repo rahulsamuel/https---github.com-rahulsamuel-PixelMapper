@@ -11,23 +11,12 @@ interface ScreenPreviewProps {
 const MM_TO_PX = 0.5;
 
 export function ScreenPreview({ screen, settings }: ScreenPreviewProps) {
-  const tiles = useMemo(() => {
-    const columns = screen.sections.length > 0
+  const tileLayout = useMemo(() => ({
+    columns: screen.sections.length > 0
       ? screen.sections.reduce((sum, section) => sum + section.columnCount, 0)
-      : screen.screenWidthTiles;
-    const rows = screen.screenHeightTiles;
-    const result: { color: string }[] = [];
-
-    for (let row = 0; row < rows; row += 1) {
-      for (let column = 0; column < columns; column += 1) {
-        result.push({
-          color: (column + row) % 2 === 0 ? screen.tileColor : screen.tileColorTwo,
-        });
-      }
-    }
-
-    return { columns, rows, result };
-  }, [screen]);
+      : screen.screenWidthTiles,
+    rows: screen.screenHeightTiles,
+  }), [screen]);
 
   const totalWidth = useMemo(() => {
     if (screen.sections.length > 0) {
@@ -46,6 +35,7 @@ export function ScreenPreview({ screen, settings }: ScreenPreviewProps) {
     return height * screen.screenHeightTiles;
   }, [screen]);
 
+  const depth = settings.showDepth ? Math.max(18, (screen.tileDepthMm || 80) * MM_TO_PX) : 0;
   const screenWidthMm = screen.sections.length > 0
     ? screen.sections.reduce((sum, section) => sum + (section.tileWidthMm || 0) * section.columnCount, 0)
     : (screen.tileWidthMm || 0) * screen.screenWidthTiles;
@@ -53,8 +43,10 @@ export function ScreenPreview({ screen, settings }: ScreenPreviewProps) {
   const screenWidthPx = screen.tileWidthPx * screen.screenWidthTiles;
   const screenHeightPx = screen.tileHeightPx * screen.screenHeightTiles;
   const isBack = settings.view === "back";
-  const viewTransform = getViewTransform(settings);
   const isFlat = settings.renderMode === "2d" || settings.view === "front" || settings.view === "back";
+  const viewTransform = getViewTransform(settings);
+  const objectWidth = totalWidth + depth;
+  const objectHeight = totalHeight + depth;
 
   const formatDimension = (millimeters: number, pixels: number) =>
     millimeters > 0 ? `${(millimeters / 1000).toFixed(2)}m` : `${Math.round(pixels)}px`;
@@ -63,94 +55,179 @@ export function ScreenPreview({ screen, settings }: ScreenPreviewProps) {
     <div
       className="relative shrink-0"
       style={{
-        width: totalWidth + 280,
-        height: totalHeight + 280,
-        perspective: isFlat ? undefined : "1800px",
+        width: Math.max(totalWidth + 360, 760),
+        height: Math.max(totalHeight + 360, 620),
+        perspective: isFlat ? undefined : "1400px",
       }}
     >
       {settings.showGrid && !isFlat && (
         <div
           aria-hidden="true"
-          className="absolute rounded-sm opacity-70"
+          className="absolute left-1/2 top-[54%] h-[70%] w-[150%] -translate-x-1/2 opacity-80"
           style={{
-            left: 40,
-            top: totalHeight + 150,
-            width: totalWidth + 80,
-            height: Math.max(totalWidth * 0.65, 180),
-            backgroundImage: `linear-gradient(rgba(148,163,184,0.24) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.24) 1px, transparent 1px)`,
+            backgroundImage: "linear-gradient(rgba(148,163,184,0.25) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.25) 1px, transparent 1px)",
             backgroundSize: "32px 32px",
-            transform: "perspective(900px) rotateX(62deg)",
+            transform: "translateX(-50%) rotateX(62deg)",
             transformOrigin: "top center",
           }}
         />
       )}
 
       <div
-        className="absolute"
+        className="absolute left-1/2 top-1/2"
         style={{
-          left: 140,
-          top: 140,
-          width: totalWidth,
-          height: totalHeight,
-          transformStyle: "preserve-3d",
-          transform: `${viewTransform} scale(${settings.zoom})`,
-          transformOrigin: "center center",
-          transition: "transform 180ms ease-out",
+          width: objectWidth,
+          height: objectHeight,
+          perspective: isFlat ? undefined : "1400px",
+          transform: "translate(-50%, -50%)",
         }}
       >
         <div
-          className="absolute inset-0 overflow-hidden"
+          className="absolute left-1/2 top-1/2"
           style={{
-            backgroundColor: isBack ? "#1f2937" : undefined,
-            border: `${Math.max(screen.borderWidth, 1)}px solid ${screen.borderColor}`,
-            boxShadow: settings.showDepth && !isFlat ? "18px 18px 0 #1f2937, 28px 28px 0 #111827" : undefined,
-            backfaceVisibility: "hidden",
+            width: totalWidth,
+            height: totalHeight,
+            transformStyle: "preserve-3d",
+            transform: `${viewTransform} scale(${settings.zoom})`,
+            transformOrigin: "center center",
+            transition: "transform 180ms ease-out",
           }}
         >
-          {!isBack && (
+          <PanelFace
+            className="bg-neutral-950"
+            width={totalWidth}
+            height={totalHeight}
+            transform={`translate(-50%, -50%) translateZ(${depth / 2}px)`}
+            borderColor={screen.borderColor}
+          >
+            {isBack ? (
+              <div
+                className="h-full w-full"
+                style={{
+                  backgroundColor: "#20262e",
+                  backgroundImage: `linear-gradient(${screen.borderColor} 1px, transparent 1px), linear-gradient(90deg, ${screen.borderColor} 1px, transparent 1px)`,
+                  backgroundSize: `${Math.max(totalWidth / tileLayout.columns, 24)}px ${Math.max(totalHeight / tileLayout.rows, 24)}px`,
+                  opacity: 0.95,
+                }}
+              />
+            ) : (
+              <TileGrid
+                columns={tileLayout.columns}
+                rows={tileLayout.rows}
+                screen={screen}
+              />
+            )}
+          </PanelFace>
+
+          <PanelFace
+            className="bg-neutral-800"
+            width={totalWidth}
+            height={totalHeight}
+            transform={`translate(-50%, -50%) rotateY(180deg) translateZ(${depth / 2}px)`}
+            borderColor={screen.borderColor}
+          >
             <div
-              className="grid h-full w-full"
+              className="h-full w-full"
               style={{
-                gridTemplateColumns: `repeat(${tiles.columns}, minmax(0, 1fr))`,
-                gridTemplateRows: `repeat(${tiles.rows}, minmax(0, 1fr))`,
+                backgroundColor: "#20262e",
+                backgroundImage: `linear-gradient(${screen.borderColor} 1px, transparent 1px), linear-gradient(90deg, ${screen.borderColor} 1px, transparent 1px)`,
+                backgroundSize: `${Math.max(totalWidth / tileLayout.columns, 24)}px ${Math.max(totalHeight / tileLayout.rows, 24)}px`,
               }}
-            >
-              {tiles.result.map((tile, index) => (
-                <div
-                  key={index}
-                  style={{
-                    backgroundColor: tile.color,
-                    border: `${Math.max(screen.borderWidth, 1)}px solid ${screen.borderColor}`,
-                  }}
-                />
-              ))}
-            </div>
+            />
+          </PanelFace>
+
+          {depth > 0 && (
+            <>
+              <PanelFace width={depth} height={totalHeight} transform={`translate(-50%, -50%) rotateY(90deg) translateZ(${totalWidth / 2}px)`} borderColor="#111827" className="bg-neutral-700" />
+              <PanelFace width={depth} height={totalHeight} transform={`translate(-50%, -50%) rotateY(-90deg) translateZ(${totalWidth / 2}px)`} borderColor="#111827" className="bg-neutral-700" />
+              <PanelFace width={totalWidth} height={depth} transform={`translate(-50%, -50%) rotateX(90deg) translateZ(${totalHeight / 2}px)`} borderColor="#111827" className="bg-neutral-600" />
+              <PanelFace width={totalWidth} height={depth} transform={`translate(-50%, -50%) rotateX(-90deg) translateZ(${totalHeight / 2}px)`} borderColor="#111827" className="bg-neutral-900" />
+            </>
           )}
         </div>
-
-        {isBack && settings.showLabels && (
-          <div className="absolute inset-0 flex items-center justify-center text-sm font-semibold tracking-widest text-white/70">
-            BACK
-          </div>
-        )}
       </div>
 
       {settings.showDimensions && (
         <>
-          <div className="absolute left-1/2 top-16 -translate-x-1/2 whitespace-nowrap rounded bg-black/70 px-2 py-1 text-xs font-mono text-white">
-            {formatDimension(screenWidthMm, screenWidthPx)}
+          <div className="absolute left-1/2 top-8 -translate-x-1/2 whitespace-nowrap rounded bg-black/75 px-2 py-1 text-xs font-mono text-white">
+            Width: {formatDimension(screenWidthMm, screenWidthPx)}
           </div>
-          <div className="absolute bottom-12 right-12 whitespace-nowrap rounded bg-black/70 px-2 py-1 text-xs font-mono text-white">
-            {formatDimension(screenHeightMm, screenHeightPx)}
+          <div className="absolute bottom-10 right-10 whitespace-nowrap rounded bg-black/75 px-2 py-1 text-xs font-mono text-white">
+            Height: {formatDimension(screenHeightMm, screenHeightPx)}
           </div>
         </>
       )}
 
       {settings.showLabels && (
-        <div className="absolute left-1/2 top-24 -translate-x-1/2 whitespace-nowrap text-sm font-semibold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
-          {screen.name}
+        <div className="absolute left-1/2 top-16 -translate-x-1/2 whitespace-nowrap text-sm font-semibold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+          {screen.name}{isBack ? " · Back" : ""}
         </div>
       )}
+    </div>
+  );
+}
+
+function PanelFace({
+  children,
+  className,
+  width,
+  height,
+  transform,
+  borderColor,
+}: {
+  children?: React.ReactNode;
+  className: string;
+  width: number;
+  height: number;
+  transform: string;
+  borderColor: string;
+}) {
+  return (
+    <div
+      className={`absolute left-1/2 top-1/2 overflow-hidden ${className}`}
+      style={{
+        width,
+        height,
+        transform,
+        border: `1px solid ${borderColor}`,
+        backfaceVisibility: "hidden",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function TileGrid({
+  columns,
+  rows,
+  screen,
+}: {
+  columns: number;
+  rows: number;
+  screen: PreVisualScreenData;
+}) {
+  return (
+    <div
+      className="grid h-full w-full"
+      style={{
+        gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+      }}
+    >
+      {Array.from({ length: columns * rows }, (_, index) => {
+        const row = Math.floor(index / columns);
+        const column = index % columns;
+        return (
+          <div
+            key={index}
+            style={{
+              backgroundColor: (column + row) % 2 === 0 ? screen.tileColor : screen.tileColorTwo,
+              border: `${Math.max(screen.borderWidth, 1)}px solid ${screen.borderColor}`,
+            }}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -160,11 +237,11 @@ function getViewTransform(settings: PreVisualSettings) {
     case "front":
       return "rotateX(0deg) rotateY(0deg) rotateZ(0deg)";
     case "back":
-      return "rotateX(0deg) rotateY(180deg) rotateZ(0deg)";
+      return "rotateX(-14deg) rotateY(180deg) rotateZ(0deg)";
     case "side":
-      return "rotateX(0deg) rotateY(90deg) rotateZ(0deg)";
+      return "rotateX(-10deg) rotateY(90deg) rotateZ(0deg)";
     case "top":
-      return "rotateX(72deg) rotateY(0deg) rotateZ(0deg)";
+      return "rotateX(90deg) rotateY(0deg) rotateZ(0deg)";
     case "isometric-left":
       return `rotateX(${settings.rotateX}deg) rotateY(-35deg) rotateZ(${settings.rotateZ}deg)`;
     case "isometric-right":
