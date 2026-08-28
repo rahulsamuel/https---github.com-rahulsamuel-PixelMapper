@@ -8,6 +8,7 @@ import {
   Calculator,
   Zap,
   Server,
+  Box,
   LogOut,
   User,
   ShieldCheck,
@@ -38,6 +39,7 @@ const navItems = [
   { href: "/calculator", label: "LED Calculator", icon: Calculator },
   { href: "/power-data", label: "Power & Data", icon: Zap },
   { href: "/rack-drawing", label: "Rack Drawing", icon: Server },
+  { href: "/pre-visual", label: "Pre-Visual", icon: Box },
 ];
 
 function NavItem({
