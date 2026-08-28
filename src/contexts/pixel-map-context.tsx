@@ -214,6 +214,7 @@ export interface Screen {
   screenNameLabelColor: string;
   screenNameLabelColorMode: LabelColorMode;
   onOffMode: boolean;
+  alternatingPixels: boolean;
   zoomLevels: { grid: number; wiring: number; raster: number; deliverables: number; };
   rasterOffset: { x: number; y: number; };
   lastRasterArgs: RasterArgs | null;
@@ -468,6 +469,8 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   showLogoOverlay: boolean;
   setShowLogoOverlay: Dispatch<SetStateAction<boolean>>;
   setOnOffMode: Dispatch<SetStateAction<boolean>>;
+  alternatingPixels: boolean;
+  setAlternatingPixels: Dispatch<SetStateAction<boolean>>;
   zoom: number;
   setZoom: (value: number | ((prev: number) => number), applyToAllTabs?: boolean) => void;
   activeTab: string;
@@ -648,6 +651,7 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     screenNameLabelColor: '#ffffff',
     screenNameLabelColorMode: 'auto',
     onOffMode: false,
+    alternatingPixels: false,
     zoomLevels: { grid: 1, wiring: 1, raster: 1, deliverables: 1 },
     rasterOffset: { x: 0, y: 0 },
     lastRasterArgs: null,
@@ -925,6 +929,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setScreenNameLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, screenNameLabelColor: typeof updater === 'function' ? updater(s.screenNameLabelColor) : updater }));
   const setScreenNameLabelColorMode = (updater: SetStateAction<LabelColorMode>) => updateCurrentScreen(s => ({ ...s, screenNameLabelColorMode: typeof updater === 'function' ? updater(s.screenNameLabelColorMode) : updater }));
   const setOnOffMode = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, onOffMode: typeof updater === 'function' ? updater(s.onOffMode) : updater }));
+  const setAlternatingPixels = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, alternatingPixels: typeof updater === 'function' ? updater(s.alternatingPixels ?? false) : updater }));
   const setRasterOffset = (updater: SetStateAction<{x: number, y: number}>) => updateCurrentScreen(s => ({ ...s, rasterOffset: typeof updater === 'function' ? updater(s.rasterOffset) : updater }));
   const setLastRasterArgs = (updater: SetStateAction<RasterArgs | null>) => updateCurrentScreen(s => ({ ...s, lastRasterArgs: typeof updater === 'function' ? updater(s.lastRasterArgs) : updater }));
   const setWiringPortConfig = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, wiringPortConfig: typeof updater === 'function' ? updater(s.wiringPortConfig) : updater }));
@@ -2190,6 +2195,7 @@ const handleRightHalfTileChange = (add: boolean) => {
                 // for the section path the caller passes the global column too.
                 if (screen.onOffMode) bgColor = '#FFFFFF';
                 else if (tile.color) bgColor = tile.color;
+                if (screen.alternatingPixels && (x + y) % 2 !== 0) bgColor = '#000000';
                 masterCtx.fillStyle = bgColor;
                 masterCtx.fillRect(drawX, drawY, colPixelWidth, rowPixelHeight);
                 if (screen.borderWidth > 0) {
@@ -3197,6 +3203,7 @@ const handleRightHalfTileChange = (add: boolean) => {
           let bg = (i % screenEffW + Math.floor(i / screenEffW)) % 2 === 0 ? currentScreen.tileColor : currentScreen.tileColorTwo;
           if (currentScreen.onOffMode) bg = '#FFFFFF';
           else if (tile.color) bg = tile.color;
+          if (currentScreen.alternatingPixels && (i % screenEffW + Math.floor(i / screenEffW)) % 2 !== 0) bg = '#000000';
           if (!colorMap.has(bg)) {
             const existing = wallLayoutLegend.find(e => e.color === bg);
             colorMap.set(bg, existing?.label ?? '');
@@ -4199,6 +4206,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     setLogoOverlay,
     onOffMode: currentScreen.onOffMode,
     setOnOffMode,
+    alternatingPixels: currentScreen.alternatingPixels ?? false,
+    setAlternatingPixels,
     zoom,
     setZoom,
     activeTab,

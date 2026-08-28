@@ -5,9 +5,10 @@ import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 
 export function AppearanceControls() {
-  const { tileColor, setTileColor, tileColorTwo, setTileColorTwo, borderWidth, setBorderWidth, borderColor, setBorderColor } = usePixelMap();
+  const { tileColor, setTileColor, tileColorTwo, setTileColorTwo, borderWidth, setBorderWidth, borderColor, setBorderColor, alternatingPixels, setAlternatingPixels } = usePixelMap();
 
   return (
     <div className="space-y-4">
@@ -77,6 +78,17 @@ export function AppearanceControls() {
             step={1}
             value={[borderWidth]}
             onValueChange={(value) => setBorderWidth(value[0])}
+          />
+        </div>
+        <div className="flex items-center justify-between rounded-lg border p-3">
+          <div className="space-y-0.5">
+            <Label htmlFor="alternating-pixels">Alternating Pixels</Label>
+            <p className="text-xs text-muted-foreground">Every other tile turns black (OFF). Affects tiles and borders only.</p>
+          </div>
+          <Switch
+            id="alternating-pixels"
+            checked={alternatingPixels}
+            onCheckedChange={setAlternatingPixels}
           />
         </div>
       </div>

@@ -41,6 +41,7 @@ export function LedGrid() {
     customTileHeightMm,
     zoom,
     onOffMode,
+    alternatingPixels,
     sliceOffsetLabels,
     showSliceOffsetLabels,
     topHalfTile,
@@ -268,6 +269,7 @@ export function LedGrid() {
                       } else {
                         bgColor = (globalX + localY) % 2 === 0 ? tileColor : tileColorTwo;
                       }
+                      if (alternatingPixels && !tile.deleted && (globalX + localY) % 2 !== 0) bgColor = '#000000';
                     }
 
                     const currentLabelColor = labelColorMode === 'auto'
@@ -364,6 +366,7 @@ export function LedGrid() {
               } else {
                 bgColor = (x + y) % 2 === 0 ? tileColor : tileColorTwo;
               }
+              if (alternatingPixels && !tile.deleted && (x + y) % 2 !== 0) bgColor = '#000000';
             }
 
             const currentLabelColor = labelColorMode === 'auto'
