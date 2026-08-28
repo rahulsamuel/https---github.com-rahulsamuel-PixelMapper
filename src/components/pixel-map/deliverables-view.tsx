@@ -22,6 +22,7 @@ interface LedProduct {
 }
 
 interface ScreenProductInfo {
+  key: string;
   manufacturer: string;
   productName: string;
   dimensions: string;
@@ -101,19 +102,26 @@ export function DeliverablesView() {
         ? screen.sections.map(section => ({ section, product: products.find((p: LedProduct) => p.id === section.productId) }))
         : [{ section: null, product: products.find((p: LedProduct) => p.id === screen.selectedProductId) }];
       const ledProducts = sectionProducts.reduce<ScreenProductInfo[]>((result, entry) => {
-        if (!entry.product || result.some(item => item.productName === entry.product?.productName && item.manufacturer === entry.product?.manufacturer)) return result;
+        if (!entry.product) return result;
+        const widthMm = entry.section?.tileWidthMm ?? entry.product.tileWidthMm;
+        const heightMm = entry.section?.tileHeightMm ?? entry.product.tileHeightMm;
+        const sizeLabel = widthMm && heightMm ? ` (${Math.round(widthMm)}x${Math.round(heightMm)})` : '';
+        const key = `${entry.product.id}:${widthMm ?? ''}:${heightMm ?? ''}`;
+        if (result.some(item => item.key === key)) return result;
         result.push({
+          key,
           manufacturer: entry.product.manufacturer,
-          productName: entry.product.productName,
+          productName: `${entry.product.productName}${sizeLabel}`,
           dimensions: `${entry.product.tileWidthPx} × ${entry.product.tileHeightPx} px`,
         });
         return result;
       }, []);
       const ledProductDimensions = ledProducts.map(product => product.dimensions).join(' / ') || 'N/A';
-      const ledManufacturer = ledProducts.map(product => product.manufacturer).join(' / ') || 'N/A';
+      const ledManufacturer = Array.from(new Set(ledProducts.map(product => product.manufacturer))).join(' / ') || 'N/A';
       const ledProductName = ledProducts.map(product => product.productName).join(' / ') || 'N/A';
       const screenRes = `${resWidth.toLocaleString()} × ${resHeight.toLocaleString()} px`;
-      const contentFileName = `${(projectName || screen.name || 'screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_${idx + 1}_${(projectNumber || 'NA').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+      const containerExtension = videoContainer.trim().toLowerCase().replace(/^\./, '') || 'mp4';
+      const contentFileName = `${(projectName || screen.name || 'screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_${idx + 1}_${(projectNumber || 'NA').replace(/[^a-zA-Z0-9_-]/g, '_')}.${containerExtension}`;
       const safeScreenName = (screen.name || 'screen').replace(/[^a-zA-Z0-9_-]/g, '_');
       const pixelMapFileName = `PIXEL_MAP_${safeScreenName}_${resWidth}x${resHeight}.png`;
       const previewImage = pixelMapImages[screen.id];
