@@ -267,6 +267,10 @@ export interface Screen {
   moduleColors: string[][];
   rasterCrop: ActiveBounds | null;
   rasterSegments?: RasterSegment[];
+  outputCount: number;
+  outputResolutionPreset: 'content' | '1920x1080' | '3840x2160' | '4096x2160' | 'custom';
+  outputResolutionWidth: number;
+  outputResolutionHeight: number;
 }
 
 export interface CalculatorTabData {
@@ -705,6 +709,10 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     rasterCrop: null,
     rasterSegments: [],
     sections: [],
+    outputCount: 1,
+    outputResolutionPreset: 'content',
+    outputResolutionWidth: 0,
+    outputResolutionHeight: 0,
   };
 };
 

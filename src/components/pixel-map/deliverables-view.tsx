@@ -187,14 +187,23 @@ export function DeliverablesView() {
     });
   }, [screens, products, projectNumber, projectName, videoContainer, pixelMapImages]);
 
-  // Get raster output dimensions for "Total Required Resolution"
-  const totalRequiredResolution = useMemo(() => {
-    const config = rasterMapConfigs?.[currentScreen.rasterGroupId ?? 'raster-1'];
-    if (config && config.outputWidth && config.outputHeight) {
-      return `${config.outputWidth.toLocaleString()} × ${config.outputHeight.toLocaleString()} px`;
-    }
-    return 'N/A';
-  }, [rasterMapConfigs, currentScreen.rasterGroupId]);
+  // Per-screen output info derived from user-selected output count and resolution
+  const screenOutputs = useMemo(() => {
+    return screens.map(screen => {
+      const count = screen.outputCount ?? 1;
+      const preset = screen.outputResolutionPreset ?? 'content';
+      let resLabel = 'Match Content';
+      if (preset === '1920x1080') resLabel = '1920 × 1080 px';
+      else if (preset === '3840x2160') resLabel = '3840 × 2160 px';
+      else if (preset === '4096x2160') resLabel = '4096 × 2160 px';
+      else if (preset === 'custom') {
+        const w = screen.outputResolutionWidth ?? 0;
+        const h = screen.outputResolutionHeight ?? 0;
+        resLabel = w && h ? `${w.toLocaleString()} × ${h.toLocaleString()} px` : 'Custom (not set)';
+      }
+      return { screenName: screen.name, outputCount: count, resolutionLabel: resLabel };
+    });
+  }, [screens]);
 
   const handleDownloadPdf = useCallback(async () => {
     if (!contentRef.current) return;
@@ -233,7 +242,7 @@ export function DeliverablesView() {
       samplingRate,
       audioBitRate,
       imageFormat,
-      totalRequiredResolution,
+      screenOutputs,
       screenData,
     });
     const blob = new Blob([htmlContent], { type: 'text/html' });
@@ -244,7 +253,7 @@ export function DeliverablesView() {
     link.click();
     URL.revokeObjectURL(url);
     toast({ title: "HTML Exported", description: "Standalone content deliverables downloaded." });
-  }, [projectName, currentScreen.name, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioEmbedded, samplingRate, audioBitRate, imageFormat, totalRequiredResolution, screenData, safeFileName, toast]);
+  }, [projectName, currentScreen.name, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioEmbedded, samplingRate, audioBitRate, imageFormat, screenOutputs, screenData, safeFileName, toast]);
 
   const handleDownloadPixelMap = useCallback((sd: typeof screenData[number]) => {
     if (!sd.previewImage) return;
@@ -327,7 +336,29 @@ export function DeliverablesView() {
             <ReportSection icon={<Video className="size-4" />} title="Media Server & Playback Requirements">
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <SpecCard label="Selected Media Server" value={mediaServer || 'None'} />
-                <SpecCard label="Media Server Output Resolution" value={totalRequiredResolution} />
+                <SpecCard label="Total Outputs" value={String(screenOutputs.reduce((sum, o) => sum + o.outputCount, 0))} />
+              </div>
+
+              {/* Per-screen output table */}
+              <div className="border border-slate-200 rounded-lg overflow-hidden mb-4">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="text-left px-4 py-2 font-semibold text-slate-600">Screen</th>
+                      <th className="text-right px-4 py-2 font-semibold text-slate-600">Number of Outputs</th>
+                      <th className="text-right px-4 py-2 font-semibold text-slate-600">Output Resolution</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {screenOutputs.map((o, i) => (
+                      <tr key={i} className="border-b border-slate-100 last:border-b-0">
+                        <td className="px-4 py-2 text-slate-700 font-medium">{o.screenName}</td>
+                        <td className="px-4 py-2 text-right text-slate-700" style={{ fontVariantNumeric: 'tabular-nums' }}>{o.outputCount}</td>
+                        <td className="px-4 py-2 text-right text-slate-700" style={{ fontVariantNumeric: 'tabular-nums' }}>{o.resolutionLabel}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
@@ -486,10 +517,10 @@ function buildHtmlReport(opts: {
   samplingRate: string;
   audioBitRate: string;
   imageFormat: string;
-  totalRequiredResolution: string;
+  screenOutputs: { screenName: string; outputCount: number; resolutionLabel: string }[];
   screenData: any[];
 }): string {
-  const { projectName, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioEmbedded, samplingRate, audioBitRate, imageFormat, totalRequiredResolution, screenData } = opts;
+  const { projectName, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioEmbedded, samplingRate, audioBitRate, imageFormat, screenOutputs, screenData } = opts;
 
   const screenConfigHtml = screenData.map(sd => `
     <div class="screen-card">
@@ -572,6 +603,14 @@ function buildHtmlReport(opts: {
   .spec-card .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--slate-500); font-weight: 600; margin-bottom: 8px; }
   .spec-card .value { font-size: 14px; font-weight: 700; color: var(--slate-800); font-variant-numeric: tabular-nums; }
   .subcard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .output-table-wrap { border: 1px solid var(--slate-200); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
+  .output-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .output-table thead { background: var(--slate-50); border-bottom: 1px solid var(--slate-200); }
+  .output-table th { text-align: left; padding: 8px 16px; font-weight: 600; color: var(--slate-600); text-transform: uppercase; font-size: 10px; letter-spacing: 0.06em; }
+  .output-table th:nth-child(2), .output-table th:nth-child(3) { text-align: right; }
+  .output-table td { padding: 8px 16px; color: var(--slate-700); border-bottom: 1px solid var(--slate-100); }
+  .output-table tr:last-child td { border-bottom: none; }
+  .output-table td:nth-child(2), .output-table td:nth-child(3) { text-align: right; font-variant-numeric: tabular-nums; }
   .subcard { border: 1px solid var(--slate-200); border-radius: 10px; padding: 20px; }
   .subcard h5 { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--blue-600); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
   .notes-box { background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: 10px; padding: 20px 24px; font-size: 14px; line-height: 1.7; color: var(--slate-600); white-space: pre-wrap; }
@@ -611,7 +650,15 @@ function buildHtmlReport(opts: {
       <div class="section-label">Media Server &amp; Playback Requirements</div>
       <div class="spec-grid">
         <div class="spec-card"><div class="label">Selected Media Server</div><div class="value">${mediaServer}</div></div>
-        <div class="spec-card"><div class="label">Media Server Output Resolution</div><div class="value">${totalRequiredResolution}</div></div>
+        <div class="spec-card"><div class="label">Total Outputs</div><div class="value">${screenOutputs.reduce((sum, o) => sum + o.outputCount, 0)}</div></div>
+      </div>
+      <div class="output-table-wrap">
+        <table class="output-table">
+          <thead><tr><th>Screen</th><th>Number of Outputs</th><th>Output Resolution</th></tr></thead>
+          <tbody>
+            ${screenOutputs.map(o => `<tr><td>${o.screenName}</td><td style="text-align:right">${o.outputCount}</td><td style="text-align:right">${o.resolutionLabel}</td></tr>`).join('')}
+          </tbody>
+        </table>
       </div>
       <div class="subcard-grid">
         <div class="subcard">
