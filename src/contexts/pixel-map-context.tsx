@@ -898,13 +898,19 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   }, [updateCurrentScreen, regenerateTilesForSections]);
 
   const removeSection = useCallback((id: string) => {
+    const currentSections = screens.find(s => s.id === currentScreenId)?.sections ?? [];
+    if (currentSections.length <= 1) {
+      toast({ title: "At least one LED product section is required", variant: "destructive" });
+      return;
+    }
     updateCurrentScreen(screen => {
+      if (screen.sections.length <= 1) return screen;
       const updatedSections = screen.sections.filter(s => s.id !== id);
       const updatedScreen = { ...screen, sections: updatedSections, dimensions: { ...screen.dimensions, screenWidth: updatedSections.reduce((sum, s) => sum + s.columnCount, 0) } };
       const { tiles, nextTileId } = regenerateTilesForSections(updatedScreen);
       return { ...updatedScreen, tiles, nextTileId };
     });
-  }, [updateCurrentScreen, regenerateTilesForSections]);
+  }, [screens, currentScreenId, toast, updateCurrentScreen, regenerateTilesForSections]);
 
   const effectiveScreenWidthFromSections = useMemo(() => {
     return currentScreen.sections.reduce((sum, s) => sum + s.columnCount, 0) || currentScreen.dimensions.screenWidth;
