@@ -187,7 +187,7 @@ export function DeliverablesView() {
         physicalDimensions,
       };
     });
-  }, [screens, products, projectNumber, projectName, videoContainer, pixelMapImages]);
+  }, [screens, products, projectNumber, projectName, versionNumber, videoContainer, pixelMapImages]);
 
   // Per-screen output info derived from user-selected output count and resolution
   const screenOutputs = useMemo(() => {
