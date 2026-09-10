@@ -101,14 +101,12 @@ export function DimensionControls() {
                 {sections.map((section, idx) => {
                   const product = products.find(p => p.id === section.productId);
                   return (
-                    <div key={section.id} className="w-full min-w-0 max-w-full overflow-hidden rounded-md border border-border/40 bg-muted/20 p-2 space-y-2 box-border">
+                    <div key={section.id} className="w-full min-w-0 rounded-md border border-border/40 bg-muted/20 p-2 space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-muted-foreground">Section {idx + 1}</span>
-                        {sections.length > 1 && (
-                          <button onClick={() => removeSection(section.id)} className="text-muted-foreground hover:text-destructive">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        )}
+                        <button onClick={() => removeSection(section.id)} className="text-muted-foreground hover:text-destructive" title="Delete section">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                       <LedProductCombobox
                         className="w-full"
@@ -137,7 +135,7 @@ export function DimensionControls() {
                           className="h-7 text-xs w-20"
                         />
                         {product && (
-                          <span className="text-[10px] text-muted-foreground truncate">
+                          <span className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground" title={`${product.tileWidthPx}×${product.tileHeightPx}px`}>
                             {product.tileWidthPx}×{product.tileHeightPx}px
                           </span>
                         )}

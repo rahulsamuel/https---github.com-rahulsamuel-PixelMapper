@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Search, X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +32,8 @@ export function LedProductCombobox({
   const [query, setQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
   // Sort manufacturers and products alphabetically
   const grouped = useMemo(() => {
@@ -65,17 +68,56 @@ export function LedProductCombobox({
       : `${selected.manufacturer} — ${selected.productName}`
     : '';
 
+  // Position the portalled dropdown under the trigger, accounting for scroll/zoom.
+  useLayoutEffect(() => {
+    if (!open || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setDropdownStyle({
+      position: 'fixed',
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999,
+    });
+  }, [open]);
+
+  // Keep dropdown aligned on scroll/resize while open.
+  useEffect(() => {
+    if (!open) return;
+    function update() {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      setDropdownStyle({
+        position: 'fixed',
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 9999,
+      });
+    }
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [open]);
+
   // Close on outside click
   useEffect(() => {
+    if (!open) return;
     function handle(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setQuery('');
-      }
+      const target = e.target as Node;
+      if (
+        containerRef.current?.contains(target) ||
+        dropdownRef.current?.contains(target)
+      ) return;
+      setOpen(false);
+      setQuery('');
     }
     document.addEventListener('mousedown', handle);
     return () => document.removeEventListener('mousedown', handle);
-  }, []);
+  }, [open]);
 
   function handleOpen() {
     setOpen(true);
@@ -110,9 +152,9 @@ export function LedProductCombobox({
         <ChevronDown className={cn('w-4 h-4 text-muted-foreground shrink-0 transition-transform', open && 'rotate-180')} />
       </button>
 
-      {/* Dropdown */}
-      {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg overflow-hidden">
+      {/* Dropdown (portalled to body so scroll containers can't clip it) */}
+      {open && typeof document !== 'undefined' && createPortal(
+        <div ref={dropdownRef} style={dropdownStyle} className="rounded-md border bg-popover shadow-lg overflow-hidden">
           {/* Search input */}
           <div className="flex items-center gap-2 px-3 py-2 border-b">
             <Search className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -174,7 +216,8 @@ export function LedProductCombobox({
               </div>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

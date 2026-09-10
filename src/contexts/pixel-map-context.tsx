@@ -899,7 +899,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
   const removeSection = useCallback((id: string) => {
     updateCurrentScreen(screen => {
-      if (screen.sections.length <= 1) return screen;
       const updatedSections = screen.sections.filter(s => s.id !== id);
       const updatedScreen = { ...screen, sections: updatedSections, dimensions: { ...screen.dimensions, screenWidth: updatedSections.reduce((sum, s) => sum + s.columnCount, 0) } };
       const { tiles, nextTileId } = regenerateTilesForSections(updatedScreen);
