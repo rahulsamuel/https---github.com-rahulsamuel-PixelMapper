@@ -173,8 +173,10 @@ export function DeliverablesView() {
       }
       const physicalDimensions = formatPhysicalDimensions(physWmm, physHmm);
       const containerExtension = videoContainer.trim().toLowerCase().replace(/^\./, '') || 'mp4';
-      const contentFileName = `${(projectName || screen.name || 'screen').replace(/[^a-zA-Z0-9_-]/g, '_')}_${idx + 1}_${(projectNumber || 'NA').replace(/[^a-zA-Z0-9_-]/g, '_')}.${containerExtension}`;
-      const safeScreenName = (screen.name || 'screen').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const safeProjectName = (projectName || 'Untitled').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const safeScreenName = (screen.name || 'Screen').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const versionLabel = (versionNumber || '1').replace(/^v/i, '').replace(/\.0$/, '');
+      const contentFileName = `${safeProjectName}_${safeScreenName}_V${versionLabel}.${containerExtension}`;
       const pixelMapFileName = `PIXEL_MAP_${safeScreenName}_${resWidth}x${resHeight}.png`;
       const previewImage = pixelMapImages[screen.id];
 
