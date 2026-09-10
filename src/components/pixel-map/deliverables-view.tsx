@@ -185,7 +185,7 @@ export function DeliverablesView() {
         physicalDimensions,
       };
     });
-  }, [screens, products, projectNumber, projectName, pixelMapImages]);
+  }, [screens, products, projectNumber, projectName, videoContainer, pixelMapImages]);
 
   // Get raster output dimensions for "Total Required Resolution"
   const totalRequiredResolution = useMemo(() => {
