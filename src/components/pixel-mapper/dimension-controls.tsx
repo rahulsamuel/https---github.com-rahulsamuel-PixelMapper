@@ -87,8 +87,7 @@ export function DimensionControls() {
                 size="sm"
                 className="h-7 text-xs"
                 onClick={() => {
-                  const defaultId = products.length > 0 ? products[0].id : 'custom';
-                  addSection(defaultId, 3);
+                  addSection('custom', 3);
                 }}
               >
                 <Plus className="mr-1 h-3.5 w-3.5" />
@@ -102,7 +101,7 @@ export function DimensionControls() {
                 {sections.map((section, idx) => {
                   const product = products.find(p => p.id === section.productId);
                   return (
-                    <div key={section.id} className="min-w-0 rounded-md border border-border/40 bg-muted/20 p-2 space-y-2">
+                    <div key={section.id} className="w-full min-w-0 max-w-full overflow-hidden rounded-md border border-border/40 bg-muted/20 p-2 space-y-2 box-border">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-muted-foreground">Section {idx + 1}</span>
                         {sections.length > 1 && (
