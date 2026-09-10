@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useMemo, useLayoutEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Search, X, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -69,7 +69,7 @@ export function LedProductCombobox({
     : '';
 
   // Position the portalled dropdown under the trigger, accounting for scroll/zoom.
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!open || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     setDropdownStyle({
