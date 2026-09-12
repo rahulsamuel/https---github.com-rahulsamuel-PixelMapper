@@ -14,6 +14,7 @@ import {
   Loader2, Download, Users, Monitor, Search, RefreshCw,
   Shield, User, Calendar, Package, Activity,
   Pencil, Trash2, Plus, X, Check, Workflow, MapIcon, Layers,
+  Mail, MailOpen, Trash,
 } from 'lucide-react';
 
 const DOWNLOAD_TYPE_ICON: Record<string, React.ElementType> = {
@@ -63,6 +64,15 @@ interface LedProduct {
   tile_height_px: number;
   watts_per_tile: number;
   created_at: string;
+}
+
+interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  message: string;
+  created_at: string;
+  is_read: boolean | null;
 }
 
 function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: number | string; color: string }) {
@@ -178,17 +188,22 @@ function TrackingPageInner() {
   const [productForm, setProductForm] = useState<ProductFormData>(emptyForm);
   const [savingProduct, setSavingProduct] = useState(false);
   const [productError, setProductError] = useState('');
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
+  const [messageSearch, setMessageSearch] = useState('');
+  const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
 
   const fetchData = useCallback(async () => {
     setFetching(true);
-    const [snapRes, userRes, prodRes] = await Promise.all([
+    const [snapRes, userRes, prodRes, msgRes] = await Promise.all([
       supabase.from('pixel_map_snapshots').select('*').order('created_at', { ascending: false }).limit(500),
       supabase.from('users').select('id, email, full_name, company, is_admin, created_at').order('created_at', { ascending: false }),
       supabase.from('led_products').select('*').order('created_at', { ascending: false }),
+      supabase.from('contact_messages').select('*').order('created_at', { ascending: false }),
     ]);
     setSnapshots(snapRes.data ?? []);
     setUsers(userRes.data ?? []);
     setProducts(prodRes.data ?? []);
+    setMessages(msgRes.data ?? []);
     setFetching(false);
   }, []);
 
@@ -233,6 +248,26 @@ function TrackingPageInner() {
     s.ip_address?.toLowerCase().includes(trackingSearch.toLowerCase()) ||
     s.session_id?.toLowerCase().includes(trackingSearch.toLowerCase())
   );
+
+  const filteredMessages = messages.filter(m =>
+    !messageSearch || m.name?.toLowerCase().includes(messageSearch.toLowerCase()) ||
+    m.email?.toLowerCase().includes(messageSearch.toLowerCase()) ||
+    m.message?.toLowerCase().includes(messageSearch.toLowerCase())
+  );
+  const unreadMessageCount = messages.filter(m => !m.is_read).length;
+
+  const markMessageRead = async (msg: ContactMessage) => {
+    if (msg.is_read) return;
+    await supabase.from('contact_messages').update({ is_read: true }).eq('id', msg.id);
+    setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, is_read: true } : m));
+    setSelectedMessage(prev => prev?.id === msg.id ? { ...prev, is_read: true } : prev);
+  };
+
+  const deleteMessage = async (id: string) => {
+    await supabase.from('contact_messages').delete().eq('id', id);
+    setMessages(prev => prev.filter(m => m.id !== id));
+    setSelectedMessage(null);
+  };
 
   const openEditProduct = (p: LedProduct) => {
     setEditingProduct(p);
@@ -321,6 +356,7 @@ function TrackingPageInner() {
           <StatCard icon={Users} label="Registered Users" value={users.length} color="bg-green-500/10 text-green-500" />
           <StatCard icon={Package} label="LED Products" value={products.length} color="bg-orange-500/10 text-orange-500" />
           <StatCard icon={Monitor} label="All Tracked Events" value={allSnapshots.length} color="bg-blue-500/10 text-blue-500" />
+          <StatCard icon={Mail} label="Contact Messages" value={messages.length} color="bg-purple-500/10 text-purple-500" />
         </div>
 
         <Tabs defaultValue={tab} onValueChange={(v) => router.push(`?tab=${v}`)}>
@@ -329,6 +365,10 @@ function TrackingPageInner() {
             <TabsTrigger value="users" className="gap-1.5"><Users className="h-3.5 w-3.5" />Users</TabsTrigger>
             <TabsTrigger value="products" className="gap-1.5"><Package className="h-3.5 w-3.5" />LED Products</TabsTrigger>
             <TabsTrigger value="tracking" className="gap-1.5"><Activity className="h-3.5 w-3.5" />Visitor Tracking</TabsTrigger>
+            <TabsTrigger value="messages" className="gap-1.5">
+              <Mail className="h-3.5 w-3.5" />Messages
+              {unreadMessageCount > 0 && <Badge variant="destructive" className="ml-1 h-4 px-1 text-[10px]">{unreadMessageCount}</Badge>}
+            </TabsTrigger>
           </TabsList>
 
           {/* Pixel Maps Tab */}
@@ -543,8 +583,89 @@ function TrackingPageInner() {
               )}
             </div>
           </TabsContent>
+          {/* Messages Tab */}
+          <TabsContent value="messages" className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input placeholder="Search messages..." value={messageSearch} onChange={e => setMessageSearch(e.target.value)} className="pl-9 h-9" />
+              </div>
+              <span className="text-sm text-muted-foreground">{filteredMessages.length} messages</span>
+            </div>
+            <div className="border rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 border-b">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Name</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Email</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Message</th>
+                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {filteredMessages.map(m => (
+                    <tr key={m.id} className={`hover:bg-muted/30 transition-colors cursor-pointer ${!m.is_read ? 'font-medium' : ''}`} onClick={() => { setSelectedMessage(m); markMessageRead(m); }}>
+                      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(m.created_at).toLocaleDateString()} {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="px-4 py-3 flex items-center gap-1.5">
+                        {!m.is_read && <span className="w-2 h-2 rounded-full bg-primary shrink-0" />}
+                        {m.name}
+                      </td>
+                      <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{m.email}</td>
+                      <td className="px-4 py-3 max-w-[300px] truncate text-muted-foreground">{m.message}</td>
+                      <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => { setSelectedMessage(m); markMessageRead(m); }} className="h-7 w-7 p-0">
+                            <MailOpen className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => deleteMessage(m.id)} className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10">
+                            <Trash className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredMessages.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Mail className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                  <p>No messages found</p>
+                </div>
+              )}
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
+
+      {/* Message detail modal */}
+      {selectedMessage && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSelectedMessage(null)}>
+          <div className="bg-card border rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <div>
+                <h2 className="font-bold text-base">{selectedMessage.name}</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">{selectedMessage.email}</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedMessage(null)}><X className="h-4 w-4" /></Button>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-xs text-muted-foreground mb-3">{new Date(selectedMessage.created_at).toLocaleString()}</p>
+              <p className="text-sm whitespace-pre-wrap leading-relaxed">{selectedMessage.message}</p>
+            </div>
+            <div className="px-5 py-3 border-t flex items-center justify-between">
+              <a href={`mailto:${selectedMessage.email}?subject=Re: Your message to MapMyLED`}>
+                <Button size="sm" className="gap-1.5"><Mail className="h-3.5 w-3.5" />Reply</Button>
+              </a>
+              <Button variant="ghost" size="sm" onClick={() => deleteMessage(selectedMessage.id)} className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10">
+                <Trash className="h-3.5 w-3.5" />Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Snapshot detail modal */}
       {selectedSnapshot && (
