@@ -129,6 +129,8 @@ export interface RasterSegment {
   offset: { x: number; y: number };
 }
 
+export type { ActiveBounds };
+
 interface ScreenArrangement {
   screenId: string;
   segmentId: string;
@@ -396,7 +398,7 @@ export interface ProjectData {
   wallLayoutLegend?: WallLayoutLegendEntry[];
 }
 
-interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nextTileId' | 'moduleColors'> {
+interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nextTileId' | 'moduleColors' | 'outputCount' | 'outputResolutionPreset' | 'outputResolutionWidth' | 'outputResolutionHeight'> {
   screens: Screen[];
   products: LedProduct[];
   currentScreen: Screen;
