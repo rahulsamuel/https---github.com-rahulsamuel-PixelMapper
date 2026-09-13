@@ -706,8 +706,8 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     logoOverlay: {
       id: 'default-logo',
       imageData: '/Untitled_design_(4)-modified.png',
-      x: 1768,
-      y: 1000,
+      x: (initialWidth - 1) * 200 + (200 - 80) / 2,
+      y: (initialHeight - 1) * 200 + (200 - 80) / 2,
       width: 80,
       height: 80,
       aspectRatio: 1,
@@ -3468,6 +3468,18 @@ const handleRightHalfTileChange = (add: boolean) => {
     const migratedScreens = data.screens.map((s: any) => {
       const newScreen = createNewScreen("", 0);
       const migratedScreen = { ...newScreen, ...s, sections: Array.isArray(s.sections) ? s.sections : [] };
+      if (migratedScreen.logoOverlay?.id === 'default-logo' && migratedScreen.logoOverlay?.imageData === '/Untitled_design_(4)-modified.png') {
+        const { tileWidth, tileHeight, screenWidth, screenHeight } = migratedScreen.dimensions;
+        const logoSize = Math.round(Math.min(tileWidth, tileHeight) * 0.4);
+        migratedScreen.logoOverlay = {
+          ...migratedScreen.logoOverlay,
+          width: logoSize,
+          height: logoSize,
+          x: (screenWidth - 1) * tileWidth + (tileWidth - logoSize) / 2,
+          y: (screenHeight - 1) * tileHeight + (tileHeight - logoSize) / 2,
+          opacity: migratedScreen.logoOverlay.opacity ?? 0.8,
+        };
+      }
       migratedScreen.tiles.forEach((t: Tile) => {
         if (t.id > maxId) maxId = t.id;
       });
@@ -3703,6 +3715,18 @@ const handleRightHalfTileChange = (add: boolean) => {
           const migratedScreens = data.screens.map((s: any) => {
             const newScreen = createNewScreen("", 0);
             const migratedScreen = { ...newScreen, ...s, sections: Array.isArray(s.sections) ? s.sections : [] };
+            if (migratedScreen.logoOverlay?.id === 'default-logo' && migratedScreen.logoOverlay?.imageData === '/Untitled_design_(4)-modified.png') {
+              const { tileWidth, tileHeight, screenWidth, screenHeight } = migratedScreen.dimensions;
+              const logoSize = Math.round(Math.min(tileWidth, tileHeight) * 0.4);
+              migratedScreen.logoOverlay = {
+                ...migratedScreen.logoOverlay,
+                width: logoSize,
+                height: logoSize,
+                x: (screenWidth - 1) * tileWidth + (tileWidth - logoSize) / 2,
+                y: (screenHeight - 1) * tileHeight + (tileHeight - logoSize) / 2,
+                opacity: migratedScreen.logoOverlay.opacity ?? 0.8,
+              };
+            }
             migratedScreen.tiles.forEach((t: Tile) => {
               if (t.id > maxId) maxId = t.id;
             });
