@@ -599,14 +599,25 @@ export function LabelControls() {
           <div className="space-y-3">
             <div className="flex items-center justify-between rounded-lg border p-2 bg-muted/30">
               <img src={logoOverlay.imageData} alt="Logo" className="h-10 w-10 object-contain rounded" />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-destructive hover:text-destructive"
-                onClick={() => setLogoOverlay(null)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => logoInputRef.current?.click()}
+                >
+                  <ImagePlus className="mr-1 h-3.5 w-3.5" />
+                  Replace
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive hover:text-destructive"
+                  onClick={() => setLogoOverlay(null)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
             <div className="space-y-1">
               <div className="flex items-center justify-between">
