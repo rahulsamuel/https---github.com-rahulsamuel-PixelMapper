@@ -629,6 +629,25 @@ const trackEvent = async (eventType: string, eventData: any) => {
   }
 };
 
+const repositionDefaultLogo = (screen: Screen, dimensions: Dimensions): Screen => {
+  if (screen.logoOverlay?.id !== 'default-logo' || screen.logoOverlay.imageData !== '/Untitled_design_(4)-modified.png') {
+    return screen;
+  }
+
+  const logoSize = 100;
+  return {
+    ...screen,
+    logoOverlay: {
+      ...screen.logoOverlay,
+      width: logoSize,
+      height: logoSize,
+      x: (dimensions.screenWidth - 1) * dimensions.tileWidth + (dimensions.tileWidth - logoSize) / 2,
+      y: (dimensions.screenHeight - 1) * dimensions.tileHeight + (dimensions.tileHeight - logoSize) / 2,
+      opacity: screen.logoOverlay.opacity ?? 0.8,
+    },
+  };
+};
+
 const createNewScreen = (name: string, idCounter: number): Screen => {
   const screenId = crypto.randomUUID();
   const initialWidth = 5;
@@ -706,10 +725,10 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     logoOverlay: {
       id: 'default-logo',
       imageData: '/Untitled_design_(4)-modified.png',
-      x: (initialWidth - 1) * 200 + (200 - 80) / 2,
-      y: (initialHeight - 1) * 200 + (200 - 80) / 2,
-      width: 80,
-      height: 80,
+      x: (initialWidth - 1) * 200 + (200 - 100) / 2,
+      y: (initialHeight - 1) * 200 + (200 - 100) / 2,
+      width: 100,
+      height: 100,
       aspectRatio: 1,
       opacity: 0.8,
     },
@@ -838,15 +857,17 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
               newTiles = [];
           }
 
-          return { 
-            ...updatedScreen, 
-            tiles: newTiles, 
+          const resizedScreen = {
+            ...updatedScreen,
+            tiles: newTiles,
             nextTileId: screen.nextTileId + newTiles.length,
-            topHalfTile: false, 
-            bottomHalfTile: false, 
-            leftHalfTile: false, 
-            rightHalfTile: false 
+            topHalfTile: false,
+            bottomHalfTile: false,
+            leftHalfTile: false,
+            rightHalfTile: false,
           };
+
+          return repositionDefaultLogo(resizedScreen, newDimensions);
       });
   };
 
@@ -904,7 +925,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       const updatedSections = [...screen.sections, newSection];
       const updatedScreen = { ...screen, sections: updatedSections, dimensions: { ...screen.dimensions, screenWidth: updatedSections.reduce((sum, s) => sum + s.columnCount, 0) } };
       const { tiles, nextTileId } = regenerateTilesForSections(updatedScreen);
-      return { ...updatedScreen, tiles, nextTileId };
+      return repositionDefaultLogo({ ...updatedScreen, tiles, nextTileId }, updatedScreen.dimensions);
     });
   }, [products, updateCurrentScreen, regenerateTilesForSections]);
 
@@ -913,7 +934,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       const updatedSections = screen.sections.map(s => s.id === id ? { ...s, ...patch } : s);
       const updatedScreen = { ...screen, sections: updatedSections, dimensions: { ...screen.dimensions, screenWidth: updatedSections.reduce((sum, s) => sum + s.columnCount, 0) } };
       const { tiles, nextTileId } = regenerateTilesForSections(updatedScreen);
-      return { ...updatedScreen, tiles, nextTileId };
+      return repositionDefaultLogo({ ...updatedScreen, tiles, nextTileId }, updatedScreen.dimensions);
     });
   }, [updateCurrentScreen, regenerateTilesForSections]);
 
@@ -928,7 +949,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       const updatedSections = screen.sections.filter(s => s.id !== id);
       const updatedScreen = { ...screen, sections: updatedSections, dimensions: { ...screen.dimensions, screenWidth: updatedSections.reduce((sum, s) => sum + s.columnCount, 0) } };
       const { tiles, nextTileId } = regenerateTilesForSections(updatedScreen);
-      return { ...updatedScreen, tiles, nextTileId };
+      return repositionDefaultLogo({ ...updatedScreen, tiles, nextTileId }, updatedScreen.dimensions);
     });
   }, [screens, currentScreenId, toast, updateCurrentScreen, regenerateTilesForSections]);
 
@@ -3470,7 +3491,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       const migratedScreen = { ...newScreen, ...s, sections: Array.isArray(s.sections) ? s.sections : [] };
       if (migratedScreen.logoOverlay?.id === 'default-logo' && migratedScreen.logoOverlay?.imageData === '/Untitled_design_(4)-modified.png') {
         const { tileWidth, tileHeight, screenWidth, screenHeight } = migratedScreen.dimensions;
-        const logoSize = Math.round(Math.min(tileWidth, tileHeight) * 0.4);
+        const logoSize = 100;
         migratedScreen.logoOverlay = {
           ...migratedScreen.logoOverlay,
           width: logoSize,
@@ -3717,7 +3738,7 @@ const handleRightHalfTileChange = (add: boolean) => {
             const migratedScreen = { ...newScreen, ...s, sections: Array.isArray(s.sections) ? s.sections : [] };
             if (migratedScreen.logoOverlay?.id === 'default-logo' && migratedScreen.logoOverlay?.imageData === '/Untitled_design_(4)-modified.png') {
               const { tileWidth, tileHeight, screenWidth, screenHeight } = migratedScreen.dimensions;
-              const logoSize = Math.round(Math.min(tileWidth, tileHeight) * 0.4);
+              const logoSize = 100;
               migratedScreen.logoOverlay = {
                 ...migratedScreen.logoOverlay,
                 width: logoSize,
