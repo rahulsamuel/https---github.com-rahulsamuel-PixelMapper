@@ -74,9 +74,18 @@ export function LabelControls() {
     setShowLogoOverlay,
     effectiveScreenWidth,
     effectiveScreenHeight,
+    dimensions,
   } = usePixelMap();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const gridPixelWidth = effectiveScreenWidth * dimensions.tileWidth;
+  const gridPixelHeight = effectiveScreenHeight * dimensions.tileHeight;
+  const resolutionText = `Pixel: ${gridPixelWidth} x ${gridPixelHeight}`;
+  const maxFontByWidth = Math.floor((gridPixelWidth - 32) / (resolutionText.length * 0.55));
+  const maxFontByHeight = Math.floor(gridPixelHeight * 0.9);
+  const maxResolutionFontSize = Math.max(12, Math.min(256, Math.min(maxFontByWidth, maxFontByHeight)));
+  const resolutionOverflow = resolutionLabelFontSize > maxResolutionFontSize;
 
   return (
     <div className="space-y-4">
@@ -345,15 +354,20 @@ export function LabelControls() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="resolution-font-size">Font Size: {resolutionLabelFontSize}px</Label>
+              <Label htmlFor="resolution-font-size" className={resolutionOverflow ? 'text-destructive' : ''}>
+                Font Size: {resolutionLabelFontSize}px{resolutionOverflow && ` (max ${maxResolutionFontSize}px)`}
+              </Label>
               <Slider
                 id="resolution-font-size"
                 min={12}
-                max={256}
+                max={maxResolutionFontSize}
                 step={1}
-                value={[resolutionLabelFontSize]}
+                value={[Math.min(resolutionLabelFontSize, maxResolutionFontSize)]}
                 onValueChange={(value) => setResolutionLabelFontSize(value[0])}
               />
+              {resolutionOverflow && (
+                <p className="text-xs text-destructive">Font size exceeds the grid — reduced to {maxResolutionFontSize}px to fit.</p>
+              )}
             </div>
           </div>
         )}

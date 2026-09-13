@@ -2313,7 +2313,10 @@ const handleRightHalfTileChange = (add: boolean) => {
 
     // Draw resolution overlay — positioned in full-screen coordinate space
     if (screen.showResolution) {
-        const fontSize = screen.resolutionLabelFontSize ?? 32;
+        const resText = `Pixel: ${fullScreenWidth} x ${fullScreenHeight}`;
+        const maxFontByWidth = Math.floor((fullScreenWidth - 32) / (resText.length * 0.55));
+        const maxFontByHeight = Math.floor(fullScreenHeight * 0.9);
+        const fontSize = Math.max(8, Math.min(screen.resolutionLabelFontSize ?? 32, maxFontByWidth, maxFontByHeight));
         const color = (screen.resolutionLabelColorMode ?? 'auto') === 'auto' ? '#ffffff' : (screen.resolutionLabelColor ?? '#ffffff');
         masterCtx.save();
         if (isCropped) masterCtx.beginPath(), masterCtx.rect(0, 0, contentWidth, contentHeight), masterCtx.clip();
@@ -2321,7 +2324,6 @@ const handleRightHalfTileChange = (add: boolean) => {
         masterCtx.font = `bold ${fontSize}px sans-serif`;
         masterCtx.textBaseline = 'middle';
         const pos = screen.resolutionLabelPosition ?? 'bottom-right';
-        const resText = `Pixel: ${fullScreenWidth} x ${fullScreenHeight}`;
         const pad = fontSize * 0.6;
         let tx = fullScreenWidth / 2;
         let ty = fullScreenHeight / 2;

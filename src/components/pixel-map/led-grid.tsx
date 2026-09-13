@@ -224,6 +224,9 @@ export function LedGrid() {
     : resolutionLabelColor;
 
   const resolutionText = `Pixel: ${totalGridPixelWidth} x ${totalGridPixelHeight}`;
+  const maxResolutionFontByWidth = Math.floor((totalGridPixelWidth - 32) / (resolutionText.length * 0.55));
+  const maxResolutionFontByHeight = Math.floor(totalGridPixelHeight * 0.9);
+  const clampedResolutionFontSize = Math.max(8, Math.min(resolutionLabelFontSize, maxResolutionFontByWidth, maxResolutionFontByHeight));
 
   // Physical dimension calculations
   const tileWmm = hasSections
@@ -538,9 +541,9 @@ export function LedGrid() {
         )}
         {showResolution && (
             <div
-                className="absolute font-bold pointer-events-none drop-shadow-lg z-30"
+                className="absolute font-bold pointer-events-none drop-shadow-lg z-30 whitespace-nowrap"
                 style={{
-                    fontSize: `${resolutionLabelFontSize * zoom}px`,
+                    fontSize: `${clampedResolutionFontSize * zoom}px`,
                     color: currentResolutionLabelColor,
                     top: resolutionLabelPosition.startsWith('top') ? '1rem' :
                          resolutionLabelPosition === 'center' ? '50%' : undefined,
