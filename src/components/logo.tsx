@@ -3,15 +3,25 @@ import { cn } from "@/lib/utils";
 
 export function Logo({ className, showText = true }: { className?: string; showText?: boolean }) {
   return (
-    <span className={cn("inline-flex items-center", className)}>
+    <span className={cn("inline-flex items-center gap-2", className)}>
       <Image
-        src={showText ? "/MapMyLED_wordmark_transparent copy 3.png" : "/MapMyLED_app_icon copy 2.png"}
-        alt="MapMyLED"
-        width={showText ? 525 : 48}
-        height={showText ? 141 : 48}
+        src="/MapMyLED_app_icon copy 2.png"
+        alt=""
+        width={48}
+        height={48}
         priority
-        className={cn("h-full w-auto object-contain", !showText && "rounded-md")}
+        className="h-full w-auto shrink-0 rounded-md object-contain"
       />
+      {showText && (
+        <Image
+          src="/MapMyLED_wordmark_transparent copy 3.png"
+          alt="MapMyLED"
+          width={525}
+          height={141}
+          priority
+          className="h-full w-auto object-contain"
+        />
+      )}
     </span>
   );
 }
