@@ -75,12 +75,28 @@ export function LabelControls() {
     effectiveScreenWidth,
     effectiveScreenHeight,
     dimensions,
+    sections,
+    topHalfTile,
+    bottomHalfTile,
+    leftHalfTile,
+    rightHalfTile,
   } = usePixelMap();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const gridPixelWidth = effectiveScreenWidth * dimensions.tileWidth;
-  const gridPixelHeight = effectiveScreenHeight * dimensions.tileHeight;
+  const hasSections = sections.length > 0;
+  const gridPixelWidth = hasSections
+    ? sections.reduce((sum, s) => sum + s.tileWidthPx * s.columnCount, 0)
+    : effectiveScreenWidth * dimensions.tileWidth;
+  const gridPixelHeight = (() => {
+    const tileH = hasSections ? (sections[0]?.tileHeightPx ?? dimensions.tileHeight) : dimensions.tileHeight;
+    let h = 0;
+    for (let i = 0; i < effectiveScreenHeight; i++) {
+      const isHalf = (topHalfTile && i === 0) || (bottomHalfTile && i === effectiveScreenHeight - 1);
+      h += isHalf ? tileH / 2 : tileH;
+    }
+    return h;
+  })();
   const resolutionText = `Pixel: ${gridPixelWidth} x ${gridPixelHeight}`;
   const maxFontByWidth = Math.floor((gridPixelWidth - 32) / (resolutionText.length * 0.55));
   const maxFontByHeight = Math.floor(gridPixelHeight * 0.9);
