@@ -105,15 +105,11 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" variant="sidebar" className="border-r border-sidebar-border">
       {/* Logo header */}
       <SidebarHeader className="px-3 py-4">
-        <Link href="/" className="flex items-center gap-2.5 min-w-0 group">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-            <Logo className="h-4 w-auto" />
-          </div>
-          {!collapsed && (
-            <div className="min-w-0">
-              <div className="text-sm font-bold tracking-tight text-sidebar-foreground leading-none">MapMyLED</div>
-              <div className="text-[10px] text-sidebar-foreground/40 mt-0.5 leading-none">LED Design Studio</div>
-            </div>
+        <Link href="/" className="flex items-center min-w-0 group">
+          {!collapsed ? (
+            <Logo className="h-6 w-auto" />
+          ) : (
+            <Logo className="h-7 w-auto" />
           )}
         </Link>
       </SidebarHeader>

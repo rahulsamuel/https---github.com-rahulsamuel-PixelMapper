@@ -589,8 +589,7 @@ export function LandingPage() {
         <div className="container px-4 md:px-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <Logo className="h-5 w-auto" />
-              <span className="text-sm font-semibold">MapMyLED</span>
+              <Logo className="h-6 w-auto" />
               <span className="text-xs text-muted-foreground ml-1">&copy; {new Date().getFullYear()}</span>
             </div>
             <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2">

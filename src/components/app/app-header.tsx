@@ -49,7 +49,7 @@ export function AppHeader() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="mr-6 px-2">
-              <Logo className="h-6 w-6 text-primary" />
+              <Logo className="h-6 w-auto" />
               <span className="font-bold sm:inline-block ml-2">{getPageTitle()}</span>
               <ChevronDown className="ml-1 h-4 w-4" />
             </Button>

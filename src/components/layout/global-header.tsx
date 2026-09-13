@@ -47,11 +47,8 @@ export function GlobalHeader() {
       <div className="mx-auto max-w-screen-2xl px-4 md:px-6 flex h-14 items-center gap-6">
 
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
-          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-            <Logo className="h-3.5 w-auto" />
-          </div>
-          <span className="font-bold text-sm tracking-tight">MapMyLED</span>
+        <Link href="/" className="flex items-center shrink-0 group">
+          <Logo className="h-7 w-auto" />
         </Link>
 
         {/* Desktop nav */}

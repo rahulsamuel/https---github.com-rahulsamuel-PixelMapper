@@ -35,11 +35,8 @@ export default function LoginPage() {
         <div className="w-full max-w-md space-y-8">
           {/* Brand mark */}
           <div className="text-center space-y-2">
-            <Link href="/" className="inline-flex items-center gap-2.5 group">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                <Logo className="h-5 w-auto" />
-              </div>
-              <span className="text-xl font-bold tracking-tight">MapMyLED</span>
+            <Link href="/" className="inline-flex items-center justify-center group">
+              <Logo className="h-8 w-auto" />
             </Link>
             <p className="text-sm text-muted-foreground">LED Design Studio</p>
           </div>

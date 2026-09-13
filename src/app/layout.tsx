@@ -8,6 +8,10 @@ import { GlobalHeader } from '@/components/layout/global-header';
 export const metadata: Metadata = {
   title: 'MapMyLED',
   description: 'An advanced tool for LED screen mapping and configuration.',
+  icons: {
+    icon: '/MapMyLED_app_icon.png',
+    apple: '/MapMyLED_app_icon.png',
+  },
 };
 
 export default function RootLayout({
