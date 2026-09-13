@@ -107,6 +107,7 @@ export interface LogoOverlay {
   width: number;
   height: number;
   aspectRatio: number;
+  opacity: number;
 }
 
 export interface RasterGroup {
@@ -705,11 +706,12 @@ const createNewScreen = (name: string, idCounter: number): Screen => {
     logoOverlay: {
       id: 'default-logo',
       imageData: '/Untitled_design_(4)-modified.png',
-      x: 600,
-      y: 200,
-      width: 200,
-      height: 200,
+      x: 1768,
+      y: 1000,
+      width: 80,
+      height: 80,
       aspectRatio: 1,
+      opacity: 0.8,
     },
     showLogoOverlay: true,
     showModules: false,
@@ -2487,7 +2489,9 @@ const handleRightHalfTileChange = (add: boolean) => {
         if (logoImg.complete) {
           masterCtx.save();
           if (isCropped) masterCtx.beginPath(), masterCtx.rect(0, 0, contentWidth, contentHeight), masterCtx.clip();
+          masterCtx.globalAlpha = screen.logoOverlay.opacity ?? 1;
           masterCtx.drawImage(logoImg, screen.logoOverlay.x - cropOffsetX, screen.logoOverlay.y - cropOffsetY, screen.logoOverlay.width, screen.logoOverlay.height);
+          masterCtx.globalAlpha = 1;
           masterCtx.restore();
         }
       } catch {}
@@ -2531,7 +2535,9 @@ const handleRightHalfTileChange = (add: boolean) => {
               img.onerror = reject;
               img.src = currentScreen.logoOverlay!.imageData;
             });
+            ctx.globalAlpha = currentScreen.logoOverlay.opacity ?? 1;
             ctx.drawImage(logoImg, currentScreen.logoOverlay.x, currentScreen.logoOverlay.y, currentScreen.logoOverlay.width, currentScreen.logoOverlay.height);
+            ctx.globalAlpha = 1;
           } catch {}
         }
 

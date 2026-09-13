@@ -854,7 +854,7 @@ function DraggableLogoOverlay({
         alt="Logo overlay"
         draggable={false}
         className="w-full h-full object-contain pointer-events-none"
-        style={{ opacity: isDragging ? 0.7 : 1 }}
+        style={{ opacity: isDragging ? 0.5 : (overlay.opacity ?? 1) }}
       />
       <div className="absolute -top-1 -left-1 -right-1 -bottom-1 border-2 border-primary/50 rounded pointer-events-none" style={{ display: isDragging ? 'block' : 'none' }} />
     </div>

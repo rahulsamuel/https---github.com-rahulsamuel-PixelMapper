@@ -632,6 +632,19 @@ export function LabelControls() {
                 onValueChange={([v]) => setLogoOverlay(prev => prev ? { ...prev, width: v, height: v / prev.aspectRatio } : prev)}
               />
             </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">Opacity</Label>
+                <span className="text-xs font-mono">{Math.round((logoOverlay.opacity ?? 1) * 100)}%</span>
+              </div>
+              <Slider
+                value={[Math.round((logoOverlay.opacity ?? 1) * 100)]}
+                min={10}
+                max={100}
+                step={5}
+                onValueChange={([v]) => setLogoOverlay(prev => prev ? { ...prev, opacity: v / 100 } : prev)}
+              />
+            </div>
           </div>
         ) : (
           <Button
@@ -682,6 +695,7 @@ export function LabelControls() {
                   width: w,
                   height: h,
                   aspectRatio: w / h,
+                  opacity: 1,
                 });
               };
               img.src = dataUrl;
