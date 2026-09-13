@@ -115,6 +115,11 @@ export function GlobalHeader() {
                           Tracking
                         </Button>
                       </Link>
+                      <Link href="/admin/feedback">
+                        <Button variant={pathname.startsWith('/admin/feedback') ? 'secondary' : 'ghost'} size="sm" className="h-8 px-3 text-sm gap-1.5">
+                          Feedback
+                        </Button>
+                      </Link>
                     </div>
                   )}
                 </>

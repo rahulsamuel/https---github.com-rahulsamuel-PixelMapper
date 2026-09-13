@@ -9,6 +9,7 @@ import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { useToast } from "@/hooks/use-toast";
+import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
 
 interface LedProduct {
   id: string;
@@ -221,6 +222,7 @@ export function DeliverablesView() {
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`${safeFileName}.pdf`);
+      showFeedbackPrompt('deliverables_pdf');
       toast({ title: "PDF Exported", description: "Your content deliverables have been downloaded." });
     } catch (error) {
       console.error("PDF Export failed", error);
@@ -254,6 +256,7 @@ export function DeliverablesView() {
     link.download = `${safeFileName}.html`;
     link.click();
     URL.revokeObjectURL(url);
+    showFeedbackPrompt('deliverables_html');
     toast({ title: "HTML Exported", description: "Standalone content deliverables downloaded." });
   }, [projectName, currentScreen.name, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioEmbedded, samplingRate, audioBitRate, imageFormat, screenOutputs, screenData, safeFileName, toast]);
 
@@ -263,6 +266,7 @@ export function DeliverablesView() {
     link.href = sd.previewImage;
     link.download = sd.pixelMapFileName;
     link.click();
+    showFeedbackPrompt('deliverables_pixel_map');
     toast({ title: "Pixel Map Downloaded", description: `${sd.screen.name} pixel map saved as PNG.` });
   }, [toast]);
 

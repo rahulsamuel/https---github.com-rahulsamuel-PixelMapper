@@ -4,6 +4,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/contexts/auth-context';
 import { GlobalHeader } from '@/components/layout/global-header';
+import { FeedbackPromptProvider } from '@/components/feedback/feedback-prompt';
 
 export const metadata: Metadata = {
   title: 'MapMyLED',
@@ -24,12 +25,14 @@ export default function RootLayout({
       <head />
       <body className="font-body antialiased min-h-svh">
         <AuthProvider>
-          <div className="flex flex-col min-h-svh">
-            <GlobalHeader />
-            <main className="flex-1 flex flex-col">
-              {children}
-            </main>
-          </div>
+          <FeedbackPromptProvider>
+            <div className="flex flex-col min-h-svh">
+              <GlobalHeader />
+              <main className="flex-1 flex flex-col">
+                {children}
+              </main>
+            </div>
+          </FeedbackPromptProvider>
         </AuthProvider>
         <Toaster />
       </body>

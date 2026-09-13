@@ -36,6 +36,7 @@ import {
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import type { ProcessorEntry, CableRun, ProcessorType } from "@/contexts/pixel-map-context";
+import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
 
 const PROCESSOR_TYPES: { value: ProcessorType; label: string; boxLabel: string; defaultPorts: number }[] = [
   { value: "Novastar", label: "Novastar (CVT)", boxLabel: "Novastar CVT Box", defaultPorts: 16 },
@@ -230,6 +231,7 @@ export function EquipmentView() {
     a.download = "equipment-list.csv";
     a.click();
     URL.revokeObjectURL(url);
+    showFeedbackPrompt('equipment_csv');
   };
 
   const handleExportPng = async () => {
@@ -241,6 +243,7 @@ export function EquipmentView() {
       a.href = dataUrl;
       a.download = "equipment-list.png";
       a.click();
+      showFeedbackPrompt('equipment_png');
     } finally {
       setIsExporting(false);
     }
@@ -284,6 +287,7 @@ export function EquipmentView() {
         }
       }
       pdf.save("equipment-list.pdf");
+      showFeedbackPrompt('equipment_pdf');
     } finally {
       setIsExporting(false);
     }

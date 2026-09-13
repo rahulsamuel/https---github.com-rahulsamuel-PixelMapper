@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { PanelLeftClose, PanelLeftOpen, Download } from "lucide-react";
 import { toPng } from "html-to-image";
 import { cn } from "@/lib/utils";
+import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
 
 interface Product {
   id: string;
@@ -159,6 +160,7 @@ export function PreVisualBuilder() {
       a.href = dataUrl;
       a.download = `pre-visual-${selectedScreen?.name ?? "screen"}.png`;
       a.click();
+      showFeedbackPrompt('grid_png');
     } catch { /* ignore */ }
   };
 

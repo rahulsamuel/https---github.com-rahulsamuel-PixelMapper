@@ -9,6 +9,7 @@ import { isColorDark } from "@/lib/utils";
 import { getProducts } from "@/app/calculator/actions";
 import { useAuth } from "./auth-context";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
+import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
 
 function formatFractionalInch(inches: number): string {
   const whole = Math.floor(inches);
@@ -2574,6 +2575,7 @@ const handleRightHalfTileChange = (add: boolean) => {
           link.download = finalFilename;
           link.href = dataUrl;
           link.click();
+          showFeedbackPrompt('grid_png');
           trackEvent('download', { type: 'grid-png', filename: finalFilename, thumbnail: dataUrl });
         };
 
@@ -2994,6 +2996,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         
         downloadCanvas(outputCanvas, slice.filename);
     }
+    showFeedbackPrompt('raster_slices');
   }, [rasterMapConfig, createFullRasterCanvas, subscriptionStatus, toast, includeTextOverlaysInDownload, screens, drawTextOverlaysOnCtx, rasterBgColor]);
 
   const downloadSingleSlice = useCallback((sliceKey: string) => {
@@ -3030,6 +3033,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         link.href = dataUrl;
         link.click();
         trackEvent('download', { type: 'raster-slice', filename: slice.filename, thumbnail: dataUrl });
+        showFeedbackPrompt('raster_slices');
     } catch (err) {
         console.error('Could not generate raster slice.', err);
     }
@@ -3129,6 +3133,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       link.href = finalDataUrl;
       link.click();
       trackEvent('download', { type: 'wiring-diagram', filename, thumbnail: finalDataUrl });
+      showFeedbackPrompt('wiring_diagram');
     };
 
     const wiringType: 'data' | 'power' | 'both' =
@@ -3222,6 +3227,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         link.download = downloadFilename;
         link.href = finalDataUrl;
         link.click();
+        showFeedbackPrompt('raster_map');
         
         toast({
           title: "Download Started",
@@ -3403,6 +3409,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         link.href = dataUrl;
         link.click();
         trackEvent('download', { type: 'wall-layout', filename, thumbnail: dataUrl });
+        showFeedbackPrompt('wall_layout');
         toast({ title: "Download Started", description: "Your wall layout image is being downloaded." });
       } catch (err) {
         console.error("Wall layout download failed", err);
@@ -4180,6 +4187,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     link.download = "composite-wiring-diagram.png";
     link.href = dataUrl;
     link.click();
+    showFeedbackPrompt('composite_wiring');
 
     toast({ title: "Download Started", description: "Your composite wiring diagram is downloading." });
     trackEvent('download', { type: 'composite-wiring-diagram', thumbnail: dataUrl });

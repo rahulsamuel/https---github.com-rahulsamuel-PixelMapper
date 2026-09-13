@@ -1,4 +1,5 @@
 import type { RackItem, RackSide } from '@/lib/rack-data';
+import { showFeedbackPrompt } from '@/components/feedback/feedback-prompt';
 
 const RU_H = 32;
 const RU_NUM_W = 24;
@@ -376,6 +377,7 @@ export async function downloadRackPng(rackName: string, ru: number, items: RackI
     a.download = `${rackName.replace(/\s+/g, '-').toLowerCase()}-rack.png`;
     a.href = url;
     a.click();
+    showFeedbackPrompt('rack_png');
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }, 'image/png');
 }
