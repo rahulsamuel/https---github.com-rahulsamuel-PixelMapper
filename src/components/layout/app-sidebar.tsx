@@ -106,11 +106,7 @@ export function AppSidebar() {
       {/* Logo header */}
       <SidebarHeader className="px-3 py-4">
         <Link href="/" className="flex items-center min-w-0 group">
-          {!collapsed ? (
-            <Logo className="h-6 w-auto" />
-          ) : (
-            <Logo className="h-7 w-auto" />
-          )}
+          <Logo className="h-7 w-auto" showText={!collapsed} />
         </Link>
       </SidebarHeader>
 

@@ -9,8 +9,8 @@ export const metadata: Metadata = {
   title: 'MapMyLED',
   description: 'An advanced tool for LED screen mapping and configuration.',
   icons: {
-    icon: '/MapMyLED_app_icon.png',
-    apple: '/MapMyLED_app_icon.png',
+    icon: '/MapMyLED_app_icon copy 2.png',
+    apple: '/MapMyLED_app_icon copy 2.png',
   },
 };
 
