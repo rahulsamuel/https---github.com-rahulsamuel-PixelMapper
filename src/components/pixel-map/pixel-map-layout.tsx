@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "../pixel-mapper/edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home, ScreenShare, Plus, MoreHorizontal, Pencil, Trash, Copy, CaseSensitive, FileText, Info, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home, ScreenShare, Plus, MoreHorizontal, Pencil, Trash, Copy, CaseSensitive, FileText, Info, PanelLeftClose, PanelLeftOpen, ChevronUp, ChevronDown } from "lucide-react";
 import { LabelControls } from "../pixel-mapper/label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -70,6 +70,8 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
     renameScreen,
     deleteScreen,
     duplicateScreen,
+    moveScreenUp,
+    moveScreenDown,
     zoom, setZoom, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, effectiveScreenWidthFromSections, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels, sections,
     isManualPowerModalOpen, setIsManualPowerModalOpen, selectedTileForPower, applyManualPowerWiring,
     isManualDataModalOpen, setIsManualDataModalOpen, selectedTileForData, applyManualDataWiring,
@@ -363,6 +365,19 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                             </DropdownMenuItem>
                              <DropdownMenuItem onClick={() => duplicateScreen(screen.id)}>
                               <Copy className="mr-2 size-4" /> Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              disabled={screens.findIndex(s => s.id === screen.id) === 0}
+                              onClick={() => moveScreenUp(screen.id)}
+                            >
+                              <ChevronUp className="mr-2 size-4" /> Move Up
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={screens.findIndex(s => s.id === screen.id) === screens.length - 1}
+                              onClick={() => moveScreenDown(screen.id)}
+                            >
+                              <ChevronDown className="mr-2 size-4" /> Move Down
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem

@@ -410,6 +410,8 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   renameScreen: (id: string, newName: string) => void;
   deleteScreen: (id: string) => void;
   duplicateScreen: (id: string) => void;
+  moveScreenUp: (id: string) => void;
+  moveScreenDown: (id: string) => void;
   appState: string;
   gridRef: React.RefObject<HTMLDivElement>;
   wiringDiagramRef: React.RefObject<HTMLDivElement>;
@@ -1176,6 +1178,26 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
     setScreens(prev => [...prev, newScreen]);
     setCurrentScreenId(newScreen.id);
+  };
+
+  const moveScreenUp = (id: string) => {
+    setScreens(prev => {
+      const index = prev.findIndex(s => s.id === id);
+      if (index <= 0) return prev;
+      const updated = [...prev];
+      [updated[index - 1], updated[index]] = [updated[index], updated[index - 1]];
+      return updated;
+    });
+  };
+
+  const moveScreenDown = (id: string) => {
+    setScreens(prev => {
+      const index = prev.findIndex(s => s.id === id);
+      if (index < 0 || index >= prev.length - 1) return prev;
+      const updated = [...prev];
+      [updated[index], updated[index + 1]] = [updated[index + 1], updated[index]];
+      return updated;
+    });
   };
 
   const mergeRemoteScreen = useCallback((remoteScreen: Screen) => {
@@ -4217,6 +4239,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     renameScreen,
     deleteScreen,
     duplicateScreen,
+    moveScreenUp,
+    moveScreenDown,
     dimensions: currentScreen.dimensions,
     setDimensions,
     tiles: currentScreen.tiles,
