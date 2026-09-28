@@ -6,6 +6,7 @@ export type DeviceType =
   | "network-switch"
   | "matrix"
   | "distribution"
+  | "converter"
   | "custom";
 
 export type DeviceCategory =
@@ -14,6 +15,7 @@ export type DeviceCategory =
   | "led-screen"
   | "power"
   | "network"
+  | "converter"
   | "other";
 
 export const CATEGORY_INFO: Record<DeviceCategory, { label: string; color: string }> = {
@@ -22,6 +24,7 @@ export const CATEGORY_INFO: Record<DeviceCategory, { label: string; color: strin
   "led-screen": { label: "LED Screens", color: "#0d9488" },
   power: { label: "Power", color: "#b45309" },
   network: { label: "Network", color: "#1e40af" },
+  converter: { label: "Converters", color: "#6d28d9" },
   other: { label: "Other", color: "#475569" },
 };
 
@@ -33,6 +36,7 @@ export const PRESET_CATEGORY_MAP: Record<DeviceType, DeviceCategory> = {
   "network-switch": "network",
   matrix: "other",
   distribution: "other",
+  converter: "converter",
   custom: "other",
 };
 
@@ -266,3 +270,126 @@ export function customDevicePreset(
     ],
   };
 }
+
+// ─── Converter presets ────────────────────────────────────────────────────
+
+export const CONVERTER_PRESETS: DevicePreset[] = [
+  {
+    type: "converter",
+    name: "HDMI to SDI Converter",
+    color: "#6d28d9",
+    width: 160,
+    height: 100,
+    ports: [
+      { label: "HDMI IN", direction: "input", portType: "hdmi" },
+      { label: "SDI OUT", direction: "output", portType: "sdi" },
+    ],
+  },
+  {
+    type: "converter",
+    name: "SDI to HDMI Converter",
+    color: "#6d28d9",
+    width: 160,
+    height: 100,
+    ports: [
+      { label: "SDI IN", direction: "input", portType: "sdi" },
+      { label: "HDMI OUT", direction: "output", portType: "hdmi" },
+    ],
+  },
+  {
+    type: "converter",
+    name: "DVI to HDMI Converter",
+    color: "#6d28d9",
+    width: 160,
+    height: 100,
+    ports: [
+      { label: "DVI IN", direction: "input", portType: "dvi" },
+      { label: "HDMI OUT", direction: "output", portType: "hdmi" },
+    ],
+  },
+  {
+    type: "converter",
+    name: "HDMI to DVI Converter",
+    color: "#6d28d9",
+    width: 160,
+    height: 100,
+    ports: [
+      { label: "HDMI IN", direction: "input", portType: "hdmi" },
+      { label: "DVI OUT", direction: "output", portType: "dvi" },
+    ],
+  },
+  {
+    type: "converter",
+    name: "SDI to Fiber Converter",
+    color: "#6d28d9",
+    width: 160,
+    height: 100,
+    ports: [
+      { label: "SDI IN", direction: "input", portType: "sdi" },
+      { label: "FIBER OUT", direction: "output", portType: "fiber" },
+    ],
+  },
+  {
+    type: "converter",
+    name: "Fiber to SDI Converter",
+    color: "#6d28d9",
+    width: 160,
+    height: 100,
+    ports: [
+      { label: "FIBER IN", direction: "input", portType: "fiber" },
+      { label: "SDI OUT", direction: "output", portType: "sdi" },
+    ],
+  },
+];
+
+// ─── Port compatibility ───────────────────────────────────────────────────
+
+/**
+ * Check if two ports can be connected. Returns { ok: true } if compatible,
+ * or { ok: false, reason } if not.
+ *
+ * Rules:
+ * 1. One port must be input and the other output (direction check)
+ * 2. Port types must match, OR at least one port must be "custom" type
+ *    (custom is a wildcard that can connect to anything)
+ */
+export function checkPortCompatibility(
+  fromPort: SignalFlowPort,
+  toPort: SignalFlowPort
+): { ok: true } | { ok: false; reason: string } {
+  // Direction check: must be output -> input
+  if (fromPort.direction === toPort.direction) {
+    return {
+      ok: false,
+      reason: `Cannot connect two ${fromPort.direction} ports. You need an output connected to an input.`,
+    };
+  }
+
+  // Determine which is output and which is input
+  const outputPort = fromPort.direction === "output" ? fromPort : toPort;
+  const inputPort = fromPort.direction === "output" ? toPort : fromPort;
+
+  // Type check: same type or either is "custom"
+  if (outputPort.portType !== inputPort.portType) {
+    if (outputPort.portType !== "custom" && inputPort.portType !== "custom") {
+      const outputName = CABLE_TYPE_NAMES[outputPort.portType] ?? outputPort.portType;
+      const inputName = CABLE_TYPE_NAMES[inputPort.portType] ?? inputPort.portType;
+      return {
+        ok: false,
+        reason: `Incompatible port types: ${outputName} output cannot connect to ${inputName} input. Use a converter device to bridge these signal types.`,
+      };
+    }
+  }
+
+  return { ok: true };
+}
+
+export const CABLE_TYPE_NAMES: Record<string, string> = {
+  hdmi: "HDMI",
+  sdi: "SDI",
+  rj45: "RJ45 / Ethernet",
+  dvi: "DVI",
+  fiber: "Fiber",
+  power: "Power",
+  custom: "Custom",
+};

@@ -153,6 +153,12 @@ export function AppSidebar() {
                 icon={ShieldCheck}
                 isActive={isActive("/admin")}
               />
+              <NavItem
+                href="/admin/signal-flow-devices"
+                label="SF Devices"
+                icon={Cable}
+                isActive={isActive("/admin/signal-flow-devices")}
+              />
             </SidebarMenu>
           </>
         )}

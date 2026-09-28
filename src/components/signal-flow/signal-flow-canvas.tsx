@@ -5,8 +5,11 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase/client";
 import {
   DEVICE_PRESETS,
+  CONVERTER_PRESETS,
   CATEGORY_INFO,
   PRESET_CATEGORY_MAP,
+  CABLE_TYPE_NAMES,
+  checkPortCompatibility,
   processorToDevicePreset,
   customDevicePreset,
   type SignalFlowDevice,
@@ -14,15 +17,18 @@ import {
   type SignalFlowData,
   type DeviceCategory,
   type DevicePreset,
+  type DeviceType,
   type PortDirection,
   type SignalFlowPort,
 } from "@/lib/signal-flow-types";
+import { useAuth } from "@/contexts/auth-context";
 import {
   ChevronDown,
   ChevronRight,
   Plus,
   Loader2,
   Cpu,
+  AlertTriangle,
 } from "lucide-react";
 
 interface SignalFlowCanvasProps {
@@ -87,6 +93,7 @@ function groupPresetsByCategory(items: SidebarItem[]): Record<DeviceCategory, Si
     processor: [],
     "media-server": [],
     "led-screen": [],
+    converter: [],
     power: [],
     network: [],
     other: [],
@@ -102,6 +109,7 @@ const CATEGORY_ORDER: DeviceCategory[] = [
   "processor",
   "media-server",
   "led-screen",
+  "converter",
   "power",
   "network",
   "other",
@@ -122,28 +130,28 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<DeviceCategory>>(new Set());
   const [dbProcessors, setDbProcessors] = useState<SidebarItem[]>([]);
+  const [dbDevices, setDbDevices] = useState<SidebarItem[]>([]);
   const [loadingProcessors, setLoadingProcessors] = useState(true);
   const [showCustomDialog, setShowCustomDialog] = useState(false);
+  const [compatError, setCompatError] = useState<string | null>(null);
+  const { isAdmin } = useAuth();
 
-  // Load processors from database
+  // Load processors + signal flow devices from database
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoadingProcessors(true);
       try {
-        const { data: rows, error } = await supabase
+        // Load processor_library
+        const { data: procRows, error: procErr } = await supabase
           .from("processor_library")
           .select("manufacturer, model_name, output_port_count, input_types, is_active")
           .eq("is_active", true)
           .order("manufacturer", { ascending: true });
 
         if (cancelled) return;
-        if (error) {
-          setLoadingProcessors(false);
-          return;
-        }
-        if (rows && rows.length > 0) {
-          const items: SidebarItem[] = (rows as Record<string, unknown>[]).map((row) => ({
+        if (!procErr && procRows && procRows.length > 0) {
+          const procItems: SidebarItem[] = (procRows as Record<string, unknown>[]).map((row) => ({
             source: "database" as const,
             preset: processorToDevicePreset(
               row.manufacturer as string,
@@ -152,7 +160,30 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
               (row.input_types as string) || null
             ),
           }));
-          setDbProcessors(items);
+          setDbProcessors(procItems);
+        }
+
+        // Load signal_flow_devices (admin-managed library)
+        const { data: devRows, error: devErr } = await supabase
+          .from("signal_flow_devices")
+          .select("name, device_type, category, color, width, height, ports, is_active")
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true });
+
+        if (cancelled) return;
+        if (!devErr && devRows && devRows.length > 0) {
+          const devItems: SidebarItem[] = (devRows as Record<string, unknown>[]).map((row) => ({
+            source: "database" as const,
+            preset: {
+              type: row.device_type as DeviceType,
+              name: row.name as string,
+              color: row.color as string,
+              width: Number(row.width) || 180,
+              height: Number(row.height) || 120,
+              ports: (row.ports as Omit<SignalFlowPort, "id">[]) ?? [],
+            },
+          }));
+          setDbDevices(devItems);
         }
       } catch {
         // ignore — defaults still available
@@ -164,15 +195,21 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
     return () => { cancelled = true; };
   }, []);
 
-  // Build the full sidebar item list: DB processors + default presets (deduped by name for processors)
+  // Build the full sidebar item list: DB processors + DB devices + default presets + converter presets
+  // DB devices take priority over converter presets (dedup converters by name)
+  const dbConverterNames = new Set(dbDevices.filter((d) => d.preset.type === "converter").map((d) => d.preset.name));
   const sidebarItems: SidebarItem[] = [
     ...dbProcessors,
+    ...dbDevices,
     ...DEVICE_PRESETS
       .filter((p) => {
         if (p.type !== "processor") return true;
         // Only include default "LED Processor" if no DB processors loaded
         return dbProcessors.length === 0;
       })
+      .map((p) => ({ preset: p, source: "default" as const })),
+    ...CONVERTER_PRESETS
+      .filter((p) => !dbConverterNames.has(p.name))
       .map((p) => ({ preset: p, source: "default" as const })),
   ];
 
@@ -281,6 +318,13 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
       const fromPort = fromDevice?.ports.find((p) => p.id === connectingFrom.portId);
       const toPort = device.ports.find((p) => p.id === portId);
       if (!fromPort || !toPort) {
+        setConnectingFrom(null);
+        return;
+      }
+      // Check port compatibility before creating connection
+      const compat = checkPortCompatibility(fromPort, toPort);
+      if (!compat.ok) {
+        setCompatError(compat.reason);
         setConnectingFrom(null);
         return;
       }
@@ -680,51 +724,97 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
                     {device.ports.map((port) => (
                       <div key={port.id} className="flex items-center gap-2 text-xs rounded border px-2 py-1.5 bg-background">
                         <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getCableColor(port.portType) }} />
-                        <span className="truncate flex-1">{port.label}</span>
+                        {isAdmin ? (
+                          <>
+                            <input
+                              className="flex-1 min-w-0 bg-transparent text-xs outline-none border-b border-transparent focus:border-primary"
+                              value={port.label}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) =>
+                                update((prev) => ({
+                                  ...prev,
+                                  devices: prev.devices.map((d) =>
+                                    d.id === device.id
+                                      ? { ...d, ports: d.ports.map((p) => p.id === port.id ? { ...p, label: e.target.value } : p) }
+                                      : d
+                                  ),
+                                }))
+                              }
+                            />
+                            <select
+                              className="rounded border bg-background px-1 py-0.5 text-[10px] outline-none"
+                              value={port.portType}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) =>
+                                update((prev) => ({
+                                  ...prev,
+                                  devices: prev.devices.map((d) =>
+                                    d.id === device.id
+                                      ? { ...d, ports: d.ports.map((p) => p.id === port.id ? { ...p, portType: e.target.value } : p) }
+                                      : d
+                                  ),
+                                }))
+                              }
+                            >
+                              {data.cableTypes.map((ct) => (
+                                <option key={ct.id} value={ct.id}>{CABLE_TYPE_NAMES[ct.id] ?? ct.name}</option>
+                              ))}
+                            </select>
+                          </>
+                        ) : (
+                          <span className="truncate flex-1">{port.label}</span>
+                        )}
                         <span className="text-[9px] text-muted-foreground uppercase">{port.direction}</span>
-                        <button
-                          className="text-muted-foreground hover:text-destructive"
-                          onClick={() =>
-                            update((prev) => ({
-                              ...prev,
-                              devices: prev.devices.map((d) =>
-                                d.id === device.id
-                                  ? { ...d, ports: d.ports.filter((p) => p.id !== port.id) }
-                                  : d
-                              ),
-                              connections: prev.connections.filter(
-                                (c) => c.fromPortId !== port.id && c.toPortId !== port.id
-                              ),
-                            }))
-                          }
-                        >
-                          ×
-                        </button>
+                        {isAdmin && (
+                          <button
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() =>
+                              update((prev) => ({
+                                ...prev,
+                                devices: prev.devices.map((d) =>
+                                  d.id === device.id
+                                    ? { ...d, ports: d.ports.filter((p) => p.id !== port.id) }
+                                    : d
+                                ),
+                                connections: prev.connections.filter(
+                                  (c) => c.fromPortId !== port.id && c.toPortId !== port.id
+                                ),
+                              }))
+                            }
+                          >
+                            ×
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
-                  <button
-                    className="w-full text-xs text-primary hover:underline mt-1"
-                    onClick={() =>
-                      update((prev) => ({
-                        ...prev,
-                        devices: prev.devices.map((d) =>
-                          d.id === device.id
-                            ? {
-                                ...d,
-                                height: d.height + PORT_SPACING_Y,
-                                ports: [
-                                  ...d.ports,
-                                  { id: uid(), label: "NEW PORT", direction: "output" as PortDirection, portType: "custom" },
-                                ],
-                              }
-                            : d
-                        ),
-                      }))
-                    }
-                  >
-                    + Add Port
-                  </button>
+                  {isAdmin && (
+                    <button
+                      className="w-full text-xs text-primary hover:underline mt-1"
+                      onClick={() =>
+                        update((prev) => ({
+                          ...prev,
+                          devices: prev.devices.map((d) =>
+                            d.id === device.id
+                              ? {
+                                  ...d,
+                                  height: d.height + PORT_SPACING_Y,
+                                  ports: [
+                                    ...d.ports,
+                                    { id: uid(), label: "NEW PORT", direction: "output" as PortDirection, portType: "custom" },
+                                  ],
+                                }
+                              : d
+                          ),
+                        }))
+                      }
+                    >
+                      + Add Port
+                    </button>
+                  )}
+                  {!isAdmin && (
+                    <p className="text-[10px] text-muted-foreground/60">Port labels can be edited by admins only.</p>
+                  )}
                 </div>
                 <button
                   className="w-full text-xs text-destructive hover:bg-destructive/10 rounded-md py-2 border border-destructive/20"
@@ -794,6 +884,19 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
               </div>
             );
           })()}
+        </div>
+      )}
+
+      {/* Compatibility error toast */}
+      {compatError && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md"
+          onClick={() => setCompatError(null)}
+        >
+          <div className="bg-destructive text-destructive-foreground rounded-lg shadow-xl px-4 py-3 text-sm flex items-center gap-3 cursor-pointer animate-in fade-in slide-in-from-bottom-2">
+            <AlertTriangle className="h-5 w-5 flex-shrink-0" />
+            <span>{compatError}</span>
+          </div>
         </div>
       )}
 
