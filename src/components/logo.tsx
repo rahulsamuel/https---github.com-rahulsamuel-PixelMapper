@@ -14,7 +14,7 @@ export function Logo({ className, showText = true }: { className?: string; showT
       />
       {showText && (
         <Image
-          src="/MapMyLED_wordmark_transparent copy 3.png"
+          src="/MapMyLED_wordmark_transparent.png"
           alt="MapMyLED"
           width={525}
           height={141}
