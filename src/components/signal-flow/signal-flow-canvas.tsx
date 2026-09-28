@@ -120,14 +120,9 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
       const rect = canvasRef.current.getBoundingClientRect();
       setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
     };
-    const handleUp = () => {
-      setConnectingFrom(null);
-    };
     window.addEventListener("mousemove", handleMove);
-    window.addEventListener("mouseup", handleUp);
     return () => {
       window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleUp);
     };
   }, [connectingFrom]);
 
@@ -135,6 +130,7 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
     if (e.target === canvasRef.current) {
       setSelectedDeviceId(null);
       setSelectedConnectionId(null);
+      setConnectingFrom(null);
     }
     // If we're in "add device" mode
     if (addingPresetIndex !== null && canvasRef.current) {
@@ -232,6 +228,10 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
   // Keyboard delete
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setConnectingFrom(null);
+        return;
+      }
       if ((e.key === "Delete" || e.key === "Backspace") && (selectedDeviceId || selectedConnectionId)) {
         const target = e.target as HTMLElement;
         if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
@@ -443,6 +443,7 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
                             height: PORT_RADIUS * 2,
                             backgroundColor: getCableColor(p.port.portType),
                           }}
+                          onMouseDown={(e) => e.stopPropagation()}
                           onClick={(e) => handlePortClick(e, device, p.port.id, p.x, p.y)}
                           title={p.port.label}
                         />
@@ -462,6 +463,7 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
                             height: PORT_RADIUS * 2,
                             backgroundColor: getCableColor(p.port.portType),
                           }}
+                          onMouseDown={(e) => e.stopPropagation()}
                           onClick={(e) => handlePortClick(e, device, p.port.id, p.x, p.y)}
                           title={p.port.label}
                         />
