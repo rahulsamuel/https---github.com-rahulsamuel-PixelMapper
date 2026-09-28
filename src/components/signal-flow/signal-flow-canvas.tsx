@@ -39,12 +39,13 @@ function createDeviceFromPreset(presetIndex: number, x: number, y: number): Sign
 const PORT_RADIUS = 5;
 const PORT_SPACING_Y = 22;
 const PORT_START_Y = 36;
+const DEVICE_HEADER_HEIGHT = 34;
 
 function getPortPosition(device: SignalFlowDevice, portIndex: number, direction: PortDirection) {
   const portsInDirection = device.ports.filter((p) => p.direction === direction);
   const indexInDirection = portsInDirection.findIndex((p) => p.id === device.ports[portIndex]?.id);
   if (indexInDirection < 0) return null;
-  const y = device.y + PORT_START_Y + indexInDirection * PORT_SPACING_Y;
+  const y = device.y + DEVICE_HEADER_HEIGHT + PORT_START_Y + indexInDirection * PORT_SPACING_Y;
   const x = direction === "input" ? device.x : device.x + device.width;
   return { x, y };
 }
@@ -56,12 +57,12 @@ function getAllPortPositions(device: SignalFlowDevice) {
     inputs: inputs.map((p, i) => ({
       port: p,
       x: device.x,
-      y: device.y + PORT_START_Y + i * PORT_SPACING_Y,
+      y: device.y + DEVICE_HEADER_HEIGHT + PORT_START_Y + i * PORT_SPACING_Y,
     })),
     outputs: outputs.map((p, i) => ({
       port: p,
       x: device.x + device.width,
-      y: device.y + PORT_START_Y + i * PORT_SPACING_Y,
+      y: device.y + DEVICE_HEADER_HEIGHT + PORT_START_Y + i * PORT_SPACING_Y,
     })),
   };
 }
@@ -276,13 +277,10 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
     const toPoint = [...toPos.inputs, ...toPos.outputs].find((p) => p.port.id === conn.toPortId);
     if (!fromPoint || !toPoint) return null;
 
-    const dx = Math.abs(toPoint.x - fromPoint.x);
-    const offset = Math.max(40, dx * 0.4);
-    const c1x = fromPoint.x + (fromPort.direction === "output" ? offset : -offset);
-    const c2x = toPoint.x + (toPort.direction === "input" ? -offset : offset);
+    const midX = (fromPoint.x + toPoint.x) / 2;
 
     return {
-      d: `M ${fromPoint.x} ${fromPoint.y} C ${c1x} ${fromPoint.y}, ${c2x} ${toPoint.y}, ${toPoint.x} ${toPoint.y}`,
+      d: `M ${fromPoint.x} ${fromPoint.y} C ${midX} ${fromPoint.y}, ${midX} ${toPoint.y}, ${toPoint.x} ${toPoint.y}`, 
       fromX: fromPoint.x,
       fromY: fromPoint.y,
       toX: toPoint.x,
@@ -435,7 +433,7 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
                   {positions.inputs.map((p, i) => {
                     const absY = p.y - device.y;
                     return (
-                      <div key={p.port.id} className="absolute flex items-center" style={{ left: -PORT_RADIUS, top: absY - PORT_RADIUS, transform: "translateY(2px)" }}>
+                      <div key={p.port.id} className="absolute flex items-center" style={{ left: -PORT_RADIUS, top: absY - DEVICE_HEADER_HEIGHT - PORT_RADIUS }}>
                         <button
                           className="rounded-full border-2 border-white/60 hover:border-white hover:scale-125 transition-transform"
                           style={{
@@ -454,7 +452,7 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
                   {positions.outputs.map((p, i) => {
                     const absY = p.y - device.y;
                     return (
-                      <div key={p.port.id} className="absolute flex items-center justify-end" style={{ right: -PORT_RADIUS, top: absY - PORT_RADIUS, transform: "translateY(2px)" }}>
+                      <div key={p.port.id} className="absolute flex items-center justify-end" style={{ right: -PORT_RADIUS, top: absY - DEVICE_HEADER_HEIGHT - PORT_RADIUS }}>
                         <span className="text-[10px] text-white/80 mr-1.5 whitespace-nowrap">{p.port.label}</span>
                         <button
                           className="rounded-full border-2 border-white/60 hover:border-white hover:scale-125 transition-transform"
