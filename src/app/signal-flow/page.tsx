@@ -318,7 +318,12 @@ export default function SignalFlowPage() {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <SignalFlowCanvas data={diagramData} onChange={handleDataChange} />
+          <SignalFlowCanvas
+            data={diagramData}
+            onChange={handleDataChange}
+            onSave={handleSave}
+            saving={saving}
+          />
         )
       ) : (
         <div className="flex-1 flex items-center justify-center bg-[#0a0a0a]">

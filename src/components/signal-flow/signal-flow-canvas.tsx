@@ -34,6 +34,8 @@ import {
 interface SignalFlowCanvasProps {
   data: SignalFlowData;
   onChange: (data: SignalFlowData) => void;
+  onSave: () => void;
+  saving: boolean;
 }
 
 function uid() {
@@ -115,7 +117,7 @@ const CATEGORY_ORDER: DeviceCategory[] = [
   "other",
 ];
 
-export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
+export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [draggingDevice, setDraggingDevice] = useState<string | null>(null);
@@ -681,7 +683,7 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
 
       {/* Properties panel */}
       {(selectedDeviceId || selectedConnectionId) && (
-        <div className="w-60 flex-shrink-0 border-l bg-sidebar flex flex-col overflow-hidden">
+        <div className="w-80 flex-shrink-0 border-l bg-sidebar flex flex-col overflow-hidden">
           {selectedDeviceId && (() => {
             const device = data.devices.find((d) => d.id === selectedDeviceId);
             if (!device) return null;
@@ -689,7 +691,7 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
               <div className="p-4 space-y-4">
                 <div>
                   <h3 className="text-sm font-semibold">Device Properties</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Edit the device name and color.</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Rename the device, then save your changes.</p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-muted-foreground">Name</label>
@@ -699,35 +701,37 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
                     onChange={(e) => renameDevice(device.id, e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">Color</label>
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="color"
-                      className="h-8 w-12 rounded border cursor-pointer"
-                      value={device.color}
-                      onChange={(e) =>
-                        update((prev) => ({
-                          ...prev,
-                          devices: prev.devices.map((d) =>
-                            d.id === device.id ? { ...d, color: e.target.value } : d
-                          ),
-                        }))
-                      }
-                    />
-                    <span className="text-xs text-muted-foreground font-mono">{device.color}</span>
+                {isAdmin && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-muted-foreground">Color</label>
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="color"
+                        className="h-8 w-12 rounded border cursor-pointer"
+                        value={device.color}
+                        onChange={(e) =>
+                          update((prev) => ({
+                            ...prev,
+                            devices: prev.devices.map((d) =>
+                              d.id === device.id ? { ...d, color: e.target.value } : d
+                            ),
+                          }))
+                        }
+                      />
+                      <span className="text-xs text-muted-foreground font-mono">{device.color}</span>
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-muted-foreground">Ports ({device.ports.length})</label>
                   <div className="space-y-1 max-h-48 overflow-y-auto">
                     {device.ports.map((port) => (
-                      <div key={port.id} className="flex items-center gap-2 text-xs rounded border px-2 py-1.5 bg-background">
-                        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getCableColor(port.portType) }} />
-                        {isAdmin ? (
-                          <>
+                      <div key={port.id} className="rounded border bg-background px-2.5 py-2 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: getCableColor(port.portType) }} />
+                          {isAdmin ? (
                             <input
-                              className="flex-1 min-w-0 bg-transparent text-xs outline-none border-b border-transparent focus:border-primary"
+                              className="w-full min-w-0 bg-transparent text-xs outline-none border-b border-border focus:border-primary px-1 py-1"
                               value={port.label}
                               onClick={(e) => e.stopPropagation()}
                               onChange={(e) =>
@@ -741,8 +745,15 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
                                 }))
                               }
                             />
+                          ) : (
+                            <span className="min-w-0 flex-1 truncate text-xs">{port.label}</span>
+                          )}
+                          <span className="text-[9px] text-muted-foreground uppercase flex-shrink-0">{port.direction}</span>
+                        </div>
+                        {isAdmin && (
+                          <div className="flex items-center gap-2 pl-4">
                             <select
-                              className="rounded border bg-background px-1 py-0.5 text-[10px] outline-none"
+                              className="min-w-0 flex-1 rounded border bg-background px-2 py-1 text-xs outline-none"
                               value={port.portType}
                               onClick={(e) => e.stopPropagation()}
                               onChange={(e) =>
@@ -760,30 +771,25 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
                                 <option key={ct.id} value={ct.id}>{CABLE_TYPE_NAMES[ct.id] ?? ct.name}</option>
                               ))}
                             </select>
-                          </>
-                        ) : (
-                          <span className="truncate flex-1">{port.label}</span>
-                        )}
-                        <span className="text-[9px] text-muted-foreground uppercase">{port.direction}</span>
-                        {isAdmin && (
-                          <button
-                            className="text-muted-foreground hover:text-destructive"
-                            onClick={() =>
-                              update((prev) => ({
-                                ...prev,
-                                devices: prev.devices.map((d) =>
-                                  d.id === device.id
-                                    ? { ...d, ports: d.ports.filter((p) => p.id !== port.id) }
-                                    : d
-                                ),
-                                connections: prev.connections.filter(
-                                  (c) => c.fromPortId !== port.id && c.toPortId !== port.id
-                                ),
-                              }))
-                            }
-                          >
-                            ×
-                          </button>
+                            <button
+                              className="text-muted-foreground hover:text-destructive flex-shrink-0"
+                              onClick={() =>
+                                update((prev) => ({
+                                  ...prev,
+                                  devices: prev.devices.map((d) =>
+                                    d.id === device.id
+                                      ? { ...d, ports: d.ports.filter((p) => p.id !== port.id) }
+                                      : d
+                                  ),
+                                  connections: prev.connections.filter(
+                                    (c) => c.fromPortId !== port.id && c.toPortId !== port.id
+                                  ),
+                                }))
+                              }
+                            >
+                              ×
+                            </button>
+                          </div>
                         )}
                       </div>
                     ))}
@@ -816,11 +822,20 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
                     <p className="text-[10px] text-muted-foreground/60">Port labels can be edited by admins only.</p>
                   )}
                 </div>
+                {isAdmin && (
+                  <button
+                    className="w-full text-xs text-destructive hover:bg-destructive/10 rounded-md py-2 border border-destructive/20"
+                    onClick={deleteSelected}
+                  >
+                    Delete Device
+                  </button>
+                )}
                 <button
-                  className="w-full text-xs text-destructive hover:bg-destructive/10 rounded-md py-2 border border-destructive/20"
-                  onClick={deleteSelected}
+                  className="w-full rounded-md py-2 bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  onClick={onSave}
+                  disabled={saving}
                 >
-                  Delete Device
+                  {saving ? "Saving…" : "Save Device Changes"}
                 </button>
               </div>
             );
