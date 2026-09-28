@@ -2,15 +2,30 @@
 
 import { useState, useRef, useCallback, useEffect, type MouseEvent } from "react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase/client";
 import {
   DEVICE_PRESETS,
   DEFAULT_CABLE_TYPES,
+  CATEGORY_INFO,
+  PRESET_CATEGORY_MAP,
+  processorToDevicePreset,
+  customDevicePreset,
   type SignalFlowDevice,
   type SignalFlowConnection,
   type SignalFlowData,
   type DeviceType,
+  type DeviceCategory,
+  type DevicePreset,
   type PortDirection,
+  type SignalFlowPort,
 } from "@/lib/signal-flow-types";
+import {
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Loader2,
+  Cpu,
+} from "lucide-react";
 
 interface SignalFlowCanvasProps {
   data: SignalFlowData;
@@ -21,8 +36,7 @@ function uid() {
   return crypto.randomUUID();
 }
 
-function createDeviceFromPreset(presetIndex: number, x: number, y: number): SignalFlowDevice {
-  const preset = DEVICE_PRESETS[presetIndex];
+function createDeviceFromPreset(preset: DevicePreset, x: number, y: number): SignalFlowDevice {
   return {
     id: uid(),
     type: preset.type,
@@ -41,15 +55,6 @@ const PORT_SPACING_Y = 22;
 const PORT_START_Y = 36;
 const DEVICE_HEADER_HEIGHT = 34;
 
-function getPortPosition(device: SignalFlowDevice, portIndex: number, direction: PortDirection) {
-  const portsInDirection = device.ports.filter((p) => p.direction === direction);
-  const indexInDirection = portsInDirection.findIndex((p) => p.id === device.ports[portIndex]?.id);
-  if (indexInDirection < 0) return null;
-  const y = device.y + DEVICE_HEADER_HEIGHT + PORT_START_Y + indexInDirection * PORT_SPACING_Y;
-  const x = direction === "input" ? device.x : device.x + device.width;
-  return { x, y };
-}
-
 function getAllPortPositions(device: SignalFlowDevice) {
   const inputs = device.ports.filter((p) => p.direction === "input");
   const outputs = device.ports.filter((p) => p.direction === "output");
@@ -67,6 +72,36 @@ function getAllPortPositions(device: SignalFlowDevice) {
   };
 }
 
+interface SidebarItem {
+  preset: DevicePreset;
+  source: "default" | "database";
+}
+
+function groupPresetsByCategory(items: SidebarItem[]): Record<DeviceCategory, SidebarItem[]> {
+  const groups: Record<DeviceCategory, SidebarItem[]> = {
+    processor: [],
+    "media-server": [],
+    "led-screen": [],
+    power: [],
+    network: [],
+    other: [],
+  };
+  for (const item of items) {
+    const cat = PRESET_CATEGORY_MAP[item.preset.type] ?? "other";
+    groups[cat].push(item);
+  }
+  return groups;
+}
+
+const CATEGORY_ORDER: DeviceCategory[] = [
+  "processor",
+  "media-server",
+  "led-screen",
+  "power",
+  "network",
+  "other",
+];
+
 export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
@@ -80,13 +115,89 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
   } | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
-  const [addingPresetIndex, setAddingPresetIndex] = useState<number | null>(null);
+  const [activePreset, setActivePreset] = useState<DevicePreset | null>(null);
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<DeviceCategory>>(new Set());
+  const [dbProcessors, setDbProcessors] = useState<SidebarItem[]>([]);
+  const [loadingProcessors, setLoadingProcessors] = useState(true);
+  const [showCustomDialog, setShowCustomDialog] = useState(false);
+
+  // Load processors from database
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoadingProcessors(true);
+      try {
+        const { data: rows, error } = await supabase
+          .from("processor_library")
+          .select("manufacturer, model_name, output_port_count, input_types, is_active")
+          .eq("is_active", true)
+          .order("manufacturer", { ascending: true });
+
+        if (cancelled) return;
+        if (error) {
+          setLoadingProcessors(false);
+          return;
+        }
+        if (rows && rows.length > 0) {
+          const items: SidebarItem[] = (rows as Record<string, unknown>[]).map((row) => ({
+            source: "database" as const,
+            preset: processorToDevicePreset(
+              row.manufacturer as string,
+              row.model_name as string,
+              Number(row.output_port_count) || 4,
+              (row.input_types as string) || null
+            ),
+          }));
+          setDbProcessors(items);
+        }
+      } catch {
+        // ignore — defaults still available
+      } finally {
+        if (!cancelled) setLoadingProcessors(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Build the full sidebar item list: DB processors + default presets (deduped by name for processors)
+  const sidebarItems: SidebarItem[] = [
+    ...dbProcessors,
+    ...DEVICE_PRESETS
+      .filter((p) => {
+        if (p.type !== "processor") return true;
+        // Only include default "LED Processor" if no DB processors loaded
+        return dbProcessors.length === 0;
+      })
+      .map((p) => ({ preset: p, source: "default" as const })),
+  ];
+
+  const groupedItems = groupPresetsByCategory(sidebarItems);
 
   const update = useCallback(
     (updater: (prev: SignalFlowData) => SignalFlowData) => {
       onChange(updater(data));
     },
     [data, onChange]
+  );
+
+  // Place a device in the center of the visible canvas
+  const placeDeviceInCenter = useCallback(
+    (preset: DevicePreset) => {
+      if (!canvasRef.current) return;
+      const rect = canvasRef.current.getBoundingClientRect();
+      const scrollLeft = canvasRef.current.scrollLeft;
+      const scrollTop = canvasRef.current.scrollTop;
+      const visibleCenterX = scrollLeft + rect.width / 2;
+      const visibleCenterY = scrollTop + rect.height / 2;
+      const x = visibleCenterX - preset.width / 2;
+      const y = visibleCenterY - preset.height / 2;
+      const newDevice = createDeviceFromPreset(preset, Math.max(0, x), Math.max(0, y));
+      update((prev) => ({ ...prev, devices: [...prev.devices, newDevice] }));
+      setSelectedDeviceId(newDevice.id);
+      setSelectedConnectionId(null);
+    },
+    [update]
   );
 
   // Handle device dragging
@@ -133,21 +244,10 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
       setSelectedConnectionId(null);
       setConnectingFrom(null);
     }
-    // If we're in "add device" mode
-    if (addingPresetIndex !== null && canvasRef.current) {
-      const rect = canvasRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left - DEVICE_PRESETS[addingPresetIndex].width / 2;
-      const y = e.clientY - rect.top - 30;
-      const newDevice = createDeviceFromPreset(addingPresetIndex, x, y);
-      update((prev) => ({ ...prev, devices: [...prev.devices, newDevice] }));
-      setAddingPresetIndex(null);
-      setSelectedDeviceId(newDevice.id);
-    }
   };
 
   const handleDeviceMouseDown = (e: MouseEvent, device: SignalFlowDevice) => {
     if (connectingFrom) return;
-    if (addingPresetIndex !== null) return;
     e.stopPropagation();
     setSelectedDeviceId(device.id);
     setSelectedConnectionId(null);
@@ -169,7 +269,6 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
   ) => {
     e.stopPropagation();
     if (connectingFrom) {
-      // Complete the connection
       if (connectingFrom.deviceId === device.id && connectingFrom.portId === portId) {
         setConnectingFrom(null);
         return;
@@ -181,7 +280,6 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
         setConnectingFrom(null);
         return;
       }
-      // Determine cable type from the output port (prefer output → input direction)
       const cableType = fromPort.direction === "output" ? fromPort.portType : toPort.portType;
       const newConn: SignalFlowConnection = {
         id: uid(),
@@ -195,7 +293,6 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
       update((prev) => ({ ...prev, connections: [...prev.connections, newConn] }));
       setConnectingFrom(null);
     } else {
-      // Start a connection
       setConnectingFrom({ deviceId: device.id, portId, x: portX, y: portY });
     }
   };
@@ -226,11 +323,11 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
     }
   };
 
-  // Keyboard delete
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setConnectingFrom(null);
+        setActivePreset(null);
         return;
       }
       if ((e.key === "Delete" || e.key === "Backspace") && (selectedDeviceId || selectedConnectionId)) {
@@ -261,7 +358,6 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
     return ct?.name ?? "Custom";
   };
 
-  // Calculate port positions for rendering connections
   const getConnPath = (conn: SignalFlowConnection) => {
     const fromDevice = data.devices.find((d) => d.id === conn.fromDeviceId);
     const toDevice = data.devices.find((d) => d.id === conn.toDeviceId);
@@ -280,7 +376,7 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
     const midX = (fromPoint.x + toPoint.x) / 2;
 
     return {
-      d: `M ${fromPoint.x} ${fromPoint.y} C ${midX} ${fromPoint.y}, ${midX} ${toPoint.y}, ${toPoint.x} ${toPoint.y}`, 
+      d: `M ${fromPoint.x} ${fromPoint.y} C ${midX} ${fromPoint.y}, ${midX} ${toPoint.y}, ${toPoint.x} ${toPoint.y}`,
       fromX: fromPoint.x,
       fromY: fromPoint.y,
       toX: toPoint.x,
@@ -290,33 +386,89 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
     };
   };
 
+  const toggleCategory = (cat: DeviceCategory) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  };
+
   return (
     <div className="flex h-full w-full overflow-hidden">
       {/* Device palette sidebar */}
-      <div className="w-52 flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden">
+      <div className="w-60 flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden">
         <div className="p-3 border-b">
           <h3 className="text-sm font-semibold">Devices</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Click a device, then click the canvas to place it.</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Click a device to add it to the canvas center.</p>
         </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
-          {DEVICE_PRESETS.map((preset, i) => (
+        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+          {loadingProcessors && (
+            <div className="flex items-center justify-center py-4 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <span className="text-xs">Loading devices…</span>
+            </div>
+          )}
+          {!loadingProcessors &&
+            CATEGORY_ORDER.map((cat) => {
+              const items = groupedItems[cat];
+              if (items.length === 0) return null;
+              const isCollapsed = collapsedCategories.has(cat);
+              const info = CATEGORY_INFO[cat];
+              return (
+                <div key={cat} className="space-y-0.5">
+                  <button
+                    onClick={() => toggleCategory(cat)}
+                    className="w-full flex items-center gap-1.5 px-1.5 py-1.5 rounded-md hover:bg-muted transition-colors"
+                  >
+                    {isCollapsed ? (
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                    )}
+                    <div
+                      className="w-2.5 h-2.5 rounded-sm flex-shrink-0 border border-white/20"
+                      style={{ backgroundColor: info.color }}
+                    />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {info.label}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground/60 ml-auto">{items.length}</span>
+                  </button>
+                  {!isCollapsed && (
+                    <div className="space-y-0.5 pl-1">
+                      {items.map((item, i) => (
+                        <button
+                          key={`${cat}-${i}`}
+                          onClick={() => placeDeviceInCenter(item.preset)}
+                          className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-muted text-foreground group"
+                        >
+                          <div
+                            className="w-3 h-3 rounded-sm flex-shrink-0 border border-white/20"
+                            style={{ backgroundColor: item.preset.color }}
+                          />
+                          <span className="truncate flex-1">{item.preset.name}</span>
+                          {item.source === "database" && (
+                            <Cpu className="h-3 w-3 text-muted-foreground/50 flex-shrink-0" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          {/* Custom device button */}
+          <div className="pt-2 mt-2 border-t">
             <button
-              key={preset.type}
-              onClick={() => setAddingPresetIndex(addingPresetIndex === i ? null : i)}
-              className={cn(
-                "w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors border",
-                addingPresetIndex === i
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-transparent hover:bg-muted text-foreground"
-              )}
+              onClick={() => setShowCustomDialog(true)}
+              className="w-full flex items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm border border-dashed border-primary/30 hover:border-primary/50 hover:bg-primary/5 text-primary transition-colors"
             >
-              <div
-                className="w-3 h-3 rounded-sm flex-shrink-0 border border-white/20"
-                style={{ backgroundColor: preset.color }}
-              />
-              <span className="truncate">{preset.name}</span>
+              <Plus className="h-4 w-4 flex-shrink-0" />
+              <span>Add Custom Device</span>
             </button>
-          ))}
+          </div>
         </div>
         {/* Cable legend */}
         <div className="border-t p-3 space-y-1.5">
@@ -335,7 +487,6 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
         ref={canvasRef}
         className="flex-1 relative overflow-auto bg-[#0a0a0a]"
         style={{
-          cursor: addingPresetIndex !== null ? "crosshair" : "default",
           backgroundImage:
             "radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)",
           backgroundSize: "24px 24px",
@@ -352,7 +503,6 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
               const isSelected = conn.id === selectedConnectionId;
               return (
                 <g key={conn.id} className="pointer-events-auto cursor-pointer" onClick={(e) => handleConnectionClick(e, conn.id)}>
-                  {/* Invisible wider path for easier clicking */}
                   <path d={path.d} fill="none" stroke="transparent" strokeWidth={16} />
                   <path
                     d={path.d}
@@ -360,7 +510,6 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
                     stroke={color}
                     strokeWidth={isSelected ? 4 : 2.5}
                     opacity={isSelected ? 1 : 0.8}
-                    strokeDasharray={isSelected ? "0" : "0"}
                   />
                   {conn.label && (
                     <text
@@ -378,7 +527,6 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
                 </g>
               );
             })}
-            {/* Pending connection line */}
             {connectingFrom && (
               <path
                 d={`M ${connectingFrom.x} ${connectingFrom.y} C ${connectingFrom.x + 60} ${connectingFrom.y}, ${mousePos.x - 60} ${mousePos.y}, ${mousePos.x} ${mousePos.y}`}
@@ -412,7 +560,6 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
                 }}
                 onMouseDown={(e) => handleDeviceMouseDown(e, device)}
               >
-                {/* Device header */}
                 <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 rounded-t-lg" style={{ backgroundColor: "rgba(0,0,0,0.2)" }}>
                   {isSelected ? (
                     <input
@@ -428,9 +575,8 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
                   <span className="text-[9px] text-white/50 uppercase tracking-wider flex-shrink-0">{device.type}</span>
                 </div>
 
-                {/* Ports */}
                 <div className="relative" style={{ height: device.height - 34 }}>
-                  {positions.inputs.map((p, i) => {
+                  {positions.inputs.map((p) => {
                     const absY = p.y - device.y;
                     return (
                       <div key={p.port.id} className="absolute flex items-center" style={{ left: -PORT_RADIUS, top: absY - DEVICE_HEADER_HEIGHT - PORT_RADIUS }}>
@@ -449,7 +595,7 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
                       </div>
                     );
                   })}
-                  {positions.outputs.map((p, i) => {
+                  {positions.outputs.map((p) => {
                     const absY = p.y - device.y;
                     return (
                       <div key={p.port.id} className="absolute flex items-center justify-end" style={{ right: -PORT_RADIUS, top: absY - DEVICE_HEADER_HEIGHT - PORT_RADIUS }}>
@@ -478,9 +624,7 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-center space-y-2">
                 <p className="text-muted-foreground text-sm">
-                  {addingPresetIndex !== null
-                    ? "Click anywhere on the canvas to place the device."
-                    : "Select a device from the left panel to start building your signal flow."}
+                  Select a device from the left panel to start building your signal flow.
                 </p>
               </div>
             </div>
@@ -649,6 +793,155 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
           })()}
         </div>
       )}
+
+      {/* Custom Device Dialog */}
+      {showCustomDialog && (
+        <CustomDeviceDialog
+          cableTypes={data.cableTypes}
+          onCancel={() => setShowCustomDialog(false)}
+          onCreate={(preset) => {
+            setShowCustomDialog(false);
+            placeDeviceInCenter(preset);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Custom Device Dialog ───────────────────────────────────────────────────
+
+interface CustomPortRow {
+  label: string;
+  direction: PortDirection;
+  portType: string;
+}
+
+function CustomDeviceDialog({
+  cableTypes,
+  onCancel,
+  onCreate,
+}: {
+  cableTypes: { id: string; name: string; color: string }[];
+  onCancel: () => void;
+  onCreate: (preset: DevicePreset) => void;
+}) {
+  const [name, setName] = useState("");
+  const [ports, setPorts] = useState<CustomPortRow[]>([
+    { label: "IN", direction: "input", portType: "custom" },
+    { label: "OUT", direction: "output", portType: "custom" },
+  ]);
+
+  const addPort = () => {
+    setPorts((prev) => [...prev, { label: `PORT ${prev.length + 1}`, direction: "output", portType: "custom" }]);
+  };
+
+  const removePort = (index: number) => {
+    setPorts((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updatePort = (index: number, field: keyof CustomPortRow, value: string) => {
+    setPorts((prev) =>
+      prev.map((p, i) => (i === index ? { ...p, [field]: value } : p))
+    );
+  };
+
+  const handleCreate = () => {
+    const presetPorts: Omit<SignalFlowPort, "id">[] = ports.map((p) => ({
+      label: p.label || "PORT",
+      direction: p.direction,
+      portType: p.portType,
+    }));
+    const preset = customDevicePreset(name.trim(), presetPorts);
+    onCreate(preset);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onCancel}>
+      <div
+        className="bg-background rounded-lg border shadow-xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-4 py-3 border-b">
+          <h3 className="text-sm font-semibold">Add Custom Device</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Define a device with custom inputs and outputs.</p>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Device Name</label>
+            <input
+              className="w-full rounded-md border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary"
+              placeholder="e.g. Millumin"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-muted-foreground">Ports</label>
+              <button
+                className="text-xs text-primary hover:underline"
+                onClick={addPort}
+              >
+                + Add Port
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              {ports.map((port, i) => (
+                <div key={i} className="flex items-center gap-1.5">
+                  <input
+                    className="flex-1 min-w-0 rounded-md border bg-background px-2 py-1 text-xs outline-none focus:border-primary"
+                    placeholder="Port label"
+                    value={port.label}
+                    onChange={(e) => updatePort(i, "label", e.target.value)}
+                  />
+                  <select
+                    className="rounded-md border bg-background px-1.5 py-1 text-xs outline-none"
+                    value={port.direction}
+                    onChange={(e) => updatePort(i, "direction", e.target.value)}
+                  >
+                    <option value="input">IN</option>
+                    <option value="output">OUT</option>
+                  </select>
+                  <select
+                    className="rounded-md border bg-background px-1.5 py-1 text-xs outline-none"
+                    value={port.portType}
+                    onChange={(e) => updatePort(i, "portType", e.target.value)}
+                  >
+                    {cableTypes.map((ct) => (
+                      <option key={ct.id} value={ct.id}>
+                        {ct.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="text-muted-foreground hover:text-destructive px-1"
+                    onClick={() => removePort(i)}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 px-4 py-3 border-t">
+          <button
+            className="px-3 py-1.5 text-sm rounded-md hover:bg-muted transition-colors"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-3 py-1.5 text-sm rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            onClick={handleCreate}
+            disabled={!name.trim()}
+          >
+            Add to Canvas
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

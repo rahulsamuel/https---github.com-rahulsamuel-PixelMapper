@@ -8,6 +8,34 @@ export type DeviceType =
   | "distribution"
   | "custom";
 
+export type DeviceCategory =
+  | "processor"
+  | "media-server"
+  | "led-screen"
+  | "power"
+  | "network"
+  | "other";
+
+export const CATEGORY_INFO: Record<DeviceCategory, { label: string; color: string }> = {
+  processor: { label: "LED Processors", color: "#1e3a5f" },
+  "media-server": { label: "Media Servers", color: "#7c2d12" },
+  "led-screen": { label: "LED Screens", color: "#0d9488" },
+  power: { label: "Power", color: "#b45309" },
+  network: { label: "Network", color: "#1e40af" },
+  other: { label: "Other", color: "#475569" },
+};
+
+export const PRESET_CATEGORY_MAP: Record<DeviceType, DeviceCategory> = {
+  processor: "processor",
+  "media-server": "media-server",
+  "led-screen": "led-screen",
+  "power-supply": "power",
+  "network-switch": "network",
+  matrix: "other",
+  distribution: "other",
+  custom: "other",
+};
+
 export type PortDirection = "input" | "output";
 
 export interface SignalFlowPort {
@@ -181,3 +209,60 @@ export const DEVICE_PRESETS: DevicePreset[] = [
     ],
   },
 ];
+
+export function processorToDevicePreset(
+  manufacturer: string,
+  modelName: string,
+  outputPortCount: number,
+  inputTypes?: string | null
+): DevicePreset {
+  const inputs: Omit<SignalFlowPort, "id">[] = [];
+  if (inputTypes) {
+    const types = inputTypes.split(",").map((t) => t.trim()).filter(Boolean);
+    for (const t of types) {
+      const lower = t.toLowerCase();
+      const portType = lower.includes("hdmi") ? "hdmi" : lower.includes("sdi") ? "sdi" : lower.includes("dvi") ? "dvi" : lower.includes("fiber") ? "fiber" : "custom";
+      inputs.push({ label: t.toUpperCase(), direction: "input", portType });
+    }
+  }
+  if (inputs.length === 0) {
+    inputs.push({ label: "HDMI IN", direction: "input", portType: "hdmi" });
+    inputs.push({ label: "SDI IN", direction: "input", portType: "sdi" });
+  }
+
+  const outputCount = Math.max(1, outputPortCount);
+  const outputs: Omit<SignalFlowPort, "id">[] = [];
+  for (let i = 1; i <= outputCount; i++) {
+    outputs.push({ label: `OUT ${i}`, direction: "output", portType: "rj45" });
+  }
+
+  const portCount = inputs.length + outputs.length;
+  const height = Math.max(120, 34 + 36 + portCount * 22);
+
+  return {
+    type: "processor",
+    name: `${manufacturer} ${modelName}`.trim(),
+    color: "#1e3a5f",
+    width: 200,
+    height,
+    ports: [...inputs, ...outputs],
+  };
+}
+
+export function customDevicePreset(
+  name: string,
+  ports: Omit<SignalFlowPort, "id">[]
+): DevicePreset {
+  const height = Math.max(100, 34 + 36 + ports.length * 22);
+  return {
+    type: "custom",
+    name: name || "Custom Device",
+    color: "#475569",
+    width: 180,
+    height,
+    ports: ports.length > 0 ? ports : [
+      { label: "IN", direction: "input", portType: "custom" },
+      { label: "OUT", direction: "output", portType: "custom" },
+    ],
+  };
+}
