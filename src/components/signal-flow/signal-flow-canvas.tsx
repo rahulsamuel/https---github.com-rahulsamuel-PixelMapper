@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase/client";
 import {
   DEVICE_PRESETS,
-  DEFAULT_CABLE_TYPES,
   CATEGORY_INFO,
   PRESET_CATEGORY_MAP,
   processorToDevicePreset,
@@ -13,7 +12,6 @@ import {
   type SignalFlowDevice,
   type SignalFlowConnection,
   type SignalFlowData,
-  type DeviceType,
   type DeviceCategory,
   type DevicePreset,
   type PortDirection,
@@ -33,7 +31,14 @@ interface SignalFlowCanvasProps {
 }
 
 function uid() {
-  return crypto.randomUUID();
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      // not in secure context — fall through
+    }
+  }
+  return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function createDeviceFromPreset(preset: DevicePreset, x: number, y: number): SignalFlowDevice {
@@ -115,7 +120,6 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
   } | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
-  const [activePreset, setActivePreset] = useState<DevicePreset | null>(null);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<DeviceCategory>>(new Set());
   const [dbProcessors, setDbProcessors] = useState<SidebarItem[]>([]);
   const [loadingProcessors, setLoadingProcessors] = useState(true);
@@ -327,7 +331,6 @@ export function SignalFlowCanvas({ data, onChange }: SignalFlowCanvasProps) {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setConnectingFrom(null);
-        setActivePreset(null);
         return;
       }
       if ((e.key === "Delete" || e.key === "Backspace") && (selectedDeviceId || selectedConnectionId)) {
