@@ -398,6 +398,7 @@ export interface ProjectData {
   rackDrawing?: RackDrawingTabData;
   gear?: GearConfig;
   wallLayoutLegend?: WallLayoutLegendEntry[];
+  deliverablesScreenIds?: string[];
 }
 
 interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nextTileId' | 'moduleColors' | 'outputCount' | 'outputResolutionPreset' | 'outputResolutionWidth' | 'outputResolutionHeight'> {
@@ -606,6 +607,8 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   updateSection: (id: string, patch: Partial<ScreenSection>) => void;
   removeSection: (id: string) => void;
   effectiveScreenWidthFromSections: number;
+  deliverablesScreenIds: string[];
+  setDeliverablesScreenIds: Dispatch<SetStateAction<string[]>>;
 }
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
@@ -817,6 +820,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [samplingRate, setSamplingRate] = useState("48 kHz");
   const [audioBitRate, setAudioBitRate] = useState("24-bit");
   const [imageFormat, setImageFormat] = useState("PNG");
+  const [deliverablesScreenIds, setDeliverablesScreenIds] = useState<string[]>([]);
 
   const addUploadedMap = (dataUri: string) => setUploadedMaps(prev => [...prev, dataUri]);
   const removeUploadedMap = (index: number) => setUploadedMaps(prev => prev.filter((_, i) => i !== index));
@@ -3510,8 +3514,9 @@ const handleRightHalfTileChange = (add: boolean) => {
       rackDrawing,
       gear,
       wallLayoutLegend,
+      deliverablesScreenIds,
     };
-  }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioFormat, audioEmbedded, samplingRate, audioBitRate, imageFormat, rasterMapConfigs, rasterGroups, activeRasterGroupId, rasterBgColor, uploadedMaps, includeTextOverlaysInDownload]);
+  }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioFormat, audioEmbedded, samplingRate, audioBitRate, imageFormat, rasterMapConfigs, rasterGroups, activeRasterGroupId, rasterBgColor, uploadedMaps, includeTextOverlaysInDownload, deliverablesScreenIds]);
 
   const loadProjectData = useCallback((data: ProjectData) => {
     let maxId = 0;
@@ -3589,6 +3594,9 @@ const handleRightHalfTileChange = (add: boolean) => {
     }
     if (data.wallLayoutLegend) {
       setWallLayoutLegend(data.wallLayoutLegend);
+    }
+    if (data.deliverablesScreenIds) {
+      setDeliverablesScreenIds(data.deliverablesScreenIds);
     }
   }, []);
 
@@ -3704,6 +3712,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     setVersionNumber("1.0");
     setProjectNotes("");
     setUploadedMaps([]);
+    setDeliverablesScreenIds([]);
     toast({ title: "New Project", description: "Started a new project. Use Undo to bring back your previous work." });
   }, [toast]);
 
@@ -4498,6 +4507,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     updateSection,
     removeSection,
     effectiveScreenWidthFromSections,
+    deliverablesScreenIds,
+    setDeliverablesScreenIds,
   };
 
   return (

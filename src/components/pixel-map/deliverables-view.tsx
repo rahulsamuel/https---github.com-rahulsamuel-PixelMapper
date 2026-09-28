@@ -91,12 +91,33 @@ export function DeliverablesView() {
     rasterMapConfigs,
     createScreenContentCanvas,
     includeTextOverlaysInDownload,
+    deliverablesScreenIds,
+    setDeliverablesScreenIds,
   } = usePixelMap();
 
   const { toast } = useToast();
   const contentRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [pixelMapImages, setPixelMapImages] = useState<Record<string, string>>({});
+  const [showScreenSelector, setShowScreenSelector] = useState(false);
+
+  const selectedScreens = useMemo(() => {
+    if (deliverablesScreenIds.length === 0) return screens;
+    return screens.filter(s => deliverablesScreenIds.includes(s.id));
+  }, [screens, deliverablesScreenIds]);
+
+  const toggleScreenInclusion = (screenId: string) => {
+    setDeliverablesScreenIds(prev =>
+      prev.length === 0
+        ? screens.filter(s => s.id !== screenId).map(s => s.id)
+        : prev.includes(screenId)
+          ? prev.filter(id => id !== screenId)
+          : [...prev, screenId]
+    );
+  };
+
+  const selectAllScreens = () => setDeliverablesScreenIds([]);
+  const deselectAllScreens = () => setDeliverablesScreenIds(screens.map(s => s.id));
 
   const safeFileName = useMemo(() => {
     const name = (projectName || currentScreen.name || 'Untitled').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -109,7 +130,7 @@ export function DeliverablesView() {
   useEffect(() => {
     const generatePreviews = () => {
       const images: Record<string, string> = {};
-      for (const screen of screens) {
+      for (const screen of selectedScreens) {
         const rasterConfig = rasterMapConfigs?.[screen.rasterGroupId ?? 'raster-1'];
         const arrangement = rasterConfig?.screenArrangement?.find(a => a.screenId === screen.id);
         const bounds = arrangement?.activeBounds ?? null;
@@ -121,10 +142,10 @@ export function DeliverablesView() {
       setPixelMapImages(images);
     };
     generatePreviews();
-  }, [screens, rasterMapConfigs, createScreenContentCanvas, includeTextOverlaysInDownload]);
+  }, [selectedScreens, rasterMapConfigs, createScreenContentCanvas, includeTextOverlaysInDownload]);
 
   const screenData = useMemo(() => {
-    return screens.map((screen, idx) => {
+    return selectedScreens.map((screen, idx) => {
       const activeTileCount = screen.tiles.filter(t => !t.deleted).length;
       const effectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
       const hasSections = screen.sections.length > 0;
@@ -188,11 +209,11 @@ export function DeliverablesView() {
         physicalDimensions,
       };
     });
-  }, [screens, products, projectNumber, projectName, versionNumber, videoContainer, pixelMapImages]);
+  }, [selectedScreens, products, projectNumber, projectName, versionNumber, videoContainer, pixelMapImages]);
 
   // Per-screen output info derived from user-selected output count and resolution
   const screenOutputs = useMemo(() => {
-    return screens.map(screen => {
+    return selectedScreens.map(screen => {
       const count = screen.outputCount ?? 1;
       const preset = screen.outputResolutionPreset ?? 'content';
       let resLabel = 'Match Content';
@@ -206,7 +227,7 @@ export function DeliverablesView() {
       }
       return { screenName: screen.name, outputCount: count, resolutionLabel: resLabel };
     });
-  }, [screens]);
+  }, [selectedScreens]);
 
   const handleDownloadPdf = useCallback(async () => {
     if (!contentRef.current) return;
@@ -273,6 +294,9 @@ export function DeliverablesView() {
   return (
     <div className="w-[1000px] space-y-6 pb-20" style={{ background: '#E2E8F0' }}>
       <div className="flex justify-end gap-3 mb-2 no-print">
+        <Button variant="outline" size="sm" onClick={() => setShowScreenSelector(v => !v)}>
+          <Monitor className="size-4 mr-2" /> Screens ({selectedScreens.length}/{screens.length})
+        </Button>
         <Button variant="outline" size="sm" onClick={handleDownloadHtml}>
           <FileCode className="size-4 mr-2" /> Export HTML
         </Button>
@@ -283,6 +307,37 @@ export function DeliverablesView() {
           <Printer className="size-4 mr-2" /> Print
         </Button>
       </div>
+
+      {showScreenSelector && (
+        <div className="no-print rounded-xl border bg-white p-6 mb-4 shadow-sm" style={{ background: '#FFFFFF' }}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="font-headline text-sm font-bold text-slate-800">Screens in Content Deliverables</h3>
+              <p className="text-xs text-slate-500 mt-1">Select which screens to include in the deliverables report. Unchecked screens are hidden from all sections.</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" onClick={selectAllScreens} className="text-xs">Select All</Button>
+              <Button variant="ghost" size="sm" onClick={deselectAllScreens} className="text-xs">Deselect All</Button>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {screens.map(screen => {
+              const included = deliverablesScreenIds.length === 0 || deliverablesScreenIds.includes(screen.id);
+              return (
+                <label key={screen.id} className="flex items-center gap-3 rounded-lg border border-slate-200 px-4 py-3 cursor-pointer hover:bg-slate-50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={included}
+                    onChange={() => toggleScreenInclusion(screen.id)}
+                    className="size-4 rounded border-slate-300"
+                  />
+                  <span className="text-sm font-medium text-slate-700">{screen.name}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div ref={contentRef} className="rounded-2xl overflow-hidden" style={{ background: '#CBD5E1' }}>
         <div className="max-w-[900px] mx-auto bg-white rounded-2xl overflow-hidden">
@@ -302,7 +357,7 @@ export function DeliverablesView() {
             <div className="grid grid-cols-3 gap-6 pt-6 border-t border-slate-700">
               <HeaderField label="Project Number" value={projectNumber || 'Unassigned'} />
               <HeaderField label="Revision" value={`v${versionNumber || '1.0'}`} />
-              <HeaderField label="Total Screens" value={String(screens.length)} />
+              <HeaderField label="Total Screens" value={String(selectedScreens.length)} />
             </div>
           </div>
 
