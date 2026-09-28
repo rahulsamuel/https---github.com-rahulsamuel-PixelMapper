@@ -31,6 +31,7 @@ const navItems = [
   { href: '/calculator',   label: 'LED Calculator' },
   { href: '/power-data',   label: 'Power & Data' },
   { href: '/rack-drawing', label: 'Rack Drawing' },
+  { href: '/signal-flow',   label: 'Signal Flow' },
   { href: '/pre-visual',   label: 'Pre-Visual' },
 ];
 

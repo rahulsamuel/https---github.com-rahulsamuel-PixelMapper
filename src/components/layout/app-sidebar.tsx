@@ -8,6 +8,7 @@ import {
   Calculator,
   Zap,
   Server,
+  Cable,
   Box,
   LogOut,
   User,
@@ -39,6 +40,7 @@ const navItems = [
   { href: "/calculator", label: "LED Calculator", icon: Calculator },
   { href: "/power-data", label: "Power & Data", icon: Zap },
   { href: "/rack-drawing", label: "Rack Drawing", icon: Server },
+  { href: "/signal-flow", label: "Signal Flow", icon: Cable },
   { href: "/pre-visual", label: "Pre-Visual", icon: Box },
 ];
 
