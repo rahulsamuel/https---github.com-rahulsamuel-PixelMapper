@@ -10,7 +10,6 @@ import {
   PRESET_CATEGORY_MAP,
   CABLE_TYPE_NAMES,
   checkPortCompatibility,
-  processorToDevicePreset,
   customDevicePreset,
   type SignalFlowDevice,
   type SignalFlowConnection,
@@ -134,7 +133,6 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<DeviceCategory>>(new Set());
-  const [dbProcessors, setDbProcessors] = useState<SidebarItem[]>([]);
   const [dbDevices, setDbDevices] = useState<SidebarItem[]>([]);
   const [loadingProcessors, setLoadingProcessors] = useState(true);
   const [showCustomDialog, setShowCustomDialog] = useState(false);
@@ -147,33 +145,12 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
   const zoomOut = () => setZoom((z) => Math.max(z - 0.1, 0.3));
   const zoomReset = () => setZoom(1);
 
-  // Load processors + signal flow devices from database
+  // Load signal flow devices from database
   useEffect(() => {
     let cancelled = false;
     async function load() {
       setLoadingProcessors(true);
       try {
-        // Load processor_library
-        const { data: procRows, error: procErr } = await supabase
-          .from("processor_library")
-          .select("manufacturer, model_name, output_port_count, input_types, is_active")
-          .eq("is_active", true)
-          .order("manufacturer", { ascending: true });
-
-        if (cancelled) return;
-        if (!procErr && procRows && procRows.length > 0) {
-          const procItems: SidebarItem[] = (procRows as Record<string, unknown>[]).map((row) => ({
-            source: "database" as const,
-            preset: processorToDevicePreset(
-              row.manufacturer as string,
-              row.model_name as string,
-              Number(row.output_port_count) || 4,
-              (row.input_types as string) || null
-            ),
-          }));
-          setDbProcessors(procItems);
-        }
-
         // Load signal_flow_devices (admin-managed library)
         const { data: devRows, error: devErr } = await supabase
           .from("signal_flow_devices")
@@ -207,7 +184,7 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
   }, []);
 
   // Database entries take priority over built-in presets with the same name and type.
-  const databaseItems = [...dbProcessors, ...dbDevices];
+  const databaseItems = [...dbDevices];
   const databaseKeys = new Set(
     databaseItems.map(({ preset }) => `${preset.type}:${preset.name.trim().toLowerCase()}`)
   );

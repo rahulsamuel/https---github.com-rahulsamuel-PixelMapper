@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,14 +24,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, Loader2, Cable, Cpu, Search, X, ChevronDown, ChevronRight, Upload, Sparkles } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Cable, Search, X, ChevronDown, ChevronRight, Upload, Sparkles } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import {
   CATEGORY_INFO,
   PRESET_CATEGORY_MAP,
   DEFAULT_CABLE_TYPES,
   CABLE_TYPE_NAMES,
-  processorToDevicePreset,
   type DeviceType,
   type DeviceCategory,
   type DevicePreset,
@@ -59,15 +57,6 @@ interface DBCategory {
   name: string;
   color: string;
   sort_order: number;
-  is_active: boolean;
-}
-
-interface ProcessorLibraryItem {
-  id: string;
-  manufacturer: string;
-  model_name: string;
-  output_port_count: number;
-  input_types: string | null;
   is_active: boolean;
 }
 
@@ -266,32 +255,6 @@ function DeviceForm({
   );
 }
 
-function ProcessorLibraryCard({ processor }: { processor: ProcessorLibraryItem }) {
-  const preset = processorToDevicePreset(
-    processor.manufacturer,
-    processor.model_name,
-    processor.output_port_count,
-    processor.input_types
-  );
-
-  return (
-    <div className="rounded-lg border bg-card overflow-hidden">
-      <div className="flex items-stretch gap-3 p-3">
-        <div className="w-12 h-12 rounded-md shrink-0 border flex items-center justify-center bg-[#1e3a5f]">
-          <Cpu className="w-5 h-5 text-white/80" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <span className="text-sm font-semibold truncate block">{processor.manufacturer} {processor.model_name}</span>
-          <p className="text-xs text-muted-foreground truncate">processor · {preset.ports.length} ports</p>
-          <Badge variant={processor.is_active ? 'default' : 'secondary'} className="text-[9px] py-0 px-1.5 mt-1.5">
-            {processor.is_active ? 'Active' : 'Hidden'} · Processor Library
-          </Badge>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function DeviceCard({
   device,
   onEdit,
@@ -336,7 +299,6 @@ function DeviceCard({
 export function SignalFlowDeviceAdmin() {
   const { isAdmin, loading: authLoading } = useAuth();
   const [devices, setDevices] = useState<DBDevice[]>([]);
-  const [processorLibrary, setProcessorLibrary] = useState<ProcessorLibraryItem[]>([]);
   const [categories, setCategories] = useState<DBCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -366,19 +328,12 @@ export function SignalFlowDeviceAdmin() {
         .select('*')
         .order('sort_order', { ascending: true });
 
-      const { data: processors, error: processorErr } = await supabase
-        .from('processor_library')
-        .select('id, manufacturer, model_name, output_port_count, input_types, is_active')
-        .order('manufacturer', { ascending: true })
-        .order('model_name', { ascending: true });
-
-      if (devErr || catErr || processorErr) {
+      if (devErr || catErr) {
         setLoading(false);
         return;
       }
       setDevices((devs as DBDevice[]) ?? []);
       setCategories((cats as DBCategory[]) ?? []);
-      setProcessorLibrary((processors as ProcessorLibraryItem[]) ?? []);
     } catch {
       // ignore
     } finally {
@@ -415,15 +370,6 @@ export function SignalFlowDeviceAdmin() {
   }, {});
 
   const groupKeys = Object.keys(grouped).sort();
-
-  const filteredProcessors = processorLibrary.filter(p => {
-    if (search.trim()) {
-      const q = search.toLowerCase().trim();
-      const full = `${p.manufacturer} ${p.model_name}`.toLowerCase();
-      if (!full.includes(q)) return false;
-    }
-    return true;
-  });
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -597,7 +543,6 @@ export function SignalFlowDeviceAdmin() {
 
       <div className="text-xs text-muted-foreground">
         Showing {filtered.length} of {devices.length} devices
-        {processorLibrary.length > 0 && ` · ${filteredProcessors.length} of ${processorLibrary.length} processor library items`}
       </div>
 
       {filtered.length === 0 && (
@@ -640,28 +585,6 @@ export function SignalFlowDeviceAdmin() {
           );
         })}
       </div>
-
-      {/* Processor Library section (read-only, managed in Processors admin) */}
-      {filteredProcessors.length > 0 && (
-        <div className="mt-2">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold">Processor Library</h2>
-            <Link href="/admin/processors">
-              <Button variant="outline" size="sm">
-                <Cpu className="w-4 h-4 mr-1.5" /> Manage in Processors
-              </Button>
-            </Link>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            These processors appear in the Signal Flow sidebar. Edit them in the Processors admin page.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredProcessors.map(p => (
-              <ProcessorLibraryCard key={p.id} processor={p} />
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Custom categories list */}
       {categories.length > 0 && (
