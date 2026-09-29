@@ -45,6 +45,7 @@ import {
   Download,
   Trash2,
   Cable,
+  Lock,
 } from "lucide-react";
 
 const EMPTY_DATA: SignalFlowData = {
@@ -262,14 +263,58 @@ export default function SignalFlowPage() {
   }, [dirty, user, selectedProject, diagramData, diagram]);
 
   const canEdit = selectedProject?.isOwner ?? true;
+  const isGuest = !user;
 
-  if (!user) {
+  // Guests get a working canvas with local state only — no cloud features.
+  if (isGuest) {
     return (
-      <div className="h-[calc(100svh-3.5rem)] flex items-center justify-center">
-        <div className="text-center space-y-2">
-          <Cable className="h-10 w-10 text-muted-foreground/30 mx-auto" />
-          <p className="text-muted-foreground text-sm">Please sign in to use Signal Flow.</p>
+      <div className="flex flex-col h-[calc(100svh-3.5rem)] overflow-hidden">
+        {/* Guest banner */}
+        <div className="flex-shrink-0 border-b bg-amber-50 dark:bg-amber-950/30 px-3 py-1.5 flex items-center gap-2">
+          <Lock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+          <span className="text-xs text-amber-700 dark:text-amber-300">
+            You&apos;re using Signal Flow without an account. Changes won&apos;t be saved to the cloud.
+          </span>
+          <a href="/login" className="ml-auto text-xs font-semibold text-primary hover:underline">
+            Sign in to save
+          </a>
         </div>
+
+        {/* Toolbar (guest) */}
+        <div className="flex-shrink-0 border-b bg-background px-3 py-2 flex items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Cable className="h-3.5 w-3.5" />
+            <span>{diagramData.devices.length} devices · {diagramData.connections.length} cables</span>
+          </div>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" disabled={diagramData.devices.length === 0} className="ml-auto">
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                Clear
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear all devices?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This removes all devices and cables from the canvas.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleClear}>Clear</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+
+        {/* Canvas (guest) */}
+        <SignalFlowCanvas
+          data={diagramData}
+          onChange={handleDataChange}
+          onSave={() => {}}
+          saving={false}
+        />
       </div>
     );
   }
