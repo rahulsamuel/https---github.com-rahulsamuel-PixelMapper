@@ -140,8 +140,9 @@ export default function SignalFlowPage() {
       toast({ title: "Saved", description: "Signal flow diagram saved to cloud." });
       setDirty(false);
       lastSavedRef.current = JSON.stringify(diagramData);
-      // Refresh diagram id
-      loadDiagram(selectedProject.id);
+      // Fetch the diagram id without toggling loadingDiagram (avoids blanking canvas)
+      const { data: fresh } = await getSignalFlowDiagram(selectedProject.id);
+      if (fresh) setDiagram(fresh);
     }
   };
 

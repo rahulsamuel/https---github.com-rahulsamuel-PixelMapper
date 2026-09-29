@@ -29,6 +29,9 @@ import {
   Loader2,
   Cpu,
   AlertTriangle,
+  X,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 
 interface SignalFlowCanvasProps {
@@ -136,7 +139,13 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
   const [loadingProcessors, setLoadingProcessors] = useState(true);
   const [showCustomDialog, setShowCustomDialog] = useState(false);
   const [compatError, setCompatError] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [panelClosed, setPanelClosed] = useState(false);
   const { isAdmin } = useAuth();
+
+  const zoomIn = () => setZoom((z) => Math.min(z + 0.1, 2.5));
+  const zoomOut = () => setZoom((z) => Math.max(z - 0.1, 0.3));
+  const zoomReset = () => setZoom(1);
 
   // Load processors + signal flow devices from database
   useEffect(() => {
@@ -283,7 +292,6 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
 
   const handleCanvasClick = (e: MouseEvent) => {
     if (e.target === canvasRef.current) {
-      setSelectedDeviceId(null);
       setSelectedConnectionId(null);
       setConnectingFrom(null);
     }
@@ -294,6 +302,7 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
     e.stopPropagation();
     setSelectedDeviceId(device.id);
     setSelectedConnectionId(null);
+    setPanelClosed(false);
     if (!canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
     setDragOffset({
@@ -351,6 +360,7 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
     e.stopPropagation();
     setSelectedConnectionId(connId);
     setSelectedDeviceId(null);
+    setPanelClosed(false);
   };
 
   const deleteSelected = () => {
@@ -445,7 +455,7 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
   };
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
+    <div className="flex h-full w-full overflow-hidden relative">
       {/* Device palette sidebar */}
       <div className="w-60 flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden">
         <div className="p-3 border-b">
@@ -538,11 +548,17 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
         style={{
           backgroundImage:
             "radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)",
-          backgroundSize: "24px 24px",
+          backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
         }}
         onClick={handleCanvasClick}
+        onWheel={(e) => {
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            setZoom((z) => Math.max(0.3, Math.min(2.5, z - e.deltaY * 0.001)));
+          }
+        }}
       >
-        <div className="relative" style={{ minWidth: 2000, minHeight: 1400 }}>
+        <div className="relative" style={{ minWidth: 2000, minHeight: 1400, transform: `scale(${zoom})`, transformOrigin: "0 0" }}>
           {/* SVG layer for connections */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ overflow: "visible" }}>
             {data.connections.map((conn) => {
@@ -681,17 +697,52 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
         </div>
       </div>
 
-      {/* Properties panel */}
-      {(selectedDeviceId || selectedConnectionId) && (
-        <div className="w-80 flex-shrink-0 border-l bg-sidebar flex flex-col overflow-hidden">
+      {/* Zoom controls */}
+      <div className="absolute bottom-4 right-4 z-30 flex flex-col gap-1 bg-sidebar border rounded-lg shadow-lg p-1">
+        <button
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-muted transition-colors"
+          onClick={zoomIn}
+          title="Zoom in"
+        >
+          <ZoomIn className="w-4 h-4" />
+        </button>
+        <button
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-muted transition-colors text-xs font-medium"
+          onClick={zoomReset}
+          title="Reset zoom"
+        >
+          {Math.round(zoom * 100)}%
+        </button>
+        <button
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-muted transition-colors"
+          onClick={zoomOut}
+          title="Zoom out"
+        >
+          <ZoomOut className="w-4 h-4" />
+        </button>
+      </div>
+      {((selectedDeviceId || selectedConnectionId) && !panelClosed) && (
+        <div className="w-64 flex-shrink-0 border-l bg-sidebar flex flex-col overflow-hidden">
           {selectedDeviceId && (() => {
             const device = data.devices.find((d) => d.id === selectedDeviceId);
             if (!device) return null;
             return (
               <div className="p-4 space-y-4">
-                <div>
-                  <h3 className="text-sm font-semibold">Device Properties</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Rename the device, then save your changes.</p>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold">Device Properties</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Rename the device, then save.</p>
+                  </div>
+                  <button
+                    className="text-muted-foreground hover:text-foreground flex-shrink-0 -mr-1 -mt-1 p-1"
+                    onClick={() => {
+                      setPanelClosed(true);
+                      setSelectedDeviceId(null);
+                      setSelectedConnectionId(null);
+                    }}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-muted-foreground">Name</label>
@@ -831,10 +882,11 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
                   </button>
                 )}
                 <button
-                  className="w-full rounded-md py-2 bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  className="w-full rounded-md py-2 bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                   onClick={onSave}
                   disabled={saving}
                 >
+                  {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   {saving ? "Saving…" : "Save Device Changes"}
                 </button>
               </div>
@@ -845,9 +897,21 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
             if (!conn) return null;
             return (
               <div className="p-4 space-y-4">
-                <div>
-                  <h3 className="text-sm font-semibold">Cable Properties</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Edit the cable type and label.</p>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold">Cable Properties</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Edit the cable type and label.</p>
+                  </div>
+                  <button
+                    className="text-muted-foreground hover:text-foreground flex-shrink-0 -mr-1 -mt-1 p-1"
+                    onClick={() => {
+                      setPanelClosed(true);
+                      setSelectedDeviceId(null);
+                      setSelectedConnectionId(null);
+                    }}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-muted-foreground">Cable Type</label>
