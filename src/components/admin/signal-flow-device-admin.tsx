@@ -138,7 +138,7 @@ function DevicePreview({
           className="absolute left-1/2 top-1/2 rounded-lg border-2 border-white/20 shadow-lg"
           style={{
             width: previewWidth,
-            height: Math.max(previewHeight, requiredHeight),
+            height: previewHeight,
             backgroundColor: color || '#475569',
             transform: `translate(-50%, -50%) scale(${scale})`,
             transformOrigin: 'center',
