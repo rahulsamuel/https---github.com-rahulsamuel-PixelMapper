@@ -29,6 +29,7 @@ import {
   saveSignalFlowDiagram,
   type SignalFlowDiagram,
 } from "@/lib/signal-flow-client";
+import { downloadSignalFlowHtml, downloadSignalFlowPdf } from "@/lib/signal-flow-download";
 import { getOwnedProjects, getSharedProjects, type SharedProject } from "@/lib/collaboration";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -68,6 +69,8 @@ export default function SignalFlowPage() {
   const [loadingDiagram, setLoadingDiagram] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [exporting, setExporting] = useState<"html" | "pdf" | null>(null);
+  const exportSurfaceRef = useRef<HTMLDivElement | null>(null);
   const lastSavedRef = useRef<string>("");
 
   // Load cable types from database (admin-managed) once on mount
@@ -265,6 +268,32 @@ export default function SignalFlowPage() {
   const canEdit = selectedProject?.isOwner ?? true;
   const isGuest = !user;
 
+  const exportTitle = selectedProject?.projectName ?? "Signal Flow Diagram";
+
+  const handleExportHtml = async () => {
+    if (!exportSurfaceRef.current) return;
+    setExporting("html");
+    try {
+      await downloadSignalFlowHtml(exportSurfaceRef.current, exportTitle);
+    } catch {
+      toast({ title: "Export failed", description: "Could not generate HTML export.", variant: "destructive" });
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    if (!exportSurfaceRef.current) return;
+    setExporting("pdf");
+    try {
+      await downloadSignalFlowPdf(exportSurfaceRef.current, exportTitle);
+    } catch {
+      toast({ title: "Export failed", description: "Could not generate PDF export.", variant: "destructive" });
+    } finally {
+      setExporting(null);
+    }
+  };
+
   // Guests get a working canvas with local state only — no cloud features.
   if (isGuest) {
     return (
@@ -288,7 +317,47 @@ export default function SignalFlowPage() {
           </div>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" disabled={diagramData.devices.length === 0} className="ml-auto">
+              <Button variant="outline" size="sm" disabled={diagramData.devices.length === 0 || exporting !== null} className="ml-auto">
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                {exporting === "html" ? "Exporting…" : "HTML"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Export as HTML?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Downloads a standalone HTML file with a dark-background image of your signal flow diagram.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleExportHtml}>Export</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" disabled={diagramData.devices.length === 0 || exporting !== null}>
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                {exporting === "pdf" ? "Exporting…" : "PDF"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Export as PDF?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Downloads a PDF with a white background of your signal flow diagram.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleExportPdf}>Export</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" disabled={diagramData.devices.length === 0}>
                 <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                 Clear
               </Button>
@@ -312,8 +381,7 @@ export default function SignalFlowPage() {
         <SignalFlowCanvas
           data={diagramData}
           onChange={handleDataChange}
-          onSave={() => {}}
-          saving={false}
+          exportRef={exportSurfaceRef}
         />
       </div>
     );
@@ -419,6 +487,24 @@ export default function SignalFlowPage() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={handleExportHtml}
+                disabled={diagramData.devices.length === 0 || exporting !== null}
+              >
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                {exporting === "html" ? "Exporting…" : "HTML"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPdf}
+                disabled={diagramData.devices.length === 0 || exporting !== null}
+              >
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                {exporting === "pdf" ? "Exporting…" : "PDF"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleSave}
                 disabled={saving || !canEdit}
               >
@@ -462,6 +548,7 @@ export default function SignalFlowPage() {
             onChange={handleDataChange}
             onSave={handleSave}
             saving={saving}
+            exportRef={exportSurfaceRef}
           />
         )
       ) : (

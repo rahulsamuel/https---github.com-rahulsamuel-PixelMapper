@@ -36,8 +36,9 @@ import {
 interface SignalFlowCanvasProps {
   data: SignalFlowData;
   onChange: (data: SignalFlowData) => void;
-  onSave: () => void;
-  saving: boolean;
+  onSave?: () => void;
+  saving?: boolean;
+  exportRef?: { current: HTMLDivElement | null };
 }
 
 function uid() {
@@ -119,7 +120,8 @@ const CATEGORY_ORDER: DeviceCategory[] = [
   "other",
 ];
 
-export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowCanvasProps) {
+export function SignalFlowCanvas({ data, onChange, onSave, saving, exportRef }: SignalFlowCanvasProps) {
+  const showSaveButton = !!onSave;
   const canvasRef = useRef<HTMLDivElement>(null);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [draggingDevice, setDraggingDevice] = useState<string | null>(null);
@@ -527,7 +529,11 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
           }
         }}
       >
-        <div className="relative" style={{ minWidth: 2000, minHeight: 1400, transform: `scale(${zoom})`, transformOrigin: "0 0" }}>
+        <div
+          ref={exportRef}
+          className="relative"
+          style={{ minWidth: 2000, minHeight: 1400, transform: `scale(${zoom})`, transformOrigin: "0 0" }}
+        >
           {/* SVG layer for connections */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ overflow: "visible" }}>
             {data.connections.map((conn) => {
@@ -626,6 +632,7 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
                           title={p.port.label}
                         />
                         <span
+                          data-export-label="port"
                           className="ml-1.5 block w-[68px] truncate text-[10px] leading-4 text-white/80"
                           title={p.port.label}
                         >
@@ -639,6 +646,7 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
                     return (
                       <div key={p.port.id} className="absolute flex items-center justify-end" style={{ right: -PORT_RADIUS, top: absY - DEVICE_HEADER_HEIGHT - PORT_RADIUS }}>
                         <span
+                          data-export-label="port"
                           className="mr-1.5 block w-[68px] truncate text-right text-[10px] leading-4 text-white/80"
                           title={p.port.label}
                         >
@@ -860,14 +868,16 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
                     Delete Device
                   </button>
                 )}
-                <button
-                  className="w-full rounded-md py-2 bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-                  onClick={onSave}
-                  disabled={saving}
-                >
-                  {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  {saving ? "Saving…" : "Save Device Changes"}
-                </button>
+                {showSaveButton && (
+                  <button
+                    className="w-full rounded-md py-2 bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                    onClick={onSave}
+                    disabled={saving}
+                  >
+                    {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    {saving ? "Saving…" : "Save Device Changes"}
+                  </button>
+                )}
               </div>
             );
           })()}
