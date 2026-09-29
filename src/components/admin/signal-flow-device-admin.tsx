@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, Loader2, Cable, Search, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Cable, Search, X, ChevronDown, ChevronRight, Upload, Sparkles } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import {
   CATEGORY_INFO,
@@ -309,6 +309,10 @@ export function SignalFlowDeviceAdmin() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const [parseError, setParseError] = useState('');
+  const [prefilledDevice, setPrefilledDevice] = useState<Partial<DBDevice> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -408,6 +412,50 @@ export function SignalFlowDeviceAdmin() {
     }
   }
 
+  async function handleImageUpload(file: File) {
+    setParsing(true);
+    setParseError('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch(`${supabaseUrl}/functions/v1/parse-signal-flow-device`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+          'Apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '',
+        },
+        body: fd,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Request failed (${res.status})`);
+      }
+      const data = await res.json();
+      if (!data.device) {
+        throw new Error('No device data returned from AI.');
+      }
+      const d = data.device;
+      setPrefilledDevice({
+        name: d.name ?? '',
+        device_type: d.deviceType ?? 'custom',
+        category: d.category ?? 'other',
+        color: d.color ?? '#475569',
+        width: d.width ?? 200,
+        height: d.height ?? 120,
+        ports: Array.isArray(d.ports) ? d.ports : [],
+        is_active: true,
+      });
+      setEditing(null);
+      setDialogOpen(true);
+    } catch (e) {
+      setParseError(e instanceof Error ? e.message : 'Failed to parse image');
+    } finally {
+      setParsing(false);
+    }
+  }
+
   if (authLoading || loading) {
     return (
       <div className="container mx-auto max-w-6xl p-6 flex items-center justify-center min-h-[50vh]">
@@ -435,10 +483,29 @@ export function SignalFlowDeviceAdmin() {
           <p className="text-sm text-muted-foreground mt-0.5">Manage devices, converters, and categories available in the Signal Flow tool.</p>
         </div>
         <div className="flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf"
+            className="hidden"
+            onChange={e => {
+              const f = e.target.files?.[0];
+              if (f) handleImageUpload(f);
+              e.target.value = '';
+            }}
+          />
           <Button variant="outline" onClick={() => setShowCategoryDialog(true)}>
             <Plus className="w-4 h-4 mr-2" /> Add Category
           </Button>
-          <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
+          <Button
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={parsing}
+          >
+            {parsing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+            Upload Image
+          </Button>
+          <Button onClick={() => { setEditing(null); setPrefilledDevice(null); setDialogOpen(true); }}>
             <Plus className="w-4 h-4 mr-2" /> Add Device
           </Button>
         </div>
@@ -467,6 +534,12 @@ export function SignalFlowDeviceAdmin() {
           </SelectContent>
         </Select>
       </div>
+
+      {parseError && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {parseError}
+        </div>
+      )}
 
       <div className="text-xs text-muted-foreground">
         Showing {filtered.length} of {devices.length} devices
@@ -531,15 +604,21 @@ export function SignalFlowDeviceAdmin() {
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={v => { if (!v) { setDialogOpen(false); setEditing(null); loadData(); } }}>
+      <Dialog open={dialogOpen} onOpenChange={v => { if (!v) { setDialogOpen(false); setEditing(null); setPrefilledDevice(null); loadData(); } }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editing ? `Edit — ${editing.name}` : 'Add New Device'}</DialogTitle>
+            <DialogTitle>{editing ? `Edit — ${editing.name}` : prefilledDevice ? 'Review AI-Extracted Device' : 'Add New Device'}</DialogTitle>
+            {prefilledDevice && !editing && (
+              <div className="flex items-center gap-2 mt-1 rounded-md bg-primary/10 border border-primary/20 px-3 py-2">
+                <Sparkles className="w-4 h-4 text-primary shrink-0" />
+                <p className="text-xs text-muted-foreground">AI extracted the device details from your image. Review and adjust before saving.</p>
+              </div>
+            )}
           </DialogHeader>
           <DeviceForm
-            initial={editing}
+            initial={editing ?? prefilledDevice}
             deviceId={editing?.id}
-            onClose={() => { setDialogOpen(false); setEditing(null); loadData(); }}
+            onClose={() => { setDialogOpen(false); setEditing(null); setPrefilledDevice(null); loadData(); }}
           />
         </DialogContent>
       </Dialog>

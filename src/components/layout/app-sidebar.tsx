@@ -155,7 +155,7 @@ export function AppSidebar() {
               />
               <NavItem
                 href="/admin/signal-flow-devices"
-                label="SF Devices"
+                label="Signal Flow Devices"
                 icon={Cable}
                 isActive={isActive("/admin/signal-flow-devices")}
               />

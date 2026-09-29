@@ -1,0 +1,8 @@
+[functions.parse-led-spec]
+verify_jwt = false
+
+[functions.parse-processor-spec]
+verify_jwt = false
+
+[functions.parse-signal-flow-device]
+verify_jwt = false

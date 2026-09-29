@@ -25,7 +25,7 @@ import {
 import {
   Pencil, Trash, Plus, Search, X, ChevronDown, ChevronRight,
   Layers, Zap, Ruler, Weight, Eye as EyeIcon, Cpu, Monitor,
-  ShieldCheck, Sun, Box,
+  ShieldCheck, Sun, Box, Cable,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { LedProduct } from '@/services/supabase';
@@ -330,11 +330,18 @@ export function LedProductAdmin({ products }: Props) {
           <h1 className="text-2xl font-bold">LED Products</h1>
           <p className="text-sm text-muted-foreground mt-0.5">View, edit, or delete LED panel products in your database.</p>
         </div>
-        <Link href="/admin/add-led">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" /> Add Product
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/admin/signal-flow-devices">
+            <Button variant="outline">
+              <Cable className="w-4 h-4 mr-2" /> Signal Flow Devices
+            </Button>
+          </Link>
+          <Link href="/admin/add-led">
+            <Button>
+              <Plus className="w-4 h-4 mr-2" /> Add Product
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Search + Filters */}
