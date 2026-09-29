@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, Loader2, Cable, Search, X, ChevronDown, ChevronRight, Upload, Sparkles } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Cable, Search, X, ChevronDown, ChevronRight, Upload, Sparkles, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import {
   CATEGORY_INFO,
@@ -93,6 +93,82 @@ function dbToDevicePreset(d: DBDevice): DevicePreset {
     height: d.height,
     ports: d.ports,
   };
+}
+
+function DevicePreview({
+  name,
+  deviceType,
+  color,
+  width,
+  height,
+  ports,
+  cableTypes,
+}: {
+  name: string;
+  deviceType: DeviceType;
+  color: string;
+  width: number;
+  height: number;
+  ports: Omit<SignalFlowPort, 'id'>[];
+  cableTypes: DBCableType[];
+}) {
+  const previewWidth = Math.max(80, Number(width) || 180);
+  const previewHeight = Math.max(80, Number(height) || 120);
+  const requiredHeight = 70 + ports.length * 22;
+  const scale = Math.min(1, 280 / previewWidth, 150 / Math.max(previewHeight, requiredHeight));
+  const inputs = ports.filter(port => port.direction === 'input');
+  const outputs = ports.filter(port => port.direction === 'output');
+  const getPortColor = (portType: string) => {
+    const cable = cableTypes.find(ct => ct.slug === portType);
+    if (cable) return cable.color;
+    return DEFAULT_CABLE_TYPES.find(ct => ct.id === portType)?.color ?? '#64748b';
+  };
+
+  return (
+    <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+      <div className="flex items-center gap-2">
+        <Eye className="h-3.5 w-3.5 text-primary" />
+        <div>
+          <p className="text-xs font-semibold">Live Preview</p>
+          <p className="text-[10px] text-muted-foreground">Updates as you edit the device</p>
+        </div>
+      </div>
+      <div className="relative h-[190px] overflow-hidden rounded-md border border-white/10 bg-[#0a0a0a]" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px)', backgroundSize: '16px 16px' }}>
+        <div
+          className="absolute left-1/2 top-1/2 rounded-lg border-2 border-white/20 shadow-lg"
+          style={{
+            width: previewWidth,
+            height: Math.max(previewHeight, requiredHeight),
+            backgroundColor: color || '#475569',
+            transform: `translate(-50%, -50%) scale(${scale})`,
+            transformOrigin: 'center',
+          }}
+        >
+          <div className="flex h-[34px] min-w-0 items-center gap-2 rounded-t-md border-b border-white/10 bg-black/20 px-2.5">
+            <span className="min-w-0 flex-1 truncate text-xs font-semibold text-white" title={name || 'Unnamed device'}>{name || 'Unnamed device'}</span>
+            <span className="max-w-[52px] truncate text-[9px] uppercase tracking-wider text-white/55" title={deviceType}>{deviceType}</span>
+          </div>
+          {inputs.map((port, index) => (
+            <div key={`input-${index}`} className="absolute left-[-5px] flex items-center" style={{ top: 70 + index * 22 }}>
+              <span className="ml-2 block w-[68px] truncate text-[10px] leading-4 text-white/80" title={port.label}>{port.label}</span>
+              <span className="absolute left-0 h-2.5 w-2.5 rounded-full border-2 border-white/60" style={{ backgroundColor: getPortColor(port.portType) }} />
+            </div>
+          ))}
+          {outputs.map((port, index) => (
+            <div key={`output-${index}`} className="absolute right-[-5px] flex items-center justify-end" style={{ top: 70 + index * 22 }}>
+              <span className="mr-2 block w-[68px] truncate text-right text-[10px] leading-4 text-white/80" title={port.label}>{port.label}</span>
+              <span className="absolute right-0 h-2.5 w-2.5 rounded-full border-2 border-white/60" style={{ backgroundColor: getPortColor(port.portType) }} />
+            </div>
+          ))}
+        </div>
+      </div>
+      {Number(height) < requiredHeight && (
+        <p className="text-[10px] text-amber-600 dark:text-amber-400">
+          Recommended height: {requiredHeight}px for {ports.length} ports.
+        </p>
+      )}
+    </div>
+  );
 }
 
 function DeviceForm({
@@ -256,6 +332,16 @@ function DeviceForm({
             <Switch checked={isActive} onCheckedChange={setIsActive} />
             <Label className="text-xs">Active (visible in signal flow sidebar)</Label>
           </div>
+
+          <DevicePreview
+            name={name}
+            deviceType={deviceType}
+            color={color}
+            width={width}
+            height={height}
+            ports={ports}
+            cableTypes={cableTypes}
+          />
         </div>
       </ScrollArea>
 
