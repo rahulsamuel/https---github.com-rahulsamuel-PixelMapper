@@ -19,7 +19,7 @@ Analyze the provided image or PDF and identify the device. Return a JSON object 
 - ports: array of port objects, each with:
   - label: string — the port label as shown on the device (e.g. "HDMI IN 1", "SDI OUT", "DATA IN", "PORT 1"). Use the exact label if visible, otherwise a descriptive label.
   - direction: string — "input" or "output"
-  - portType: string — the connector/signal type. Must be one of: "hdmi", "sdi", "rj45", "dvi", "fiber", "power", "custom". Use "rj45" for ethernet/data ports, "power" for power inputs/outputs.
+  - portType: string — the connector/signal type. Must be one of: "hdmi", "sdi", "rj45", "dvi", "fiber", "power", "usb", "dmx", "custom". Use "rj45" for ethernet/data ports, "power" for power inputs/outputs, "usb" for USB ports, "dmx" for DMX lighting control ports.
 
 ## Analysis rules
 
@@ -30,7 +30,7 @@ Analyze the provided image or PDF and identify the device. Return a JSON object 
    - DVI ports (larger rectangular, often white)
    - Fiber optic ports (often labeled "Fiber", "OPT", or have dust caps)
    - Power connectors (IEC, PowerCON, Edison, etc.)
-   - Other connectors (USB, DisplayPort, etc. → use "custom")
+   - Other connectors (USB, DisplayPort, DMX, etc. → use "usb" for USB, "dmx" for DMX, or "custom")
 
 2. SPEC SHEETS / PDFs: Read the input/output specifications section. Count the number of each type of port. Create one port entry per physical port.
 
@@ -122,7 +122,7 @@ function parseJsonResponse(text: string): Record<string, unknown> | null {
 
 const VALID_DEVICE_TYPES = ["processor", "led-screen", "media-server", "power-supply", "network-switch", "matrix", "distribution", "converter", "custom"];
 const VALID_CATEGORIES = ["processor", "media-server", "led-screen", "power", "network", "converter", "other"];
-const VALID_PORT_TYPES = ["hdmi", "sdi", "rj45", "dvi", "fiber", "power", "custom"];
+const VALID_PORT_TYPES = ["hdmi", "sdi", "rj45", "dvi", "fiber", "power", "usb", "dmx", "custom"];
 
 function normalizeDevice(raw: Record<string, unknown>): Record<string, unknown> {
   const name = typeof raw.name === "string" ? raw.name.trim() : "";

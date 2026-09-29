@@ -22,6 +22,7 @@ import { SignalFlowCanvas } from "@/components/signal-flow/signal-flow-canvas";
 import {
   DEFAULT_CABLE_TYPES,
   type SignalFlowData,
+  type CableType,
 } from "@/lib/signal-flow-types";
 import {
   getSignalFlowDiagram,
@@ -31,6 +32,7 @@ import {
 import { getOwnedProjects, getSharedProjects, type SharedProject } from "@/lib/collaboration";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import {
   FolderKanban,
@@ -66,6 +68,44 @@ export default function SignalFlowPage() {
   const [dirty, setDirty] = useState(false);
   const lastSavedRef = useRef<string>("");
 
+  // Load cable types from database (admin-managed) once on mount
+  const [dbCableTypes, setDbCableTypes] = useState<CableType[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("signal_flow_cable_types")
+          .select("slug, name, color, is_active, sort_order")
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true });
+        if (cancelled) return;
+        if (!error && data && data.length > 0) {
+          setDbCableTypes(
+            (data as Record<string, unknown>[]).map((row) => ({
+              id: row.slug as string,
+              name: row.name as string,
+              color: row.color as string,
+            }))
+          );
+        }
+      } catch {
+        // fallback to defaults
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Merge DB cable types into diagramData whenever they load
+  useEffect(() => {
+    if (!dbCableTypes) return;
+    setDiagramData((prev) =>
+      prev.cableTypes === DEFAULT_CABLE_TYPES || prev.cableTypes.length === 0
+        ? { ...prev, cableTypes: dbCableTypes }
+        : prev
+    );
+  }, [dbCableTypes]);
+
   // Load project lists
   const loadProjects = useCallback(async () => {
     if (!user) return;
@@ -97,7 +137,7 @@ export default function SignalFlowPage() {
       const dd = data.diagramData?.devices ? data.diagramData : EMPTY_DATA;
       setDiagramData({
         ...dd,
-        cableTypes: dd.cableTypes?.length ? dd.cableTypes : DEFAULT_CABLE_TYPES,
+        cableTypes: dbCableTypes ?? (dd.cableTypes?.length ? dd.cableTypes : DEFAULT_CABLE_TYPES),
       });
       lastSavedRef.current = JSON.stringify(dd);
     } else {
@@ -106,7 +146,7 @@ export default function SignalFlowPage() {
       lastSavedRef.current = JSON.stringify(EMPTY_DATA);
     }
     setDirty(false);
-  }, [toast]);
+  }, [toast, dbCableTypes]);
 
   const handleSelectProject = (project: SharedProject) => {
     setSelectedProject(project);

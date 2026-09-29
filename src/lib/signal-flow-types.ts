@@ -391,5 +391,7 @@ export const CABLE_TYPE_NAMES: Record<string, string> = {
   dvi: "DVI",
   fiber: "Fiber",
   power: "Power",
+  usb: "USB",
+  dmx: "DMX",
   custom: "Custom",
 };

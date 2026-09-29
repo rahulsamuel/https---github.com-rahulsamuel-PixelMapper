@@ -60,6 +60,16 @@ interface DBCategory {
   is_active: boolean;
 }
 
+interface DBCableType {
+  id: string;
+  slug: string;
+  name: string;
+  color: string;
+  sort_order: number;
+  is_active: boolean;
+  is_system: boolean;
+}
+
 const DEVICE_TYPES: DeviceType[] = [
   'processor', 'led-screen', 'media-server', 'power-supply',
   'network-switch', 'matrix', 'distribution', 'converter', 'custom',
@@ -89,10 +99,12 @@ function DeviceForm({
   initial,
   onClose,
   deviceId,
+  cableTypes,
 }: {
   initial: Partial<DBDevice> | null;
   onClose: () => void;
   deviceId?: string;
+  cableTypes: DBCableType[];
 }) {
   const [name, setName] = useState(initial?.name ?? '');
   const [deviceType, setDeviceType] = useState<DeviceType>(initial?.device_type ?? 'custom');
@@ -222,9 +234,14 @@ function DeviceForm({
                   <Select value={port.portType} onValueChange={(v) => updatePort(i, 'portType', v)}>
                     <SelectTrigger className="w-[110px] text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {DEFAULT_CABLE_TYPES.map(ct => (
-                        <SelectItem key={ct.id} value={ct.id}>{CABLE_TYPE_NAMES[ct.id] ?? ct.name}</SelectItem>
-                      ))}
+                      {cableTypes.length > 0
+                        ? cableTypes.map(ct => (
+                          <SelectItem key={ct.id} value={ct.slug}>{ct.name}</SelectItem>
+                        ))
+                        : DEFAULT_CABLE_TYPES.map(ct => (
+                          <SelectItem key={ct.id} value={ct.id}>{CABLE_TYPE_NAMES[ct.id] ?? ct.name}</SelectItem>
+                        ))
+                      }
                     </SelectContent>
                   </Select>
                   <button type="button" className="text-muted-foreground hover:text-destructive px-1" onClick={() => removePort(i)}>
@@ -300,6 +317,7 @@ export function SignalFlowDeviceAdmin() {
   const { isAdmin, loading: authLoading } = useAuth();
   const [devices, setDevices] = useState<DBDevice[]>([]);
   const [categories, setCategories] = useState<DBCategory[]>([]);
+  const [cableTypes, setCableTypes] = useState<DBCableType[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<DBDevice | null>(null);
@@ -309,6 +327,7 @@ export function SignalFlowDeviceAdmin() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [showCableDialog, setShowCableDialog] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState('');
   const [prefilledDevice, setPrefilledDevice] = useState<Partial<DBDevice> | null>(null);
@@ -328,12 +347,18 @@ export function SignalFlowDeviceAdmin() {
         .select('*')
         .order('sort_order', { ascending: true });
 
-      if (devErr || catErr) {
+      const { data: cables, error: cableErr } = await supabase
+        .from('signal_flow_cable_types')
+        .select('*')
+        .order('sort_order', { ascending: true });
+
+      if (devErr || catErr || cableErr) {
         setLoading(false);
         return;
       }
       setDevices((devs as DBDevice[]) ?? []);
       setCategories((cats as DBCategory[]) ?? []);
+      setCableTypes((cables as DBCableType[]) ?? []);
     } catch {
       // ignore
     } finally {
@@ -406,6 +431,56 @@ export function SignalFlowDeviceAdmin() {
   async function handleDeleteCategory(cat: DBCategory) {
     try {
       await supabase.from('signal_flow_categories').delete().eq('id', cat.id);
+      loadData();
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleAddCableType(slug: string, name: string, color: string) {
+    try {
+      const { error } = await supabase.from('signal_flow_cable_types').insert({
+        slug: slug.trim().toLowerCase().replace(/\s+/g, '-'),
+        name: name.trim(),
+        color,
+        sort_order: cableTypes.length,
+        is_system: false,
+      });
+      if (!error) {
+        setShowCableDialog(false);
+        loadData();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleToggleCableType(ct: DBCableType) {
+    try {
+      await supabase.from('signal_flow_cable_types')
+        .update({ is_active: !ct.is_active })
+        .eq('id', ct.id);
+      loadData();
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleDeleteCableType(ct: DBCableType) {
+    if (ct.is_system) return;
+    try {
+      await supabase.from('signal_flow_cable_types').delete().eq('id', ct.id);
+      loadData();
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleUpdateCableColor(ct: DBCableType, color: string) {
+    try {
+      await supabase.from('signal_flow_cable_types')
+        .update({ color })
+        .eq('id', ct.id);
       loadData();
     } catch {
       // ignore
@@ -604,6 +679,61 @@ export function SignalFlowDeviceAdmin() {
         </div>
       )}
 
+      {/* Cable Types section */}
+      <div className="mt-6">
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h2 className="text-lg font-semibold">Cable Types</h2>
+            <p className="text-xs text-muted-foreground">Manage cable/connector types available in Signal Flow ports and cables.</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setShowCableDialog(true)}>
+            <Plus className="w-4 h-4 mr-1.5" /> Add Cable Type
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+          {cableTypes.map(ct => (
+            <div key={ct.id} className="rounded-lg border bg-card p-3 flex items-center gap-3">
+              <div className="flex flex-col items-center gap-1 shrink-0">
+                <input
+                  type="color"
+                  className="h-7 w-10 rounded border cursor-pointer"
+                  value={ct.color}
+                  onChange={e => handleUpdateCableColor(ct, e.target.value)}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-semibold block truncate">{ct.name}</span>
+                <span className="text-[10px] text-muted-foreground font-mono">{ct.slug}</span>
+                <div className="flex items-center gap-1.5 mt-1">
+                  {ct.is_system && <Badge variant="secondary" className="text-[9px] py-0 px-1.5">Standard</Badge>}
+                  <Badge variant={ct.is_active ? 'default' : 'secondary'} className="text-[9px] py-0 px-1.5">
+                    {ct.is_active ? 'Active' : 'Hidden'}
+                  </Badge>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1 shrink-0">
+                <button
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => handleToggleCableType(ct)}
+                  title={ct.is_active ? 'Hide' : 'Show'}
+                >
+                  {ct.is_active ? 'Hide' : 'Show'}
+                </button>
+                {!ct.is_system && (
+                  <button
+                    className="text-xs text-destructive hover:text-destructive/80"
+                    onClick={() => handleDeleteCableType(ct)}
+                    title="Delete"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <Dialog open={dialogOpen} onOpenChange={v => { if (!v) { setDialogOpen(false); setEditing(null); setPrefilledDevice(null); loadData(); } }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
@@ -618,6 +748,7 @@ export function SignalFlowDeviceAdmin() {
           <DeviceForm
             initial={editing ?? prefilledDevice}
             deviceId={editing?.id}
+            cableTypes={cableTypes}
             onClose={() => { setDialogOpen(false); setEditing(null); setPrefilledDevice(null); loadData(); }}
           />
         </DialogContent>
@@ -644,6 +775,13 @@ export function SignalFlowDeviceAdmin() {
         open={showCategoryDialog}
         onClose={() => setShowCategoryDialog(false)}
         onCreate={handleAddCategory}
+      />
+
+      <CableTypeDialog
+        open={showCableDialog}
+        onClose={() => setShowCableDialog(false)}
+        onCreate={handleAddCableType}
+        existingSlugs={cableTypes.map(c => c.slug)}
       />
     </div>
   );
@@ -687,6 +825,58 @@ function CategoryDialog({
           <Button onClick={() => onCreate(name, color)} disabled={!name.trim()}>
             Add Category
           </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CableTypeDialog({
+  open,
+  onClose,
+  onCreate,
+  existingSlugs,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreate: (slug: string, name: string, color: string) => void;
+  existingSlugs: string[];
+}) {
+  const [name, setName] = useState('');
+  const [color, setColor] = useState('#8b5cf6');
+
+  const slug = name.trim().toLowerCase().replace(/\s+/g, '-');
+  const slugConflict = existingSlugs.includes(slug);
+
+  if (!open) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) { setName(''); onClose(); } }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Add Cable Type</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Cable Name<span className="text-destructive ml-0.5">*</span></Label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. DisplayPort" autoFocus />
+            {name.trim() && (
+              <p className="text-[10px] text-muted-foreground font-mono">
+                ID: {slug}{slugConflict && <span className="text-destructive"> (already exists)</span>}
+              </p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Color</Label>
+            <div className="flex gap-2 items-center">
+              <input type="color" className="h-8 w-12 rounded border cursor-pointer" value={color} onChange={e => setColor(e.target.value)} />
+              <span className="text-xs font-mono text-muted-foreground">{color}</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="ghost" onClick={() => { setName(''); onClose(); }}>Cancel</Button>
+          <Button onClick={() => onCreate(slug, name, color)} disabled={!name.trim() || slugConflict}>Add Cable Type</Button>
         </div>
       </DialogContent>
     </Dialog>
