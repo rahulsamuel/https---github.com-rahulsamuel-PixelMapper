@@ -101,6 +101,11 @@ export function GlobalHeader() {
                           </Button>
                         </Link>
                       </div>
+                      <Link href="/admin/signal-flow-devices">
+                        <Button variant={pathname.startsWith('/admin/signal-flow-devices') ? 'secondary' : 'ghost'} size="sm" className="h-8 px-3 text-sm gap-1.5">
+                          SF Devices
+                        </Button>
+                      </Link>
                       <Link href="/admin/rack-equipment">
                         <Button variant={pathname.startsWith('/admin/rack-equipment') ? 'secondary' : 'ghost'} size="sm" className="h-8 px-3 text-sm gap-1.5">
                           Rack Equipment
