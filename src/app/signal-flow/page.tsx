@@ -61,6 +61,7 @@ export default function SignalFlowPage() {
   const [projectPickerOpen, setProjectPickerOpen] = useState(false);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [selectedProject, setSelectedProject] = useState<SharedProject | null>(null);
+  const [autoSelecting, setAutoSelecting] = useState(true);
   const [diagram, setDiagram] = useState<SignalFlowDiagram | null>(null);
   const [diagramData, setDiagramData] = useState<SignalFlowData>(EMPTY_DATA);
   const [loadingDiagram, setLoadingDiagram] = useState(false);
@@ -122,6 +123,58 @@ export default function SignalFlowPage() {
   useEffect(() => {
     if (projectPickerOpen) loadProjects();
   }, [projectPickerOpen, loadProjects]);
+
+  // Auto-select or create an "Untitled Project" on first load so the canvas
+  // and device sidebar are always visible.
+  useEffect(() => {
+    if (!user || !autoSelecting) return;
+    let cancelled = false;
+    (async () => {
+      const { data: owned, error } = await getOwnedProjects(user.id);
+      if (cancelled) return;
+      if (error || !owned) {
+        setAutoSelecting(false);
+        return;
+      }
+      setOwnedProjects(owned);
+      const untitled = owned.find(
+        (p) => p.projectName === "Untitled Project"
+      );
+      if (untitled) {
+        setSelectedProject(untitled);
+        setAutoSelecting(false);
+        loadDiagram(untitled.id);
+        return;
+      }
+      // No Untitled Project yet — create one
+      const { data: created, error: createErr } = await supabase
+        .from("pixel_map_projects")
+        .insert({
+          user_id: user.id,
+          project_name: "Untitled Project",
+          project_data: {},
+        })
+        .select("id, project_name, updated_at")
+        .single();
+      if (cancelled) return;
+      if (createErr || !created) {
+        setAutoSelecting(false);
+        return;
+      }
+      const newProject: SharedProject = {
+        id: created.id,
+        projectName: created.project_name,
+        ownerEmail: "",
+        updatedAt: created.updated_at,
+        isOwner: true,
+      };
+      setOwnedProjects((prev) => [newProject, ...prev]);
+      setSelectedProject(newProject);
+      setAutoSelecting(false);
+      loadDiagram(newProject.id);
+    })();
+    return () => { cancelled = true; };
+  }, [user, autoSelecting, loadDiagram]);
 
   // Load diagram when project is selected
   const loadDiagram = useCallback(async (projectId: string) => {
@@ -352,7 +405,7 @@ export default function SignalFlowPage() {
         </div>
       </div>
 
-      {/* Canvas or empty state */}
+      {/* Canvas or loading state */}
       {selectedProject ? (
         loadingDiagram ? (
           <div className="flex-1 flex items-center justify-center bg-[#0a0a0a]">
@@ -368,11 +421,7 @@ export default function SignalFlowPage() {
         )
       ) : (
         <div className="flex-1 flex items-center justify-center bg-[#0a0a0a]">
-          <div className="text-center space-y-3">
-            <Cable className="h-12 w-12 text-muted-foreground/20 mx-auto" />
-            <p className="text-muted-foreground text-sm">Select a project from the dropdown to start drawing a signal flow.</p>
-            <p className="text-muted-foreground/60 text-xs">Your signal flow is saved per project.</p>
-          </div>
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       )}
     </div>
