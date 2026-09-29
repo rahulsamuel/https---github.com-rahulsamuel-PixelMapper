@@ -153,9 +153,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
         break;
       case 'deliverables':
       case 'equipment':
-        contentWidth = 1000;
-        contentHeight = 800;
-        break;
+        return;
     }
 
     if (contentWidth <= 0 || contentHeight <= 0) {
@@ -163,12 +161,12 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
       return;
     }
 
-    const padding = 64;
+    const padding = 80;
     const scaleX = (viewportWidth - padding) / contentWidth;
     const scaleY = (viewportHeight - padding) / contentHeight;
 
-    const newZoom = Math.min(scaleX, scaleY);
-    setZoom(newZoom > 0 ? newZoom : 1, true);
+    const newZoom = Math.min(scaleX, scaleY, 1);
+    setZoom(Math.max(newZoom, 0.1), true);
   };
   
   const AccordionSectionTrigger = ({ icon, title, colorClass }: { icon: React.ReactNode, title: string, colorClass?: string }) => (

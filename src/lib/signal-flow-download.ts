@@ -17,33 +17,28 @@ function downloadText(content: string, filename: string): void {
   downloadBlob(new Blob([content], { type: "text/html;charset=utf-8" }), filename);
 }
 
-function cloneForExport(node: HTMLElement, lightBackground: boolean): HTMLElement {
-  const clone = node.cloneNode(true) as HTMLElement;
-  clone.style.transform = "scale(1)";
-  clone.style.width = `${EXPORT_WIDTH}px`;
-  clone.style.height = `${EXPORT_HEIGHT}px`;
-  clone.style.minWidth = `${EXPORT_WIDTH}px`;
-  clone.style.minHeight = `${EXPORT_HEIGHT}px`;
-  clone.style.backgroundColor = lightBackground ? "#ffffff" : "#0a0a0a";
+async function renderDiagram(node: HTMLElement, lightBackground: boolean): Promise<string> {
+  const originalStyle = node.getAttribute("style");
+  const labels = Array.from(node.querySelectorAll<HTMLElement>('[data-export-label="port"]'));
+  const originalLabelColors = labels.map((label) => label.style.color);
+
+  node.style.transform = "scale(1)";
+  node.style.width = `${EXPORT_WIDTH}px`;
+  node.style.height = `${EXPORT_HEIGHT}px`;
+  node.style.minWidth = `${EXPORT_WIDTH}px`;
+  node.style.minHeight = `${EXPORT_HEIGHT}px`;
+  node.style.backgroundColor = lightBackground ? "#ffffff" : "#0a0a0a";
 
   if (lightBackground) {
-    clone.querySelectorAll<HTMLElement>('[data-export-label="port"]').forEach((label) => {
+    labels.forEach((label) => {
       label.style.color = "#1f2937";
     });
   }
 
-  clone.style.position = "fixed";
-  clone.style.left = "-10000px";
-  clone.style.top = "0";
-  clone.style.zIndex = "-1";
-  document.body.appendChild(clone);
-  return clone;
-}
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
-async function renderDiagram(node: HTMLElement, lightBackground: boolean): Promise<string> {
-  const clone = cloneForExport(node, lightBackground);
   try {
-    return await toPng(clone, {
+    return await toPng(node, {
       backgroundColor: lightBackground ? "#ffffff" : "#0a0a0a",
       width: EXPORT_WIDTH,
       height: EXPORT_HEIGHT,
@@ -51,7 +46,14 @@ async function renderDiagram(node: HTMLElement, lightBackground: boolean): Promi
       cacheBust: true,
     });
   } finally {
-    clone.remove();
+    if (originalStyle === null) {
+      node.removeAttribute("style");
+    } else {
+      node.setAttribute("style", originalStyle);
+    }
+    labels.forEach((label, index) => {
+      label.style.color = originalLabelColors[index];
+    });
   }
 }
 
