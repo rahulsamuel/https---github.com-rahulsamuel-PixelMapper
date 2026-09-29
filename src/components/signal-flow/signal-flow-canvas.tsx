@@ -206,23 +206,15 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
     return () => { cancelled = true; };
   }, []);
 
-  // Build the full sidebar item list: DB processors + DB devices + default presets + converter presets
-  // DB devices take priority over converter presets (dedup converters by name)
-  const dbConverterNames = new Set(dbDevices.filter((d) => d.preset.type === "converter").map((d) => d.preset.name));
-  const sidebarItems: SidebarItem[] = [
-    ...dbProcessors,
-    ...dbDevices,
-    ...DEVICE_PRESETS
-      .filter((p) => {
-        if (p.type !== "processor") return true;
-        // Only include default "LED Processor" if no DB processors loaded
-        return dbProcessors.length === 0;
-      })
-      .map((p) => ({ preset: p, source: "default" as const })),
-    ...CONVERTER_PRESETS
-      .filter((p) => !dbConverterNames.has(p.name))
-      .map((p) => ({ preset: p, source: "default" as const })),
-  ];
+  // Database entries take priority over built-in presets with the same name and type.
+  const databaseItems = [...dbProcessors, ...dbDevices];
+  const databaseKeys = new Set(
+    databaseItems.map(({ preset }) => `${preset.type}:${preset.name.trim().toLowerCase()}`)
+  );
+  const builtInItems = [...DEVICE_PRESETS, ...CONVERTER_PRESETS]
+    .filter((preset) => !databaseKeys.has(`${preset.type}:${preset.name.trim().toLowerCase()}`))
+    .map((preset) => ({ preset, source: "default" as const }));
+  const sidebarItems: SidebarItem[] = [...databaseItems, ...builtInItems];
 
   const groupedItems = groupPresetsByCategory(sidebarItems);
 
