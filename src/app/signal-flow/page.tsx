@@ -124,6 +124,31 @@ export default function SignalFlowPage() {
     if (projectPickerOpen) loadProjects();
   }, [projectPickerOpen, loadProjects]);
 
+  // Load diagram when project is selected
+  const loadDiagram = useCallback(async (projectId: string) => {
+    setLoadingDiagram(true);
+    const { data, error } = await getSignalFlowDiagram(projectId);
+    setLoadingDiagram(false);
+    if (error) {
+      toast({ title: "Error loading diagram", description: error, variant: "destructive" });
+      return;
+    }
+    if (data) {
+      setDiagram(data);
+      const dd = data.diagramData?.devices ? data.diagramData : EMPTY_DATA;
+      setDiagramData({
+        ...dd,
+        cableTypes: dbCableTypes ?? (dd.cableTypes?.length ? dd.cableTypes : DEFAULT_CABLE_TYPES),
+      });
+      lastSavedRef.current = JSON.stringify(dd);
+    } else {
+      setDiagram(null);
+      setDiagramData(EMPTY_DATA);
+      lastSavedRef.current = JSON.stringify(EMPTY_DATA);
+    }
+    setDirty(false);
+  }, [toast, dbCableTypes]);
+
   // Auto-select or create an "Untitled Project" on first load so the canvas
   // and device sidebar are always visible.
   useEffect(() => {
@@ -175,31 +200,6 @@ export default function SignalFlowPage() {
     })();
     return () => { cancelled = true; };
   }, [user, autoSelecting, loadDiagram]);
-
-  // Load diagram when project is selected
-  const loadDiagram = useCallback(async (projectId: string) => {
-    setLoadingDiagram(true);
-    const { data, error } = await getSignalFlowDiagram(projectId);
-    setLoadingDiagram(false);
-    if (error) {
-      toast({ title: "Error loading diagram", description: error, variant: "destructive" });
-      return;
-    }
-    if (data) {
-      setDiagram(data);
-      const dd = data.diagramData?.devices ? data.diagramData : EMPTY_DATA;
-      setDiagramData({
-        ...dd,
-        cableTypes: dbCableTypes ?? (dd.cableTypes?.length ? dd.cableTypes : DEFAULT_CABLE_TYPES),
-      });
-      lastSavedRef.current = JSON.stringify(dd);
-    } else {
-      setDiagram(null);
-      setDiagramData(EMPTY_DATA);
-      lastSavedRef.current = JSON.stringify(EMPTY_DATA);
-    }
-    setDirty(false);
-  }, [toast, dbCableTypes]);
 
   const handleSelectProject = (project: SharedProject) => {
     setSelectedProject(project);
