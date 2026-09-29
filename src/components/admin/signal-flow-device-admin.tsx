@@ -244,8 +244,9 @@ function DeviceForm({
 
   return (
     <div className="space-y-4">
-      <ScrollArea className="h-[55vh] pr-4">
-        <div className="space-y-5">
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_240px]">
+        <ScrollArea className="h-[55vh] pr-4">
+          <div className="space-y-5">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Device Name<span className="text-destructive ml-0.5">*</span></Label>
@@ -333,7 +334,12 @@ function DeviceForm({
             <Label className="text-xs">Active (visible in signal flow sidebar)</Label>
           </div>
 
+          </div>
+        </ScrollArea>
+
+        <div className="self-start md:sticky md:top-0">
           <DevicePreview
+            key={`${name}|${deviceType}|${color}|${width}|${height}|${ports.map(port => `${port.label}:${port.direction}:${port.portType}`).join('|')}`}
             name={name}
             deviceType={deviceType}
             color={color}
@@ -343,7 +349,7 @@ function DeviceForm({
             cableTypes={cableTypes}
           />
         </div>
-      </ScrollArea>
+      </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
