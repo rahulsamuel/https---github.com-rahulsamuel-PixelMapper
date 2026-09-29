@@ -594,19 +594,19 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
                 }}
                 onMouseDown={(e) => handleDeviceMouseDown(e, device)}
               >
-                <div className="flex items-center justify-between px-3 py-2 border-b border-white/10 rounded-t-lg" style={{ backgroundColor: "rgba(0,0,0,0.2)" }}>
+                <div className="flex min-w-0 items-center gap-2 px-2.5 py-2 border-b border-white/10 rounded-t-lg" style={{ backgroundColor: "rgba(0,0,0,0.2)" }}>
                   {isSelected ? (
                     <input
-                      className="bg-transparent text-white text-xs font-semibold outline-none border-b border-white/30 w-full mr-2"
+                      className="min-w-0 flex-1 bg-transparent text-white text-xs font-semibold outline-none border-b border-white/30"
                       value={device.name}
                       onChange={(e) => renameDevice(device.id, e.target.value)}
                       autoFocus
                       onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
-                    <span className="text-white text-xs font-semibold truncate">{device.name}</span>
+                    <span className="min-w-0 flex-1 text-white text-xs font-semibold truncate" title={device.name}>{device.name}</span>
                   )}
-                  <span className="text-[9px] text-white/50 uppercase tracking-wider flex-shrink-0">{device.type}</span>
+                  <span className="max-w-[52px] truncate text-[9px] text-white/50 uppercase tracking-wider flex-shrink-0" title={device.type}>{device.type}</span>
                 </div>
 
                 <div className="relative" style={{ height: device.height - 34 }}>
@@ -625,7 +625,12 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
                           onClick={(e) => handlePortClick(e, device, p.port.id, p.x, p.y)}
                           title={p.port.label}
                         />
-                        <span className="text-[10px] text-white/80 ml-1.5 whitespace-nowrap">{p.port.label}</span>
+                        <span
+                          className="ml-1.5 block w-[68px] truncate text-[10px] leading-4 text-white/80"
+                          title={p.port.label}
+                        >
+                          {p.port.label}
+                        </span>
                       </div>
                     );
                   })}
@@ -633,7 +638,12 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving }: SignalFlowC
                     const absY = p.y - device.y;
                     return (
                       <div key={p.port.id} className="absolute flex items-center justify-end" style={{ right: -PORT_RADIUS, top: absY - DEVICE_HEADER_HEIGHT - PORT_RADIUS }}>
-                        <span className="text-[10px] text-white/80 mr-1.5 whitespace-nowrap">{p.port.label}</span>
+                        <span
+                          className="mr-1.5 block w-[68px] truncate text-right text-[10px] leading-4 text-white/80"
+                          title={p.port.label}
+                        >
+                          {p.port.label}
+                        </span>
                         <button
                           className="rounded-full border-2 border-white/60 hover:border-white hover:scale-125 transition-transform"
                           style={{
