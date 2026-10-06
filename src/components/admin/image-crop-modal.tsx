@@ -212,6 +212,7 @@ export function ImageCropModal({
       return;
     }
     const { handle, startCrop: sc } = ds;
+    if (!handle) return;
     let { x: cx, y: cy, w: cw, h: ch } = sc;
     if (handle === 'move') {
       cx += dx; cy += dy;
