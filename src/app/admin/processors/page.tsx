@@ -1,6 +1,9 @@
 import { getProcessors } from '@/services/supabase';
 import { ProcessorAdmin } from '@/components/admin/processor-admin';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function ProcessorsAdminPage() {
   const { data: processors, error } = await getProcessors(true);
   if (error) {

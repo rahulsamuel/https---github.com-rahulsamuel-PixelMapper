@@ -43,6 +43,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const initAuth = async () => {
+      const timeoutId = window.setTimeout(() => setLoading(false), 8000);
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
@@ -52,6 +53,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } catch (error) {
         console.error("Error initializing auth:", error);
       } finally {
+        window.clearTimeout(timeoutId);
         setLoading(false);
       }
     };
@@ -99,7 +101,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = async (email: string, password: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return { error: error.message };
+      if (error) {
+        if (error.message.includes('timeout') || error.message.includes('504') || error.message.includes('Gateway')) {
+          return { error: "The server is taking too long to respond. Please try again in a moment." };
+        }
+        return { error: error.message };
+      }
       if (data.user && data.session) {
         await supabase.from('users').upsert(
           { id: data.user.id, email: data.user.email! },
@@ -111,8 +118,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { error: null, isAdmin: admin };
       }
       return { error: null, isAdmin: false };
-    } catch {
-      return { error: "An unexpected error occurred" };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('timeout') || msg.includes('504') || msg.includes('fetch')) {
+        return { error: "Network error — the server is slow to respond. Please try again." };
+      }
+      return { error: "An unexpected error occurred. Please try again." };
     }
   };
 
