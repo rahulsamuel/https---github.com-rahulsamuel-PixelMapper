@@ -112,6 +112,9 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const isUndoRedoRef = useRef(false);
   const [historyVersion, setHistoryVersion] = useState(0);
 
+  const clearedDataWiringRef = useRef<{ tiles: { dataCircuit: Tile['dataCircuit'] }[]; wiringPattern: WiringPattern } | null>(null);
+  const clearedPowerWiringRef = useRef<{ tiles: { powerCircuit: Tile['powerCircuit']; powerPortLabel: Tile['powerPortLabel'] }[]; powerWiringPattern: WiringPattern } | null>(null);
+
   // Deliverables State
   const [projectNumber, setProjectNumber] = useState("");
   const [versionNumber, setVersionNumber] = useState("1.0");
@@ -3010,21 +3013,78 @@ const handleRightHalfTileChange = (add: boolean) => {
   }, [toast]);
 
   const clearDataWiring = useCallback(() => {
-    setScreens(prevScreens => prevScreens.map(screen => screen.id === currentScreenId ? {
-      ...screen,
-      wiringPattern: 'manual',
-      tiles: screen.tiles.map(tile => ({ ...tile, dataCircuit: undefined })),
-    } : screen));
+    setScreens(prevScreens => prevScreens.map(screen => {
+      if (screen.id !== currentScreenId) return screen;
+      clearedDataWiringRef.current = {
+        tiles: screen.tiles.map(t => ({ dataCircuit: t.dataCircuit })),
+        wiringPattern: screen.wiringPattern,
+      };
+      return {
+        ...screen,
+        wiringPattern: 'manual' as WiringPattern,
+        tiles: screen.tiles.map(tile => ({ ...tile, dataCircuit: undefined })),
+      };
+    }));
     toast({ title: "Data Cabling Cleared", description: "Data cabling was cleared for the active screen." });
   }, [currentScreenId, toast]);
 
+  const restoreDataWiring = useCallback(() => {
+    const snapshot = clearedDataWiringRef.current;
+    if (!snapshot) {
+      toast({ title: "Nothing to Restore", description: "No data cabling has been cleared yet." });
+      return;
+    }
+    setScreens(prevScreens => prevScreens.map(screen => {
+      if (screen.id !== currentScreenId) return screen;
+      return {
+        ...screen,
+        wiringPattern: snapshot.wiringPattern,
+        tiles: screen.tiles.map((tile, i) => ({
+          ...tile,
+          dataCircuit: snapshot.tiles[i]?.dataCircuit,
+        })),
+      };
+    }));
+    clearedDataWiringRef.current = null;
+    toast({ title: "Data Cabling Restored", description: "Data cabling has been restored for the active screen." });
+  }, [currentScreenId, toast]);
+
   const clearPowerWiring = useCallback(() => {
-    setScreens(prevScreens => prevScreens.map(screen => screen.id === currentScreenId ? {
-      ...screen,
-      powerWiringPattern: 'manual',
-      tiles: screen.tiles.map(tile => ({ ...tile, powerCircuit: undefined, powerPortLabel: undefined })),
-    } : screen));
+    setScreens(prevScreens => prevScreens.map(screen => {
+      if (screen.id !== currentScreenId) return screen;
+      clearedPowerWiringRef.current = {
+        tiles: screen.tiles.map(t => ({ powerCircuit: t.powerCircuit, powerPortLabel: t.powerPortLabel })),
+        powerWiringPattern: screen.powerWiringPattern,
+      };
+      return {
+        ...screen,
+        powerWiringPattern: 'manual' as WiringPattern,
+        tiles: screen.tiles.map(tile => ({ ...tile, powerCircuit: undefined, powerPortLabel: undefined })),
+      };
+    }));
     toast({ title: "Power Cabling Cleared", description: "Power cabling was cleared for the active screen." });
+  }, [currentScreenId, toast]);
+
+  const restorePowerWiring = useCallback(() => {
+    const snapshot = clearedPowerWiringRef.current;
+    if (!snapshot) {
+      toast({ title: "Nothing to Restore", description: "No power cabling has been cleared yet." });
+      return;
+    }
+    setScreens(prevScreens => prevScreens.map(screen => {
+      if (screen.id !== currentScreenId) return screen;
+      return {
+        ...screen,
+        powerWiringPattern: snapshot.powerWiringPattern,
+        tiles: screen.tiles.map((tile, i) => ({
+          ...tile,
+          powerCircuit: snapshot.tiles[i]?.powerCircuit,
+          powerPortLabel: snapshot.tiles[i]?.powerPortLabel,
+        })),
+      };
+    }));
+    clearedPowerWiringRef.current = null;
+    toast({ title: "Power Cabling Restored", description: "Power cabling has been restored for the active screen." });
   }, [currentScreenId, toast]);
 
   const startNewProject = useCallback(() => {
@@ -3739,7 +3799,9 @@ const handleRightHalfTileChange = (add: boolean) => {
     setProjectName,
     clearAllWiring,
     clearDataWiring,
+    restoreDataWiring,
     clearPowerWiring,
+    restorePowerWiring,
     undo,
     redo,
     canUndo,

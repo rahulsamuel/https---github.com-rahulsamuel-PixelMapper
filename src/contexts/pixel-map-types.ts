@@ -556,7 +556,9 @@ export interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'
   setProjectName: (name: string) => void;
   clearAllWiring: () => void;
   clearDataWiring: () => void;
+  restoreDataWiring: () => void;
   clearPowerWiring: () => void;
+  restorePowerWiring: () => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
