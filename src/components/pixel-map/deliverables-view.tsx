@@ -293,6 +293,10 @@ export function DeliverablesView() {
     toast({ title: "Pixel Map Downloaded", description: `${sd.screen.name} pixel map saved as PNG.` });
   }, [toast]);
 
+  const scrollToPixelMap = useCallback((screenId: string) => {
+    document.getElementById(`pixel-map-${screenId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, []);
+
   return (
     <div className="w-[1000px] space-y-6 pb-20" style={{ background: '#E2E8F0' }}>
       <div className="flex justify-end gap-3 mb-2 no-print">
@@ -389,28 +393,27 @@ export function DeliverablesView() {
                 <div className="border border-slate-200 rounded-lg overflow-hidden">
                   <div className="grid grid-cols-[minmax(180px,1.1fr)_minmax(180px,1.2fr)_minmax(130px,0.9fr)_minmax(130px,0.9fr)] bg-slate-50 border-b border-slate-200 px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
                     <span>Map Preview</span>
-                    <span>Deliverables</span>
+                    <span>Screen Name</span>
                     <span>Resolution</span>
                     <span>Aspect Ratio</span>
                   </div>
                   {screenData.map((sd) => (
                     <div key={sd.screen.id} className="grid grid-cols-[minmax(180px,1.1fr)_minmax(180px,1.2fr)_minmax(130px,0.9fr)_minmax(130px,0.9fr)] items-center gap-4 border-b border-slate-100 px-4 py-4 last:border-b-0">
-                      <div className="flex min-w-0 items-center gap-4">
-                        <div className="flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-slate-900">
-                          {sd.previewImage ? (
-                            <img src={sd.previewImage} alt={`Pixel map ${sd.screen.name}`} className="max-h-full max-w-full object-contain" />
-                          ) : (
-                            <Layers className="size-5 text-slate-500" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-bold text-slate-800">{sd.screen.name}</p>
-                          <p className="mt-1 text-xs text-slate-500">{sd.activeTileCount} panels · {sd.totalPixels.toLocaleString()} pixels</p>
-                        </div>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => scrollToPixelMap(sd.screen.id)}
+                        className="flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-slate-900 ring-offset-2 transition hover:ring-2 hover:ring-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                        title={`Jump to ${sd.screen.name} pixel map`}
+                      >
+                        {sd.previewImage ? (
+                          <img src={sd.previewImage} alt={`Pixel map ${sd.screen.name}`} className="max-h-full max-w-full object-contain" />
+                        ) : (
+                          <Layers className="size-5 text-slate-500" />
+                        )}
+                      </button>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-800">{sd.contentFileName}</p>
-                        <p className="mt-1 truncate text-xs text-slate-500">{sd.ledProductName}</p>
+                        <p className="truncate text-sm font-bold text-slate-800">{sd.screen.name}</p>
+                        <p className="mt-1 text-xs text-slate-500">{sd.activeTileCount} panels · {sd.totalPixels.toLocaleString()} pixels</p>
                       </div>
                       <p className="text-sm font-medium text-slate-700" style={{ fontVariantNumeric: 'tabular-nums' }}>{sd.screenRes}</p>
                       <p className="text-sm font-medium text-slate-700" style={{ fontVariantNumeric: 'tabular-nums' }}>{sd.aspectRatio} <span className="text-xs text-slate-400">({(sd.resWidth / sd.resHeight).toFixed(2)}:1)</span></p>
@@ -421,7 +424,12 @@ export function DeliverablesView() {
                 screenData.map((sd) => (
                   <div key={sd.screen.id} className="border border-slate-200 rounded-lg overflow-hidden">
                     <div className="grid grid-cols-2">
-                      <div className="bg-slate-900 flex items-center justify-center p-6 min-h-[200px]">
+                      <button
+                        type="button"
+                        onClick={() => scrollToPixelMap(sd.screen.id)}
+                        className="bg-slate-900 flex items-center justify-center p-6 min-h-[200px] transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+                        title={`Jump to ${sd.screen.name} pixel map`}
+                      >
                         {sd.previewImage ? (
                           <img src={sd.previewImage} alt={`Pixel map ${sd.screen.name}`} className="max-w-full max-h-[250px] object-contain" />
                         ) : (
@@ -430,7 +438,7 @@ export function DeliverablesView() {
                             No pixel map generated
                           </div>
                         )}
-                      </div>
+                      </button>
                       <div className="p-6 space-y-3">
                         <h4 className="font-headline text-sm font-bold text-slate-800 mb-3">{sd.screen.name}</h4>
                         <DataRow label="Screen Resolution" value={sd.screenRes} />
@@ -511,7 +519,7 @@ export function DeliverablesView() {
             {/* Section 3: Pixel Map Generator */}
             <ReportSection icon={<Cpu className="size-4" />} title="Pixel Map Generator">
               {screenData.map((sd) => (
-                <div key={sd.screen.id} className="border border-slate-200 rounded-lg overflow-hidden mb-4 last:mb-0">
+                <div id={`pixel-map-${sd.screen.id}`} key={sd.screen.id} className="scroll-mt-6 border border-slate-200 rounded-lg overflow-hidden mb-4 last:mb-0">
                   <div className="grid grid-cols-2">
                     {/* Left: Pixel map preview (clickable to download) */}
                     <div className="bg-slate-900 flex flex-col items-center justify-center p-6 min-h-[200px] relative group">
