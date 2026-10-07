@@ -271,6 +271,7 @@ export function DeliverablesView() {
       imageFormat,
       screenOutputs,
       screenData,
+      screenPreviewMode,
     });
     const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
@@ -281,7 +282,7 @@ export function DeliverablesView() {
     URL.revokeObjectURL(url);
     showFeedbackPrompt('deliverables_html');
     toast({ title: "HTML Exported", description: "Standalone content deliverables downloaded." });
-  }, [projectName, currentScreen.name, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioEmbedded, samplingRate, audioBitRate, imageFormat, screenOutputs, screenData, safeFileName, toast]);
+  }, [projectName, currentScreen.name, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioEmbedded, samplingRate, audioBitRate, imageFormat, screenOutputs, screenData, screenPreviewMode, safeFileName, toast]);
 
   const handleDownloadPixelMap = useCallback((sd: typeof screenData[number]) => {
     if (!sd.previewImage) return;
@@ -640,13 +641,28 @@ function buildHtmlReport(opts: {
   imageFormat: string;
   screenOutputs: { screenName: string; outputCount: number; resolutionLabel: string }[];
   screenData: any[];
+  screenPreviewMode: 'list' | 'cards';
 }): string {
-  const { projectName, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioEmbedded, samplingRate, audioBitRate, imageFormat, screenOutputs, screenData } = opts;
+  const { projectName, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioEmbedded, samplingRate, audioBitRate, imageFormat, screenOutputs, screenData, screenPreviewMode } = opts;
 
-  const screenConfigHtml = screenData.map(sd => `
+  const screenConfigHtml = screenPreviewMode === 'list'
+    ? `
+      <div class="screen-list">
+        <div class="screen-list-header"><span>Map Preview</span><span>Screen Name</span><span>Resolution</span><span>Aspect Ratio</span></div>
+        ${screenData.map(sd => `
+          <div class="screen-list-row">
+            <a href="#pixel-map-${sd.screen.id}" class="list-preview" title="Jump to ${sd.screen.name} pixel map">
+              ${sd.previewImage ? `<img src="${sd.previewImage}" alt="Pixel map ${sd.screen.name}" />` : '<div class="empty-preview">No preview</div>'}
+            </a>
+            <div class="list-screen-name"><strong>${sd.screen.name}</strong><span>${sd.activeTileCount} panels · ${sd.totalPixels.toLocaleString()} pixels</span></div>
+            <strong class="list-value">${sd.screenRes}</strong>
+            <strong class="list-value">${sd.aspectRatio} <span class="muted-value">(${(sd.resWidth / sd.resHeight).toFixed(2)}:1)</span></strong>
+          </div>`).join('')}
+      </div>`
+    : screenData.map(sd => `
     <div class="screen-card">
       <div class="screen-grid">
-        <div class="preview-block">${sd.previewImage ? `<img src="${sd.previewImage}" alt="${sd.screen.name}" />` : '<div class="empty-preview">No pixel map generated</div>'}</div>
+        <a href="#pixel-map-${sd.screen.id}" class="preview-block preview-jump" title="Jump to ${sd.screen.name} pixel map">${sd.previewImage ? `<img src="${sd.previewImage}" alt="Pixel map ${sd.screen.name}" />` : '<div class="empty-preview">No pixel map generated</div>'}</a>
         <div class="screen-info">
           <h4>${sd.screen.name}</h4>
           <div class="detail-row"><span>Screen Resolution</span><strong>${sd.screenRes}</strong></div>
@@ -658,7 +674,7 @@ function buildHtmlReport(opts: {
     </div>`).join('');
 
   const pixelMapHtml = screenData.map((sd, i) => `
-    <div class="screen-card">
+    <div id="pixel-map-${sd.screen.id}" class="screen-card">
       <div class="screen-grid">
         <div class="preview-block">${sd.previewImage ? `<a href="${sd.previewImage}" download="${sd.pixelMapFileName}" class="pixel-map-download" title="Click to download pixel map"><img src="${sd.previewImage}" alt="${sd.screen.name}" /><span class="download-badge"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download PNG</span></a>` : '<div class="empty-preview">No preview available</div>'}</div>
         <div class="screen-info">
@@ -706,10 +722,26 @@ function buildHtmlReport(opts: {
   .section:last-child { margin-bottom: 0; }
   .section-label { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--blue-600); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
   .section-label::after { content: ''; flex: 1; height: 1px; background: var(--slate-200); }
+  html { scroll-behavior: smooth; }
   .screen-card { border: 1px solid var(--slate-200); border-radius: 10px; overflow: hidden; margin-bottom: 16px; }
   .screen-card:last-child { margin-bottom: 0; }
   .screen-grid { display: grid; grid-template-columns: 1fr 1fr; }
   .preview-block { background: var(--slate-900); display: flex; align-items: center; justify-content: center; padding: 24px; min-height: 200px; }
+  .preview-jump { text-decoration: none; transition: background 0.2s; }
+  .preview-jump:hover { background: var(--slate-800); }
+  .screen-list { border: 1px solid var(--slate-200); border-radius: 10px; overflow: hidden; }
+  .screen-list-header, .screen-list-row { display: grid; grid-template-columns: minmax(180px, 1.1fr) minmax(180px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr); align-items: center; gap: 16px; }
+  .screen-list-header { background: var(--slate-50); border-bottom: 1px solid var(--slate-200); padding: 12px 16px; color: var(--slate-500); font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+  .screen-list-row { border-bottom: 1px solid var(--slate-100); padding: 16px; }
+  .screen-list-row:last-child { border-bottom: none; }
+  .list-preview { display: flex; width: 96px; height: 64px; align-items: center; justify-content: center; overflow: hidden; border-radius: 6px; background: var(--slate-900); transition: box-shadow 0.2s, transform 0.2s; }
+  .list-preview:hover { box-shadow: 0 0 0 2px var(--blue-500); transform: translateY(-1px); }
+  .list-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .list-screen-name { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .list-screen-name strong { overflow: hidden; color: var(--slate-800); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+  .list-screen-name span { color: var(--slate-500); font-size: 12px; }
+  .list-value { color: var(--slate-700); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .muted-value { color: var(--slate-400); font-size: 12px; font-weight: 400; }
   .preview-block img { max-width: 100%; max-height: 250px; object-fit: contain; }
   .empty-preview { color: var(--slate-500); font-size: 14px; text-align: center; }
   .screen-info { padding: 24px; }
