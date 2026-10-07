@@ -3009,6 +3009,24 @@ const handleRightHalfTileChange = (add: boolean) => {
     toast({ title: "Wiring Cleared", description: "All manual wiring has been removed." });
   }, [toast]);
 
+  const clearDataWiring = useCallback(() => {
+    setScreens(prevScreens => prevScreens.map(screen => screen.id === currentScreenId ? {
+      ...screen,
+      wiringPattern: 'manual',
+      tiles: screen.tiles.map(tile => ({ ...tile, dataCircuit: undefined })),
+    } : screen));
+    toast({ title: "Data Cabling Cleared", description: "Data cabling was cleared for the active screen." });
+  }, [currentScreenId, toast]);
+
+  const clearPowerWiring = useCallback(() => {
+    setScreens(prevScreens => prevScreens.map(screen => screen.id === currentScreenId ? {
+      ...screen,
+      powerWiringPattern: 'manual',
+      tiles: screen.tiles.map(tile => ({ ...tile, powerCircuit: undefined, powerPortLabel: undefined })),
+    } : screen));
+    toast({ title: "Power Cabling Cleared", description: "Power cabling was cleared for the active screen." });
+  }, [currentScreenId, toast]);
+
   const startNewProject = useCallback(() => {
     const newScreen = createNewScreen("Default Screen", 1);
     nextIdCounter.current = newScreen.nextTileId;
@@ -3720,6 +3738,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     projectName,
     setProjectName,
     clearAllWiring,
+    clearDataWiring,
+    clearPowerWiring,
     undo,
     redo,
     canUndo,
