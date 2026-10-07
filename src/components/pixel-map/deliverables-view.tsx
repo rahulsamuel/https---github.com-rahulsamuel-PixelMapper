@@ -4,12 +4,13 @@
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import type { RasterMapConfig, Screen, ActiveBounds } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
-import { FileDown, FileCode, Printer, Monitor, Video, Music, Image, Layers, Cpu, Download } from "lucide-react";
+import { FileDown, FileCode, Printer, Monitor, Video, Music, Image, Layers, Cpu, Download, List, LayoutGrid } from "lucide-react";
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
 import { useToast } from "@/hooks/use-toast";
 import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
+import { usePersistentState } from "@/hooks/use-persistent-state";
 
 interface LedProduct {
   id: string;
@@ -100,6 +101,7 @@ export function DeliverablesView() {
   const [isExporting, setIsExporting] = useState(false);
   const [pixelMapImages, setPixelMapImages] = useState<Record<string, string>>({});
   const [showScreenSelector, setShowScreenSelector] = useState(false);
+  const [screenPreviewMode, setScreenPreviewMode] = usePersistentState<'list' | 'cards'>('deliverables:screenPreviewMode', 'list');
 
   const selectedScreens = useMemo(() => {
     if (deliverablesScreenIds.length === 0) return screens;
@@ -297,6 +299,24 @@ export function DeliverablesView() {
         <Button variant="outline" size="sm" onClick={() => setShowScreenSelector(v => !v)}>
           <Monitor className="size-4 mr-2" /> Screens ({selectedScreens.length}/{screens.length})
         </Button>
+        <div className="flex items-center rounded-md border border-slate-300 bg-white p-0.5" role="group" aria-label="Screen preview layout">
+          <button
+            type="button"
+            aria-pressed={screenPreviewMode === 'list'}
+            onClick={() => setScreenPreviewMode('list')}
+            className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors ${screenPreviewMode === 'list' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            <List className="size-3.5" /> List
+          </button>
+          <button
+            type="button"
+            aria-pressed={screenPreviewMode === 'cards'}
+            onClick={() => setScreenPreviewMode('cards')}
+            className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors ${screenPreviewMode === 'cards' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+          >
+            <LayoutGrid className="size-3.5" /> Cards
+          </button>
+        </div>
         <Button variant="outline" size="sm" onClick={handleDownloadHtml}>
           <FileCode className="size-4 mr-2" /> Export HTML
         </Button>
@@ -365,32 +385,64 @@ export function DeliverablesView() {
           <div className="p-12 space-y-10">
             {/* Section 1: LED Screen Configuration */}
             <ReportSection icon={<Monitor className="size-4" />} title="LED Screen Configuration">
-              {screenData.map((sd) => (
-                <div key={sd.screen.id} className="border border-slate-200 rounded-lg overflow-hidden">
-                  <div className="grid grid-cols-2">
-                    {/* Left: Pixel map preview */}
-                    <div className="bg-slate-900 flex items-center justify-center p-6 min-h-[200px]">
-                      {sd.previewImage ? (
-                        <img src={sd.previewImage} alt={`Pixel map ${sd.screen.name}`} className="max-w-full max-h-[250px] object-contain" />
-                      ) : (
-                        <div className="text-slate-500 text-sm text-center">
-                          <Layers className="size-8 mx-auto mb-2 opacity-50" />
-                          No pixel map generated
+              {screenPreviewMode === 'list' ? (
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <div className="grid grid-cols-[minmax(180px,1.1fr)_minmax(180px,1.2fr)_minmax(130px,0.9fr)_minmax(130px,0.9fr)] bg-slate-50 border-b border-slate-200 px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                    <span>Map Preview</span>
+                    <span>Deliverables</span>
+                    <span>Resolution</span>
+                    <span>Aspect Ratio</span>
+                  </div>
+                  {screenData.map((sd) => (
+                    <div key={sd.screen.id} className="grid grid-cols-[minmax(180px,1.1fr)_minmax(180px,1.2fr)_minmax(130px,0.9fr)_minmax(130px,0.9fr)] items-center gap-4 border-b border-slate-100 px-4 py-4 last:border-b-0">
+                      <div className="flex min-w-0 items-center gap-4">
+                        <div className="flex h-16 w-24 shrink-0 items-center justify-center overflow-hidden rounded bg-slate-900">
+                          {sd.previewImage ? (
+                            <img src={sd.previewImage} alt={`Pixel map ${sd.screen.name}`} className="max-h-full max-w-full object-contain" />
+                          ) : (
+                            <Layers className="size-5 text-slate-500" />
+                          )}
                         </div>
-                      )}
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-slate-800">{sd.screen.name}</p>
+                          <p className="mt-1 text-xs text-slate-500">{sd.activeTileCount} panels · {sd.totalPixels.toLocaleString()} pixels</p>
+                        </div>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-800">{sd.contentFileName}</p>
+                        <p className="mt-1 truncate text-xs text-slate-500">{sd.ledProductName}</p>
+                      </div>
+                      <p className="text-sm font-medium text-slate-700" style={{ fontVariantNumeric: 'tabular-nums' }}>{sd.screenRes}</p>
+                      <p className="text-sm font-medium text-slate-700" style={{ fontVariantNumeric: 'tabular-nums' }}>{sd.aspectRatio} <span className="text-xs text-slate-400">({(sd.resWidth / sd.resHeight).toFixed(2)}:1)</span></p>
                     </div>
-                    {/* Right: Screen info */}
-                    <div className="p-6 space-y-3">
-                      <h4 className="font-headline text-sm font-bold text-slate-800 mb-3">{sd.screen.name}</h4>
-                      <DataRow label="Screen Resolution" value={sd.screenRes} />
-                      <DataRow label="Physical Dimensions" value={sd.physicalDimensions} />
-                      <DataRow label="Aspect Ratio" value={sd.aspectRatio} />
-                      <DataRow label="Total Pixels" value={sd.totalPixels.toLocaleString()} />
-                      <DataRow label="Total Panels" value={String(sd.activeTileCount)} />
+                  ))}
+                </div>
+              ) : (
+                screenData.map((sd) => (
+                  <div key={sd.screen.id} className="border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="grid grid-cols-2">
+                      <div className="bg-slate-900 flex items-center justify-center p-6 min-h-[200px]">
+                        {sd.previewImage ? (
+                          <img src={sd.previewImage} alt={`Pixel map ${sd.screen.name}`} className="max-w-full max-h-[250px] object-contain" />
+                        ) : (
+                          <div className="text-slate-500 text-sm text-center">
+                            <Layers className="size-8 mx-auto mb-2 opacity-50" />
+                            No pixel map generated
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-6 space-y-3">
+                        <h4 className="font-headline text-sm font-bold text-slate-800 mb-3">{sd.screen.name}</h4>
+                        <DataRow label="Screen Resolution" value={sd.screenRes} />
+                        <DataRow label="Physical Dimensions" value={sd.physicalDimensions} />
+                        <DataRow label="Aspect Ratio" value={sd.aspectRatio} />
+                        <DataRow label="Total Pixels" value={sd.totalPixels.toLocaleString()} />
+                        <DataRow label="Total Panels" value={String(sd.activeTileCount)} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </ReportSection>
 
             {/* Section 2: Media Server & Playback Requirements */}
