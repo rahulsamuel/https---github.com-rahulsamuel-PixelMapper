@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, Calculator, Spline } from 'lucide-react';
 import { getProducts } from './actions';
 import { usePersistentState } from '@/hooks/use-persistent-state';
+import { getCachedProducts, setCachedProducts } from '@/lib/data-cache';
 import {
   CurvingSettings,
   CurvingPreview,
@@ -87,9 +88,18 @@ export default function CalculatorPage() {
 
     useEffect(() => {
         async function fetchProducts() {
+            const cached = getCachedProducts();
+            if (cached) {
+                setProducts(cached as LedProduct[]);
+                if (cached.length > 0 && !formState.selectedProductId) {
+                    handleFormChange('selectedProductId', cached[0].id);
+                }
+                return;
+            }
             const { data, error } = await getProducts();
             if (data) {
                 setProducts(data as LedProduct[]);
+                setCachedProducts('default', data as LedProduct[]);
                 if (data.length > 0 && !formState.selectedProductId) {
                     handleFormChange('selectedProductId', data[0].id);
                 }

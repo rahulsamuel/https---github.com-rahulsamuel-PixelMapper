@@ -10,6 +10,8 @@ import { getProductsAction, getProcessorsAction } from './actions';
 import type { Processor } from '@/services/supabase';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 import { LedProductCombobox } from '@/components/ui/led-product-combobox';
+import { getCachedProducts, setCachedProducts, getCachedProcessors, setCachedProcessors } from '@/lib/data-cache';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface LedProduct {
   id: string;
@@ -55,6 +57,7 @@ const BIT_DEPTHS = ['8', '10', '12'];
 export default function PowerDataPage() {
   const [products, setProducts] = useState<LedProduct[]>([]);
   const [processors, setProcessors] = useState<Processor[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedProductId, setSelectedProductId] = usePersistentState<string>('power-data:selectedProductId', '');
   const [selectedProcessorId, setSelectedProcessorId] = usePersistentState<string>('power-data:selectedProcessorId', '');
   const [circuitVoltage, setCircuitVoltage] = usePersistentState('power-data:circuitVoltage', '208');
@@ -64,18 +67,45 @@ export default function PowerDataPage() {
   const [bitDepth, setBitDepth] = usePersistentState('power-data:bitDepth', '8');
 
   useEffect(() => {
-    getProductsAction().then(({ data }) => {
-      if (data?.length) {
-        setProducts(data as LedProduct[]);
-        setSelectedProductId(prev => prev && data.some(p => p.id === prev) ? prev : data[0].id);
-      }
-    });
-    getProcessorsAction().then(({ data }) => {
-      if (data?.length) {
-        setProcessors(data as Processor[]);
-        setSelectedProcessorId(prev => prev && data.some(p => p.id === prev) ? prev : data[0].id);
-      }
-    });
+    const cachedProducts = getCachedProducts();
+    const cachedProcessors = getCachedProcessors();
+
+    if (cachedProducts) {
+      setProducts(cachedProducts);
+      setSelectedProductId(prev => prev && cachedProducts.some(p => p.id === prev) ? prev : cachedProducts[0].id);
+    }
+    if (cachedProcessors) {
+      setProcessors(cachedProcessors);
+      setSelectedProcessorId(prev => prev && cachedProcessors.some(p => p.id === prev) ? prev : cachedProcessors[0].id);
+    }
+    if (cachedProducts && cachedProcessors) {
+      setLoading(false);
+      return;
+    }
+
+    let p1: Promise<void> | null = null;
+    let p2: Promise<void> | null = null;
+
+    if (!cachedProducts) {
+      p1 = getProductsAction().then(({ data }) => {
+        if (data?.length) {
+          setProducts(data as LedProduct[]);
+          setCachedProducts('default', data as LedProduct[]);
+          setSelectedProductId(prev => prev && data.some(p => p.id === prev) ? prev : data[0].id);
+        }
+      });
+    }
+    if (!cachedProcessors) {
+      p2 = getProcessorsAction().then(({ data }) => {
+        if (data?.length) {
+          setProcessors(data as Processor[]);
+          setCachedProcessors('default', data as Processor[]);
+          setSelectedProcessorId(prev => prev && data.some(p => p.id === prev) ? prev : data[0].id);
+        }
+      });
+    }
+
+    Promise.all([p1, p2]).finally(() => setLoading(false));
   }, []);
 
   const selectedProduct = useMemo(() => products.find(p => p.id === selectedProductId), [products, selectedProductId]);
@@ -224,6 +254,13 @@ export default function PowerDataPage() {
       <div className="flex-1 overflow-auto p-6">
         <div className="max-w-2xl mx-auto space-y-4">
 
+          {loading ? (
+            <>
+              <Skeleton className="h-32 w-full rounded-xl" />
+              <Skeleton className="h-32 w-full rounded-xl" />
+            </>
+          ) : (
+            <>
           {/* Power result */}
           <Card>
             <CardHeader className="pb-2">
@@ -301,6 +338,8 @@ export default function PowerDataPage() {
               )}
             </CardContent>
           </Card>
+            </>
+          )}
 
         </div>
       </div>
