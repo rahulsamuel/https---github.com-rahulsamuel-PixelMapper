@@ -85,6 +85,7 @@ type LabelPosition = 'top-left' | 'top-right' | 'top-center' | 'center' | 'botto
 type LabelColorMode = 'single' | 'auto';
 type ResolutionType = 'content' | 'hd' | '4k-uhd' | '4k-dci' | 'custom';
 export type ProcessorType = 'Brompton' | 'Novastar' | 'Helios';
+export type PixelMapMode = 'basic' | 'advanced';
 
 export interface TextOverlay {
   id: string;
@@ -486,6 +487,9 @@ interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nex
   setZoom: (value: number | ((prev: number) => number), applyToAllTabs?: boolean) => void;
   activeTab: string;
   setActiveTab: Dispatch<SetStateAction<string>>;
+  pixelMapMode: PixelMapMode;
+  setPixelMapMode: (mode: PixelMapMode) => void;
+  canUseAdvancedMode: boolean;
   activeBounds: ActiveBounds | null;
   createScreenContentCanvas: (screen: Screen, screenActiveBounds: ActiveBounds | null, drawOverlays?: boolean) => HTMLCanvasElement | null;
   drawTextOverlaysOnCtx: (ctx: CanvasRenderingContext2D, overlays: TextOverlay[], canvasWidth: number, canvasHeight: number, offsetX?: number, offsetY?: number) => void;
@@ -763,6 +767,21 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
   const { user } = useAuth();
   const subscriptionStatus = 'pro' as 'pro' | 'trial';
+  const [pixelMapMode, setPixelMapModeState] = useState<PixelMapMode>('basic');
+  const canUseAdvancedMode = Boolean(user);
+
+  useEffect(() => {
+    const storageKey = user ? `mapmyled-pixel-map-mode:${user.id}` : 'mapmyled-pixel-map-mode:guest';
+    const savedMode = window.localStorage.getItem(storageKey);
+    setPixelMapModeState(user && savedMode !== 'basic' ? 'advanced' : 'basic');
+  }, [user]);
+
+  const setPixelMapMode = useCallback((mode: PixelMapMode) => {
+    if (mode === 'advanced' && !user) return;
+    setPixelMapModeState(mode);
+    const storageKey = user ? `mapmyled-pixel-map-mode:${user.id}` : 'mapmyled-pixel-map-mode:guest';
+    window.localStorage.setItem(storageKey, mode);
+  }, [user]);
 
   const [screens, setScreens] = useState<Screen[]>(() => {
     const initialScreen = createNewScreen("Default Screen", nextIdCounter.current);
@@ -4348,6 +4367,9 @@ const handleRightHalfTileChange = (add: boolean) => {
     setZoom,
     activeTab,
     setActiveTab,
+    pixelMapMode,
+    setPixelMapMode,
+    canUseAdvancedMode,
     activeBounds,
     createScreenContentCanvas,
     drawTextOverlaysOnCtx,

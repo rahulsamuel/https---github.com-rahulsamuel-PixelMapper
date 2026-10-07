@@ -76,6 +76,9 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
     isManualPowerModalOpen, setIsManualPowerModalOpen, selectedTileForPower, applyManualPowerWiring,
     isManualDataModalOpen, setIsManualDataModalOpen, selectedTileForData, applyManualDataWiring,
     isSyncing,
+    pixelMapMode,
+    setPixelMapMode,
+    canUseAdvancedMode,
    } = usePixelMap();
   const viewportRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -86,6 +89,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
   const [hasAutoFitted, setHasAutoFitted] = useState(false);
   const [toolPanelOpen, setToolPanelOpen] = useState(true);
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
+  const [showAdvancedPrompt, setShowAdvancedPrompt] = useState(false);
 
   useEffect(() => {
     if (!isSyncing) setLastSyncAt(Date.now());
@@ -254,6 +258,20 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
           }
         }}
       />
+      <AlertDialog open={showAdvancedPrompt} onOpenChange={setShowAdvancedPrompt}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Advanced mode requires an account</AlertDialogTitle>
+            <AlertDialogDescription>
+              Sign in or create an account to unlock the full pixel-map editor and cloud project saving.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continue with Basic</AlertDialogCancel>
+            <AlertDialogAction onClick={() => window.location.assign('/login')}>Sign in or create account</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -531,6 +549,29 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                 >
                   {toolPanelOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
                 </Button>
+                <div className="flex items-center gap-1 rounded-lg border bg-muted/30 p-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={pixelMapMode === 'basic' ? 'secondary' : 'ghost'}
+                    className="h-7 px-3 text-xs"
+                    onClick={() => setPixelMapMode('basic')}
+                  >
+                    Basic
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={pixelMapMode === 'advanced' ? 'secondary' : 'ghost'}
+                    className="h-7 px-3 text-xs"
+                    onClick={() => {
+                      if (canUseAdvancedMode) setPixelMapMode('advanced');
+                      else setShowAdvancedPrompt(true);
+                    }}
+                  >
+                    Advanced
+                  </Button>
+                </div>
                 {projectSwitcher}
                 <div className="hidden md:flex items-center gap-4">
                   <div className="text-sm text-muted-foreground whitespace-nowrap">

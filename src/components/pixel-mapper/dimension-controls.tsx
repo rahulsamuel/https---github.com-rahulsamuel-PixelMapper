@@ -63,6 +63,7 @@ export function DimensionControls() {
     addSection,
     updateSection,
     removeSection,
+    pixelMapMode,
    } = usePixelMap();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,16 +80,26 @@ export function DimensionControls() {
 
   return (
     <div className="space-y-4">
-        <div className="space-y-2">
+        {pixelMapMode === 'basic' ? (
+          <div className="space-y-2">
+            <Label>LED Product</Label>
+            <LedProductCombobox
+              className="w-full"
+              products={products as { id: string; manufacturer: string; productName: string }[]}
+              value={selectedProductId === 'custom' ? null : selectedProductId}
+              onChange={setSelectedProductId}
+            />
+            <p className="text-xs text-muted-foreground">Basic mode uses one LED product across the entire screen.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>LED Product Sections</Label>
               <Button
                 variant="outline"
                 size="sm"
                 className="h-7 text-xs"
-                onClick={() => {
-                  addSection('custom', 3);
-                }}
+                onClick={() => addSection('custom', 3)}
               >
                 <Plus className="mr-1 h-3.5 w-3.5" />
                 Add Section
@@ -145,7 +156,8 @@ export function DimensionControls() {
                 })}
               </div>
             )}
-        </div>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
                 <Label htmlFor="tileWidth">Tile Width (px)</Label>
