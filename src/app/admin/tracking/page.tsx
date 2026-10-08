@@ -204,10 +204,28 @@ function TrackingPageInner() {
     ]);
     const firstError = snapRes.error ?? userRes.error ?? prodRes.error ?? msgRes.error;
     if (firstError) setFetchError(firstError.message);
-    setSnapshots(snapRes.data ?? []);
+    const snapshotRows = snapRes.data ?? [];
+    setSnapshots(snapshotRows);
     setUsers(userRes.data ?? []);
     setProducts(prodRes.data ?? []);
     setMessages(msgRes.data ?? []);
+
+    if (!snapRes.error && snapshotRows.length > 0) {
+      const previewIds = snapshotRows.slice(0, 15).map(snapshot => snapshot.id);
+      const { data: previews, error: previewError } = await supabase
+        .from('pixel_map_snapshots')
+        .select('id, thumbnail')
+        .in('id', previewIds);
+      if (previewError) {
+        setFetchError(previewError.message);
+      } else if (previews) {
+        const previewMap = new Map(previews.map(preview => [preview.id, preview.thumbnail]));
+        setSnapshots(current => current.map(snapshot => ({
+          ...snapshot,
+          thumbnail: previewMap.get(snapshot.id),
+        })));
+      }
+    }
     setFetching(false);
   }, []);
 
