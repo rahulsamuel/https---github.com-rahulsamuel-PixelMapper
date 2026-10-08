@@ -40,7 +40,7 @@ interface Snapshot {
   screen_name: string;
   grid_width: number;
   grid_height: number;
-  thumbnail: string;
+  thumbnail?: string;
   download_type: string;
   filename: string;
   ip_address: string;
@@ -197,7 +197,7 @@ function TrackingPageInner() {
     setFetching(true);
     setFetchError(null);
     const [snapRes, userRes, prodRes, msgRes] = await Promise.all([
-      supabase.from('pixel_map_snapshots').select('id, user_id, session_id, screen_name, grid_width, grid_height, thumbnail, download_type, filename, ip_address, created_at, updated_at').order('created_at', { ascending: false }).limit(500),
+      supabase.from('pixel_map_snapshots').select('id, user_id, session_id, screen_name, grid_width, grid_height, download_type, filename, ip_address, created_at, updated_at').order('created_at', { ascending: false }).limit(500),
       supabase.from('users').select('id, email, full_name, company, is_admin, created_at').order('created_at', { ascending: false }),
       supabase.from('led_products').select('*').order('created_at', { ascending: false }),
       supabase.from('contact_messages').select('*').order('created_at', { ascending: false }),
@@ -218,6 +218,22 @@ function TrackingPageInner() {
   }, [user, isAdmin, loading, router, fetchData]);
 
   const userMap = new Map<string, UserRow>(users.map(u => [u.id, u]));
+
+  const openSnapshot = async (snapshot: Snapshot) => {
+    setSelectedSnapshot(snapshot);
+    const { data, error } = await supabase
+      .from('pixel_map_snapshots')
+      .select('thumbnail')
+      .eq('id', snapshot.id)
+      .maybeSingle();
+    if (error) {
+      setFetchError(error.message);
+      return;
+    }
+    if (data?.thumbnail) {
+      setSelectedSnapshot(current => current?.id === snapshot.id ? { ...current, thumbnail: data.thumbnail } : current);
+    }
+  };
 
   const deliverableSnapshots = snapshots.filter(s => s.download_type && s.download_type !== 'grid-png' && s.download_type !== '');
   const allSnapshots = snapshots;
@@ -398,7 +414,7 @@ function TrackingPageInner() {
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                 {filteredMaps.map(s => (
-                  <SnapshotCard key={s.id} snapshot={s} userMap={userMap} onClick={() => setSelectedSnapshot(s)} />
+                  <SnapshotCard key={s.id} snapshot={s} userMap={userMap} onClick={() => openSnapshot(s)} />
                 ))}
               </div>
             )}
