@@ -177,6 +177,7 @@ function TrackingPageInner() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [products, setProducts] = useState<LedProduct[]>([]);
   const [fetching, setFetching] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
@@ -194,12 +195,15 @@ function TrackingPageInner() {
 
   const fetchData = useCallback(async () => {
     setFetching(true);
+    setFetchError(null);
     const [snapRes, userRes, prodRes, msgRes] = await Promise.all([
-      supabase.from('pixel_map_snapshots').select('*').order('created_at', { ascending: false }).limit(500),
+      supabase.from('pixel_map_snapshots').select('id, user_id, session_id, screen_name, grid_width, grid_height, thumbnail, download_type, filename, ip_address, created_at, updated_at').order('created_at', { ascending: false }).limit(500),
       supabase.from('users').select('id, email, full_name, company, is_admin, created_at').order('created_at', { ascending: false }),
       supabase.from('led_products').select('*').order('created_at', { ascending: false }),
       supabase.from('contact_messages').select('*').order('created_at', { ascending: false }),
     ]);
+    const firstError = snapRes.error ?? userRes.error ?? prodRes.error ?? msgRes.error;
+    if (firstError) setFetchError(firstError.message);
     setSnapshots(snapRes.data ?? []);
     setUsers(userRes.data ?? []);
     setProducts(prodRes.data ?? []);
@@ -350,6 +354,12 @@ function TrackingPageInner() {
       </div>
 
       <div className="max-w-screen-2xl mx-auto px-4 md:px-6 py-6 space-y-6">
+        {fetchError && (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            Could not load some admin data: {fetchError}
+          </div>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard icon={Activity} label="Total Downloads" value={deliverableSnapshots.length} color="bg-primary/10 text-primary" />
