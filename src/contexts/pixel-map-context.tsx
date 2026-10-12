@@ -58,9 +58,15 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const canUseAdvancedMode = Boolean(user);
 
   useEffect(() => {
-    const storageKey = user ? `mapmyled-pixel-map-mode:${user.id}` : 'mapmyled-pixel-map-mode:guest';
-    const savedMode = window.localStorage.getItem(storageKey);
-    setPixelMapModeState(user && savedMode !== 'basic' ? 'advanced' : 'basic');
+    const guestKey = 'mapmyled-pixel-map-mode:guest';
+    const userKey = user ? `mapmyled-pixel-map-mode:${user.id}` : guestKey;
+    const savedMode = window.localStorage.getItem(userKey);
+    const guestMode = window.localStorage.getItem(guestKey);
+    const mode: PixelMapMode = savedMode === 'basic' || (!savedMode && guestMode === 'basic') ? 'basic' : user ? 'advanced' : 'basic';
+    setPixelMapModeState(mode);
+    if (user && !savedMode && guestMode) {
+      window.localStorage.setItem(userKey, guestMode);
+    }
   }, [user]);
 
   const setPixelMapMode = useCallback((mode: PixelMapMode) => {
@@ -152,6 +158,27 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       }
       fetchProducts();
   }, []);
+
+  useEffect(() => {
+    if (pixelMapMode !== 'advanced' || products.length === 0) return;
+    setScreens(prevScreens => prevScreens.map(screen => {
+      if (screen.sections.length > 0 || !screen.selectedProductId) return screen;
+      const product = products.find(item => item.id === screen.selectedProductId);
+      if (!product) return screen;
+      return {
+        ...screen,
+        sections: [{
+          id: crypto.randomUUID(),
+          productId: product.id,
+          columnCount: screen.dimensions.screenWidth,
+          tileWidthPx: product.tileWidthPx,
+          tileHeightPx: product.tileHeightPx,
+          tileWidthMm: product.tileWidthMm ?? 0,
+          tileHeightMm: product.tileHeightMm ?? 0,
+        }],
+      };
+    }));
+  }, [pixelMapMode, products]);
 
   const currentScreen = useMemo(() => screens.find(s => s.id === currentScreenId) || screens[0], [screens, currentScreenId]);
   
