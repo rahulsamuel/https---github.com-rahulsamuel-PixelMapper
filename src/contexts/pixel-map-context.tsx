@@ -161,24 +161,29 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (pixelMapMode !== 'advanced' || products.length === 0) return;
-    setScreens(prevScreens => prevScreens.map(screen => {
-      if (screen.sections.length > 0 || !screen.selectedProductId) return screen;
-      const product = products.find(item => item.id === screen.selectedProductId);
-      if (!product) return screen;
-      return {
-        ...screen,
-        sections: [{
-          id: crypto.randomUUID(),
-          productId: product.id,
-          columnCount: screen.dimensions.screenWidth,
-          tileWidthPx: product.tileWidthPx,
-          tileHeightPx: product.tileHeightPx,
-          tileWidthMm: product.tileWidthMm ?? 0,
-          tileHeightMm: product.tileHeightMm ?? 0,
-        }],
-      };
-    }));
-  }, [pixelMapMode, products]);
+    setScreens(prevScreens => {
+      let changed = false;
+      const nextScreens = prevScreens.map(screen => {
+        if (screen.sections.length > 0 || !screen.selectedProductId) return screen;
+        const product = products.find(item => item.id === screen.selectedProductId);
+        if (!product) return screen;
+        changed = true;
+        return {
+          ...screen,
+          sections: [{
+            id: crypto.randomUUID(),
+            productId: product.id,
+            columnCount: screen.dimensions.screenWidth,
+            tileWidthPx: product.tileWidthPx,
+            tileHeightPx: product.tileHeightPx,
+            tileWidthMm: product.tileWidthMm ?? 0,
+            tileHeightMm: product.tileHeightMm ?? 0,
+          }],
+        };
+      });
+      return changed ? nextScreens : prevScreens;
+    });
+  }, [pixelMapMode, products, screens]);
 
   const currentScreen = useMemo(() => screens.find(s => s.id === currentScreenId) || screens[0], [screens, currentScreenId]);
   
