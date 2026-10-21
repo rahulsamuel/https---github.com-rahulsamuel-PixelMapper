@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from 'react';
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -16,7 +17,7 @@ interface PresenceBarProps {
   screens: { id: string; name: string }[];
 }
 
-export function PresenceBar({ onlineUsers, isSyncing, lastSyncAt, onShareClick, currentScreenId, activeTab, screens }: PresenceBarProps) {
+function PresenceBarInner({ onlineUsers, isSyncing, lastSyncAt, onShareClick, currentScreenId, activeTab, screens }: PresenceBarProps) {
   const remoteUsers = onlineUsers.filter((u) => !u.isLocal);
   const localUser = onlineUsers.find((u) => u.isLocal);
 
@@ -108,3 +109,5 @@ export function PresenceBar({ onlineUsers, isSyncing, lastSyncAt, onShareClick, 
     </TooltipProvider>
   );
 }
+
+export const PresenceBar = memo(PresenceBarInner);

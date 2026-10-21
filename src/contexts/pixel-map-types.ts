@@ -390,6 +390,7 @@ export interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'
   wiringData: WiringInfo[];
   handleTileClick: (tileId: number) => void;
   selectionRect: { startX: number; startY: number; endX: number; endY: number } | null;
+  setDragOverlayRef: (el: HTMLDivElement | null) => void;
   selectedTileIds: number[];
   handleGridMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
   handleGridMouseMove: (e: React.MouseEvent<HTMLDivElement>) => void;

@@ -1,13 +1,13 @@
-
 "use client";
 
+import { memo } from 'react';
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 
-export function AppearanceControls() {
+function AppearanceControlsInner() {
   const { tileColor, setTileColor, tileColorTwo, setTileColorTwo, borderWidth, setBorderWidth, borderColor, setBorderColor, alternatingPixels, setAlternatingPixels } = usePixelMap();
 
   return (
@@ -94,3 +94,5 @@ export function AppearanceControls() {
       </div>
   );
 }
+
+export const AppearanceControls = memo(AppearanceControlsInner);

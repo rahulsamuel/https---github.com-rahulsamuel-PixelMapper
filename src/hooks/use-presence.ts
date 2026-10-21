@@ -43,6 +43,8 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
   const [onlineUsers, setOnlineUsers] = useState<PresenceUser[]>([]);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const cursorThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cursorRafRef = useRef<number | null>(null);
+  const cursorPosRef = useRef<{ x: number; y: number } | null>(null);
   const screenIdRef = useRef(currentScreenId);
   const activeTabRef = useRef(activeTab);
   const cursorsRef = useRef<Map<string, { x: number; y: number } | null>>(new Map());
@@ -56,15 +58,22 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
 
   const updateCursor = useCallback((x: number, y: number) => {
     if (!channelRef.current || !userId) return;
+    cursorPosRef.current = { x, y };
     if (cursorThrottleRef.current) return;
     cursorThrottleRef.current = setTimeout(() => {
       cursorThrottleRef.current = null;
     }, 50);
 
-    channelRef.current.send({
-      type: "broadcast",
-      event: "cursor",
-      payload: { sessionId: SESSION_ID, cursor: { x, y } },
+    if (cursorRafRef.current !== null) return;
+    cursorRafRef.current = requestAnimationFrame(() => {
+      cursorRafRef.current = null;
+      const pos = cursorPosRef.current;
+      if (!pos || !channelRef.current) return;
+      channelRef.current.send({
+        type: "broadcast",
+        event: "cursor",
+        payload: { sessionId: SESSION_ID, cursor: pos },
+      });
     });
   }, [userId]);
 
@@ -151,6 +160,7 @@ export function usePresence({ projectId, userId, email, currentScreenId, activeT
 
     return () => {
       if (cursorThrottleRef.current) clearTimeout(cursorThrottleRef.current);
+    if (cursorRafRef.current !== null) cancelAnimationFrame(cursorRafRef.current);
       channel.untrack().catch(() => {});
       supabase.removeChannel(channel);
       channelRef.current = null;

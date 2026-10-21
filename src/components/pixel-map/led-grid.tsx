@@ -62,7 +62,7 @@ export function LedGrid() {
     setLogoOverlay,
     showLogoOverlay,
     activeTool,
-    selectionRect,
+    setDragOverlayRef,
     selectedTileIds,
     handleGridMouseDown,
     handleGridMouseMove,
@@ -502,19 +502,15 @@ export function LedGrid() {
           })
         )}
         </div>
-        {selectionRect && (
-          <div
-            className="absolute pointer-events-none z-50"
-            style={{
-              left: Math.min(selectionRect.startX, selectionRect.endX) * zoom,
-              top: Math.min(selectionRect.startY, selectionRect.endY) * zoom,
-              width: Math.abs(selectionRect.endX - selectionRect.startX) * zoom,
-              height: Math.abs(selectionRect.endY - selectionRect.startY) * zoom,
-              backgroundColor: 'rgba(59, 130, 246, 0.15)',
-              border: '1px solid rgba(59, 130, 246, 0.8)',
-            }}
-          />
-        )}
+        <div
+          ref={setDragOverlayRef}
+          className="absolute pointer-events-none z-50"
+          style={{
+            display: 'none',
+            backgroundColor: 'rgba(59, 130, 246, 0.15)',
+            border: '1px solid rgba(59, 130, 246, 0.8)',
+          }}
+        />
         {showScreenName && (
             <div
                 className={cn(
@@ -617,9 +613,12 @@ function DraggableTextOverlay({
   onRemove: (id: string) => void;
 }) {
   const dragRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const pendingPosRef = useRef<{ x: number; y: number } | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const elRef = useRef<HTMLDivElement>(null);
 
   const currentColor =
     overlay.colorMode === 'auto'
@@ -640,23 +639,40 @@ function DraggableTextOverlay({
   }, [overlay.x, overlay.y]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragState.current || !isDragging) return;
+    if (!dragState.current) return;
     const dx = (e.clientX - dragState.current.startX) / zoom;
     const dy = (e.clientY - dragState.current.startY) / zoom;
     const newX = Math.max(0, Math.min(gridWidth - 20, dragState.current.origX + dx));
     const newY = Math.max(0, Math.min(gridHeight - 10, dragState.current.origY + dy));
-    onUpdate(overlay.id, { x: newX, y: newY });
-  }, [isDragging, zoom, gridWidth, gridHeight, overlay.id, onUpdate]);
+    pendingPosRef.current = { x: newX, y: newY };
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      if (elRef.current && pendingPosRef.current) {
+        elRef.current.style.left = `${pendingPosRef.current.x * zoom}px`;
+        elRef.current.style.top = `${pendingPosRef.current.y * zoom}px`;
+      }
+    });
+  }, [zoom, gridWidth, gridHeight]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    const pos = pendingPosRef.current;
     dragState.current = null;
     setIsDragging(false);
-  }, []);
+    if (pos) {
+      onUpdate(overlay.id, { x: pos.x, y: pos.y });
+      pendingPosRef.current = null;
+    }
+  }, [overlay.id, onUpdate]);
 
   return (
     <div
-      ref={dragRef}
+      ref={(el) => { dragRef.current = el; elRef.current = el; }}
       className="absolute z-40 select-none"
       style={{
         left: `${overlay.x * zoom}px`,
@@ -810,29 +826,52 @@ function DraggableLogoOverlay({
   gridHeight: number;
   onUpdate: (updater: (prev: LogoOverlay | null) => LogoOverlay | null) => void;
 }) {
-  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const dragStateRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const pendingPosRef = useRef<{ x: number; y: number } | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const elRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
-    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: overlay.x, origY: overlay.y };
+    dragStateRef.current = { startX: e.clientX, startY: e.clientY, origX: overlay.x, origY: overlay.y };
     setIsDragging(true);
   };
 
   useEffect(() => {
     if (!isDragging) return;
     const handleMove = (e: MouseEvent) => {
-      if (!dragRef.current) return;
-      const dx = (e.clientX - dragRef.current.startX) / zoom;
-      const dy = (e.clientY - dragRef.current.startY) / zoom;
+      if (!dragStateRef.current) return;
+      const dx = (e.clientX - dragStateRef.current.startX) / zoom;
+      const dy = (e.clientY - dragStateRef.current.startY) / zoom;
       const maxX = gridWidth - overlay.width;
       const maxY = gridHeight - overlay.height;
-      const nx = Math.max(0, Math.min(maxX, dragRef.current.origX + dx));
-      const ny = Math.max(0, Math.min(maxY, dragRef.current.origY + dy));
-      onUpdate(prev => prev ? { ...prev, x: nx, y: ny } : prev);
+      const nx = Math.max(0, Math.min(maxX, dragStateRef.current.origX + dx));
+      const ny = Math.max(0, Math.min(maxY, dragStateRef.current.origY + dy));
+      pendingPosRef.current = { x: nx, y: ny };
+      if (rafRef.current !== null) return;
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        if (elRef.current && pendingPosRef.current) {
+          elRef.current.style.left = `${pendingPosRef.current.x * zoom}px`;
+          elRef.current.style.top = `${pendingPosRef.current.y * zoom}px`;
+        }
+      });
     };
-    const handleUp = () => { setIsDragging(false); dragRef.current = null; };
+    const handleUp = () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      const pos = pendingPosRef.current;
+      dragStateRef.current = null;
+      setIsDragging(false);
+      if (pos) {
+        onUpdate(prev => prev ? { ...prev, x: pos.x, y: pos.y } : prev);
+        pendingPosRef.current = null;
+      }
+    };
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleUp);
     return () => { window.removeEventListener('mousemove', handleMove); window.removeEventListener('mouseup', handleUp); };
@@ -840,6 +879,7 @@ function DraggableLogoOverlay({
 
   return (
     <div
+      ref={elRef}
       className="absolute z-40 cursor-move select-none"
       style={{
         left: overlay.x * zoom,

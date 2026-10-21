@@ -1,10 +1,11 @@
 "use client";
 
+import { memo } from 'react';
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
 import { Palette, Trash2, Bolt, GitBranch, Eraser, Undo2 } from "lucide-react";
 
-export function EditTools() {
+function EditToolsInner() {
   const {
     activeTool,
     setActiveTool,
@@ -96,3 +97,5 @@ export function EditTools() {
     </div>
   );
 }
+
+export const EditTools = memo(EditToolsInner);

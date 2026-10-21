@@ -2,11 +2,13 @@
 
 import type { PresenceUser } from "@/hooks/use-presence";
 
+import { memo } from 'react';
+
 interface RemoteCursorsProps {
   onlineUsers: PresenceUser[];
 }
 
-export function RemoteCursors({ onlineUsers }: RemoteCursorsProps) {
+function RemoteCursorsInner({ onlineUsers }: RemoteCursorsProps) {
   const remoteUsers = onlineUsers.filter((u) => !u.isLocal && u.cursor);
 
   if (remoteUsers.length === 0) return null;
@@ -49,3 +51,5 @@ export function RemoteCursors({ onlineUsers }: RemoteCursorsProps) {
     </div>
   );
 }
+
+export const RemoteCursors = memo(RemoteCursorsInner);
