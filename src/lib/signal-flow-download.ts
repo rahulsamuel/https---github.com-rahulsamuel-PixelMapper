@@ -1,6 +1,3 @@
-import { toPng } from "html-to-image";
-import { jsPDF } from "jspdf";
-
 const EXPORT_WIDTH = 2000;
 const EXPORT_HEIGHT = 1400;
 
@@ -37,6 +34,7 @@ async function renderDiagram(node: HTMLElement, lightBackground: boolean): Promi
 
   await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
+  const { toPng } = await import("html-to-image");
   try {
     return await toPng(node, {
       backgroundColor: lightBackground ? "#ffffff" : "#0a0a0a",
@@ -76,6 +74,7 @@ export async function downloadSignalFlowHtml(node: HTMLElement, title: string): 
 
 export async function downloadSignalFlowPdf(node: HTMLElement, title: string): Promise<void> {
   const imageUrl = await renderDiagram(node, true);
+  const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();

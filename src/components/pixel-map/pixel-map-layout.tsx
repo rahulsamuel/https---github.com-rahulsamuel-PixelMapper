@@ -17,15 +17,15 @@ import { LabelControls } from "../pixel-mapper/label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { MediaOutputControls } from "../pixel-mapper/media-output-controls";
-import { RasterMapPreview } from "./raster-map-preview";
-import { WiringControls } from "../pixel-mapper/wiring-controls";
-import { PowerControls } from "../pixel-mapper/power-controls";
-import { ColorToolControls } from "../pixel-mapper/color-tool-controls";
-import { ManualPowerWiringModal } from "../pixel-mapper/manual-power-wiring-modal";
-import { ManualDataWiringModal } from "../pixel-mapper/manual-data-wiring-modal";
-import { DeliverablesView } from "./deliverables-view";
-import { EquipmentView } from "./equipment-view";
-import { ProjectDetailsControls } from "../pixel-mapper/project-details-controls";
+const RasterMapPreview = lazy(() => import("./raster-map-preview").then(m => ({ default: m.RasterMapPreview })));
+const WiringControls = lazy(() => import("../pixel-mapper/wiring-controls").then(m => ({ default: m.WiringControls })));
+const PowerControls = lazy(() => import("../pixel-mapper/power-controls").then(m => ({ default: m.PowerControls })));
+const ColorToolControls = lazy(() => import("../pixel-mapper/color-tool-controls").then(m => ({ default: m.ColorToolControls })));
+const ManualPowerWiringModal = lazy(() => import("../pixel-mapper/manual-power-wiring-modal").then(m => ({ default: m.ManualPowerWiringModal })));
+const ManualDataWiringModal = lazy(() => import("../pixel-mapper/manual-data-wiring-modal").then(m => ({ default: m.ManualDataWiringModal })));
+const DeliverablesView = lazy(() => import("./deliverables-view").then(m => ({ default: m.DeliverablesView })));
+const EquipmentView = lazy(() => import("./equipment-view").then(m => ({ default: m.EquipmentView })));
+const ProjectDetailsControls = lazy(() => import("../pixel-mapper/project-details-controls").then(m => ({ default: m.ProjectDetailsControls })));
 import {
   Accordion,
   AccordionContent,
@@ -52,7 +52,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input";
 import { DownloadsControls } from "../pixel-mapper/downloads-controls";
-import { useState, useRef, useMemo, useEffect, useCallback } from "react";
+import { useState, useRef, useMemo, useEffect, useCallback, lazy, Suspense } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { PresenceBar } from "./presence-bar";
 import { RemoteCursors } from "./remote-cursors";
@@ -240,24 +240,32 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
 
   return (
     <div className="flex h-full w-full overflow-hidden">
-      <ManualPowerWiringModal
-        isOpen={isManualPowerModalOpen}
-        onClose={() => setIsManualPowerModalOpen(false)}
-        onSubmit={(data) => {
-          if (selectedTileForPower !== null) {
-            applyManualPowerWiring({ startTileId: selectedTileForPower, ...data });
-          }
-        }}
-      />
-      <ManualDataWiringModal
-        isOpen={isManualDataModalOpen}
-        onClose={() => setIsManualDataModalOpen(false)}
-        onSubmit={(data) => {
-          if (selectedTileForData !== null) {
-            applyManualDataWiring({ startTileId: selectedTileForData, ...data });
-          }
-        }}
-      />
+      {isManualPowerModalOpen && (
+        <Suspense fallback={null}>
+          <ManualPowerWiringModal
+            isOpen={isManualPowerModalOpen}
+            onClose={() => setIsManualPowerModalOpen(false)}
+            onSubmit={(data) => {
+              if (selectedTileForPower !== null) {
+                applyManualPowerWiring({ startTileId: selectedTileForPower, ...data });
+              }
+            }}
+          />
+        </Suspense>
+      )}
+      {isManualDataModalOpen && (
+        <Suspense fallback={null}>
+          <ManualDataWiringModal
+            isOpen={isManualDataModalOpen}
+            onClose={() => setIsManualDataModalOpen(false)}
+            onSubmit={(data) => {
+              if (selectedTileForData !== null) {
+                applyManualDataWiring({ startTileId: selectedTileForData, ...data });
+              }
+            }}
+          />
+        </Suspense>
+      )}
       <AlertDialog open={showAdvancedPrompt} onOpenChange={setShowAdvancedPrompt}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -459,7 +467,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                         <h3 className="font-semibold">Data Wiring</h3>
                         <p className="text-sm text-muted-foreground">Define data wiring patterns and port settings.</p>
                       </div>
-                      <WiringControls />
+                      <Suspense fallback={null}><WiringControls /></Suspense>
                     </div>
                     <Separator />
                     <div>
@@ -467,7 +475,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                         <h3 className="font-semibold">Power Wiring</h3>
                         <p className="text-sm text-muted-foreground">Define how many tiles are on each power circuit.</p>
                       </div>
-                      <PowerControls />
+                      <Suspense fallback={null}><PowerControls /></Suspense>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -480,7 +488,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                     <p className="text-sm text-muted-foreground pb-4">Select a tool to apply to the grid or restore deleted tiles.</p>
                     <div className="space-y-4 pt-4">
                       <EditTools />
-                      {activeTool === 'color' && <ColorToolControls />}
+                      {activeTool === 'color' && <Suspense fallback={null}><ColorToolControls /></Suspense>}
                       <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/50">
                         <div className="flex items-center gap-2">
                           <Trash2 className="size-4 text-muted-foreground" />
@@ -524,7 +532,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                 <AccordionItem value="project-details" className="w-full border-none">
                   <AccordionSectionTrigger icon={<Info className="size-5" />} title="Project Info" colorClass="border-l-4 border-l-teal-500" />
                   <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
-                    <ProjectDetailsControls />
+                    <Suspense fallback={null}><ProjectDetailsControls /></Suspense>
                   </AccordionContent>
                 </AccordionItem>
               )}
@@ -666,14 +674,14 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               </TabsContent>
               <TabsContent value="raster" className="mt-0 p-8">
                  <div className="inline-block" style={{ width: (rasterMapConfig?.totalWidth ?? 0) * zoom, height: (rasterMapConfig?.totalHeight ?? 0) * zoom }}>
-                  <RasterMapPreview />
+                  <Suspense fallback={null}><RasterMapPreview /></Suspense>
                 </div>
               </TabsContent>
               <TabsContent value="equipment" className="mt-0 p-8 flex justify-center items-start">
-                <EquipmentView />
+                <Suspense fallback={null}><EquipmentView /></Suspense>
               </TabsContent>
               <TabsContent value="deliverables" className="mt-0 p-8 flex justify-center items-start">
-                <DeliverablesView />
+                <Suspense fallback={null}><DeliverablesView /></Suspense>
               </TabsContent>
           </div>
         </Tabs>

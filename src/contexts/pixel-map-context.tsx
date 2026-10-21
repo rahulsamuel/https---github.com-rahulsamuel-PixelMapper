@@ -1,7 +1,6 @@
 
 "use client";
 
-import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction, useMemo } from "react";
 import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo, applyManualPowerWiring as applyManualPowerWiringLogic, applyManualDataWiring as applyManualDataWiringLogic, generateManualSerpentinePath, isCustomSerpentine } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
@@ -2589,13 +2588,13 @@ const handleRightHalfTileChange = (add: boolean) => {
     const sizeLabel = `${rasterMapConfig.outputWidth}x${rasterMapConfig.outputHeight}`;
     const downloadFilename = `RASTER_MAP_${screenNameForFile}_${sizeLabel}.png`;
 
-    toPng(node, {
+    import("html-to-image").then(({ toPng }) => toPng(node, {
       cacheBust: true,
       backgroundColor: '#ffffff',
       pixelRatio: 1,
       width: totalWidth,
       height: totalHeight,
-    })
+    }))
       .then(async (dataUrl) => {
         let finalDataUrl = dataUrl;
         if (includeTextOverlaysInDownload) {

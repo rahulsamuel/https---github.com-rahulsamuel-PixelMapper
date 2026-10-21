@@ -10,7 +10,6 @@ import { supabase } from "@/lib/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { PanelLeftClose, PanelLeftOpen, Download } from "lucide-react";
-import { toPng } from "html-to-image";
 import { cn } from "@/lib/utils";
 import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
 
@@ -155,6 +154,7 @@ export function PreVisualBuilder() {
   const handleExport = async () => {
     if (!exportRef.current) return;
     try {
+      const { toPng } = await import("html-to-image");
       const dataUrl = await toPng(exportRef.current, { backgroundColor: settings.backgroundColor, pixelRatio: 2 });
       const a = document.createElement("a");
       a.href = dataUrl;

@@ -33,8 +33,6 @@ import {
   FileImage,
   FileText,
 } from "lucide-react";
-import { toPng } from "html-to-image";
-import { jsPDF } from "jspdf";
 import type { ProcessorEntry, CableRun, ProcessorType } from "@/contexts/pixel-map-context";
 import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
 
@@ -238,6 +236,7 @@ export function EquipmentView() {
     if (!exportRef.current) return;
     setIsExporting(true);
     try {
+      const { toPng } = await import("html-to-image");
       const dataUrl = await toPng(exportRef.current, { backgroundColor: "#ffffff", pixelRatio: 2 });
       const a = document.createElement("a");
       a.href = dataUrl;
@@ -253,6 +252,8 @@ export function EquipmentView() {
     if (!exportRef.current) return;
     setIsExporting(true);
     try {
+      const { toPng } = await import("html-to-image");
+      const { jsPDF } = await import("jspdf");
       const dataUrl = await toPng(exportRef.current, { backgroundColor: "#ffffff", pixelRatio: 2 });
       const img = new Image();
       img.src = dataUrl;

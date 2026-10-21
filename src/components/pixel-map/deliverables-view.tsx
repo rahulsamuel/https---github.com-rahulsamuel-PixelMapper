@@ -6,8 +6,6 @@ import type { RasterMapConfig, Screen, ActiveBounds } from "@/contexts/pixel-map
 import { Button } from "@/components/ui/button";
 import { FileDown, FileCode, Printer, Monitor, Video, Music, Image, Layers, Cpu, Download, List, LayoutGrid } from "lucide-react";
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
-import { toPng } from "html-to-image";
-import { jsPDF } from "jspdf";
 import { useToast } from "@/hooks/use-toast";
 import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
 import { usePersistentState } from "@/hooks/use-persistent-state";
@@ -239,6 +237,8 @@ export function DeliverablesView() {
     if (!contentRef.current) return;
     setIsExporting(true);
     try {
+      const { toPng } = await import("html-to-image");
+      const { jsPDF } = await import("jspdf");
       const dataUrl = await toPng(contentRef.current, {
         backgroundColor: '#0F172A',
         pixelRatio: 2,
