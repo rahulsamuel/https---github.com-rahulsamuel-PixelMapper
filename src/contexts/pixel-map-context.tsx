@@ -46,7 +46,7 @@ export const usePixelMap = () => {
 
 export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [appState] = useState("ready");
-  const gridRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
   const wiringDiagramRef = useRef<HTMLDivElement>(null);
   const rasterMapRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -1337,7 +1337,7 @@ const handleRightHalfTileChange = (add: boolean) => {
   const dragOverlayRef = useRef<HTMLDivElement | null>(null);
   const setDragOverlayRef = useCallback((el: HTMLDivElement | null) => { dragOverlayRef.current = el; }, []);
 
-  const handleGridMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const handleGridMouseDown = useCallback((e: React.MouseEvent<HTMLElement>) => {
     if (currentScreen.activeTool !== 'delete' && currentScreen.activeTool !== 'color') return;
     if (e.button !== 0) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -1348,7 +1348,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     setSelectedTileIds([]);
   }, [currentScreen.activeTool, zoom]);
 
-  const handleGridMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const handleGridMouseMove = useCallback((e: React.MouseEvent<HTMLElement>) => {
     if (!dragStateRef.current?.active) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = (e.clientX - rect.left) / zoom;

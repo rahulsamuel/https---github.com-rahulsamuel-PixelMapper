@@ -381,7 +381,7 @@ export interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'
   moveScreenUp: (id: string) => void;
   moveScreenDown: (id: string) => void;
   appState: string;
-  gridRef: React.RefObject<HTMLDivElement>;
+  gridRef: React.RefObject<HTMLDivElement | null>;
   wiringDiagramRef: React.RefObject<HTMLDivElement>;
   rasterMapRef: React.RefObject<HTMLDivElement>;
   setDimensions: Dispatch<SetStateAction<Dimensions>>;
@@ -392,8 +392,8 @@ export interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'
   selectionRect: { startX: number; startY: number; endX: number; endY: number } | null;
   setDragOverlayRef: (el: HTMLDivElement | null) => void;
   selectedTileIds: number[];
-  handleGridMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
-  handleGridMouseMove: (e: React.MouseEvent<HTMLDivElement>) => void;
+  handleGridMouseDown: (e: React.MouseEvent<HTMLElement>) => void;
+  handleGridMouseMove: (e: React.MouseEvent<HTMLElement>) => void;
   handleGridMouseUp: () => void;
   restoreDeletedTiles: () => void;
   resetAllColors: () => void;
