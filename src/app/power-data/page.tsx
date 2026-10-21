@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -111,14 +112,17 @@ export default function PowerDataPage() {
   const selectedProduct = useMemo(() => products.find(p => p.id === selectedProductId), [products, selectedProductId]);
   const selectedProcessor = useMemo(() => processors.find(p => p.id === selectedProcessorId), [processors, selectedProcessorId]);
 
+  const debouncedAmperage = useDebouncedValue(circuitAmperage, 50);
+  const debouncedSafetyMargin = useDebouncedValue(safetyMargin, 50);
+
   const {
     maxTilesPerPowerCircuit, maxTilesPerDataPort, maxTilesPerDistUnit, maxTilesPerTrunk,
     circuitWatts, tileWatts, pixelsPerPort, pixelsPerTile, hasDistribution,
   } = useMemo(() => {
     // Power
     const v = parseFloat(circuitVoltage) || 0;
-    const a = parseFloat(circuitAmperage) || 0;
-    const margin = parseFloat(safetyMargin) / 100 || 0;
+    const a = parseFloat(debouncedAmperage) || 0;
+    const margin = parseFloat(debouncedSafetyMargin) / 100 || 0;
     const circuitWatts = v * a * margin;
     const tileWatts = Number(selectedProduct?.wattsPerTile ?? 0);
     const maxTilesPerPowerCircuit = tileWatts > 0 ? Math.floor(circuitWatts / tileWatts) : 0;
@@ -149,7 +153,7 @@ export default function PowerDataPage() {
       maxTilesPerPowerCircuit, maxTilesPerDataPort, maxTilesPerDistUnit, maxTilesPerTrunk,
       circuitWatts, tileWatts, pixelsPerPort, pixelsPerTile, hasDistribution,
     };
-  }, [selectedProduct, selectedProcessor, circuitVoltage, circuitAmperage, safetyMargin, refreshRate, bitDepth]);
+  }, [selectedProduct, selectedProcessor, circuitVoltage, debouncedAmperage, debouncedSafetyMargin, refreshRate, bitDepth]);
 
   return (
     <div className="h-[calc(100svh-3.5rem)] flex overflow-hidden">

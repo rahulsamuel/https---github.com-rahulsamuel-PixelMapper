@@ -2,7 +2,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import Link from 'next/link';
@@ -84,8 +84,6 @@ export default function CalculatorPage() {
     });
     const [curvingState, setCurvingState] = useState<CurvingState>(DEFAULT_CURVING_STATE);
 
-    const [results, setResults] = useState<CalculatedResults | null>(null);
-
     useEffect(() => {
         async function fetchProducts() {
             const cached = getCachedProducts();
@@ -116,11 +114,8 @@ export default function CalculatorPage() {
         return products.find(p => p.id === formState.selectedProductId) ?? null;
     }, [formState.selectedProductId, products]);
 
-    const calculateResults = useCallback(() => {
-        if (!selectedProduct) {
-            setResults(null);
-            return;
-        }
+    const results = useMemo<CalculatedResults | null>(() => {
+        if (!selectedProduct) return null;
 
         const { screenWidthTiles, screenHeightTiles, voltage, phase } = formState;
 
@@ -163,7 +158,7 @@ export default function CalculatorPage() {
         const phaseText = phase === 'three-phase' ? 'Three Phase' : 'Single Phase';
         const currentDrawLabel = `Current Draw @ ${vNum}V (${phaseText})`;
 
-        setResults({
+        return {
             resolution: { width: resWidth, height: resHeight },
             totalPixels,
             aspectRatio,
@@ -176,13 +171,8 @@ export default function CalculatorPage() {
             totalPower: { max: totalMaxPower, avg: totalAvgPower },
             currentDraw: { max: maxAmps, avg: avgAmps, label: currentDrawLabel },
             totalTiles,
-        });
-
+        };
     }, [formState, selectedProduct]);
-
-    useEffect(() => {
-        calculateResults();
-    }, [calculateResults]);
 
     const handleFormChange = (field: keyof FormState, value: any) => {
         setFormState(prevState => {

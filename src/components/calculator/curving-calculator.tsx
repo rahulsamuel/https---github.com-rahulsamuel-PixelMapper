@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -103,15 +104,18 @@ const ANGLE_MAX = 90;
 
 function useArcData(screenWidthTiles: number, tileWidthMm: number, state: CurvingState) {
   const numJunctions = Math.max(0, screenWidthTiles - 1);
+  const debouncedUniformAngle = useDebouncedValue(state.uniformAngle, 50);
+  const debouncedVariableAngles = useDebouncedValue(state.variableAngles, 50);
+
   const effectiveVariableAngles = useMemo(() => {
-    const arr = [...state.variableAngles];
+    const arr = [...debouncedVariableAngles];
     while (arr.length < numJunctions) arr.push(5);
     while (arr.length > numJunctions) arr.pop();
     return arr;
-  }, [state.variableAngles, numJunctions]);
+  }, [debouncedVariableAngles, numJunctions]);
 
   const junctionAngles = state.curveMode === 'uniform'
-    ? Array(numJunctions).fill(state.uniformAngle)
+    ? Array(numJunctions).fill(debouncedUniformAngle)
     : effectiveVariableAngles;
 
   return useMemo(

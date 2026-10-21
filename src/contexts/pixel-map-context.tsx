@@ -5,6 +5,7 @@ import { toPng } from "html-to-image";
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction, useMemo } from "react";
 import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo, applyManualPowerWiring as applyManualPowerWiringLogic, applyManualDataWiring as applyManualDataWiringLogic, generateManualSerpentinePath, isCustomSerpentine } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { isColorDark } from "@/lib/utils";
 import { getProducts } from "@/app/calculator/actions";
 import { getCachedProducts, setCachedProducts } from "@/lib/data-cache";
@@ -2222,11 +2223,13 @@ const handleRightHalfTileChange = (add: boolean) => {
   }, [currentScreen.lastRasterArgs, rasterGroups, buildRasterConfigForGroup, activeRasterGroupId]);
 
 
+  const debouncedScreens = useDebouncedValue(screens, 150);
+
   useEffect(() => {
     if (currentScreen.lastRasterArgs) {
       regenerateRasterPreview();
     }
-  }, [regenerateRasterPreview, screens]);
+  }, [regenerateRasterPreview, debouncedScreens]);
   
   const generateRasterMap = useCallback((filename: string, outputWidth?: number, outputHeight?: number) => {
     setLastRasterArgs({ filename, outputWidth, outputHeight });

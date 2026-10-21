@@ -11,6 +11,7 @@ import { jsPDF } from "jspdf";
 import { useToast } from "@/hooks/use-toast";
 import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
 import { usePersistentState } from "@/hooks/use-persistent-state";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 interface LedProduct {
   id: string;
@@ -128,12 +129,15 @@ export function DeliverablesView() {
     return `CONTENT_DELIVERABLES_${name}_${num}_${ver}`;
   }, [projectName, currentScreen.name, projectNumber, versionNumber]);
 
+  const debouncedSelectedScreens = useDebouncedValue(selectedScreens, 150);
+  const debouncedRasterMapConfigs = useDebouncedValue(rasterMapConfigs, 150);
+
   // Generate per-screen pixel map previews using the canvas renderer
   useEffect(() => {
     const generatePreviews = () => {
       const images: Record<string, string> = {};
-      for (const screen of selectedScreens) {
-        const rasterConfig = rasterMapConfigs?.[screen.rasterGroupId ?? 'raster-1'];
+      for (const screen of debouncedSelectedScreens) {
+        const rasterConfig = debouncedRasterMapConfigs?.[screen.rasterGroupId ?? 'raster-1'];
         const arrangement = rasterConfig?.screenArrangement?.find(a => a.screenId === screen.id);
         const bounds = arrangement?.activeBounds ?? null;
         const canvas = createScreenContentCanvas?.(screen, bounds, includeTextOverlaysInDownload);
@@ -144,7 +148,7 @@ export function DeliverablesView() {
       setPixelMapImages(images);
     };
     generatePreviews();
-  }, [selectedScreens, rasterMapConfigs, createScreenContentCanvas, includeTextOverlaysInDownload]);
+  }, [debouncedSelectedScreens, debouncedRasterMapConfigs, createScreenContentCanvas, includeTextOverlaysInDownload]);
 
   const screenData = useMemo(() => {
     return selectedScreens.map((screen, idx) => {
