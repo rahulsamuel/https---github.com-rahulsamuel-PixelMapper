@@ -358,7 +358,6 @@ export interface ProjectData {
   rasterGroups?: RasterGroup[];
   activeRasterGroupId?: string;
   rasterBgColor?: string;
-  uploadedMaps?: string[];
   includeTextOverlaysInDownload?: boolean;
   calculator?: CalculatorTabData;
   powerData?: PowerDataTabData;
@@ -526,9 +525,6 @@ export interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'
   setVersionNumber: Dispatch<SetStateAction<string>>;
   projectNotes: string;
   setProjectNotes: Dispatch<SetStateAction<string>>;
-  uploadedMaps: string[];
-  addUploadedMap: (dataUri: string) => void;
-  removeUploadedMap: (index: number) => void;
   mediaServer: string;
   setMediaServer: Dispatch<SetStateAction<string>>;
   preferredCodec: string;

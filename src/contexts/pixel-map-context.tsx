@@ -125,7 +125,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [projectNumber, setProjectNumber] = useState("");
   const [versionNumber, setVersionNumber] = useState("1.0");
   const [projectNotes, setProjectNotes] = useState("");
-  const [uploadedMaps, setUploadedMaps] = useState<string[]>([]);
   const [mediaServer, setMediaServer] = useState("disguise");
   const [preferredCodec, setPreferredCodec] = useState("HAP");
   const [videoContainer, setVideoContainer] = useState("MOV");
@@ -136,9 +135,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [audioBitRate, setAudioBitRate] = useState("24-bit");
   const [imageFormat, setImageFormat] = useState("PNG");
   const [deliverablesScreenIds, setDeliverablesScreenIds] = useState<string[]>([]);
-
-  const addUploadedMap = (dataUri: string) => setUploadedMaps(prev => [...prev, dataUri]);
-  const removeUploadedMap = (index: number) => setUploadedMaps(prev => prev.filter((_, i) => i !== index));
 
   useEffect(() => {
       async function fetchProducts() {
@@ -2885,7 +2881,6 @@ const handleRightHalfTileChange = (add: boolean) => {
       rasterGroups,
       activeRasterGroupId,
       rasterBgColor,
-      uploadedMaps,
       includeTextOverlaysInDownload,
       calculator,
       powerData,
@@ -2894,7 +2889,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       wallLayoutLegend,
       deliverablesScreenIds,
     };
-  }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioFormat, audioEmbedded, samplingRate, audioBitRate, imageFormat, rasterMapConfigs, rasterGroups, activeRasterGroupId, rasterBgColor, uploadedMaps, includeTextOverlaysInDownload, deliverablesScreenIds]);
+  }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioFormat, audioEmbedded, samplingRate, audioBitRate, imageFormat, rasterMapConfigs, rasterGroups, activeRasterGroupId, rasterBgColor, includeTextOverlaysInDownload, deliverablesScreenIds]);
 
   const loadProjectData = useCallback((data: ProjectData) => {
     let maxId = 0;
@@ -2942,7 +2937,6 @@ const handleRightHalfTileChange = (add: boolean) => {
     if (data.rasterGroups) setRasterGroups(data.rasterGroups);
     if (data.activeRasterGroupId) setActiveRasterGroupId(data.activeRasterGroupId);
     if (data.rasterBgColor) setRasterBgColor(data.rasterBgColor);
-    if (data.uploadedMaps) setUploadedMaps(data.uploadedMaps);
     if (data.includeTextOverlaysInDownload !== undefined) setIncludeTextOverlaysInDownload(data.includeTextOverlaysInDownload);
 
     const writeLS = (key: string, value: any) => {
@@ -3164,7 +3158,6 @@ const handleRightHalfTileChange = (add: boolean) => {
     setProjectNumber("");
     setVersionNumber("1.0");
     setProjectNotes("");
-    setUploadedMaps([]);
     setDeliverablesScreenIds([]);
     toast({ title: "New Project", description: "Started a new project. Use Undo to bring back your previous work." });
   }, [toast]);
@@ -3923,9 +3916,6 @@ const handleRightHalfTileChange = (add: boolean) => {
     setVersionNumber,
     projectNotes,
     setProjectNotes,
-    uploadedMaps,
-    addUploadedMap,
-    removeUploadedMap,
     mediaServer,
     setMediaServer,
     preferredCodec,
