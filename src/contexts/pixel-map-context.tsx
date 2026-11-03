@@ -2166,7 +2166,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     for (const arrangement of screenArrangement) {
         const screen = groupScreens.find(s => s.id === arrangement.screenId);
         if (!screen) continue;
-        const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds, true);
+        const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds, screen.showTextOverlaysInRaster ?? true);
         if (screenCanvas) {
             masterCtx.drawImage(screenCanvas, arrangement.x, arrangement.y);
         }
@@ -2255,7 +2255,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         const screen = screens.find(s => s.id === arrangement.screenId);
         if (!screen) continue;
 
-        const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds, true);
+        const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds, screen.showTextOverlaysInRaster ?? true);
         if (screenCanvas) {
             masterCtx.drawImage(screenCanvas, arrangement.x, arrangement.y);
         }
