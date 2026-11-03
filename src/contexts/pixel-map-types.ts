@@ -116,6 +116,7 @@ export interface ScreenArrangement {
   screenNameLabelColorMode: string;
   showSliceOffsetLabels: boolean;
   showTextOverlaysInWiring: boolean;
+  showTextOverlaysInRaster?: boolean;
   showResolution: boolean;
   resolutionLabelPosition: string;
   showDimensions: boolean;
@@ -210,6 +211,7 @@ export interface Screen {
   powerLabelColor: string;
   showSliceOffsetLabels: boolean;
   showTextOverlaysInWiring: boolean;
+  showTextOverlaysInRaster?: boolean;
   showResolution: boolean;
   resolutionLabelPosition: LabelPosition;
   resolutionLabelFontSize: number;

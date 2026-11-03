@@ -6,6 +6,8 @@ import { useMemo } from 'react';
 import { cn } from "@/lib/utils";
 import { Download, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 
 export function RasterMapPreview() {
@@ -20,6 +22,7 @@ export function RasterMapPreview() {
     rasterBgColor,
     screens,
     downloadRasterSlices,
+    updateScreenById,
   } = usePixelMap();
 
   const groupsWithConfig = rasterGroups.filter(g => rasterMapConfigs[g.id]);
@@ -95,6 +98,13 @@ export function RasterMapPreview() {
 
   const hasMultipleSlices = slices && slices.length > 1;
 
+  const overlaysVisible = screenArrangement.every(sa => screens.find(s => s.id === sa.screenId)?.showTextOverlaysInRaster ?? true);
+  const setOverlaysVisible = (checked: boolean) => {
+    for (const sa of screenArrangement) {
+      updateScreenById(sa.screenId, s => ({ ...s, showTextOverlaysInRaster: checked }));
+    }
+  };
+
   return (
     <div className="space-y-2">
       {/* Raster group tabs */}
@@ -119,6 +129,11 @@ export function RasterMapPreview() {
           ))}
         </div>
       )}
+
+      <div className="flex items-center justify-end gap-2 px-1">
+        <Label htmlFor="raster-text-overlays" className="text-xs text-muted-foreground">Text overlays</Label>
+        <Switch id="raster-text-overlays" checked={overlaysVisible} onCheckedChange={setOverlaysVisible} />
+      </div>
 
       {hasMultipleSlices && (
         <div className="flex items-center justify-between px-1">
@@ -191,7 +206,7 @@ export function RasterMapPreview() {
             const offsetItems = tileOffsetsByScreen.get(`${sa.screenId}-${sa.segmentId}`) ?? [];
             const screen = screens.find(s => s.id === sa.screenId);
             if (!screen) return null;
-            const screenOverlays = screen.textOverlays ?? [];
+            const screenOverlays = (screen.showTextOverlaysInRaster ?? true) ? (screen.textOverlays ?? []) : [];
 
             return (
               <div

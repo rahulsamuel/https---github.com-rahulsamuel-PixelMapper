@@ -110,6 +110,7 @@ export const createNewScreen = (name: string, idCounter: number): Screen => {
     powerLabelColor: '#ef4444',
     showSliceOffsetLabels: true,
     showTextOverlaysInWiring: true,
+    showTextOverlaysInRaster: true,
     showResolution: false,
     resolutionLabelPosition: 'bottom-right',
     resolutionLabelFontSize: 32,

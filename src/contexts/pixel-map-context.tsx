@@ -348,6 +348,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setPowerLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, powerLabelColor: typeof updater === 'function' ? updater(s.powerLabelColor) : updater }));
   const setShowSliceOffsetLabels = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showSliceOffsetLabels: typeof updater === 'function' ? updater(s.showSliceOffsetLabels) : updater }));
   const setShowTextOverlaysInWiring = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showTextOverlaysInWiring: typeof updater === 'function' ? updater(s.showTextOverlaysInWiring ?? true) : updater }));
+  const setShowTextOverlaysInRaster = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showTextOverlaysInRaster: typeof updater === 'function' ? updater(s.showTextOverlaysInRaster ?? true) : updater }));
   const setShowResolution = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showResolution: typeof updater === 'function' ? updater(s.showResolution ?? false) : updater }));
   const setResolutionLabelPosition = (updater: SetStateAction<LabelPosition>) => updateCurrentScreen(s => ({ ...s, resolutionLabelPosition: typeof updater === 'function' ? updater(s.resolutionLabelPosition ?? 'bottom-right') : updater }));
   const setResolutionLabelFontSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, resolutionLabelFontSize: typeof updater === 'function' ? updater(s.resolutionLabelFontSize ?? 32) : updater }));
@@ -3880,6 +3881,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     setShowSliceOffsetLabels,
     showTextOverlaysInWiring: currentScreen.showTextOverlaysInWiring ?? true,
     setShowTextOverlaysInWiring,
+    showTextOverlaysInRaster: currentScreen.showTextOverlaysInRaster ?? true,
+    setShowTextOverlaysInRaster,
     topHalfTile: currentScreen.topHalfTile,
     handleTopHalfTileChange,
     bottomHalfTile: currentScreen.bottomHalfTile,
