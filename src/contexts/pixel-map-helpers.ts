@@ -111,6 +111,7 @@ export const createNewScreen = (name: string, idCounter: number): Screen => {
     showSliceOffsetLabels: true,
     showTextOverlaysInWiring: true,
     showTextOverlaysInRaster: true,
+    showLogoOverlayInRaster: true,
     showResolution: false,
     resolutionLabelPosition: 'bottom-right',
     resolutionLabelFontSize: 32,

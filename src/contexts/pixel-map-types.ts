@@ -117,6 +117,7 @@ export interface ScreenArrangement {
   showSliceOffsetLabels: boolean;
   showTextOverlaysInWiring: boolean;
   showTextOverlaysInRaster?: boolean;
+  showLogoOverlayInRaster?: boolean;
   showResolution: boolean;
   resolutionLabelPosition: string;
   showDimensions: boolean;
@@ -212,6 +213,7 @@ export interface Screen {
   showSliceOffsetLabels: boolean;
   showTextOverlaysInWiring: boolean;
   showTextOverlaysInRaster?: boolean;
+  showLogoOverlayInRaster?: boolean;
   showResolution: boolean;
   resolutionLabelPosition: LabelPosition;
   resolutionLabelFontSize: number;

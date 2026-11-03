@@ -105,6 +105,13 @@ export function RasterMapPreview() {
     }
   };
 
+  const logoVisible = screenArrangement.every(sa => screens.find(s => s.id === sa.screenId)?.showLogoOverlayInRaster ?? true);
+  const setLogoVisible = (checked: boolean) => {
+    for (const sa of screenArrangement) {
+      updateScreenById(sa.screenId, s => ({ ...s, showLogoOverlayInRaster: checked }));
+    }
+  };
+
   return (
     <div className="space-y-2">
       {/* Raster group tabs */}
@@ -130,9 +137,15 @@ export function RasterMapPreview() {
         </div>
       )}
 
-      <div className="flex items-center justify-end gap-2 px-1">
-        <Label htmlFor="raster-text-overlays" className="text-xs text-muted-foreground">Text overlays</Label>
-        <Switch id="raster-text-overlays" checked={overlaysVisible} onCheckedChange={setOverlaysVisible} />
+      <div className="flex items-center justify-end gap-4 px-1">
+        <div className="flex items-center gap-2">
+          <Label htmlFor="raster-logo-overlay" className="text-xs text-muted-foreground">Logo overlay</Label>
+          <Switch id="raster-logo-overlay" checked={logoVisible} onCheckedChange={setLogoVisible} />
+        </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="raster-text-overlays" className="text-xs text-muted-foreground">Text overlays</Label>
+          <Switch id="raster-text-overlays" checked={overlaysVisible} onCheckedChange={setOverlaysVisible} />
+        </div>
       </div>
 
       {hasMultipleSlices && (

@@ -349,6 +349,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setShowSliceOffsetLabels = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showSliceOffsetLabels: typeof updater === 'function' ? updater(s.showSliceOffsetLabels) : updater }));
   const setShowTextOverlaysInWiring = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showTextOverlaysInWiring: typeof updater === 'function' ? updater(s.showTextOverlaysInWiring ?? true) : updater }));
   const setShowTextOverlaysInRaster = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showTextOverlaysInRaster: typeof updater === 'function' ? updater(s.showTextOverlaysInRaster ?? true) : updater }));
+  const setShowLogoOverlayInRaster = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showLogoOverlayInRaster: typeof updater === 'function' ? updater(s.showLogoOverlayInRaster ?? true) : updater }));
   const setShowResolution = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showResolution: typeof updater === 'function' ? updater(s.showResolution ?? false) : updater }));
   const setResolutionLabelPosition = (updater: SetStateAction<LabelPosition>) => updateCurrentScreen(s => ({ ...s, resolutionLabelPosition: typeof updater === 'function' ? updater(s.resolutionLabelPosition ?? 'bottom-right') : updater }));
   const setResolutionLabelFontSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, resolutionLabelFontSize: typeof updater === 'function' ? updater(s.resolutionLabelFontSize ?? 32) : updater }));
@@ -1483,7 +1484,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, color: undefined })));
   }, [setTiles]);
 
-  const createScreenContentCanvas = useCallback((screen: Screen, screenActiveBounds: ActiveBounds | null, drawOverlays: boolean = false, drawTextOverlays: boolean = drawOverlays) => {
+  const createScreenContentCanvas = useCallback((screen: Screen, screenActiveBounds: ActiveBounds | null, drawOverlays: boolean = false, drawTextOverlays: boolean = drawOverlays, drawLogoOverlay: boolean = drawOverlays) => {
     if (!screenActiveBounds) return null;
 
     const screenLabels = (() => {
@@ -1902,7 +1903,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     }
 
     // Draw logo overlay — positioned in full-screen coordinate space, clipped to crop region
-    if (drawOverlays && screen.logoOverlay && screen.showLogoOverlay !== false) {
+    if (drawLogoOverlay && screen.logoOverlay && screen.showLogoOverlay !== false) {
       try {
         const logoImg = new Image();
         logoImg.src = screen.logoOverlay.imageData;
@@ -2166,7 +2167,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     for (const arrangement of screenArrangement) {
         const screen = groupScreens.find(s => s.id === arrangement.screenId);
         if (!screen) continue;
-        const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds, true, false);
+        const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds, true, false, screen.showLogoOverlayInRaster ?? true);
         if (screenCanvas) {
             masterCtx.drawImage(screenCanvas, arrangement.x, arrangement.y);
         }
@@ -2255,7 +2256,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         const screen = screens.find(s => s.id === arrangement.screenId);
         if (!screen) continue;
 
-        const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds, true, screen.showTextOverlaysInRaster ?? true);
+        const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds, true, screen.showTextOverlaysInRaster ?? true, screen.showLogoOverlayInRaster ?? true);
         if (screenCanvas) {
             masterCtx.drawImage(screenCanvas, arrangement.x, arrangement.y);
         }
@@ -2385,19 +2386,11 @@ const handleRightHalfTileChange = (add: boolean) => {
             -slice.y
         );
 
-        if (includeTextOverlaysInDownload) {
-          const allOverlays = screens.flatMap(s => (s.textOverlays ?? []).map(o => ({
-            ...o,
-            x: o.x + (rasterMapConfig.screenArrangement.find(a => a.screenId === s.id)?.x ?? 0) - slice.x,
-            y: o.y + (rasterMapConfig.screenArrangement.find(a => a.screenId === s.id)?.y ?? 0) - slice.y,
-          })));
-          drawTextOverlaysOnCtx(outputCtx, allOverlays, slice.width, slice.height);
-        }
         
         downloadCanvas(outputCanvas, slice.filename);
     }
     showFeedbackPrompt('raster_slices');
-  }, [rasterMapConfig, createFullRasterCanvas, subscriptionStatus, toast, includeTextOverlaysInDownload, screens, drawTextOverlaysOnCtx, rasterBgColor]);
+  }, [rasterMapConfig, createFullRasterCanvas, subscriptionStatus, toast, rasterBgColor]);
 
   const downloadSingleSlice = useCallback((sliceKey: string) => {
     if (!rasterMapConfig) return;
@@ -2417,14 +2410,6 @@ const handleRightHalfTileChange = (add: boolean) => {
     outputCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
     outputCtx.drawImage(masterContentCanvas, -slice.x, -slice.y);
 
-    if (includeTextOverlaysInDownload) {
-      const allOverlays = screens.flatMap(s => (s.textOverlays ?? []).map(o => ({
-        ...o,
-        x: o.x + (rasterMapConfig.screenArrangement.find(a => a.screenId === s.id)?.x ?? 0) - slice.x,
-        y: o.y + (rasterMapConfig.screenArrangement.find(a => a.screenId === s.id)?.y ?? 0) - slice.y,
-      })));
-      drawTextOverlaysOnCtx(outputCtx, allOverlays, slice.width, slice.height);
-    }
 
     try {
         const dataUrl = outputCanvas.toDataURL('image/png');
@@ -2437,7 +2422,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     } catch (err) {
         console.error('Could not generate raster slice.', err);
     }
-  }, [rasterMapConfig, createFullRasterCanvas, rasterBgColor, includeTextOverlaysInDownload, screens, drawTextOverlaysOnCtx]);
+  }, [rasterMapConfig, createFullRasterCanvas, rasterBgColor]);
 
   const addWatermark = (dataUrl: string): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -2596,33 +2581,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       width: totalWidth,
       height: totalHeight,
     }))
-      .then(async (dataUrl) => {
-        let finalDataUrl = dataUrl;
-        if (includeTextOverlaysInDownload) {
-          const allOverlays = screens.flatMap(s => (s.textOverlays ?? []).map(o => ({
-            ...o,
-            x: o.x + (rasterMapConfig.screenArrangement.find(a => a.screenId === s.id)?.x ?? 0),
-            y: o.y + (rasterMapConfig.screenArrangement.find(a => a.screenId === s.id)?.y ?? 0),
-          })));
-          if (allOverlays.length) {
-            const img = new Image();
-            img.src = dataUrl;
-            await new Promise<void>((resolve, reject) => {
-              img.onload = () => resolve();
-              img.onerror = reject;
-              setTimeout(() => resolve(), 5000);
-            });
-            const overlayCanvas = document.createElement('canvas');
-            overlayCanvas.width = img.width || totalWidth;
-            overlayCanvas.height = img.height || totalHeight;
-            const octx = overlayCanvas.getContext('2d');
-            if (octx) {
-              octx.drawImage(img, 0, 0);
-              drawTextOverlaysOnCtx(octx, allOverlays, totalWidth, totalHeight);
-              finalDataUrl = overlayCanvas.toDataURL('image/png');
-            }
-          }
-        }
+      .then((finalDataUrl) => {
         const link = document.createElement("a");
         link.download = downloadFilename;
         link.href = finalDataUrl;
@@ -2645,7 +2604,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       })
       .finally(() => {
       });
-  }, [rasterMapRef, rasterMapConfig, toast, subscriptionStatus, includeTextOverlaysInDownload, screens, drawTextOverlaysOnCtx]);
+  }, [rasterMapRef, rasterMapConfig, toast, subscriptionStatus]);
 
   const handleDownloadWallLayout = useCallback(() => {
     if (!activeBounds) {
@@ -3883,6 +3842,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     setShowTextOverlaysInWiring,
     showTextOverlaysInRaster: currentScreen.showTextOverlaysInRaster ?? true,
     setShowTextOverlaysInRaster,
+    showLogoOverlayInRaster: currentScreen.showLogoOverlayInRaster ?? true,
+    setShowLogoOverlayInRaster,
     topHalfTile: currentScreen.topHalfTile,
     handleTopHalfTileChange,
     bottomHalfTile: currentScreen.bottomHalfTile,
