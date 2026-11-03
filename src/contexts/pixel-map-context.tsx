@@ -1483,7 +1483,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, color: undefined })));
   }, [setTiles]);
 
-  const createScreenContentCanvas = useCallback((screen: Screen, screenActiveBounds: ActiveBounds | null, drawOverlays: boolean = false) => {
+  const createScreenContentCanvas = useCallback((screen: Screen, screenActiveBounds: ActiveBounds | null, drawOverlays: boolean = false, drawTextOverlays: boolean = drawOverlays) => {
     if (!screenActiveBounds) return null;
 
     const screenLabels = (() => {
@@ -1918,7 +1918,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     }
 
     // Draw text overlays — positioned in full-screen coordinate space, clipped to crop region
-    if (drawOverlays && screen.textOverlays) {
+    if (drawTextOverlays && screen.textOverlays) {
       masterCtx.save();
       if (isCropped) masterCtx.beginPath(), masterCtx.rect(0, 0, contentWidth, contentHeight), masterCtx.clip();
       const shiftedOverlays = screen.textOverlays.map(o => ({ ...o, x: o.x - cropOffsetX, y: o.y - cropOffsetY }));
@@ -2166,7 +2166,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     for (const arrangement of screenArrangement) {
         const screen = groupScreens.find(s => s.id === arrangement.screenId);
         if (!screen) continue;
-        const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds, screen.showTextOverlaysInRaster ?? true);
+        const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds, true, false);
         if (screenCanvas) {
             masterCtx.drawImage(screenCanvas, arrangement.x, arrangement.y);
         }
@@ -2255,7 +2255,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         const screen = screens.find(s => s.id === arrangement.screenId);
         if (!screen) continue;
 
-        const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds, screen.showTextOverlaysInRaster ?? true);
+        const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds, true, screen.showTextOverlaysInRaster ?? true);
         if (screenCanvas) {
             masterCtx.drawImage(screenCanvas, arrangement.x, arrangement.y);
         }
