@@ -4,3 +4,9 @@ publish = ".next"
 
 [[plugins]]
 package = "@netlify/plugin-nextjs"
+
+[[redirects]]
+from = "/CONTENT_DELIVERABLES_Untitled_Project_gjgj_1_0_(1)"
+to = "/.netlify/functions/___netlify-server-handler"
+status = 200
+force = true
