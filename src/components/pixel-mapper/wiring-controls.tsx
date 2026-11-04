@@ -35,6 +35,10 @@ export function WiringControls() {
     setArrowGap,
     dataLabelSize,
     setDataLabelSize,
+    backupDataPortColor,
+    setBackupDataPortColor,
+    dataLabelTextColor,
+    setDataLabelTextColor,
     showSliceOffsetLabels,
     setShowSliceOffsetLabels,
     showTextOverlaysInWiring,
@@ -135,6 +139,32 @@ export function WiringControls() {
             type="color"
             value={dataLabelColor}
             onChange={(e) => setDataLabelColor(e.target.value)}
+            className="w-10 h-8 p-0.5 cursor-pointer border-border rounded"
+          />
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <Label htmlFor="backup-data-port-color">Backup Port Color</Label>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full border border-border" style={{ backgroundColor: backupDataPortColor }} />
+          <Input
+            id="backup-data-port-color"
+            type="color"
+            value={backupDataPortColor}
+            onChange={(e) => setBackupDataPortColor(e.target.value)}
+            className="w-10 h-8 p-0.5 cursor-pointer border-border rounded"
+          />
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <Label htmlFor="data-label-text-color">Data Label Text Color</Label>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full border border-border" style={{ backgroundColor: dataLabelTextColor }} />
+          <Input
+            id="data-label-text-color"
+            type="color"
+            value={dataLabelTextColor}
+            onChange={(e) => setDataLabelTextColor(e.target.value)}
             className="w-10 h-8 p-0.5 cursor-pointer border-border rounded"
           />
         </div>

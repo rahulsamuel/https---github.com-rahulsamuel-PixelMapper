@@ -345,6 +345,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setDataLabelSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, dataLabelSize: typeof updater === 'function' ? updater(s.dataLabelSize) : updater }));
   const setPowerLabelSize = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, powerLabelSize: typeof updater === 'function' ? updater(s.powerLabelSize) : updater }));
   const setDataLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, dataLabelColor: typeof updater === 'function' ? updater(s.dataLabelColor) : updater }));
+  const setBackupDataPortColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, backupDataPortColor: typeof updater === 'function' ? updater(s.backupDataPortColor) : updater }));
+  const setDataLabelTextColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, dataLabelTextColor: typeof updater === 'function' ? updater(s.dataLabelTextColor) : updater }));
   const setPowerLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, powerLabelColor: typeof updater === 'function' ? updater(s.powerLabelColor) : updater }));
   const setShowSliceOffsetLabels = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showSliceOffsetLabels: typeof updater === 'function' ? updater(s.showSliceOffsetLabels) : updater }));
   const setShowTextOverlaysInWiring = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showTextOverlaysInWiring: typeof updater === 'function' ? updater(s.showTextOverlaysInWiring ?? true) : updater }));
@@ -3855,6 +3857,10 @@ const handleRightHalfTileChange = (add: boolean) => {
     setPowerLabelSize,
     dataLabelColor: currentScreen.dataLabelColor,
     setDataLabelColor,
+    backupDataPortColor: currentScreen.backupDataPortColor,
+    setBackupDataPortColor,
+    dataLabelTextColor: currentScreen.dataLabelTextColor,
+    setDataLabelTextColor,
     powerLabelColor: currentScreen.powerLabelColor,
     setPowerLabelColor,
     calculateAndApplyOptimalOffset,

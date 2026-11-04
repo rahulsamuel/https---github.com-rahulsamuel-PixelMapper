@@ -209,6 +209,8 @@ export interface Screen {
   dataLabelSize: number;
   powerLabelSize: number;
   dataLabelColor: string;
+  backupDataPortColor: string;
+  dataLabelTextColor: string;
   powerLabelColor: string;
   showSliceOffsetLabels: boolean;
   showTextOverlaysInWiring: boolean;
@@ -501,6 +503,8 @@ export interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'
   setDataLabelSize: Dispatch<SetStateAction<number>>;
   setPowerLabelSize: Dispatch<SetStateAction<number>>;
   setDataLabelColor: Dispatch<SetStateAction<string>>;
+  setBackupDataPortColor: Dispatch<SetStateAction<string>>;
+  setDataLabelTextColor: Dispatch<SetStateAction<string>>;
   setPowerLabelColor: Dispatch<SetStateAction<string>>;
   calculateAndApplyOptimalOffset: () => void;
   setShowSliceOffsetLabels: Dispatch<SetStateAction<boolean>>;

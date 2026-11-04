@@ -107,6 +107,8 @@ export const createNewScreen = (name: string, idCounter: number): Screen => {
     dataLabelSize: 100,
     powerLabelSize: 100,
     dataLabelColor: '#22c55e',
+    backupDataPortColor: '#ef4444',
+    dataLabelTextColor: '#000000',
     powerLabelColor: '#ef4444',
     showSliceOffsetLabels: true,
     showTextOverlaysInWiring: true,
