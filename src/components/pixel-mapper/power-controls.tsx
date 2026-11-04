@@ -33,6 +33,8 @@ export function PowerControls() {
     setPowerLabelSize,
     powerLabelColor,
     setPowerLabelColor,
+    powerLabelTextColor,
+    setPowerLabelTextColor,
   } = usePixelMap();
 
   return (
@@ -90,6 +92,19 @@ export function PowerControls() {
             type="color"
             value={powerLabelColor}
             onChange={(e) => setPowerLabelColor(e.target.value)}
+            className="w-10 h-8 p-0.5 cursor-pointer border-border rounded"
+          />
+        </div>
+      </div>
+      <div className="flex items-center justify-between">
+        <Label htmlFor="power-label-text-color">Power Label Text Color</Label>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full border border-border" style={{ backgroundColor: powerLabelTextColor }} />
+          <Input
+            id="power-label-text-color"
+            type="color"
+            value={powerLabelTextColor}
+            onChange={(e) => setPowerLabelTextColor(e.target.value)}
             className="w-10 h-8 p-0.5 cursor-pointer border-border rounded"
           />
         </div>

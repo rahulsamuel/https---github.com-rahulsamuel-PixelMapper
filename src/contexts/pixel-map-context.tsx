@@ -348,6 +348,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setBackupDataPortColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, backupDataPortColor: typeof updater === 'function' ? updater(s.backupDataPortColor) : updater }));
   const setDataLabelTextColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, dataLabelTextColor: typeof updater === 'function' ? updater(s.dataLabelTextColor) : updater }));
   const setPowerLabelColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, powerLabelColor: typeof updater === 'function' ? updater(s.powerLabelColor) : updater }));
+  const setPowerLabelTextColor = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, powerLabelTextColor: typeof updater === 'function' ? updater(s.powerLabelTextColor) : updater }));
   const setShowSliceOffsetLabels = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showSliceOffsetLabels: typeof updater === 'function' ? updater(s.showSliceOffsetLabels) : updater }));
   const setShowTextOverlaysInWiring = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showTextOverlaysInWiring: typeof updater === 'function' ? updater(s.showTextOverlaysInWiring ?? true) : updater }));
   const setShowTextOverlaysInRaster = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showTextOverlaysInRaster: typeof updater === 'function' ? updater(s.showTextOverlaysInRaster ?? true) : updater }));
@@ -3863,6 +3864,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     setDataLabelTextColor,
     powerLabelColor: currentScreen.powerLabelColor,
     setPowerLabelColor,
+    powerLabelTextColor: currentScreen.powerLabelTextColor,
+    setPowerLabelTextColor,
     calculateAndApplyOptimalOffset,
     showSliceOffsetLabels: currentScreen.showSliceOffsetLabels,
     setShowSliceOffsetLabels,

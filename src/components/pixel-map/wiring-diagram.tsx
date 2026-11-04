@@ -36,6 +36,7 @@ export function WiringDiagram() {
     backupDataPortColor,
     dataLabelTextColor,
     powerLabelColor,
+    powerLabelTextColor,
     showSliceOffsetLabels,
     sliceOffsetLabels,
     labelPosition,
@@ -407,7 +408,7 @@ export function WiringDiagram() {
       ctx.arc(cx, labelY, r, 0, Math.PI * 2);
       ctx.fillStyle = powerLabelColor;
       ctx.fill();
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = powerLabelTextColor;
       ctx.font = `bold ${Math.max(8, powerLabelSize * 0.4)}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -456,7 +457,7 @@ export function WiringDiagram() {
     });
   }, [
     wiringData, rowData, colData, totalGridPixelWidth, totalGridPixelHeight,
-    showPowerLabels, showDataLabels, powerLabelSize, powerLabelColor,
+    showPowerLabels, showDataLabels, powerLabelSize, powerLabelColor, powerLabelTextColor,
     powerArrowheadSize, powerArrowheadLength, powerArrowGap, isWiringMirrored,
     getTileCenter, visualTileCoordinates,
   ]);
