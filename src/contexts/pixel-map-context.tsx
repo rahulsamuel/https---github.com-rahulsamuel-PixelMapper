@@ -370,6 +370,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     canvasHeight: number,
     offsetX: number = 0,
     offsetY: number = 0,
+    withShadow: boolean = true,
   ) => {
     for (const overlay of overlays) {
       if (!overlay.text) continue;
@@ -393,8 +394,10 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         ctx.fillRect(-4, -4, textWidth + 16, overlay.fontSize + 8);
       }
 
-      ctx.shadowColor = 'rgba(0,0,0,0.8)';
-      ctx.shadowBlur = overlay.fontSize * 0.2;
+      if (withShadow) {
+        ctx.shadowColor = 'rgba(0,0,0,0.8)';
+        ctx.shadowBlur = overlay.fontSize * 0.2;
+      }
       ctx.fillStyle = overlay.colorMode === 'auto' ? '#FFFFFF' : overlay.color;
       ctx.fillText(overlay.text, 4, 0);
       ctx.shadowBlur = 0;
@@ -1923,7 +1926,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       masterCtx.save();
       if (isCropped) masterCtx.beginPath(), masterCtx.rect(0, 0, contentWidth, contentHeight), masterCtx.clip();
       const shiftedOverlays = screen.textOverlays.map(o => ({ ...o, x: o.x - cropOffsetX, y: o.y - cropOffsetY }));
-      drawTextOverlaysOnCtx(masterCtx, shiftedOverlays, contentWidth, contentHeight);
+      drawTextOverlaysOnCtx(masterCtx, shiftedOverlays, contentWidth, contentHeight, 0, 0, false);
       masterCtx.restore();
     }
 

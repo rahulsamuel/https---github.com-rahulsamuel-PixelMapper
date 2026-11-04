@@ -462,7 +462,7 @@ export interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'
   canUseAdvancedMode: boolean;
   activeBounds: ActiveBounds | null;
   createScreenContentCanvas: (screen: Screen, screenActiveBounds: ActiveBounds | null, drawOverlays?: boolean) => HTMLCanvasElement | null;
-  drawTextOverlaysOnCtx: (ctx: CanvasRenderingContext2D, overlays: TextOverlay[], canvasWidth: number, canvasHeight: number, offsetX?: number, offsetY?: number) => void;
+  drawTextOverlaysOnCtx: (ctx: CanvasRenderingContext2D, overlays: TextOverlay[], canvasWidth: number, canvasHeight: number, offsetX?: number, offsetY?: number, withShadow?: boolean) => void;
   rasterMapConfig: RasterMapConfig | null;
   setRasterMapConfig: (config: RasterMapConfig | null) => void;
   rasterMapConfigs: Record<string, RasterMapConfig>;
