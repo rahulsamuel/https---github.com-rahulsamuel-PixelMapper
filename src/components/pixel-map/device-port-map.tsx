@@ -1,4 +1,5 @@
 import { usePixelMap } from "@/contexts/pixel-map-context";
+import { dataLabelFor } from "@/lib/device-wiring-layout";
 
 export function DevicePortMap() {
   const { devices } = usePixelMap();
@@ -15,7 +16,7 @@ export function DevicePortMap() {
           <div className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2">
             {Array.from({ length: device.portCount }, (_, i) => i + 1).map(port => (
               <div key={port} className="rounded border bg-background px-2 py-1 text-xs tabular-nums text-foreground">
-                Port {port} to {port}
+                Port {port} to {dataLabelFor(device, port)}
               </div>
             ))}
           </div>

@@ -9,10 +9,14 @@ import { usePixelMap, type CableRun } from "@/contexts/pixel-map-context";
 import { WiringDiagram, type DataPortAnchor } from "./wiring-diagram";
 import { DevicePortMap } from "./device-port-map";
 import { DeviceOverlay } from "./device-overlay";
+import { DeviceCableList } from "./device-cable-list";
+import { useDeviceLayout } from "./use-device-layout";
+import { buildDeviceRoutes, type PxPerMm } from "@/lib/device-wiring-layout";
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
 const ZOOM_STEP = 1.25;
+const DEFAULT_TILE_MM = 500;
 
 type WiringLayer = "data" | "power";
 
@@ -28,7 +32,7 @@ function RunSummary({ cables }: { cables: CableRun[] }) {
 }
 
 export function EquipmentWiringPreview({ cables }: { cables: CableRun[] }) {
-  const { currentScreen } = usePixelMap();
+  const { currentScreen, devices, products } = usePixelMap();
   const viewportRef = useRef<HTMLDivElement>(null);
   const diagramRef = useRef<HTMLDivElement>(null);
   const [layer, setLayer] = useState<WiringLayer>("data");
@@ -57,6 +61,19 @@ export function EquipmentWiringPreview({ cables }: { cables: CableRun[] }) {
   }, [currentScreen.id]);
 
   const scale = fitScale * userZoom;
+  const { origins, onDragStart, onDragMove, onDragEnd } = useDeviceLayout(scale);
+
+  const selectedProduct = products.find(p => p.id === currentScreen.selectedProductId);
+  const section = currentScreen.sections[0];
+  const tilePx = {
+    w: section?.tileWidthPx ?? currentScreen.dimensions.tileWidth,
+    h: section?.tileHeightPx ?? currentScreen.dimensions.tileHeight,
+  };
+  const pxPerMm: PxPerMm = {
+    x: tilePx.w / (selectedProduct?.tileWidthMm || DEFAULT_TILE_MM),
+    y: tilePx.h / (selectedProduct?.tileHeightMm || DEFAULT_TILE_MM),
+  };
+  const routes = buildDeviceRoutes({ devices, origins, anchors: portAnchors, pxPerMm });
   const layerCables = cables.filter(c => c.kind === (layer === "data" ? "cat" : "power"));
 
   return (
@@ -92,11 +109,12 @@ export function EquipmentWiringPreview({ cables }: { cables: CableRun[] }) {
           <div style={{ width: diagramSize.width * scale, height: diagramSize.height * scale }}>
             <div ref={diagramRef} style={{ width: "max-content", position: "relative", transform: `scale(${scale})`, transformOrigin: "top left" }}>
               <WiringDiagram layer={layer} readOnly onDataPortAnchors={setPortAnchors} />
-              <DeviceOverlay anchors={portAnchors} scale={scale} />
+              <DeviceOverlay origins={origins} routes={routes} onDragStart={onDragStart} onDragMove={onDragMove} onDragEnd={onDragEnd} />
             </div>
           </div>
         </div>
         <RunSummary cables={layerCables} />
+        <DeviceCableList routes={routes} />
         <DevicePortMap />
       </CardContent>
     </Card>
