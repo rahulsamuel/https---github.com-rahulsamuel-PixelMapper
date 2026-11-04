@@ -4,6 +4,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { buildCalculatorPdf } from "@/lib/calculator-pdf";
 import { Copy, FileDown } from "lucide-react";
 
 interface FormState {
@@ -13,6 +14,11 @@ interface FormState {
     phase: 'single-phase' | 'three-phase';
     screenWidthTiles: number;
     screenHeightTiles: number;
+}
+
+export interface LedProductInfo {
+    manufacturer: string;
+    productName: string;
 }
 
 interface CalculatedResults {
@@ -46,7 +52,7 @@ const ResultBlock = ({ title, children }: { title: string; children: React.React
     </div>
 );
 
-export function ResultsDisplay({ results, formState }: { results: CalculatedResults; formState: FormState }) {
+export function ResultsDisplay({ results, formState, product }: { results: CalculatedResults; formState: FormState; product: LedProductInfo | null }) {
   
   const formatNumber = (num: number, digits = 2) => {
     return num.toLocaleString(undefined, {
@@ -54,6 +60,32 @@ export function ResultsDisplay({ results, formState }: { results: CalculatedResu
       maximumFractionDigits: digits,
     });
   }
+
+  const handleDownloadPdf = async () => {
+    const { jsPDF } = await import("jspdf");
+    const title = formState.projectName.trim() || "LED Calculator";
+    const pdf = buildCalculatorPdf(jsPDF, {
+      title,
+      date: new Date().toLocaleDateString(),
+      product,
+      resolution: `${formatNumber(results.resolution.width, 0)} x ${formatNumber(results.resolution.height, 0)} pixels`,
+      totalPixels: formatNumber(results.totalPixels, 0),
+      tileConfig: `${formState.screenWidthTiles} x ${formState.screenHeightTiles} (${results.totalTiles} total)`,
+      aspectRatio: results.aspectRatio,
+      dimensionsMetric: `${formatNumber(results.dimensionsMm.width / 1000, 2)} x ${formatNumber(results.dimensionsMm.height / 1000, 2)} m`,
+      dimensionsImperial: `${formatNumber(results.dimensionsFt.width, 2)}' x ${formatNumber(results.dimensionsFt.height, 2)}'`,
+      weightMetric: `${formatNumber(results.totalWeightKg, 1)} kg`,
+      weightImperial: `${formatNumber(results.totalWeightLbs, 1)} lbs`,
+      powerPerM2: `${formatNumber(results.powerPerM2.max, 0)} W/m\u00b2 / ${formatNumber(results.powerPerM2.avg, 0)} W/m\u00b2`,
+      totalPower: `${formatNumber(results.totalPower.max, 2)} W / ${formatNumber(results.totalPower.avg, 2)} W`,
+      currentDraw: {
+        label: results.currentDraw.label,
+        value: `${formatNumber(results.currentDraw.max, 2)} A / ${formatNumber(results.currentDraw.avg, 2)} A`,
+      },
+    });
+    const fileName = title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "led-calculator";
+    pdf.save(`${fileName}.pdf`);
+  };
   
   return (
     <div className="space-y-6">
@@ -64,7 +96,7 @@ export function ResultsDisplay({ results, formState }: { results: CalculatedResu
                     <Copy className="mr-2" />
                     Copy
                 </Button>
-                <Button variant="outline">
+                <Button variant="outline" onClick={handleDownloadPdf}>
                     <FileDown className="mr-2" />
                     PDF
                 </Button>
