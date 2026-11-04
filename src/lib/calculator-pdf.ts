@@ -38,11 +38,11 @@ function drawCard(pdf: JsPDFType, x: number, y: number, w: number, h: number, he
   return y + 15;
 }
 
-function drawFields(pdf: JsPDFType, x: number, y: number, w: number, fields: Field[]): number {
-  const colW = (w - 12) / 2;
+function drawFields(pdf: JsPDFType, x: number, y: number, w: number, fields: Field[], columns = 2): number {
+  const colW = (w - 12) / columns;
   let rowY = y;
   fields.forEach((field, i) => {
-    const col = i % 2;
+    const col = i % columns;
     const fx = x + 6 + col * colW;
     if (col === 0 && i > 0) rowY += 13;
     pdf.setFont("helvetica", "normal");
@@ -109,7 +109,7 @@ export function buildCalculatorPdf(jsPdfCtor: typeof JsPDFType, data: Calculator
     { label: "Power per m² (Max / Avg)", value: data.powerPerM2 },
     { label: "Total Power (Max / Avg)", value: data.totalPower },
     { label: data.currentDraw.label, value: data.currentDraw.value },
-  ]);
+  ], 3);
 
   return pdf;
 }

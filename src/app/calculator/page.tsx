@@ -59,7 +59,6 @@ interface CalculatedResults {
     aspectRatio: string;
     dimensionsMm: { width: number; height: number };
     dimensionsIn: { width: number; height: number };
-    dimensionsFt: { width: number; height: number };
     totalWeightKg: number;
     totalWeightLbs: number;
     powerPerM2: { max: number; avg: number };
@@ -133,8 +132,6 @@ export default function CalculatorPage() {
         const heightMm = screenHeightTiles * (selectedProduct.tileHeightMm ?? 0);
         const widthIn = widthMm / 25.4;
         const heightIn = heightMm / 25.4;
-        const widthFt = widthIn / 12;
-        const heightFt = heightIn / 12;
 
         const totalWeightKg = totalTiles * (selectedProduct.tileWeightKg ?? 0);
         const totalWeightLbs = totalWeightKg * 2.20462;
@@ -159,7 +156,6 @@ export default function CalculatorPage() {
             aspectRatio,
             dimensionsMm: { width: widthMm, height: heightMm },
             dimensionsIn: { width: widthIn, height: heightIn },
-            dimensionsFt: { width: widthFt, height: heightFt },
             totalWeightKg,
             totalWeightLbs,
             powerPerM2: { max: power.maxPerM2, avg: power.avgPerM2 },

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { buildCalculatorPdf } from "@/lib/calculator-pdf";
+import { formatFeetInches } from "@/lib/imperial-length";
 import { Copy, FileDown } from "lucide-react";
 
 interface FormState {
@@ -27,7 +28,6 @@ interface CalculatedResults {
     aspectRatio: string;
     dimensionsMm: { width: number; height: number };
     dimensionsIn: { width: number; height: number };
-    dimensionsFt: { width: number; height: number };
     totalWeightKg: number;
     totalWeightLbs: number;
     powerPerM2: { max: number; avg: number };
@@ -73,7 +73,7 @@ export function ResultsDisplay({ results, formState, product }: { results: Calcu
       tileConfig: `${formState.screenWidthTiles} x ${formState.screenHeightTiles} (${results.totalTiles} total)`,
       aspectRatio: results.aspectRatio,
       dimensionsMetric: `${formatNumber(results.dimensionsMm.width / 1000, 2)} x ${formatNumber(results.dimensionsMm.height / 1000, 2)} m`,
-      dimensionsImperial: `${formatNumber(results.dimensionsFt.width, 2)}' x ${formatNumber(results.dimensionsFt.height, 2)}'`,
+      dimensionsImperial: `${formatFeetInches(results.dimensionsIn.width)} x ${formatFeetInches(results.dimensionsIn.height)}`,
       weightMetric: `${formatNumber(results.totalWeightKg, 1)} kg`,
       weightImperial: `${formatNumber(results.totalWeightLbs, 1)} lbs`,
       powerPerM2: `${formatNumber(results.powerPerM2.max, 0)} W/m\u00b2 / ${formatNumber(results.powerPerM2.avg, 0)} W/m\u00b2`,
@@ -135,7 +135,7 @@ export function ResultsDisplay({ results, formState, product }: { results: Calcu
                 </ResultBlock>
                 <ResultBlock title="Imperial">
                     <ResultRow label="Inches" value={`${formatNumber(results.dimensionsIn.width, 1)}" x ${formatNumber(results.dimensionsIn.height, 1)}"`} />
-                    <ResultRow label="Feet" value={`${formatNumber(results.dimensionsFt.width, 2)}' x ${formatNumber(results.dimensionsFt.height, 2)}'`} />
+                    <ResultRow label="Feet" value={`${formatFeetInches(results.dimensionsIn.width)} x ${formatFeetInches(results.dimensionsIn.height)}`} />
                 </ResultBlock>
             </div>
         </CardContent>
