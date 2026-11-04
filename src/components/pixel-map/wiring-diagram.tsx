@@ -5,7 +5,7 @@ import { usePixelMap } from "@/contexts/pixel-map-context";
 import { useEffect, useRef, useMemo, useCallback } from "react";
 import { isColorDark } from "@/lib/utils";
 
-export function WiringDiagram() {
+export function WiringDiagram({ layer }: { layer?: "data" | "power" } = {}) {
   const {
     dimensions,
     tiles,
@@ -558,7 +558,7 @@ export function WiringDiagram() {
           position: 'absolute',
           top: 0,
           left: 0,
-          display: 'block',
+          display: layer === 'power' ? 'none' : 'block',
           transform: `scale(${zoom})`,
           transformOrigin: 'top left',
           pointerEvents: 'none',
@@ -572,7 +572,7 @@ export function WiringDiagram() {
           position: 'absolute',
           top: 0,
           left: 0,
-          display: 'block',
+          display: layer === 'data' ? 'none' : 'block',
           transform: `scale(${zoom})`,
           transformOrigin: 'top left',
           pointerEvents: 'none',
