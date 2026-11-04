@@ -73,6 +73,18 @@ export function DevicesPanel() {
                 className="h-8 flex-grow min-w-0"
                 aria-label="Device name"
               />
+              <Select
+                value={device.role ?? "primary"}
+                onValueChange={(v) => updateScreenDevice(device.id, { role: v as "primary" | "backup" })}
+              >
+                <SelectTrigger className="h-8 w-28 shrink-0" aria-label="Device role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="primary">Primary</SelectItem>
+                  <SelectItem value="backup">Backup</SelectItem>
+                </SelectContent>
+              </Select>
               <Input
                 type="number"
                 min={1}

@@ -5,7 +5,22 @@ import { usePixelMap } from "@/contexts/pixel-map-context";
 import { useEffect, useRef, useMemo, useCallback } from "react";
 import { isColorDark } from "@/lib/utils";
 
-export function WiringDiagram({ layer, readOnly = false }: { layer?: "data" | "power"; readOnly?: boolean } = {}) {
+export interface DataPortAnchor {
+  dataLabel: string;
+  backupLabel: string;
+  x: number;
+  y: number;
+}
+
+export function WiringDiagram({
+  layer,
+  readOnly = false,
+  onDataPortAnchors,
+}: {
+  layer?: "data" | "power";
+  readOnly?: boolean;
+  onDataPortAnchors?: (anchors: DataPortAnchor[]) => void;
+} = {}) {
   const {
     dimensions,
     tiles,
@@ -58,6 +73,8 @@ export function WiringDiagram({ layer, readOnly = false }: { layer?: "data" | "p
   const dataCanvasRef = useRef<HTMLCanvasElement>(null);
   const powerCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
+  const onDataPortAnchorsRef = useRef(onDataPortAnchors);
+  onDataPortAnchorsRef.current = onDataPortAnchors;
   const showDataLayer = layer ? layer === "data" : showDataLabels;
   const showPowerLayer = layer ? layer === "power" : showPowerLabels;
 
@@ -288,8 +305,12 @@ export function WiringDiagram({ layer, readOnly = false }: { layer?: "data" | "p
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, w, h);
 
-    if (!showDataLayer) return;
+    if (!showDataLayer) {
+      onDataPortAnchorsRef.current?.([]);
+      return;
+    }
 
+    const anchors: DataPortAnchor[] = [];
     // Data label circles
     wiringData.forEach((entry, index) => {
       const { dataLabel, backupLabel, isDeleted } = entry;
@@ -305,6 +326,7 @@ export function WiringDiagram({ layer, readOnly = false }: { layer?: "data" | "p
       const cy = row.yPos + row.height / 2;
       const offset = showPowerLayer ? (dataLabelSize / 2) + 2 : 0;
       const labelY = cy - offset;
+      anchors.push({ dataLabel: dataLabel || "", backupLabel: backupLabel || "", x: cx, y: labelY });
 
       const label = backupLabel || dataLabel;
       const r = dataLabelSize / 2;
@@ -319,6 +341,8 @@ export function WiringDiagram({ layer, readOnly = false }: { layer?: "data" | "p
       ctx.fillText(label, cx, labelY);
       ctx.textAlign = 'left';
     });
+
+    onDataPortAnchorsRef.current?.(anchors);
 
     // Data arrows
     ctx.strokeStyle = dataLabelColor;

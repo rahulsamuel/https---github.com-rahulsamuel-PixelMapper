@@ -324,6 +324,9 @@ export interface ScreenDevice {
   model: string;
   label: string;
   portCount: number;
+  role?: "primary" | "backup";
+  x?: number;
+  y?: number;
 }
 
 export interface FiberBoxEntry {

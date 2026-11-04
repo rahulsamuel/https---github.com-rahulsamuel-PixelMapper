@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Cable, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 import { usePixelMap, type CableRun } from "@/contexts/pixel-map-context";
-import { WiringDiagram } from "./wiring-diagram";
+import { WiringDiagram, type DataPortAnchor } from "./wiring-diagram";
 import { DevicePortMap } from "./device-port-map";
+import { DeviceOverlay } from "./device-overlay";
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
@@ -34,6 +35,7 @@ export function EquipmentWiringPreview({ cables }: { cables: CableRun[] }) {
   const [diagramSize, setDiagramSize] = useState({ width: 0, height: 0 });
   const [fitScale, setFitScale] = useState(1);
   const [userZoom, setUserZoom] = useState(1);
+  const [portAnchors, setPortAnchors] = useState<DataPortAnchor[]>([]);
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -88,8 +90,9 @@ export function EquipmentWiringPreview({ cables }: { cables: CableRun[] }) {
       <CardContent className="space-y-4">
         <div ref={viewportRef} className="h-[60vh] min-h-[360px] overflow-auto rounded-md border bg-background">
           <div style={{ width: diagramSize.width * scale, height: diagramSize.height * scale }}>
-            <div ref={diagramRef} style={{ width: "max-content", transform: `scale(${scale})`, transformOrigin: "top left" }}>
-              <WiringDiagram layer={layer} readOnly />
+            <div ref={diagramRef} style={{ width: "max-content", position: "relative", transform: `scale(${scale})`, transformOrigin: "top left" }}>
+              <WiringDiagram layer={layer} readOnly onDataPortAnchors={setPortAnchors} />
+              <DeviceOverlay anchors={portAnchors} scale={scale} />
             </div>
           </div>
         </div>
