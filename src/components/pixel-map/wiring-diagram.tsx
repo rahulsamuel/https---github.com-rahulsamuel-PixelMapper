@@ -58,6 +58,8 @@ export function WiringDiagram({ layer }: { layer?: "data" | "power" } = {}) {
   const dataCanvasRef = useRef<HTMLCanvasElement>(null);
   const powerCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
+  const showDataLayer = layer ? layer === "data" : showDataLabels;
+  const showPowerLayer = layer ? layer === "power" : showPowerLabels;
 
   const rowData = useMemo(() => {
     const data: { yPos: number; height: number }[] = [];
@@ -286,7 +288,7 @@ export function WiringDiagram({ layer }: { layer?: "data" | "power" } = {}) {
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, w, h);
 
-    if (!showDataLabels) return;
+    if (!showDataLayer) return;
 
     // Data label circles
     wiringData.forEach((entry, index) => {
@@ -301,7 +303,7 @@ export function WiringDiagram({ layer }: { layer?: "data" | "power" } = {}) {
       const drawX = isWiringMirrored ? totalGridPixelWidth - col.xPos - col.width : col.xPos;
       const cx = drawX + col.width / 2;
       const cy = row.yPos + row.height / 2;
-      const offset = showPowerLabels ? (dataLabelSize / 2) + 2 : 0;
+      const offset = showPowerLayer ? (dataLabelSize / 2) + 2 : 0;
       const labelY = cy - offset;
 
       const label = backupLabel || dataLabel;
@@ -359,7 +361,7 @@ export function WiringDiagram({ layer }: { layer?: "data" | "power" } = {}) {
     });
   }, [
     wiringData, rowData, colData, totalGridPixelWidth, totalGridPixelHeight,
-    showDataLabels, showPowerLabels, dataLabelSize, dataLabelColor, backupDataPortColor, dataLabelTextColor,
+    showDataLayer, showPowerLayer, dataLabelSize, dataLabelColor, backupDataPortColor, dataLabelTextColor,
     arrowheadSize, arrowheadLength, arrowGap, isWiringMirrored, getTileCenter, visualTileCoordinates,
   ]);
 
@@ -382,7 +384,7 @@ export function WiringDiagram({ layer }: { layer?: "data" | "power" } = {}) {
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, w, h);
 
-    if (!showPowerLabels) return;
+    if (!showPowerLayer) return;
 
     // Power label circles
     wiringData.forEach((entry, index) => {
@@ -397,7 +399,7 @@ export function WiringDiagram({ layer }: { layer?: "data" | "power" } = {}) {
       const drawX = isWiringMirrored ? totalGridPixelWidth - col.xPos - col.width : col.xPos;
       const cx = drawX + col.width / 2;
       const cy = row.yPos + row.height / 2;
-      const dataInfo = showDataLabels ? entry : null;
+      const dataInfo = showDataLayer ? entry : null;
       const offset = (dataInfo && (dataInfo.backupLabel || dataInfo.dataLabel))
         ? (powerLabelSize / 2) + 2
         : 0;
@@ -457,7 +459,7 @@ export function WiringDiagram({ layer }: { layer?: "data" | "power" } = {}) {
     });
   }, [
     wiringData, rowData, colData, totalGridPixelWidth, totalGridPixelHeight,
-    showPowerLabels, showDataLabels, powerLabelSize, powerLabelColor, powerLabelTextColor,
+    showPowerLayer, showDataLayer, powerLabelSize, powerLabelColor, powerLabelTextColor,
     powerArrowheadSize, powerArrowheadLength, powerArrowGap, isWiringMirrored,
     getTileCenter, visualTileCoordinates,
   ]);
