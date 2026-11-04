@@ -11,6 +11,8 @@ const PHYSICAL_MM: Record<string, { w: number; h: number }> = {
   CVT10: { w: 254.3, h: 50.6 },
 };
 const LINE_COLOR = "#a855f7";
+const LINE_WIDTH = 4;
+const LANE_GAP = 3;
 const DEFAULT_X = 24;
 const DEFAULT_Y = 24;
 const ROW_GAP = 64;
@@ -75,15 +77,17 @@ export function DeviceOverlay({ anchors, scale }: { anchors: DataPortAnchor[]; s
           return Array.from({ length: device.portCount }, (_, i) => i + 1).map(port => {
             const anchor = portAnchor(anchors, device, port);
             if (!anchor) return null;
+            const laneY = origin.y + size.h / 2 + (port - (device.portCount + 1) / 2) * LANE_GAP;
+            const endX = origin.x + ((port - 0.5) * size.w) / device.portCount;
             return (
-              <line
+              <polyline
                 key={`${device.id}-${port}`}
-                x1={anchor.x}
-                y1={anchor.y}
-                x2={origin.x + ((port - 0.5) * size.w) / device.portCount}
-                y2={origin.y + size.h / 2}
+                points={`${anchor.x},${anchor.y} ${anchor.x},${laneY} ${endX},${laneY}`}
+                fill="none"
                 stroke={LINE_COLOR}
-                strokeWidth={2}
+                strokeWidth={LINE_WIDTH}
+                strokeLinejoin="round"
+                strokeLinecap="round"
               />
             );
           });
