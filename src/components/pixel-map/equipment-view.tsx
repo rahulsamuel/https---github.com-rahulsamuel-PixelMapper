@@ -570,13 +570,7 @@ export function EquipmentView() {
         </Card>
 
         {/* Wiring drawing preview */}
-        <EquipmentWiringPreview
-          processors={processors}
-          dataPorts={dataPorts}
-          powerPorts={powerPorts}
-          cables={cables}
-          screenName={screenName}
-        />
+        <EquipmentWiringPreview cables={cables} />
 
         {/* Power Ports */}
         <Card>
