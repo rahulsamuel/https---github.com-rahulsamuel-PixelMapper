@@ -1,9 +1,21 @@
 import type { jsPDF as JsPDFType } from "jspdf";
 
+export interface PdfProductSpecs {
+  manufacturer: string;
+  productName: string;
+  pixelPitchMm?: number | null;
+  tileWidthPx?: number | null;
+  tileHeightPx?: number | null;
+  tileWidthMm?: number | null;
+  tileHeightMm?: number | null;
+  tileWeightKg?: number | null;
+  maxBrightnessNit?: number | null;
+}
+
 export interface CalculatorPdfData {
   title: string;
   date: string;
-  product: { manufacturer: string; productName: string } | null;
+  product: PdfProductSpecs | null;
   resolution: string;
   totalPixels: string;
   tileConfig: string;
@@ -73,9 +85,15 @@ export function buildCalculatorPdf(jsPdfCtor: typeof JsPDFType, data: Calculator
   pdf.text(data.date, PAGE_W / 2, 29, { align: "center" });
 
   const row1Y = 36;
+  const p = data.product;
   const productFields: Field[] = [
-    { label: "Manufacturer", value: data.product?.manufacturer ?? "-" },
-    { label: "Product", value: data.product?.productName ?? "-" },
+    { label: "Manufacturer", value: p?.manufacturer ?? "-" },
+    { label: "Product", value: p?.productName ?? "-" },
+    { label: "Pixel Pitch", value: p?.pixelPitchMm ? `${p.pixelPitchMm} mm` : "-" },
+    { label: "Tile Resolution", value: p?.tileWidthPx && p?.tileHeightPx ? `${p.tileWidthPx} x ${p.tileHeightPx} px` : "-" },
+    { label: "Tile Size", value: p?.tileWidthMm && p?.tileHeightMm ? `${p.tileWidthMm} x ${p.tileHeightMm} mm` : "-" },
+    { label: "Tile Weight", value: p?.tileWeightKg ? `${p.tileWeightKg} kg` : "-" },
+    { label: "Max Brightness", value: p?.maxBrightnessNit ? `${p.maxBrightnessNit} nit` : "-" },
   ];
   const resFields: Field[] = [
     { label: "Resolution", value: data.resolution },
@@ -83,7 +101,7 @@ export function buildCalculatorPdf(jsPdfCtor: typeof JsPDFType, data: Calculator
     { label: "Tile Config", value: data.tileConfig },
     { label: "Aspect Ratio", value: data.aspectRatio },
   ];
-  const rowOneHeight = 56;
+  const rowOneHeight = 88;
   let y = drawCard(pdf, MARGIN, row1Y, halfW, rowOneHeight, "LED Product");
   drawFields(pdf, MARGIN, y, halfW, productFields);
   y = drawCard(pdf, MARGIN + halfW + GAP, row1Y, halfW, rowOneHeight, "Screen Resolution");

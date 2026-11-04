@@ -20,6 +20,13 @@ interface FormState {
 export interface LedProductInfo {
     manufacturer: string;
     productName: string;
+    pixelPitchMm?: number | null;
+    tileWidthPx?: number | null;
+    tileHeightPx?: number | null;
+    tileWidthMm?: number | null;
+    tileHeightMm?: number | null;
+    tileWeightKg?: number | null;
+    maxBrightnessNit?: number | null;
 }
 
 interface CalculatedResults {
