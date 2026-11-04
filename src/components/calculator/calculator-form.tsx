@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { LedProductCombobox } from "@/components/ui/led-product-combobox";
+import { computeLedPower } from "@/lib/led-power";
+import { PowerFormula } from "@/components/calculator/power-formula";
 
 interface LedProduct {
     id: string;
@@ -67,6 +69,16 @@ export function CalculatorForm({ products, formState, onFormChange, selectedProd
   
 
 
+
+  const powerInput = selectedProduct && {
+    wattsPerTile: selectedProduct.wattsPerTile ?? 0,
+    avgPowerWPerSqm: selectedProduct.avgPowerWPerSqm ?? null,
+    tileWidthMm: selectedProduct.tileWidthMm ?? 0,
+    tileHeightMm: selectedProduct.tileHeightMm ?? 0,
+    totalTiles: formState.screenWidthTiles * formState.screenHeightTiles,
+    volts: parseInt(formState.voltage.replace('v', ''), 10),
+    threePhase: formState.phase === 'three-phase',
+  };
 
   return (
     <div className="space-y-6">
@@ -148,6 +160,10 @@ export function CalculatorForm({ products, formState, onFormChange, selectedProd
             </div>
         </RadioGroup>
       </div>
+      )}
+
+      {!hidePowerConfig && powerInput && powerInput.wattsPerTile > 0 && (
+        <PowerFormula input={powerInput} result={computeLedPower(powerInput)} />
       )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

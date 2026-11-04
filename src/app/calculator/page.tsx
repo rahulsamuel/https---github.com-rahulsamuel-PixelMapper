@@ -2,6 +2,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { computeLedPower } from '@/lib/led-power';
 import { useState, useMemo, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -138,22 +139,16 @@ export default function CalculatorPage() {
         const totalWeightKg = totalTiles * (selectedProduct.tileWeightKg ?? 0);
         const totalWeightLbs = totalWeightKg * 2.20462;
 
-        const screenAreaM2 = (widthMm / 1000) * (heightMm / 1000);
-        const totalTilesPower = totalTiles * (selectedProduct.wattsPerTile ?? 0);
-        const maxPowerPerM2 = selectedProduct.maxPowerWPerSqm != null
-            ? selectedProduct.maxPowerWPerSqm
-            : (screenAreaM2 > 0 ? totalTilesPower / screenAreaM2 : 0);
-        const avgPowerPerM2 = selectedProduct.avgPowerWPerSqm != null
-            ? selectedProduct.avgPowerWPerSqm
-            : maxPowerPerM2 * 0.4;
-
-        const totalMaxPower = screenAreaM2 > 0 ? maxPowerPerM2 * screenAreaM2 : totalTilesPower;
-        const totalAvgPower = screenAreaM2 > 0 ? avgPowerPerM2 * screenAreaM2 : totalTilesPower * 0.4;
-
         const vNum = parseInt(voltage.replace('v', ''));
-        const phaseDivisor = phase === 'three-phase' ? Math.sqrt(3) : 1;
-        const maxAmps = totalMaxPower / (vNum * phaseDivisor);
-        const avgAmps = totalAvgPower / (vNum * phaseDivisor);
+        const power = computeLedPower({
+            wattsPerTile: selectedProduct.wattsPerTile ?? 0,
+            avgPowerWPerSqm: selectedProduct.avgPowerWPerSqm ?? null,
+            tileWidthMm: selectedProduct.tileWidthMm ?? 0,
+            tileHeightMm: selectedProduct.tileHeightMm ?? 0,
+            totalTiles,
+            volts: vNum,
+            threePhase: phase === 'three-phase',
+        });
 
         const phaseText = phase === 'three-phase' ? 'Three Phase' : 'Single Phase';
         const currentDrawLabel = `Current Draw @ ${vNum}V (${phaseText})`;
@@ -167,9 +162,9 @@ export default function CalculatorPage() {
             dimensionsFt: { width: widthFt, height: heightFt },
             totalWeightKg,
             totalWeightLbs,
-            powerPerM2: { max: maxPowerPerM2, avg: avgPowerPerM2 },
-            totalPower: { max: totalMaxPower, avg: totalAvgPower },
-            currentDraw: { max: maxAmps, avg: avgAmps, label: currentDrawLabel },
+            powerPerM2: { max: power.maxPerM2, avg: power.avgPerM2 },
+            totalPower: { max: power.totalMaxW, avg: power.totalAvgW },
+            currentDraw: { max: power.maxAmps, avg: power.avgAmps, label: currentDrawLabel },
             totalTiles,
         };
     }, [formState, selectedProduct]);
