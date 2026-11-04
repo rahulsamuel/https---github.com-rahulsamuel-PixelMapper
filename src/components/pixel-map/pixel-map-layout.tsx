@@ -7,7 +7,7 @@ import { AppearanceControls } from "../pixel-mapper/appearance-controls";
 import { PixelMapActions } from "../pixel-mapper/pixel-mapper-actions";
 import { LedGrid } from "./led-grid";
 import { WiringDiagram } from "./wiring-diagram";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "../pixel-mapper/edit-tools";
@@ -58,7 +58,7 @@ import { PresenceBar } from "./presence-bar";
 import { RemoteCursors } from "./remote-cursors";
 import type { PresenceUser } from "@/hooks/use-presence";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TabRail } from "./pixel-map-tab-rail";
 
 
 export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher }: { onlineUsers?: PresenceUser[]; onShareClick?: () => void; projectSwitcher?: React.ReactNode }) {
@@ -597,28 +597,6 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                 </div>
                </div>
 
-               <div className="flex-1 min-w-0 flex justify-center">
-                <TabsList className="hidden min-[1700px]:inline-flex">
-                  <TabsTrigger value="grid" className="data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-400 data-[state=active]:shadow-sm border-b-2 border-b-transparent data-[state=active]:border-b-amber-500">LED Grid</TabsTrigger>
-                  <TabsTrigger value="wiring" className="data-[state=active]:bg-rose-500/15 data-[state=active]:text-rose-700 dark:data-[state=active]:text-rose-400 data-[state=active]:shadow-sm border-b-2 border-b-transparent data-[state=active]:border-b-rose-500">Wiring Diagram</TabsTrigger>
-                  <TabsTrigger value="raster" className="data-[state=active]:bg-cyan-500/15 data-[state=active]:text-cyan-700 dark:data-[state=active]:text-cyan-400 data-[state=active]:shadow-sm border-b-2 border-b-transparent data-[state=active]:border-b-cyan-500">Raster Map</TabsTrigger>
-                  <TabsTrigger value="equipment" className="data-[state=active]:bg-slate-500/15 data-[state=active]:text-slate-700 dark:data-[state=active]:text-slate-300 data-[state=active]:shadow-sm border-b-2 border-b-transparent data-[state=active]:border-b-slate-500">Equipment</TabsTrigger>
-                  <TabsTrigger value="deliverables" className="data-[state=active]:bg-teal-500/15 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-400 data-[state=active]:shadow-sm border-b-2 border-b-transparent data-[state=active]:border-b-teal-500">Deliverables</TabsTrigger>
-                </TabsList>
-                <Select value={activeTab ?? ''} onValueChange={handleTabChange}>
-                  <SelectTrigger className="min-[1700px]:hidden w-[180px] h-9" aria-label="Select view">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="grid">LED Grid</SelectItem>
-                    <SelectItem value="wiring">Wiring Diagram</SelectItem>
-                    <SelectItem value="raster">Raster Map</SelectItem>
-                    <SelectItem value="equipment">Equipment</SelectItem>
-                    <SelectItem value="deliverables">Deliverables</SelectItem>
-                  </SelectContent>
-                </Select>
-               </div>
-
                <div className="flex items-center gap-2">
                  {activeTab === 'wiring' && (
                    <div className="flex items-center space-x-2">
@@ -659,6 +637,8 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                </div>
              </div>
            </header>
+          <div className="flex-1 flex min-h-0">
+          <div className="flex-1 min-w-0 flex flex-col min-h-0">
           {(() => {
             const sameScreenTab = onlineUsers.filter((u) => !u.isLocal && u.currentScreenId === currentScreenId && u.activeTab === activeTab);
             if (sameScreenTab.length === 0) return null;
@@ -696,6 +676,9 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               <TabsContent value="deliverables" className="mt-0 p-8 flex justify-center items-start">
                 <Suspense fallback={null}><DeliverablesView /></Suspense>
               </TabsContent>
+          </div>
+          </div>
+          <TabRail activeTab={activeTab} onSelect={handleTabChange} />
           </div>
         </Tabs>
       </div>
