@@ -370,7 +370,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     canvasHeight: number,
     offsetX: number = 0,
     offsetY: number = 0,
-    withShadow: boolean = true,
   ) => {
     for (const overlay of overlays) {
       if (!overlay.text) continue;
@@ -394,13 +393,8 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
         ctx.fillRect(-4, -4, textWidth + 16, overlay.fontSize + 8);
       }
 
-      if (withShadow) {
-        ctx.shadowColor = 'rgba(0,0,0,0.8)';
-        ctx.shadowBlur = overlay.fontSize * 0.2;
-      }
       ctx.fillStyle = overlay.colorMode === 'auto' ? '#FFFFFF' : overlay.color;
       ctx.fillText(overlay.text, 4, 0);
-      ctx.shadowBlur = 0;
       ctx.restore();
     }
   }, []);
@@ -1487,6 +1481,33 @@ const handleRightHalfTileChange = (add: boolean) => {
     setTiles((prev) => prev.map((tile) => ({ ...tile, color: undefined })));
   }, [setTiles]);
 
+  const logoImageCacheRef = useRef(new Map<string, HTMLImageElement>());
+  const [logoLoadVersion, setLogoLoadVersion] = useState(0);
+
+  const getLogoImage = useCallback((src: string) => {
+    const cache = logoImageCacheRef.current;
+    const cached = cache.get(src);
+    if (cached) return cached;
+    const img = new Image();
+    img.onload = () => setLogoLoadVersion(v => v + 1);
+    img.src = src;
+    cache.set(src, img);
+    return img;
+  }, []);
+
+  const preloadRasterLogos = useCallback(() => Promise.all(
+    screens.map(s => {
+      const logo = s.logoOverlay;
+      if (!logo) return null;
+      return new Promise<void>(resolve => {
+        const img = getLogoImage(logo.imageData);
+        if (img.complete) return resolve();
+        img.addEventListener('load', () => resolve(), { once: true });
+        img.addEventListener('error', () => resolve(), { once: true });
+      });
+    })
+  ), [screens, getLogoImage]);
+
   const createScreenContentCanvas = useCallback((screen: Screen, screenActiveBounds: ActiveBounds | null, drawOverlays: boolean = false, drawTextOverlays: boolean = drawOverlays, drawLogoOverlay: boolean = drawOverlays) => {
     if (!screenActiveBounds) return null;
 
@@ -1907,18 +1928,15 @@ const handleRightHalfTileChange = (add: boolean) => {
 
     // Draw logo overlay — positioned in full-screen coordinate space, clipped to crop region
     if (drawLogoOverlay && screen.logoOverlay && screen.showLogoOverlay !== false) {
-      try {
-        const logoImg = new Image();
-        logoImg.src = screen.logoOverlay.imageData;
-        if (logoImg.complete) {
-          masterCtx.save();
-          if (isCropped) masterCtx.beginPath(), masterCtx.rect(0, 0, contentWidth, contentHeight), masterCtx.clip();
-          masterCtx.globalAlpha = screen.logoOverlay.opacity ?? 1;
-          masterCtx.drawImage(logoImg, screen.logoOverlay.x - cropOffsetX, screen.logoOverlay.y - cropOffsetY, screen.logoOverlay.width, screen.logoOverlay.height);
-          masterCtx.globalAlpha = 1;
-          masterCtx.restore();
-        }
-      } catch {}
+      const logoImg = getLogoImage(screen.logoOverlay.imageData);
+      if (logoImg.complete && logoImg.naturalWidth > 0) {
+        masterCtx.save();
+        if (isCropped) masterCtx.beginPath(), masterCtx.rect(0, 0, contentWidth, contentHeight), masterCtx.clip();
+        masterCtx.globalAlpha = screen.logoOverlay.opacity ?? 1;
+        masterCtx.drawImage(logoImg, screen.logoOverlay.x - cropOffsetX, screen.logoOverlay.y - cropOffsetY, screen.logoOverlay.width, screen.logoOverlay.height);
+        masterCtx.globalAlpha = 1;
+        masterCtx.restore();
+      }
     }
 
     // Draw text overlays — positioned in full-screen coordinate space, clipped to crop region
@@ -1926,12 +1944,12 @@ const handleRightHalfTileChange = (add: boolean) => {
       masterCtx.save();
       if (isCropped) masterCtx.beginPath(), masterCtx.rect(0, 0, contentWidth, contentHeight), masterCtx.clip();
       const shiftedOverlays = screen.textOverlays.map(o => ({ ...o, x: o.x - cropOffsetX, y: o.y - cropOffsetY }));
-      drawTextOverlaysOnCtx(masterCtx, shiftedOverlays, contentWidth, contentHeight, 0, 0, false);
+      drawTextOverlaysOnCtx(masterCtx, shiftedOverlays, contentWidth, contentHeight);
       masterCtx.restore();
     }
 
     return masterCanvas;
-  }, [drawTextOverlaysOnCtx, products]);
+  }, [drawTextOverlaysOnCtx, products, getLogoImage, logoLoadVersion]);
 
   const handleDownloadPng = useCallback((filename?: string) => {
     if (!activeBounds) {
@@ -2340,7 +2358,7 @@ const handleRightHalfTileChange = (add: boolean) => {
   }, [rasterMapConfig, screens, createScreenContentCanvas, rasterBgColor]);
 
 
-  const downloadRasterSlices = useCallback(() => {
+  const downloadRasterSlices = useCallback(async () => {
     if (subscriptionStatus !== 'pro') {
       toast({
         title: "Pro Feature",
@@ -2354,6 +2372,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         return;
     }
     
+    await preloadRasterLogos();
     const masterContentCanvas = createFullRasterCanvas();
     if (!masterContentCanvas) {
       console.error("Failed to create master canvas for download.");
@@ -2393,13 +2412,14 @@ const handleRightHalfTileChange = (add: boolean) => {
         downloadCanvas(outputCanvas, slice.filename);
     }
     showFeedbackPrompt('raster_slices');
-  }, [rasterMapConfig, createFullRasterCanvas, subscriptionStatus, toast, rasterBgColor]);
+  }, [rasterMapConfig, createFullRasterCanvas, preloadRasterLogos, subscriptionStatus, toast, rasterBgColor]);
 
-  const downloadSingleSlice = useCallback((sliceKey: string) => {
+  const downloadSingleSlice = useCallback(async (sliceKey: string) => {
     if (!rasterMapConfig) return;
     const slice = rasterMapConfig.slices.find(s => s.key === sliceKey);
     if (!slice) return;
 
+    await preloadRasterLogos();
     const masterContentCanvas = createFullRasterCanvas();
     if (!masterContentCanvas) return;
 
@@ -2425,7 +2445,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     } catch (err) {
         console.error('Could not generate raster slice.', err);
     }
-  }, [rasterMapConfig, createFullRasterCanvas, rasterBgColor]);
+  }, [rasterMapConfig, createFullRasterCanvas, preloadRasterLogos, rasterBgColor]);
 
   const addWatermark = (dataUrl: string): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -2577,7 +2597,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     const sizeLabel = `${rasterMapConfig.outputWidth}x${rasterMapConfig.outputHeight}`;
     const downloadFilename = `RASTER_MAP_${screenNameForFile}_${sizeLabel}.png`;
 
-    import("html-to-image").then(({ toPng }) => toPng(node, {
+    preloadRasterLogos().then(() => import("html-to-image")).then(({ toPng }) => toPng(node, {
       cacheBust: true,
       backgroundColor: '#ffffff',
       pixelRatio: 1,
@@ -2607,7 +2627,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       })
       .finally(() => {
       });
-  }, [rasterMapRef, rasterMapConfig, toast, subscriptionStatus]);
+  }, [rasterMapRef, rasterMapConfig, preloadRasterLogos, toast, subscriptionStatus]);
 
   const handleDownloadWallLayout = useCallback(() => {
     if (!activeBounds) {
@@ -3223,7 +3243,6 @@ const handleRightHalfTileChange = (add: boolean) => {
           if (data.rasterGroups) setRasterGroups(data.rasterGroups);
           if (data.activeRasterGroupId) setActiveRasterGroupId(data.activeRasterGroupId);
           if (data.rasterBgColor) setRasterBgColor(data.rasterBgColor);
-          if (data.uploadedMaps) setUploadedMaps(data.uploadedMaps);
           if (data.includeTextOverlaysInDownload !== undefined) setIncludeTextOverlaysInDownload(data.includeTextOverlaysInDownload);
         }
 
