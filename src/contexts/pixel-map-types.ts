@@ -217,6 +217,7 @@ export interface Screen {
   showTextOverlaysInWiring: boolean;
   showTextOverlaysInRaster?: boolean;
   showLogoOverlayInRaster?: boolean;
+  rasterEnabled?: boolean;
   showResolution: boolean;
   resolutionLabelPosition: LabelPosition;
   resolutionLabelFontSize: number;

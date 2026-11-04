@@ -2019,7 +2019,7 @@ const handleRightHalfTileChange = (add: boolean) => {
   }, [activeBounds, currentScreen, createScreenContentCanvas, subscriptionStatus, includeTextOverlaysInDownload]);
 
   const buildRasterConfigForGroup = useCallback((groupId: string, filename: string, outputWidth?: number, outputHeight?: number): RasterMapConfig | null => {
-    const groupScreens = screens.filter(s => (s.rasterGroupId ?? 'raster-1') === groupId);
+    const groupScreens = screens.filter(s => (s.rasterGroupId ?? 'raster-1') === groupId && s.rasterEnabled !== false);
 
     const screenArrangement: ScreenArrangement[] = [];
     let totalContentWidth = 0;

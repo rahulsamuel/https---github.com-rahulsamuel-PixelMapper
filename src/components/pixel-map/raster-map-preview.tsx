@@ -8,6 +8,7 @@ import { Download, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { RasterScreenToggles } from "./raster-screen-toggles";
 
 
 export function RasterMapPreview() {
@@ -76,9 +77,12 @@ export function RasterMapPreview() {
       );
     }
     return (
-      <div className="flex h-full w-full items-center justify-center text-muted-foreground p-4">
-        <div className="text-center">
-          <p className="text-sm">No screens assigned to this raster output.</p>
+      <div className="space-y-3">
+        <RasterScreenToggles groupId={displayGroupId} />
+        <div className="flex h-full w-full items-center justify-center text-muted-foreground p-4">
+          <div className="text-center">
+            <p className="text-sm">No screens assigned to this raster output.</p>
+          </div>
         </div>
       </div>
     );
@@ -114,6 +118,7 @@ export function RasterMapPreview() {
 
   return (
     <div className="space-y-2">
+      <RasterScreenToggles groupId={displayGroupId} />
       {/* Raster group tabs */}
       {showTabs && (
         <div className="flex items-center gap-1 flex-wrap px-1">
