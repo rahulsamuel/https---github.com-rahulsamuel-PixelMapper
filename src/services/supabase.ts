@@ -213,6 +213,7 @@ export async function updateLedProduct(id: string, data: LedProductData, accessT
       .eq("id", id);
 
     if (error) {
+      console.error("updateLedProduct failed:", error.message, error.details);
       return { success: false, error: error.message };
     }
 
