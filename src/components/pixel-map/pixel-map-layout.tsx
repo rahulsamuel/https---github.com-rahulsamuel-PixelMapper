@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "../pixel-mapper/edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home, ScreenShare, Plus, MoreHorizontal, Pencil, Trash, Copy, CaseSensitive, FileText, Info, PanelLeftClose, PanelLeftOpen, ChevronUp, ChevronDown } from "lucide-react";
+import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home, ScreenShare, Plus, MoreHorizontal, Pencil, Trash, Copy, CaseSensitive, FileText, Info, PanelLeftClose, PanelLeftOpen, ChevronUp, ChevronDown, Server } from "lucide-react";
 import { LabelControls } from "../pixel-mapper/label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -32,6 +32,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { DevicesPanel } from "@/components/pixel-map/devices-panel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -426,7 +427,13 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                   </Button>
                 </AccordionContent>
               </AccordionItem>
-              
+
+              <AccordionItem value="devices" className="w-full border-none">
+                <AccordionSectionTrigger icon={<Server className="size-5" />} title="Devices" colorClass="border-l-4 border-l-sky-500" />
+                <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
+                  <DevicesPanel />
+                </AccordionContent>
+              </AccordionItem>
               {activeTab === 'grid' && (
                 <>
                   <AccordionItem value="grid-setup" className="w-full border-none">

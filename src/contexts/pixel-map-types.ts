@@ -192,6 +192,7 @@ export interface Screen {
   rasterOffset: { x: number; y: number; };
   lastRasterArgs: RasterArgs | null;
   wiringPortConfig: string;
+  devices: ScreenDevice[];
   dataPortStartNumber: number;
   showDataLabels: boolean;
   showPowerLabels: boolean;
@@ -316,6 +317,13 @@ export interface PowerPortEntry {
   screenId: string;
   tileCount: number;
   sliceKey?: string;
+}
+
+export interface ScreenDevice {
+  id: string;
+  model: string;
+  label: string;
+  portCount: number;
 }
 
 export interface FiberBoxEntry {
@@ -583,6 +591,10 @@ export interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'
   addFiberBox: (entry: Omit<FiberBoxEntry, 'id'>) => string;
   updateFiberBox: (id: string, patch: Partial<FiberBoxEntry>) => void;
   removeFiberBox: (id: string) => void;
+  devices: ScreenDevice[];
+  addScreenDevice: (device: Omit<ScreenDevice, 'id'>) => void;
+  updateScreenDevice: (id: string, patch: Partial<ScreenDevice>) => void;
+  removeScreenDevice: (id: string) => void;
   addCable: (entry: Omit<CableRun, 'id'>) => string;
   updateCable: (id: string, patch: Partial<CableRun>) => void;
   removeCable: (id: string) => void;

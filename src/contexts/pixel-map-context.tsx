@@ -29,7 +29,7 @@ import type {
   ScreenArrangement, RasterMapConfig, WallLayoutLegendEntry, RasterArgs,
   ScreenSection, Screen, CalculatorTabData, PowerDataTabData,
   RackDrawingTabData, ProcessorEntry, DataPortEntry, PowerPortEntry,
-  FiberBoxEntry, CableRun, GearConfig, ProjectData, PixelMapState,
+  FiberBoxEntry, ScreenDevice, CableRun, GearConfig, ProjectData, PixelMapState,
 } from "./pixel-map-types";
 
 import { formatFractionalInch, trackEvent, repositionDefaultLogo, createNewScreen } from "./pixel-map-helpers";
@@ -330,6 +330,19 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setRasterOffset = (updater: SetStateAction<{x: number, y: number}>) => updateCurrentScreen(s => ({ ...s, rasterOffset: typeof updater === 'function' ? updater(s.rasterOffset) : updater }));
   const setLastRasterArgs = (updater: SetStateAction<RasterArgs | null>) => updateCurrentScreen(s => ({ ...s, lastRasterArgs: typeof updater === 'function' ? updater(s.lastRasterArgs) : updater }));
   const setWiringPortConfig = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, wiringPortConfig: typeof updater === 'function' ? updater(s.wiringPortConfig) : updater }));
+
+  const addScreenDevice = (device: Omit<ScreenDevice, 'id'>) => updateCurrentScreen(s => ({
+    ...s,
+    devices: [...(s.devices ?? []), { ...device, id: `dev-${Date.now()}-${Math.random().toString(36).slice(2, 7)}` }],
+  }));
+  const updateScreenDevice = (id: string, patch: Partial<ScreenDevice>) => updateCurrentScreen(s => ({
+    ...s,
+    devices: (s.devices ?? []).map(d => d.id === id ? { ...d, ...patch } : d),
+  }));
+  const removeScreenDevice = (id: string) => updateCurrentScreen(s => ({
+    ...s,
+    devices: (s.devices ?? []).filter(d => d.id !== id),
+  }));
   const setDataPortStartNumber = (updater: SetStateAction<number>) => updateCurrentScreen(s => ({ ...s, dataPortStartNumber: typeof updater === 'function' ? updater(s.dataPortStartNumber) : updater }));
   const setTilesPerPowerString = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, tilesPerPowerString: typeof updater === 'function' ? updater(s.tilesPerPowerString) : updater }));
   const setShowDataLabelsState = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showDataLabels: typeof updater === 'function' ? updater(s.showDataLabels) : updater }));
@@ -3957,7 +3970,10 @@ const handleRightHalfTileChange = (add: boolean) => {
     addFiberBox,
     updateFiberBox,
     removeFiberBox,
-    addCable,
+    addScreenDevice,
+    updateScreenDevice,
+    removeScreenDevice,
+    devices: currentScreen.devices ?? [],    addCable,
     updateCable,
     removeCable,
     regenerateGear,

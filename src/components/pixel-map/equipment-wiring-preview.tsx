@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Cable, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 import { usePixelMap, type CableRun } from "@/contexts/pixel-map-context";
 import { WiringDiagram } from "./wiring-diagram";
+import { DevicePortMap } from "./device-port-map";
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
@@ -88,11 +89,12 @@ export function EquipmentWiringPreview({ cables }: { cables: CableRun[] }) {
         <div ref={viewportRef} className="h-[60vh] min-h-[360px] overflow-auto rounded-md border bg-background">
           <div style={{ width: diagramSize.width * scale, height: diagramSize.height * scale }}>
             <div ref={diagramRef} style={{ width: "max-content", transform: `scale(${scale})`, transformOrigin: "top left" }}>
-              <WiringDiagram layer={layer} />
+              <WiringDiagram layer={layer} readOnly />
             </div>
           </div>
         </div>
         <RunSummary cables={layerCables} />
+        <DevicePortMap />
       </CardContent>
     </Card>
   );

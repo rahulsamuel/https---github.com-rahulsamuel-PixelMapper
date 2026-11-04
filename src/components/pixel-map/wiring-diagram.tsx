@@ -5,7 +5,7 @@ import { usePixelMap } from "@/contexts/pixel-map-context";
 import { useEffect, useRef, useMemo, useCallback } from "react";
 import { isColorDark } from "@/lib/utils";
 
-export function WiringDiagram({ layer }: { layer?: "data" | "power" } = {}) {
+export function WiringDiagram({ layer, readOnly = false }: { layer?: "data" | "power"; readOnly?: boolean } = {}) {
   const {
     dimensions,
     tiles,
@@ -544,12 +544,12 @@ export function WiringDiagram({ layer }: { layer?: "data" | "power" } = {}) {
     >
       <canvas
         ref={baseCanvasRef}
-        onClick={handleCanvasClick}
+        onClick={readOnly ? undefined : handleCanvasClick}
         style={{
           display: 'block',
           transform: `scale(${zoom})`,
           transformOrigin: 'top left',
-          cursor: 'pointer',
+          cursor: readOnly ? 'default' : 'pointer',
           imageRendering: zoom < 1 ? 'auto' : 'pixelated',
         }}
       />

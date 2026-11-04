@@ -90,6 +90,7 @@ export const createNewScreen = (name: string, idCounter: number): Screen => {
     rasterOffset: { x: 0, y: 0 },
     lastRasterArgs: null,
     wiringPortConfig: "4",
+    devices: [],
     dataPortStartNumber: 1,
     tilesPerPowerString: "20",
     showDataLabels: true,
