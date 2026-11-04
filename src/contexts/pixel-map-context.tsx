@@ -1026,11 +1026,16 @@ const handleRightHalfTileChange = (add: boolean) => {
       const meta = getBoxMeta(procType);
 
       const slices = groupConfig?.slices ?? [];
+      const screensInSlice = (slice: { x: number; y: number; width: number; height: number }) =>
+        groupConfig!.screenArrangement
+          .filter(sa => sa.x < slice.x + slice.width && sa.x + sa.width > slice.x && sa.y < slice.y + slice.height && sa.y + sa.height > slice.y)
+          .map(sa => sa.screenId)
+          .filter((id, i, arr) => arr.indexOf(id) === i);
       const sliceEntries = slices.length > 0
-        ? slices.map((s, i) => ({ key: s.key, label: slices.length > 1 ? `${group.name} ${i + 1}` : group.name, index: i }))
-        : [{ key: 'default', label: group.name, index: 0 }];
+        ? slices.map((s, i) => ({ key: s.key, label: slices.length > 1 ? `${group.name} ${i + 1}` : group.name, index: i, sliceScreenIds: screensInSlice(s) }))
+        : [{ key: 'default', label: group.name, index: 0, sliceScreenIds: screenIds }];
 
-      sliceEntries.forEach(({ key: sliceKey, label: sliceLabel, index: sliceIdx }) => {
+      sliceEntries.forEach(({ key: sliceKey, label: sliceLabel, index: sliceIdx, sliceScreenIds }) => {
         const primaryProcId = `proc-${group.id}-${sliceKey}`;
         const backupProcId = `proc-backup-${group.id}-${sliceKey}`;
         const primaryBoxId = `box-${group.id}-${sliceKey}`;
@@ -1040,7 +1045,7 @@ const handleRightHalfTileChange = (add: boolean) => {
           id: primaryProcId,
           label: sliceLabel,
           type: procType,
-          screenIds,
+          screenIds: sliceScreenIds,
           rasterGroupId: group.id,
           isBackup: false,
           sliceKey,
@@ -1049,7 +1054,7 @@ const handleRightHalfTileChange = (add: boolean) => {
           id: backupProcId,
           label: slices.length > 1 ? `${group.name} ${sliceIdx + 1} (Backup)` : `${group.name} (Backup)`,
           type: procType,
-          screenIds,
+          screenIds: sliceScreenIds,
           rasterGroupId: group.id,
           isBackup: true,
           sliceKey,
@@ -1060,7 +1065,7 @@ const handleRightHalfTileChange = (add: boolean) => {
           label: `${meta.label} ${groupIdx + 1}.${sliceIdx + 1}`,
           processorId: primaryProcId,
           portCount: meta.ports,
-          screenIds,
+          screenIds: sliceScreenIds,
           isBackup: false,
         });
         fiberBoxes.push({
@@ -1068,7 +1073,7 @@ const handleRightHalfTileChange = (add: boolean) => {
           label: `${meta.label} ${groupIdx + 1}.${sliceIdx + 1} (Backup)`,
           processorId: backupProcId,
           portCount: meta.ports,
-          screenIds,
+          screenIds: sliceScreenIds,
           isBackup: true,
         });
 

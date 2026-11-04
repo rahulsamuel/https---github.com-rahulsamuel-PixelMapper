@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import type { ProcessorEntry, CableRun, ProcessorType } from "@/contexts/pixel-map-context";
 import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
+import { EquipmentWiringPreview } from "./equipment-wiring-preview";
 
 const PROCESSOR_TYPES: { value: ProcessorType; label: string; boxLabel: string; defaultPorts: number }[] = [
   { value: "Novastar", label: "Novastar (CVT)", boxLabel: "Novastar CVT Box", defaultPorts: 16 },
@@ -93,7 +94,7 @@ export function EquipmentView() {
     { bg: "bg-teal-100 dark:bg-teal-900/40", text: "text-teal-700 dark:text-teal-300", border: "border-teal-200 dark:border-teal-800", dot: "bg-teal-500" },
     { bg: "bg-amber-100 dark:bg-amber-900/40", text: "text-amber-700 dark:text-amber-300", border: "border-amber-200 dark:border-amber-800", dot: "bg-amber-500" },
     { bg: "bg-rose-100 dark:bg-rose-900/40", text: "text-rose-700 dark:text-rose-300", border: "border-rose-200 dark:border-rose-800", dot: "bg-rose-500" },
-    { bg: "bg-indigo-100 dark:bg-indigo-900/40", text: "text-indigo-700 dark:text-indigo-300", border: "border-indigo-200 dark:border-indigo-800", dot: "bg-indigo-500" },
+    { bg: "bg-slate-100 dark:bg-slate-800/60", text: "text-slate-700 dark:text-slate-300", border: "border-slate-200 dark:border-slate-700", dot: "bg-slate-500" },
     { bg: "bg-cyan-100 dark:bg-cyan-900/40", text: "text-cyan-700 dark:text-cyan-300", border: "border-cyan-200 dark:border-cyan-800", dot: "bg-cyan-500" },
   ];
   const sliceColor = (key: string) => {
@@ -567,6 +568,15 @@ export function EquipmentView() {
             })}
           </CardContent>
         </Card>
+
+        {/* Wiring drawing preview */}
+        <EquipmentWiringPreview
+          processors={processors}
+          dataPorts={dataPorts}
+          powerPorts={powerPorts}
+          cables={cables}
+          screenName={screenName}
+        />
 
         {/* Power Ports */}
         <Card>
