@@ -15,6 +15,7 @@ export function RasterMapPreview() {
   const {
     rasterMapConfig,
     rasterMapConfigs,
+    rasterOutputConfigs,
     rasterGroups,
     activeRasterGroupId,
     setActiveRasterGroupId,
@@ -31,7 +32,7 @@ export function RasterMapPreview() {
   const displayGroupId = rasterMapConfigs[activeRasterGroupId]
     ? activeRasterGroupId
     : groupsWithConfig[0]?.id ?? activeRasterGroupId;
-  const displayConfig = rasterMapConfigs[displayGroupId] ?? null;
+  const displayConfig = rasterOutputConfigs[displayGroupId] ?? null;
 
   // Per-screen tile offset labels — must be called unconditionally (hook rules)
   const tileOffsetsByScreen = useMemo(() => {
@@ -135,7 +136,7 @@ export function RasterMapPreview() {
             >
               {g.name}
               <span className="ml-1.5 opacity-60">
-                {rasterMapConfigs[g.id]?.screenArrangement.length ?? 0}
+                {rasterOutputConfigs[g.id]?.screenArrangement.length ?? 0}
               </span>
             </button>
           ))}

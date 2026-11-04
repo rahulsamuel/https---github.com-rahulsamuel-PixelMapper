@@ -472,6 +472,7 @@ export interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'
   rasterMapConfig: RasterMapConfig | null;
   setRasterMapConfig: (config: RasterMapConfig | null) => void;
   rasterMapConfigs: Record<string, RasterMapConfig>;
+  rasterOutputConfigs: Record<string, RasterMapConfig>;
   rasterGroups: RasterGroup[];
   setRasterGroups: Dispatch<SetStateAction<RasterGroup[]>>;
   activeRasterGroupId: string;

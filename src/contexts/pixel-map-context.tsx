@@ -87,11 +87,13 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const gearRef = useRef<GearConfig>({ processors: [], dataPorts: [], powerPorts: [], fiberBoxes: [], cables: [] });
   const [gearVersion, setGearVersion] = useState(0);
   const [rasterMapConfigs, setRasterMapConfigs] = useState<Record<string, RasterMapConfig>>({});
+  const [rasterOutputConfigs, setRasterOutputConfigs] = useState<Record<string, RasterMapConfig>>({});
   const [rasterGroups, setRasterGroups] = useState<RasterGroup[]>([{ id: 'raster-1', name: 'Raster 1' }]);
   const [activeRasterGroupId, setActiveRasterGroupId] = useState<string>('raster-1');
   const [rasterBgColor, setRasterBgColor] = useState('#000000');
   // Derived: the config for the currently viewed raster group (backward-compat alias)
   const rasterMapConfig = rasterMapConfigs[activeRasterGroupId] ?? null;
+  const rasterOutputConfig = rasterOutputConfigs[activeRasterGroupId] ?? null;
   const setRasterMapConfig = (config: RasterMapConfig | null) => {
     if (config === null) setRasterMapConfigs({});
     else setRasterMapConfigs(prev => ({ ...prev, [activeRasterGroupId]: config }));
@@ -459,6 +461,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
     // Move screens in deleted group to fallback
     setScreens(prev => prev.map(s => s.rasterGroupId === id ? { ...s, rasterGroupId: fallbackId } : s));
     setRasterMapConfigs(prev => { const next = { ...prev }; delete next[id]; return next; });
+    setRasterOutputConfigs(prev => { const next = { ...prev }; delete next[id]; return next; });
     if (activeRasterGroupId === id) setActiveRasterGroupId(fallbackId);
   }, [rasterGroups, activeRasterGroupId]);
   const setShowModules = (updater: SetStateAction<boolean>) => updateCurrentScreen(s => ({ ...s, showModules: typeof updater === 'function' ? updater(s.showModules) : updater }));
@@ -2018,8 +2021,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     }, 50);
   }, [activeBounds, currentScreen, createScreenContentCanvas, subscriptionStatus, includeTextOverlaysInDownload]);
 
-  const buildRasterConfigForGroup = useCallback((groupId: string, filename: string, outputWidth?: number, outputHeight?: number): RasterMapConfig | null => {
-    const groupScreens = screens.filter(s => (s.rasterGroupId ?? 'raster-1') === groupId && s.rasterEnabled !== false);
+  const buildRasterConfigForGroup = useCallback((groupId: string, filename: string, outputWidth: number | undefined, outputHeight: number | undefined, onlyEnabled: boolean): RasterMapConfig | null => {
+    const groupScreens = screens.filter(s => (s.rasterGroupId ?? 'raster-1') === groupId && (!onlyEnabled || s.rasterEnabled !== false));
 
     const screenArrangement: ScreenArrangement[] = [];
     let totalContentWidth = 0;
@@ -2227,16 +2230,21 @@ const handleRightHalfTileChange = (add: boolean) => {
   const regenerateRasterPreview = useCallback(() => {
     if (!currentScreen.lastRasterArgs) {
         setRasterMapConfigs({});
+        setRasterOutputConfigs({});
         return;
     }
     const { filename, outputWidth, outputHeight } = currentScreen.lastRasterArgs;
 
-    const newConfigs: Record<string, RasterMapConfig> = {};
+    const allConfigs: Record<string, RasterMapConfig> = {};
+    const enabledConfigs: Record<string, RasterMapConfig> = {};
     for (const group of rasterGroups) {
-        const config = buildRasterConfigForGroup(group.id, filename, outputWidth, outputHeight);
-        if (config) newConfigs[group.id] = config;
+        const config = buildRasterConfigForGroup(group.id, filename, outputWidth, outputHeight, false);
+        if (config) allConfigs[group.id] = config;
+        const enabledConfig = buildRasterConfigForGroup(group.id, filename, outputWidth, outputHeight, true);
+        if (enabledConfig) enabledConfigs[group.id] = enabledConfig;
     }
-    setRasterMapConfigs(newConfigs);
+    setRasterMapConfigs(allConfigs);
+    setRasterOutputConfigs(enabledConfigs);
 
     // Note: we intentionally do NOT auto-create extra "Raster N" groups when a
     // screen is split into multiple raster slices. The slice count is a rendering
@@ -2263,9 +2271,9 @@ const handleRightHalfTileChange = (add: boolean) => {
   }, [generateRasterMap, activeBounds, currentScreen.lastRasterArgs]);
 
   const createFullRasterCanvas = useCallback(() => {
-    if (!rasterMapConfig) return null;
+    if (!rasterOutputConfig) return null;
 
-    const { contentWidth, contentHeight, screenArrangement, slices, outputWidth, outputHeight } = rasterMapConfig;
+    const { contentWidth, contentHeight, screenArrangement, slices, outputWidth, outputHeight } = rasterOutputConfig;
 
     const masterCanvas = document.createElement('canvas');
     masterCanvas.width = contentWidth;
@@ -2358,7 +2366,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     }
 
     return masterCanvas;
-  }, [rasterMapConfig, screens, createScreenContentCanvas, rasterBgColor]);
+  }, [rasterOutputConfig, screens, createScreenContentCanvas, rasterBgColor]);
 
 
   const downloadRasterSlices = useCallback(async () => {
@@ -2370,7 +2378,7 @@ const handleRightHalfTileChange = (add: boolean) => {
       });
       return;
     }
-    if (!rasterMapConfig) {
+    if (!rasterOutputConfig) {
         console.error("No raster map configuration available to download.");
         return;
     }
@@ -2395,7 +2403,7 @@ const handleRightHalfTileChange = (add: boolean) => {
         }
     };
     
-    for (const slice of rasterMapConfig.slices) {
+    for (const slice of rasterOutputConfig.slices) {
         const outputCanvas = document.createElement('canvas');
         outputCanvas.width = slice.width;
         outputCanvas.height = slice.height;
@@ -2415,11 +2423,11 @@ const handleRightHalfTileChange = (add: boolean) => {
         downloadCanvas(outputCanvas, slice.filename);
     }
     showFeedbackPrompt('raster_slices');
-  }, [rasterMapConfig, createFullRasterCanvas, preloadRasterLogos, subscriptionStatus, toast, rasterBgColor]);
+  }, [rasterOutputConfig, createFullRasterCanvas, preloadRasterLogos, subscriptionStatus, toast, rasterBgColor]);
 
   const downloadSingleSlice = useCallback(async (sliceKey: string) => {
-    if (!rasterMapConfig) return;
-    const slice = rasterMapConfig.slices.find(s => s.key === sliceKey);
+    if (!rasterOutputConfig) return;
+    const slice = rasterOutputConfig.slices.find(s => s.key === sliceKey);
     if (!slice) return;
 
     await preloadRasterLogos();
@@ -2448,7 +2456,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     } catch (err) {
         console.error('Could not generate raster slice.', err);
     }
-  }, [rasterMapConfig, createFullRasterCanvas, preloadRasterLogos, rasterBgColor]);
+  }, [rasterOutputConfig, createFullRasterCanvas, preloadRasterLogos, rasterBgColor]);
 
   const addWatermark = (dataUrl: string): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -3140,7 +3148,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     setRasterGroups([{ id: 'raster-1', name: 'Raster 1' }]);
     setActiveRasterGroupId('raster-1');
     setRasterMapConfigs({});
-    setProjectNumber("");
+    setRasterOutputConfigs({});
+("");
     setVersionNumber("1.0");
     setProjectNotes("");
     setDeliverablesScreenIds([]);
@@ -3788,6 +3797,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     rasterMapConfig,
     setRasterMapConfig,
     rasterMapConfigs,
+    rasterOutputConfigs,
     rasterGroups,
     setRasterGroups,
     activeRasterGroupId,
