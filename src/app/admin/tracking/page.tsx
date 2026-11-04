@@ -1,19 +1,19 @@
 'use client';
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/lib/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Loader2, Download, Users, Monitor, Search, RefreshCw,
   Shield, User, Calendar, Package, Activity,
-  Pencil, Trash2, Plus, X, Check, Workflow, MapIcon, Layers,
+  Pencil, Trash2, Plus, X, Workflow, MapIcon, Layers,
   Mail, MailOpen, Trash,
 } from 'lucide-react';
 
@@ -151,22 +151,6 @@ function SnapshotCard({
   );
 }
 
-interface ProductFormData {
-  manufacturer: string;
-  product_name: string;
-  tile_width_px: string;
-  tile_height_px: string;
-  watts_per_tile: string;
-}
-
-const emptyForm: ProductFormData = {
-  manufacturer: '',
-  product_name: '',
-  tile_width_px: '',
-  tile_height_px: '',
-  watts_per_tile: '',
-};
-
 function TrackingPageInner() {
   const { user, isAdmin, loading } = useAuth();
   const router = useRouter();
@@ -184,11 +168,6 @@ function TrackingPageInner() {
   const [trackingSearch, setTrackingSearch] = useState('');
   const [selectedSnapshot, setSelectedSnapshot] = useState<Snapshot | null>(null);
 
-  const [showAddProduct, setShowAddProduct] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<LedProduct | null>(null);
-  const [productForm, setProductForm] = useState<ProductFormData>(emptyForm);
-  const [savingProduct, setSavingProduct] = useState(false);
-  const [productError, setProductError] = useState('');
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [messageSearch, setMessageSearch] = useState('');
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
@@ -305,51 +284,6 @@ function TrackingPageInner() {
     await supabase.from('contact_messages').delete().eq('id', id);
     setMessages(prev => prev.filter(m => m.id !== id));
     setSelectedMessage(null);
-  };
-
-  const openEditProduct = (p: LedProduct) => {
-    setEditingProduct(p);
-    setProductForm({
-      manufacturer: p.manufacturer,
-      product_name: p.product_name,
-      tile_width_px: String(p.tile_width_px),
-      tile_height_px: String(p.tile_height_px),
-      watts_per_tile: String(p.watts_per_tile),
-    });
-    setShowAddProduct(true);
-    setProductError('');
-  };
-
-  const openNewProduct = () => {
-    setEditingProduct(null);
-    setProductForm(emptyForm);
-    setShowAddProduct(true);
-    setProductError('');
-  };
-
-  const saveProduct = async () => {
-    setProductError('');
-    const { manufacturer, product_name, tile_width_px, tile_height_px, watts_per_tile } = productForm;
-    if (!manufacturer.trim() || !product_name.trim() || !tile_width_px || !tile_height_px || !watts_per_tile) {
-      setProductError('All fields are required.');
-      return;
-    }
-    setSavingProduct(true);
-    const payload = {
-      manufacturer: manufacturer.trim(),
-      product_name: product_name.trim(),
-      tile_width_px: Number(tile_width_px),
-      tile_height_px: Number(tile_height_px),
-      watts_per_tile: Number(watts_per_tile),
-    };
-    if (editingProduct) {
-      await supabase.from('led_products').update(payload).eq('id', editingProduct.id);
-    } else {
-      await supabase.from('led_products').insert({ ...payload, created_by: user?.id });
-    }
-    setSavingProduct(false);
-    setShowAddProduct(false);
-    fetchData();
   };
 
   const deleteProduct = async (id: string) => {
@@ -491,53 +425,12 @@ function TrackingPageInner() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input placeholder="Search products..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="pl-9 h-9" />
               </div>
-              <Button size="sm" onClick={openNewProduct} className="gap-1.5 ml-auto">
-                <Plus className="h-3.5 w-3.5" />Add Product
+              <Button size="sm" asChild className="gap-1.5 ml-auto">
+                <Link href="/admin/add-led">
+                  <Plus className="h-3.5 w-3.5" />Add Product
+                </Link>
               </Button>
             </div>
-
-            {showAddProduct && (
-              <Card className="border-primary/30">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{editingProduct ? 'Edit Product' : 'New Product'}</CardTitle>
-                    <Button variant="ghost" size="sm" onClick={() => setShowAddProduct(false)}><X className="h-4 w-4" /></Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label>Manufacturer</Label>
-                      <Input value={productForm.manufacturer} onChange={e => setProductForm(f => ({ ...f, manufacturer: e.target.value }))} placeholder="e.g. ROE Visual" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Product Name</Label>
-                      <Input value={productForm.product_name} onChange={e => setProductForm(f => ({ ...f, product_name: e.target.value }))} placeholder="e.g. CB5" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Tile Width (px)</Label>
-                      <Input type="number" value={productForm.tile_width_px} onChange={e => setProductForm(f => ({ ...f, tile_width_px: e.target.value }))} placeholder="e.g. 500" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Tile Height (px)</Label>
-                      <Input type="number" value={productForm.tile_height_px} onChange={e => setProductForm(f => ({ ...f, tile_height_px: e.target.value }))} placeholder="e.g. 500" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Watts per Tile</Label>
-                      <Input type="number" value={productForm.watts_per_tile} onChange={e => setProductForm(f => ({ ...f, watts_per_tile: e.target.value }))} placeholder="e.g. 120" />
-                    </div>
-                  </div>
-                  {productError && <p className="text-sm text-destructive">{productError}</p>}
-                  <div className="flex gap-2 pt-1">
-                    <Button size="sm" onClick={saveProduct} disabled={savingProduct} className="gap-1.5">
-                      {savingProduct ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                      {editingProduct ? 'Update' : 'Add'}
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setShowAddProduct(false)}>Cancel</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             <div className="border rounded-xl overflow-hidden">
               <table className="w-full text-sm">
@@ -559,8 +452,10 @@ function TrackingPageInner() {
                       <td className="px-4 py-3 text-muted-foreground">{p.watts_per_tile}W</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => openEditProduct(p)} className="h-7 w-7 p-0">
-                            <Pencil className="h-3.5 w-3.5" />
+                          <Button variant="ghost" size="sm" asChild className="h-7 w-7 p-0">
+                            <Link href={`/admin/products/${p.id}/edit`} aria-label="Edit product">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Link>
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => deleteProduct(p.id)} className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10">
                             <Trash2 className="h-3.5 w-3.5" />
