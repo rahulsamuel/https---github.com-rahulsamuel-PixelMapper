@@ -6,6 +6,7 @@ export type LedProductData = {
   tileWidthPx: number;
   tileHeightPx: number;
   wattsPerTile: number;
+  avgWattsPerTile?: number | null;
   // Extended spec fields
   pixelPitchMm?: number | null;
   tileWidthMm?: number | null;
@@ -47,6 +48,7 @@ function mapRow(product: Record<string, unknown>): LedProduct {
     tileWidthPx: Number(product.tile_width_px),
     tileHeightPx: Number(product.tile_height_px),
     wattsPerTile: Number(product.watts_per_tile),
+    avgWattsPerTile: num(product.avg_watts_per_tile),
     pixelPitchMm: num(product.pixel_pitch_mm),
     tileWidthMm: num(product.tile_width_mm),
     tileHeightMm: num(product.tile_height_mm),
@@ -85,6 +87,7 @@ export async function addLedProduct(data: LedProductData & { createdBy?: string 
       tile_width_px: data.tileWidthPx,
       tile_height_px: data.tileHeightPx,
       watts_per_tile: data.wattsPerTile,
+      avg_watts_per_tile: data.avgWattsPerTile ?? null,
       pixel_pitch_mm: data.pixelPitchMm ?? null,
       tile_width_mm: data.tileWidthMm ?? null,
       tile_height_mm: data.tileHeightMm ?? null,
@@ -179,6 +182,7 @@ export async function updateLedProduct(id: string, data: LedProductData) {
       watts_per_tile: data.wattsPerTile,
       updated_at: new Date().toISOString(),
     };
+    if (data.avgWattsPerTile !== undefined) payload['avg_watts_per_tile'] = data.avgWattsPerTile ?? null;
     if (data.pixelPitchMm !== undefined) payload['pixel_pitch_mm'] = data.pixelPitchMm ?? null;
     if (data.tileWidthMm !== undefined) payload['tile_width_mm'] = data.tileWidthMm ?? null;
     if (data.tileHeightMm !== undefined) payload['tile_height_mm'] = data.tileHeightMm ?? null;

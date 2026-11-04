@@ -21,6 +21,7 @@ interface LedProduct {
     tileWeightKg?: number | null;
     maxBrightnessNit?: number | null;
     wattsPerTile?: number;
+    avgWattsPerTile?: number | null;
     maxPowerWPerSqm?: number | null;
     avgPowerWPerSqm?: number | null;
     [key: string]: unknown;
@@ -72,6 +73,7 @@ export function CalculatorForm({ products, formState, onFormChange, selectedProd
 
   const powerInput = selectedProduct && {
     wattsPerTile: selectedProduct.wattsPerTile ?? 0,
+    avgWattsPerTile: selectedProduct.avgWattsPerTile ?? null,
     avgPowerWPerSqm: selectedProduct.avgPowerWPerSqm ?? null,
     tileWidthMm: selectedProduct.tileWidthMm ?? 0,
     tileHeightMm: selectedProduct.tileHeightMm ?? 0,

@@ -41,7 +41,7 @@ export function PowerFormula({ input, result }: PowerFormulaProps) {
         />
         <FormulaRow
           label="Avg per tile"
-          expression={`${fmt(result.avgPerM2)} W/m\u00b2 \u00d7 ${fmt(result.tileAreaM2, 3)} m\u00b2`}
+          expression={input.avgWattsPerTile != null ? 'Stored watts per tile' : `${fmt(result.avgPerM2)} W/m\u00b2 \u00d7 ${fmt(result.tileAreaM2, 3)} m\u00b2`}
           value={`${fmt(result.avgPerTileW)} W`}
         />
         <FormulaRow

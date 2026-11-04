@@ -1,5 +1,6 @@
 export interface LedPowerInput {
   wattsPerTile: number;
+  avgWattsPerTile: number | null;
   avgPowerWPerSqm: number | null;
   tileWidthMm: number;
   tileHeightMm: number;
@@ -24,7 +25,8 @@ export interface LedPowerResult {
 export function computeLedPower(input: LedPowerInput): LedPowerResult {
   const tileAreaM2 = (input.tileWidthMm / 1000) * (input.tileHeightMm / 1000);
   const maxPerTileW = input.wattsPerTile;
-  const avgPerTileW = (input.avgPowerWPerSqm ?? 0) * tileAreaM2;
+  const avgPerTileW =
+    input.avgWattsPerTile ?? (input.avgPowerWPerSqm ?? 0) * tileAreaM2;
   const totalMaxW = maxPerTileW * input.totalTiles;
   const totalAvgW = avgPerTileW * input.totalTiles;
   const phaseDivisor = input.threePhase ? Math.sqrt(3) : 1;
@@ -37,7 +39,7 @@ export function computeLedPower(input: LedPowerInput): LedPowerResult {
     totalMaxW,
     totalAvgW,
     maxPerM2: tileAreaM2 > 0 ? maxPerTileW / tileAreaM2 : 0,
-    avgPerM2: input.avgPowerWPerSqm ?? 0,
+    avgPerM2: tileAreaM2 > 0 ? avgPerTileW / tileAreaM2 : 0,
     maxAmps: totalMaxW / ampsDivisor,
     avgAmps: totalAvgW / ampsDivisor,
     phaseDivisor,

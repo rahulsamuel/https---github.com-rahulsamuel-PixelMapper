@@ -113,6 +113,7 @@ export async function addProductAction(prevState: FormState, formData: FormData)
       tile_width_px: d.tileWidthPx,
       tile_height_px: d.tileHeightPx,
       watts_per_tile: d.maxPowerConsumption,
+      avg_watts_per_tile: d.avgPowerConsumption ?? null,
       pixel_pitch_mm: d.pixelPitchMm ?? null,
       tile_width_mm: d.tileWidthMm ?? null,
       tile_height_mm: d.tileHeightMm ?? null,

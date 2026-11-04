@@ -139,6 +139,7 @@ export default function CalculatorPage() {
         const vNum = parseInt(voltage.replace('v', ''));
         const power = computeLedPower({
             wattsPerTile: selectedProduct.wattsPerTile ?? 0,
+            avgWattsPerTile: selectedProduct.avgWattsPerTile ?? null,
             avgPowerWPerSqm: selectedProduct.avgPowerWPerSqm ?? null,
             tileWidthMm: selectedProduct.tileWidthMm ?? 0,
             tileHeightMm: selectedProduct.tileHeightMm ?? 0,
