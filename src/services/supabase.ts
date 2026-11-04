@@ -1,4 +1,4 @@
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabaseServerClient, getSupabaseUserClient } from "@/lib/supabase/server";
 
 export type LedProductData = {
   manufacturer: string;
@@ -168,9 +168,9 @@ export async function getLedProductById(id: string) {
   }
 }
 
-export async function updateLedProduct(id: string, data: LedProductData) {
+export async function updateLedProduct(id: string, data: LedProductData, accessToken: string) {
   try {
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseUserClient(accessToken);
 
     // Build update payload — only include fields that are explicitly provided (not undefined)
     // so partial updates don't overwrite existing spec data with nulls.

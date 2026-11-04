@@ -79,7 +79,7 @@ export async function updateProductAction(productId: string, prevState: FormStat
       tileHeightPx: validatedFields.data.tileHeightPx,
       wattsPerTile: validatedFields.data.maxPowerConsumption,
       avgWattsPerTile: typeof validatedFields.data.avgPowerConsumption === 'number' ? validatedFields.data.avgPowerConsumption : null,
-    });
+    }, accessToken as string);
 
     if (!success) {
       throw new Error(error || 'Failed to update product');
