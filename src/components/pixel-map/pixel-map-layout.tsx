@@ -546,7 +546,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
       <div className="flex-1 flex flex-col h-full overflow-hidden min-h-0">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-col h-full w-full">
            <header className="sticky top-0 z-10 flex-shrink-0 bg-background p-2 border-b">
-            <div className="flex items-center justify-between flex-nowrap gap-4 w-full">
+            <div className="flex items-center justify-between flex-wrap gap-x-4 gap-y-2 w-full">
                <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
@@ -581,7 +581,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                   </Button>
                 </div>
                 {projectSwitcher}
-                <div className="hidden md:flex items-center gap-4">
+                <div className="hidden 2xl:flex items-center gap-4">
                   <div className="text-sm text-muted-foreground whitespace-nowrap">
                     Res: <span className="font-mono">{Math.round(totalWidth)}px</span> x <span className="font-mono">{Math.round(totalHeight)}px</span>
                   </div>
@@ -596,8 +596,8 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                 </div>
                </div>
 
-               <div className="flex-1 flex justify-center">
-                <TabsList>
+               <div className="flex-1 min-w-0 flex justify-center">
+                <TabsList className="max-w-full overflow-x-auto">
                   <TabsTrigger value="grid" className="data-[state=active]:bg-amber-500/15 data-[state=active]:text-amber-700 dark:data-[state=active]:text-amber-400 data-[state=active]:shadow-sm border-b-2 border-b-transparent data-[state=active]:border-b-amber-500">LED Grid</TabsTrigger>
                   <TabsTrigger value="wiring" className="data-[state=active]:bg-rose-500/15 data-[state=active]:text-rose-700 dark:data-[state=active]:text-rose-400 data-[state=active]:shadow-sm border-b-2 border-b-transparent data-[state=active]:border-b-rose-500">Wiring Diagram</TabsTrigger>
                   <TabsTrigger value="raster" className="data-[state=active]:bg-cyan-500/15 data-[state=active]:text-cyan-700 dark:data-[state=active]:text-cyan-400 data-[state=active]:shadow-sm border-b-2 border-b-transparent data-[state=active]:border-b-cyan-500">Raster Map</TabsTrigger>
