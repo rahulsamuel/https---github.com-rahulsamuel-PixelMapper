@@ -52,7 +52,7 @@ function drawFields(pdf: JsPDFType, x: number, y: number, w: number, fields: Fie
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(10.5);
     pdf.setTextColor(...INK);
-    const lines = pdf.splitTextToSize(field.value, colW - 4) as string[];
+    const lines = pdf.splitTextToSize(field.value.normalize("NFKC"), colW - 4) as string[];
     pdf.text(lines, fx, rowY + 5);
   });
   return rowY + 13;
@@ -66,7 +66,7 @@ export function buildCalculatorPdf(jsPdfCtor: typeof JsPDFType, data: Calculator
   pdf.setFont("helvetica", "bold");
   pdf.setFontSize(20);
   pdf.setTextColor(...INK);
-  pdf.text(data.title.toUpperCase(), PAGE_W / 2, 22, { align: "center" });
+  pdf.text(data.title.normalize("NFKC").toUpperCase(), PAGE_W / 2, 22, { align: "center" });
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(10);
   pdf.setTextColor(...MUTED);

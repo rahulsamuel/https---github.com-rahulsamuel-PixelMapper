@@ -28,7 +28,7 @@ const formSchema = z.object({
   tileWeightKg: z.coerce.number().min(0.1, { message: "Must be positive." }),
 
   maxPowerConsumption: z.coerce.number().min(1, { message: "Must be positive." }),
-  avgPowerConsumption: z.coerce.number().min(0, { message: "Must be non-negative." }).optional(),
+  avgPowerConsumption: z.union([z.literal(''), z.coerce.number().min(0, { message: "Must be non-negative." })]).optional(),
 
   maxBrightness: z.coerce.number().min(1, { message: "Must be positive." }),
   refreshRate: z.coerce.number().min(1, { message: "Must be positive." }),
@@ -90,7 +90,7 @@ export function EditProductForm({ product }: { product: any }) {
       tileHeightMm: product.tileHeightMm || 500,
       tileWeightKg: product.tileWeightKg || 8.5,
       maxPowerConsumption: product.wattsPerTile || 0,
-      avgPowerConsumption: product.avgWattsPerTile ?? undefined,
+      avgPowerConsumption: product.avgWattsPerTile ?? '',
       maxBrightness: product.maxBrightness || 1200,
       refreshRate: product.refreshRate || 3840,
       applicationIndoor: product.applicationIndoor || false,

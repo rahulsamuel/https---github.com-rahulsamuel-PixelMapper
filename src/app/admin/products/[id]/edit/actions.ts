@@ -19,7 +19,7 @@ const formSchema = z.object({
   tileWeightKg: z.coerce.number().min(0.1, { message: "Must be positive." }),
 
   maxPowerConsumption: z.coerce.number().min(1, { message: "Must be positive." }),
-  avgPowerConsumption: z.coerce.number().min(0, { message: "Must be non-negative." }).optional(),
+  avgPowerConsumption: z.union([z.literal(''), z.coerce.number().min(0, { message: "Must be non-negative." })]).optional(),
 
   maxBrightness: z.coerce.number().min(1, { message: "Must be positive." }),
   refreshRate: z.coerce.number().min(1, { message: "Must be positive." }),
@@ -78,7 +78,7 @@ export async function updateProductAction(productId: string, prevState: FormStat
       tileWidthPx: validatedFields.data.tileWidthPx,
       tileHeightPx: validatedFields.data.tileHeightPx,
       wattsPerTile: validatedFields.data.maxPowerConsumption,
-      avgWattsPerTile: validatedFields.data.avgPowerConsumption ?? null,
+      avgWattsPerTile: typeof validatedFields.data.avgPowerConsumption === 'number' ? validatedFields.data.avgPowerConsumption : null,
     });
 
     if (!success) {
