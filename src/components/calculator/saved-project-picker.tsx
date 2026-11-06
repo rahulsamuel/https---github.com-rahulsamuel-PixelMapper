@@ -21,13 +21,15 @@ interface SavedProjectPickerProps {
   projectsLoading: boolean;
   projectsError: string | null;
   activeProject: CloudProject | null;
+  showScreens?: boolean;
   activeScreenId: string | null;
+  saveAvailable: boolean;
   screenNotice: string | null;
   hasUnsavedChanges: boolean;
   saving: boolean;
   saveError: string | null;
   onSelectProject: (projectId: string | null) => void;
-  onSelectScreen: (screenId: string) => void;
+  onSelectScreen?: (screenId: string) => void;
   onSave: () => void;
 }
 
@@ -37,7 +39,9 @@ export function SavedProjectPicker({
   projectsLoading,
   projectsError,
   activeProject,
+  showScreens = true,
   activeScreenId,
+  saveAvailable,
   screenNotice,
   hasUnsavedChanges,
   saving,
@@ -86,7 +90,7 @@ export function SavedProjectPicker({
         )}
       </div>
 
-      {activeProject && (
+      {activeProject && showScreens && (
         <div className="space-y-2">
           <Label>Screen</Label>
           {screens.length === 0 ? (
@@ -112,7 +116,7 @@ export function SavedProjectPicker({
         <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-foreground">{screenNotice}</p>
       )}
 
-      {activeScreenId && (
+      {saveAvailable && (
         <div className="space-y-2">
           <Button
             className="w-full"
@@ -126,7 +130,7 @@ export function SavedProjectPicker({
           {hasUnsavedChanges ? (
             <p className="text-xs text-muted-foreground">Changes are only kept here until you save them.</p>
           ) : (
-            <p className="text-xs text-muted-foreground">Calculator matches the saved screen.</p>
+            <p className="text-xs text-muted-foreground">Everything matches the saved project.</p>
           )}
           {saveError && <p className="text-xs text-destructive">{saveError}</p>}
         </div>

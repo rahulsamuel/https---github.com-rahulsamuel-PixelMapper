@@ -11,7 +11,7 @@ import type { EquipmentItem, EquipmentType, RackSide } from '@/lib/rack-data';
 import { EQUIPMENT_TYPE_LABELS, EQUIPMENT_TYPE_COLORS } from '@/lib/rack-data';
 import { supabase } from '@/lib/supabase/client';
 import { Search, GripVertical, Plus } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 const TYPE_ORDER: EquipmentType[] = ['processor', 'media', 'network', 'power', 'utility', 'other'];
@@ -196,11 +196,13 @@ export function EquipmentSidebar({
   activeSide,
   showImages = true,
   onEquipmentAdded,
+  projectPicker,
 }: {
   equipment: EquipmentItem[];
   activeSide: RackSide;
   showImages?: boolean;
   onEquipmentAdded?: () => void;
+  projectPicker?: ReactNode;
 }) {
   const [search, setSearch] = useState('');
   const [activeType, setActiveType] = useState<EquipmentType | 'all'>('all');
@@ -236,6 +238,9 @@ export function EquipmentSidebar({
 
   return (
     <aside className="w-72 border-r bg-sidebar flex flex-col overflow-hidden">
+      {projectPicker && (
+        <div className="flex-shrink-0 px-4 pt-4 pb-4 border-b">{projectPicker}</div>
+      )}
       <div className="flex-shrink-0 px-4 pt-4 pb-3 border-b space-y-3">
         <div>
           <h2 className="font-semibold text-sm">Equipment Library</h2>

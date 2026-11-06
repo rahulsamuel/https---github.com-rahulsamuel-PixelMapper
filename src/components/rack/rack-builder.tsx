@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Rack } from './rack';
@@ -23,12 +23,37 @@ import {
 import { cn } from '@/lib/utils';
 import { downloadRackPng } from '@/lib/rack-download';
 import { usePersistentState } from '@/hooks/use-persistent-state';
+import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
+import { useSavedProjects } from '@/hooks/use-saved-projects';
+import { loadRackDrawingSettings, saveRackDrawingSettings } from '@/lib/project-tab-saves';
 
 interface RackState {
   id: number;
   name: string;
   ru: number;
   items: RackItem[];
+}
+
+interface RackSettings {
+  racks: RackState[];
+  nextRackId: number;
+}
+
+function parseRackSettings(raw: unknown): RackSettings | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const s = raw as Record<string, unknown>;
+  const nextRackId = s.nextRackId;
+  if (!Array.isArray(s.racks) || typeof nextRackId !== 'number') return null;
+  const racks = s.racks as RackState[];
+  const valid = racks.every(r =>
+    r !== null &&
+    typeof r === 'object' &&
+    typeof r.id === 'number' &&
+    typeof r.name === 'string' &&
+    typeof r.ru === 'number' &&
+    Array.isArray(r.items)
+  );
+  return valid ? { racks, nextRackId } : null;
 }
 
 async function fetchEquipmentLibrary(): Promise<EquipmentItem[]> {
@@ -52,10 +77,65 @@ export function RackBuilder() {
   const [activeSide, setActiveSide] = usePersistentState<RackSide>('rack-builder:activeSide', 'front');
   const [showImages, setShowImages] = usePersistentState<boolean>('rack-builder:showImages', true);
   const [libraryVersion, setLibraryVersion] = useState(0);
+  const { signedIn, projects, loading: projectsLoading, error: projectsError } = useSavedProjects();
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const requestedProjectRef = useRef<string | null>(null);
+
+  const activeProject = projects.find(p => p.id === activeProjectId) ?? null;
+  const currentSnapshot = JSON.stringify({ racks, nextRackId });
+  const hasUnsavedChanges = activeProjectId !== null && savedSnapshot !== currentSnapshot;
 
   useEffect(() => {
     fetchEquipmentLibrary().then(setEquipmentLibrary);
   }, [libraryVersion]);
+
+  const loadProject = async (projectId: string) => {
+    setSaveError(null);
+    setNotice(null);
+    const { data, error } = await loadRackDrawingSettings(projectId);
+    if (requestedProjectRef.current !== projectId) return;
+    if (error) {
+      setSaveError(error);
+      return;
+    }
+    const saved = parseRackSettings(data);
+    if (saved) {
+      setRacks(saved.racks);
+      setNextRackId(saved.nextRackId);
+      setSavedSnapshot(JSON.stringify(saved));
+    } else {
+      setSavedSnapshot(currentSnapshot);
+      setNotice('This project has no saved rack drawing yet. Save to keep these racks with it.');
+    }
+  };
+
+  const handleSelectProject = (projectId: string | null) => {
+    requestedProjectRef.current = projectId;
+    setActiveProjectId(projectId);
+    setSavedSnapshot(null);
+    setNotice(null);
+    setSaveError(null);
+    if (projectId) loadProject(projectId);
+  };
+
+  const handleSave = async () => {
+    if (!activeProjectId) return;
+    setSaving(true);
+    setSaveError(null);
+    const snapshot = currentSnapshot;
+    const { success, error } = await saveRackDrawingSettings(activeProjectId, { racks, nextRackId });
+    setSaving(false);
+    if (!success) {
+      setSaveError(error ?? 'Could not save to the project.');
+      return;
+    }
+    setSavedSnapshot(snapshot);
+    setNotice(null);
+  };
 
   const addRack = () => {
     setRacks(prev => [...prev, { id: nextRackId, name: `Rack ${nextRackId}`, ru: 24, items: [] }]);
@@ -154,7 +234,30 @@ export function RackBuilder() {
   return (
     <DndProvider backend={HTML5Backend}>
       <div className="flex h-[calc(100svh-3.5rem)] overflow-hidden">
-        <EquipmentSidebar equipment={equipmentLibrary} activeSide={activeSide} showImages={showImages} onEquipmentAdded={() => setLibraryVersion(v => v + 1)} />
+        <EquipmentSidebar
+          equipment={equipmentLibrary}
+          activeSide={activeSide}
+          showImages={showImages}
+          onEquipmentAdded={() => setLibraryVersion(v => v + 1)}
+          projectPicker={
+            <SavedProjectPicker
+              signedIn={signedIn}
+              projects={projects}
+              projectsLoading={projectsLoading}
+              projectsError={projectsError}
+              activeProject={activeProject}
+              showScreens={false}
+              activeScreenId={null}
+              saveAvailable={activeProjectId !== null}
+              screenNotice={notice}
+              hasUnsavedChanges={hasUnsavedChanges}
+              saving={saving}
+              saveError={saveError}
+              onSelectProject={handleSelectProject}
+              onSave={handleSave}
+            />
+          }
+        />
 
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Toolbar */}

@@ -277,6 +277,7 @@ export default function CalculatorPage() {
                             projectsError={projectsError}
                             activeProject={activeProject}
                             activeScreenId={activeScreenId}
+                            saveAvailable={activeScreenId !== null}
                             screenNotice={screenNotice}
                             hasUnsavedChanges={hasUnsavedChanges}
                             saving={saving}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,14 @@ import { usePersistentState } from '@/hooks/use-persistent-state';
 import { LedProductCombobox } from '@/components/ui/led-product-combobox';
 import { getCachedProducts, setCachedProducts, getCachedProcessors, setCachedProcessors } from '@/lib/data-cache';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
+import { useSavedProjects } from '@/hooks/use-saved-projects';
+import {
+  loadPowerDataSettings,
+  powerDataSnapshot,
+  savePowerDataSettings,
+  type PowerDataSettings,
+} from '@/lib/project-tab-saves';
 
 interface LedProduct {
   id: string;
@@ -112,6 +120,82 @@ export default function PowerDataPage() {
   const selectedProduct = useMemo(() => products.find(p => p.id === selectedProductId), [products, selectedProductId]);
   const selectedProcessor = useMemo(() => processors.find(p => p.id === selectedProcessorId), [processors, selectedProcessorId]);
 
+  const { signedIn, projects, loading: projectsLoading, error: projectsError } = useSavedProjects();
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [activeScreenId, setActiveScreenId] = useState<string | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  const [screenNotice, setScreenNotice] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const requestedScreenRef = useRef<string | null>(null);
+
+  const activeProject = projects.find(p => p.id === activeProjectId) ?? null;
+  const activeScreen = activeProject?.projectData.screens.find(s => s.id === activeScreenId) ?? null;
+  const currentSettings: PowerDataSettings = {
+    productId: selectedProductId,
+    processorId: selectedProcessorId,
+    circuitVoltage,
+    circuitAmperage,
+    safetyMargin,
+    refreshRate,
+    bitDepth,
+  };
+  const hasUnsavedChanges = activeScreen !== null && savedSnapshot !== powerDataSnapshot(currentSettings);
+
+  const applySettings = (s: PowerDataSettings) => {
+    setSelectedProductId(s.productId);
+    setSelectedProcessorId(s.processorId);
+    setCircuitVoltage(s.circuitVoltage);
+    setCircuitAmperage(s.circuitAmperage);
+    setSafetyMargin(s.safetyMargin);
+    setRefreshRate(s.refreshRate);
+    setBitDepth(s.bitDepth);
+  };
+
+  const loadScreen = async (projectId: string, screenId: string) => {
+    requestedScreenRef.current = screenId;
+    setActiveScreenId(screenId);
+    setSaveError(null);
+    setScreenNotice(null);
+    const { data, error } = await loadPowerDataSettings(projectId, screenId);
+    if (requestedScreenRef.current !== screenId) return;
+    if (error) {
+      setSaveError(error);
+      return;
+    }
+    if (data) {
+      applySettings(data);
+      setSavedSnapshot(powerDataSnapshot(data));
+    } else {
+      setSavedSnapshot(powerDataSnapshot(currentSettings));
+      setScreenNotice('This screen has no saved power settings yet. Save to keep these settings with it.');
+    }
+  };
+
+  const handleSelectProject = (projectId: string | null) => {
+    setActiveProjectId(projectId);
+    setActiveScreenId(null);
+    setSavedSnapshot(null);
+    setScreenNotice(null);
+    setSaveError(null);
+    const firstScreen = projects.find(p => p.id === projectId)?.projectData.screens[0];
+    if (projectId && firstScreen) loadScreen(projectId, firstScreen.id);
+  };
+
+  const handleSave = async () => {
+    if (!activeProject || !activeScreen) return;
+    setSaving(true);
+    setSaveError(null);
+    const { success, error } = await savePowerDataSettings(activeProject.id, activeScreen.id, currentSettings);
+    setSaving(false);
+    if (!success) {
+      setSaveError(error ?? 'Could not save to the project.');
+      return;
+    }
+    setSavedSnapshot(powerDataSnapshot(currentSettings));
+    setScreenNotice(null);
+  };
+
   const debouncedAmperage = useDebouncedValue(circuitAmperage, 50);
   const debouncedSafetyMargin = useDebouncedValue(safetyMargin, 50);
 
@@ -165,6 +249,23 @@ export default function PowerDataPage() {
         </div>
         <div className="flex-1 overflow-y-auto">
           <div className="p-4 space-y-4">
+
+            <SavedProjectPicker
+              signedIn={signedIn}
+              projects={projects}
+              projectsLoading={projectsLoading}
+              projectsError={projectsError}
+              activeProject={activeProject}
+              activeScreenId={activeScreenId}
+              saveAvailable={activeScreen !== null}
+              screenNotice={screenNotice}
+              hasUnsavedChanges={hasUnsavedChanges}
+              saving={saving}
+              saveError={saveError}
+              onSelectProject={handleSelectProject}
+              onSelectScreen={(screenId) => activeProject && loadScreen(activeProject.id, screenId)}
+              onSave={handleSave}
+            />
 
             {/* LED Product */}
             <div>

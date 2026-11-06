@@ -12,6 +12,9 @@ import { Button } from "@/components/ui/button";
 import { PanelLeftClose, PanelLeftOpen, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
+import { SavedProjectPicker } from "@/components/calculator/saved-project-picker";
+import { useSavedProjects } from "@/hooks/use-saved-projects";
+import { loadPreVisualSave, savePreVisualSave } from "@/lib/project-tab-saves";
 
 interface Product {
   id: string;
@@ -98,6 +101,17 @@ export function PreVisualBuilder() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const exportRef = useRef<HTMLDivElement>(null);
+  const { signedIn, projects, loading: projectsLoading, error: projectsError } = useSavedProjects();
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const requestedProjectRef = useRef<string | null>(null);
+
+  const activeProject = projects.find(p => p.id === activeProjectId) ?? null;
+  const currentSnapshot = JSON.stringify({ settings, screens });
+  const hasUnsavedChanges = activeProjectId !== null && savedSnapshot !== currentSnapshot;
 
   // Load screens from localStorage autosave and products from Supabase
   const loadedRef = useRef(false);
@@ -172,6 +186,50 @@ export function PreVisualBuilder() {
     setSettings(prev => ({ ...prev, ...patch }));
   };
 
+  const loadProject = async (projectId: string) => {
+    setSaveError(null);
+    setNotice(null);
+    const { data, error } = await loadPreVisualSave(projectId);
+    if (requestedProjectRef.current !== projectId) return;
+    if (error) {
+      setSaveError(error);
+      return;
+    }
+    if (data && data.settings && typeof data.settings === "object") {
+      const loaded = { settings: data.settings as PreVisualSettings, screens: data.screens as PreVisualScreenData[] };
+      setSettings(loaded.settings);
+      setScreens(loaded.screens);
+      setSavedSnapshot(JSON.stringify(loaded));
+    } else {
+      setSavedSnapshot(currentSnapshot);
+      setNotice("This project has no saved pre-visual setup yet. Save to keep this view with it.");
+    }
+  };
+
+  const handleSelectProject = (projectId: string | null) => {
+    requestedProjectRef.current = projectId;
+    setActiveProjectId(projectId);
+    setSavedSnapshot(null);
+    setNotice(null);
+    setSaveError(null);
+    if (projectId) loadProject(projectId);
+  };
+
+  const handleSave = async () => {
+    if (!activeProjectId) return;
+    setSaving(true);
+    setSaveError(null);
+    const snapshot = currentSnapshot;
+    const { success, error } = await savePreVisualSave(activeProjectId, { settings, screens });
+    setSaving(false);
+    if (!success) {
+      setSaveError(error ?? "Could not save to the project.");
+      return;
+    }
+    setSavedSnapshot(snapshot);
+    setNotice(null);
+  };
+
   return (
     <div className="flex h-[calc(100svh-3.5rem)] overflow-hidden">
       {/* Left controls panel */}
@@ -181,6 +239,24 @@ export function PreVisualBuilder() {
           panelOpen ? "w-72" : "w-0"
         )}
       >
+        <div className="flex-shrink-0 px-4 pt-4 pb-4 border-b">
+          <SavedProjectPicker
+            signedIn={signedIn}
+            projects={projects}
+            projectsLoading={projectsLoading}
+            projectsError={projectsError}
+            activeProject={activeProject}
+            showScreens={false}
+            activeScreenId={null}
+            saveAvailable={activeProjectId !== null}
+            screenNotice={notice}
+            hasUnsavedChanges={hasUnsavedChanges}
+            saving={saving}
+            saveError={saveError}
+            onSelectProject={handleSelectProject}
+            onSave={handleSave}
+          />
+        </div>
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-4">
             <PreVisualControls
