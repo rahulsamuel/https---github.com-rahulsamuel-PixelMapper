@@ -3,13 +3,18 @@
 
 import dynamic from 'next/dynamic';
 import { computeLedPower } from '@/lib/led-power';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Calculator, Spline } from 'lucide-react';
 import { getProducts } from './actions';
+import { useAuth } from '@/contexts/auth-context';
+import type { Screen } from '@/contexts/pixel-map-types';
+import { getUserCloudProjects, type CloudProject } from '@/lib/cloud-projects';
+import { buildCalculatorTitle, getScreenSetupNotice, saveScreenProductToProject } from '@/lib/calculator-screens';
+import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 import { getCachedProducts, setCachedProducts } from '@/lib/data-cache';
 import {
@@ -84,6 +89,75 @@ export default function CalculatorPage() {
     });
     const [curvingState, setCurvingState] = useState<CurvingState>(DEFAULT_CURVING_STATE);
 
+    const { user } = useAuth();
+    const userId = user?.id ?? null;
+    const [savedProjects, setSavedProjects] = useState<CloudProject[]>([]);
+    const [projectsLoading, setProjectsLoading] = useState(false);
+    const [projectsError, setProjectsError] = useState<string | null>(null);
+    const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+    const [activeScreenId, setActiveScreenId] = useState<string | null>(null);
+    const [savedProductId, setSavedProductId] = useState<string | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    const loadSavedProjects = useCallback(async (id: string) => {
+        setProjectsLoading(true);
+        const { data, error } = await getUserCloudProjects(id);
+        setSavedProjects(data);
+        setProjectsError(error);
+        setProjectsLoading(false);
+    }, []);
+
+    useEffect(() => {
+        if (userId) loadSavedProjects(userId);
+    }, [userId, loadSavedProjects]);
+
+    const activeProject = savedProjects.find(p => p.id === activeProjectId) ?? null;
+    const activeScreen = activeProject?.projectData.screens.find(s => s.id === activeScreenId) ?? null;
+
+    const applyScreen = (project: CloudProject, screen: Screen) => {
+        setActiveScreenId(screen.id);
+        setSavedProductId(screen.selectedProductId ?? null);
+        setSaveError(null);
+        setFormState(prev => ({
+            ...prev,
+            projectName: project.projectName,
+            selectedProductId: screen.selectedProductId ?? null,
+            screenWidthTiles: screen.dimensions.screenWidth,
+            screenHeightTiles: screen.dimensions.screenHeight,
+        }));
+        setActiveTab('results');
+    };
+
+    const handleSelectProject = (projectId: string | null) => {
+        setActiveProjectId(projectId);
+        setActiveScreenId(null);
+        setSavedProductId(null);
+        setSaveError(null);
+        const project = savedProjects.find(p => p.id === projectId);
+        const firstScreen = project?.projectData.screens[0];
+        if (project && firstScreen) applyScreen(project, firstScreen);
+    };
+
+    const handleSelectScreen = (screenId: string) => {
+        const screen = activeProject?.projectData.screens.find(s => s.id === screenId);
+        if (activeProject && screen) applyScreen(activeProject, screen);
+    };
+
+    const handleSaveScreen = async () => {
+        if (!activeProject || !activeScreen) return;
+        setSaving(true);
+        setSaveError(null);
+        const { success, error } = await saveScreenProductToProject(activeProject.id, activeScreen.id, formState.selectedProductId);
+        setSaving(false);
+        if (!success) {
+            setSaveError(error ?? 'Could not save to the Pixel Map project.');
+            return;
+        }
+        setSavedProductId(formState.selectedProductId);
+        if (userId) await loadSavedProjects(userId);
+    };
+
     useEffect(() => {
         async function fetchProducts() {
             const cached = getCachedProducts();
@@ -114,8 +188,12 @@ export default function CalculatorPage() {
         return products.find(p => p.id === formState.selectedProductId) ?? null;
     }, [formState.selectedProductId, products]);
 
+    const screenNotice = activeScreen ? getScreenSetupNotice(activeScreen, formState.selectedProductId) : null;
+    const hasUnsavedChanges = activeScreen !== null && formState.selectedProductId !== savedProductId;
+    const reportTitle = buildCalculatorTitle(formState.projectName, activeScreen?.name);
+
     const results = useMemo<CalculatedResults | null>(() => {
-        if (!selectedProduct) return null;
+        if (!selectedProduct || screenNotice) return null;
 
         const { screenWidthTiles, screenHeightTiles, voltage, phase } = formState;
 
@@ -164,7 +242,7 @@ export default function CalculatorPage() {
             currentDraw: { max: power.maxAmps, avg: power.avgAmps, label: currentDrawLabel },
             totalTiles,
         };
-    }, [formState, selectedProduct]);
+    }, [formState, selectedProduct, screenNotice]);
 
     const handleFormChange = (field: keyof FormState, value: any) => {
         setFormState(prevState => {
@@ -192,12 +270,28 @@ export default function CalculatorPage() {
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     <div className="p-4 space-y-6">
+                        <SavedProjectPicker
+                            signedIn={userId !== null}
+                            projects={savedProjects}
+                            projectsLoading={projectsLoading}
+                            projectsError={projectsError}
+                            activeProject={activeProject}
+                            activeScreenId={activeScreenId}
+                            screenNotice={screenNotice}
+                            hasUnsavedChanges={hasUnsavedChanges}
+                            saving={saving}
+                            saveError={saveError}
+                            onSelectProject={handleSelectProject}
+                            onSelectScreen={handleSelectScreen}
+                            onSave={handleSaveScreen}
+                        />
                         <CalculatorForm
                             products={products}
                             formState={formState}
                             onFormChange={handleFormChange}
                             selectedProduct={selectedProduct}
                             hidePowerConfig={isCurving}
+                            lockedToScreen={activeScreen !== null}
                         />
                         {/* Add New LED Product button — hidden on Curving tab */}
                         {!isCurving && (
@@ -243,7 +337,7 @@ export default function CalculatorPage() {
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="results" className="flex-1 overflow-auto mt-0">
-                        {results ? <ResultsDisplay results={results} formState={formState} product={selectedProduct} /> : <ResultsDisplaySkeleton />}
+                        {results ? <ResultsDisplay results={results} title={reportTitle} formState={formState} product={selectedProduct} /> : <ResultsDisplaySkeleton />}
                     </TabsContent>
                     <TabsContent value="curving" className="flex-1 min-h-0 mt-0">
                         {selectedProduct ? (

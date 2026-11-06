@@ -64,9 +64,10 @@ interface CalculatorFormProps {
     onFormChange: (field: keyof FormState, value: any) => void;
     selectedProduct: LedProduct | null;
     hidePowerConfig?: boolean;
+    lockedToScreen?: boolean;
 }
 
-export function CalculatorForm({ products, formState, onFormChange, selectedProduct, hidePowerConfig }: CalculatorFormProps) {
+export function CalculatorForm({ products, formState, onFormChange, selectedProduct, hidePowerConfig, lockedToScreen }: CalculatorFormProps) {
   
 
 
@@ -90,6 +91,7 @@ export function CalculatorForm({ products, formState, onFormChange, selectedProd
           id="project-name" 
           value={formState.projectName}
           onChange={(e) => onFormChange('projectName', e.target.value)}
+          disabled={lockedToScreen}
         />
       </div>
 
@@ -177,6 +179,7 @@ export function CalculatorForm({ products, formState, onFormChange, selectedProd
             value={formState.screenWidthTiles}
             onChange={(e) => onFormChange('screenWidthTiles', Number(e.target.value))}
             min="1"
+            disabled={lockedToScreen}
           />
         </div>
         <div className="space-y-2">
@@ -187,9 +190,13 @@ export function CalculatorForm({ products, formState, onFormChange, selectedProd
             value={formState.screenHeightTiles}
             onChange={(e) => onFormChange('screenHeightTiles', Number(e.target.value))}
             min="1"
+            disabled={lockedToScreen}
           />
         </div>
       </div>
+      {lockedToScreen && (
+        <p className="text-xs text-muted-foreground">Name and size come from the Pixel Map project.</p>
+      )}
     </div>
   )
 }

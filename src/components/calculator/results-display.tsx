@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { buildCalculatorPdf } from "@/lib/calculator-pdf";
 import { formatFeetInches } from "@/lib/imperial-length";
-import { Copy, FileDown } from "lucide-react";
+import { Check, Copy, FileDown } from "lucide-react";
+import { useState } from "react";
 
 interface FormState {
     projectName: string;
@@ -59,7 +60,8 @@ const ResultBlock = ({ title, children }: { title: string; children: React.React
     </div>
 );
 
-export function ResultsDisplay({ results, formState, product }: { results: CalculatedResults; formState: FormState; product: LedProductInfo | null }) {
+export function ResultsDisplay({ results, formState, product, title }: { results: CalculatedResults; formState: FormState; product: LedProductInfo | null; title: string }) {
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   
   const formatNumber = (num: number, digits = 2) => {
     return num.toLocaleString(undefined, {
@@ -68,9 +70,30 @@ export function ResultsDisplay({ results, formState, product }: { results: Calcu
     });
   }
 
+  const handleCopy = async () => {
+    const lines = [
+      title,
+      `Resolution: ${formatNumber(results.resolution.width, 0)} x ${formatNumber(results.resolution.height, 0)} pixels`,
+      `Total Pixels: ${formatNumber(results.totalPixels, 0)}`,
+      `Tile Configuration: ${formState.screenWidthTiles} x ${formState.screenHeightTiles} (${results.totalTiles} total)`,
+      `Aspect Ratio: ${results.aspectRatio}`,
+      `Dimensions: ${formatNumber(results.dimensionsMm.width / 1000, 2)} x ${formatNumber(results.dimensionsMm.height / 1000, 2)} m / ${formatFeetInches(results.dimensionsIn.width)} x ${formatFeetInches(results.dimensionsIn.height)}`,
+      `Total Weight: ${formatNumber(results.totalWeightKg, 1)} kg / ${formatNumber(results.totalWeightLbs, 1)} lbs`,
+      `Power per m2 (Max / Avg): ${formatNumber(results.powerPerM2.max, 0)} W/m2 / ${formatNumber(results.powerPerM2.avg, 0)} W/m2`,
+      `Total Power (Max / Avg): ${formatNumber(results.totalPower.max, 2)} W / ${formatNumber(results.totalPower.avg, 2)} W`,
+      `${results.currentDraw.label}: ${formatNumber(results.currentDraw.max, 2)} A / ${formatNumber(results.currentDraw.avg, 2)} A`,
+    ];
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      setCopyState("copied");
+    } catch {
+      setCopyState("failed");
+    }
+    setTimeout(() => setCopyState("idle"), 2000);
+  };
+
   const handleDownloadPdf = async () => {
     const { jsPDF } = await import("jspdf");
-    const title = formState.projectName.trim() || "LED Calculator";
     const pdf = buildCalculatorPdf(jsPDF, {
       title,
       date: new Date().toLocaleDateString(),
@@ -90,7 +113,7 @@ export function ResultsDisplay({ results, formState, product }: { results: Calcu
         value: `${formatNumber(results.currentDraw.max, 2)} A / ${formatNumber(results.currentDraw.avg, 2)} A`,
       },
     });
-    const fileName = title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "led-calculator";
+    const fileName = title.normalize("NFKC").toUpperCase().replace(/[\\/:*?"<>|]/g, "").trim() || "LED CALCULATOR";
     pdf.save(`${fileName}.pdf`);
   };
   
@@ -99,9 +122,9 @@ export function ResultsDisplay({ results, formState, product }: { results: Calcu
         <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold font-headline">Calculated Results</h2>
             <div className="flex items-center gap-2">
-                <Button variant="outline">
-                    <Copy className="mr-2" />
-                    Copy
+                <Button variant="outline" onClick={handleCopy}>
+                    {copyState === "copied" ? <Check className="mr-2" /> : <Copy className="mr-2" />}
+                    {copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy"}
                 </Button>
                 <Button variant="outline" onClick={handleDownloadPdf}>
                     <FileDown className="mr-2" />
