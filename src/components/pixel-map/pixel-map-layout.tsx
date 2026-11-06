@@ -428,12 +428,14 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                 </AccordionContent>
               </AccordionItem>
 
-              <AccordionItem value="devices" className="w-full border-none">
-                <AccordionSectionTrigger icon={<Server className="size-5" />} title="Devices" colorClass="border-l-4 border-l-sky-500" />
-                <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
-                  <DevicesPanel />
-                </AccordionContent>
-              </AccordionItem>
+              {activeTab === 'equipment' && (
+                <AccordionItem value="devices" className="w-full border-none">
+                  <AccordionSectionTrigger icon={<Server className="size-5" />} title="Devices" colorClass="border-l-4 border-l-sky-500" />
+                  <AccordionContent className="bg-background border rounded-b-lg -mt-2 space-y-6 p-4">
+                    <DevicesPanel />
+                  </AccordionContent>
+                </AccordionItem>
+              )}
               {activeTab === 'grid' && (
                 <>
                   <AccordionItem value="grid-setup" className="w-full border-none">
