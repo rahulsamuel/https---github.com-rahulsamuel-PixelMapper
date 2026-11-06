@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, type MouseEvent } from "react";
+import { useState, useRef, useCallback, useEffect, type MouseEvent, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase/client";
 import {
@@ -36,9 +36,9 @@ import {
 interface SignalFlowCanvasProps {
   data: SignalFlowData;
   onChange: (data: SignalFlowData) => void;
-  onSave?: () => void;
-  saving?: boolean;
   exportRef?: { current: HTMLDivElement | null };
+  projectPicker?: ReactNode;
+  loading?: boolean;
 }
 
 function uid() {
@@ -120,8 +120,7 @@ const CATEGORY_ORDER: DeviceCategory[] = [
   "other",
 ];
 
-export function SignalFlowCanvas({ data, onChange, onSave, saving, exportRef }: SignalFlowCanvasProps) {
-  const showSaveButton = !!onSave;
+export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loading }: SignalFlowCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [draggingDevice, setDraggingDevice] = useState<string | null>(null);
@@ -427,8 +426,14 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving, exportRef }: 
 
   return (
     <div className="flex h-full w-full overflow-hidden relative">
+      {loading && (
+        <div className="absolute top-0 bottom-0 left-60 right-64 z-30 flex items-center justify-center bg-[#0a0a0a]">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
       {/* Device palette sidebar */}
       <div className="w-60 flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden">
+        {projectPicker && <div className="p-3 border-b">{projectPicker}</div>}
         <div className="p-3 border-b">
           <h3 className="text-sm font-semibold">Devices</h3>
           <p className="text-xs text-muted-foreground mt-0.5">Click a device to add it to the canvas center.</p>
@@ -866,16 +871,6 @@ export function SignalFlowCanvas({ data, onChange, onSave, saving, exportRef }: 
                     onClick={deleteSelected}
                   >
                     Delete Device
-                  </button>
-                )}
-                {showSaveButton && (
-                  <button
-                    className="w-full rounded-md py-2 bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-                    onClick={onSave}
-                    disabled={saving}
-                  >
-                    {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    {saving ? "Saving…" : "Save Device Changes"}
                   </button>
                 )}
               </div>

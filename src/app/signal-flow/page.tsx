@@ -30,7 +30,7 @@ import { downloadSignalFlowHtml, downloadSignalFlowPdf } from "@/lib/signal-flow
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase/client";
-import { Loader2, Download, Trash2, Cable } from "lucide-react";
+import { Download, Trash2, Cable } from "lucide-react";
 
 const EMPTY_DATA: SignalFlowData = {
   devices: [],
@@ -206,27 +206,6 @@ export default function SignalFlowPage() {
 
   return (
     <div className="flex h-[calc(100svh-3.5rem)] overflow-hidden">
-      <aside className="w-72 border-r bg-sidebar flex flex-col overflow-hidden">
-        <div className="flex-shrink-0 px-4 pt-4 pb-4 border-b">
-          <SavedProjectPicker
-            signedIn={signedIn}
-            projects={projects}
-            projectsLoading={projectsLoading}
-            projectsError={projectsError}
-            activeProject={selectedProject}
-            showScreens={false}
-            activeScreenId={null}
-            saveAvailable={selectedProject !== null}
-            screenNotice={null}
-            hasUnsavedChanges={dirty}
-            saving={saving}
-            saveError={null}
-            onSelectProject={handleSelectProject}
-            onSave={handleSave}
-          />
-        </div>
-      </aside>
-
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <div className="flex-shrink-0 border-b bg-background px-3 py-2 flex items-center gap-3">
           {dirty && (
@@ -281,19 +260,32 @@ export default function SignalFlowPage() {
           </div>
         </div>
 
-        {selectedProject && loadingDiagram ? (
-          <div className="flex-1 flex items-center justify-center bg-[#0a0a0a]">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
+        <div className="flex-1 min-h-0 relative">
           <SignalFlowCanvas
             data={diagramData}
             onChange={handleDataChange}
-            onSave={selectedProject ? handleSave : undefined}
-            saving={saving}
             exportRef={exportSurfaceRef}
+            loading={loadingDiagram}
+            projectPicker={
+              <SavedProjectPicker
+                signedIn={signedIn}
+                projects={projects}
+                projectsLoading={projectsLoading}
+                projectsError={projectsError}
+                activeProject={selectedProject}
+                showScreens={false}
+                activeScreenId={null}
+                saveAvailable={selectedProject !== null}
+                screenNotice={null}
+                hasUnsavedChanges={dirty}
+                saving={saving}
+                saveError={null}
+                onSelectProject={handleSelectProject}
+                onSave={handleSave}
+              />
+            }
           />
-        )}
+        </div>
       </div>
     </div>
   );
