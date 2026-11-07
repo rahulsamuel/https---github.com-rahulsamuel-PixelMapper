@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User, ShieldCheck, Menu, X } from 'lucide-react';
+import { LogOut, User, ShieldCheck, Menu, X, Package, Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -76,6 +76,21 @@ export function GlobalHeader() {
         <div className="hidden md:flex items-center gap-2 ml-auto shrink-0">
           {user ? (
             <>
+              <Link href="/my-products">
+                <Button variant="ghost" size="sm" className={cn(
+                  'h-8 px-3 text-sm gap-1.5 rounded-lg transition-colors',
+                  isActive('/my-products') ? 'bg-primary/12 text-primary font-medium' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                )}>
+                  <Package className="h-3.5 w-3.5" />
+                  My Products
+                </Button>
+              </Link>
+              <Link href="/add-led">
+                <Button size="sm" className="h-8 px-3 text-sm gap-1.5">
+                  <Plus className="h-3.5 w-3.5" />
+                  Add LED Product
+                </Button>
+              </Link>
               {user?.email === 'rahulsamuel@gmail.com' && (
                 <>
                   {!pathname.startsWith('/admin') && (
@@ -204,6 +219,21 @@ export function GlobalHeader() {
           <div className="border-t border-border/50 mt-2 pt-2 flex flex-col gap-1">
             {user ? (
               <>
+                <Link href="/my-products" onClick={() => setMobileOpen(false)}>
+                  <div className={cn(
+                    'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
+                    isActive('/my-products') ? 'bg-primary/12 text-primary font-medium' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  )}>
+                    <Package className="h-3.5 w-3.5" />
+                    My Products
+                  </div>
+                </Link>
+                <Link href="/add-led" onClick={() => setMobileOpen(false)}>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                    <Plus className="h-3.5 w-3.5" />
+                    Add LED Product
+                  </div>
+                </Link>
                 {user?.email === 'rahulsamuel@gmail.com' && !pathname.startsWith('/admin') && (
                   <Link href="/admin/products" onClick={() => setMobileOpen(false)}>
                     <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
