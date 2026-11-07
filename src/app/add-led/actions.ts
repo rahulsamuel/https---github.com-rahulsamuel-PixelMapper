@@ -94,7 +94,7 @@ export async function addProductAction(prevState: FormState, formData: FormData)
       const duplicates = await findLedProductDuplicates(accessToken, {
         manufacturer: d.manufacturer,
         productName: d.productName,
-      });
+      }, sessionUser.isAdmin);
       if (duplicates.length > 0) {
         return {
           success: false,

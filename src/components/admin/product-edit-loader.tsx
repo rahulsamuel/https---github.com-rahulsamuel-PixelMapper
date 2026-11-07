@@ -8,22 +8,25 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { EditProductForm } from '@/components/admin/edit-product-form';
 import { supabase } from '@/lib/supabase/client';
-import { fetchLedProductWithOwner, type LedProduct } from '@/services/supabase';
+import { fetchLedProduct, type LedProduct } from '@/services/supabase';
+import { useAuth } from '@/contexts/auth-context';
 
 export function ProductEditLoader({ productId, backHref, backLabel }: { productId: string; backHref: string; backLabel: string }) {
+  const { isAdmin, loading: authLoading } = useAuth();
   const [product, setProduct] = useState<LedProduct | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchLedProductWithOwner(supabase, productId).then(({ data, error }) => {
+    if (authLoading) return;
+    fetchLedProduct(supabase, productId, isAdmin).then(({ data, error }) => {
       setProduct(data);
       setError(error);
       setLoading(false);
     });
-  }, [productId]);
+  }, [productId, isAdmin, authLoading]);
 
-  if (loading) {
+  if (loading || authLoading) {
     return <p className="text-sm text-muted-foreground">Loading product...</p>;
   }
 

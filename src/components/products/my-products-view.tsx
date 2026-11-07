@@ -6,7 +6,7 @@ import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/lib/supabase/client';
-import { fetchLedProductsWithOwner, setLedProductVisibility, type LedProduct } from '@/services/supabase';
+import { fetchLedProducts, setLedProductVisibility, type LedProduct } from '@/services/supabase';
 import { ProductCard, ProductDetailDialog } from '@/components/admin/led-product-admin';
 import { deleteProductAction } from '@/app/products/actions';
 import {
@@ -33,7 +33,7 @@ export function MyProductsView() {
 
   useEffect(() => {
     if (!userId) return;
-    fetchLedProductsWithOwner(supabase, userId).then(({ data, error }) => {
+    fetchLedProducts(supabase, { ownerId: userId, includeOwner: false }).then(({ data, error }) => {
       setProducts(data);
       setLoadError(error);
       setLoading(false);

@@ -28,7 +28,7 @@ import {
   ShieldCheck, Sun, Box, Cable, Globe, Lock,
 } from 'lucide-react';
 import Link from 'next/link';
-import { fetchLedProductsWithOwner, setLedProductVisibility, type LedProduct } from '@/services/supabase';
+import { fetchLedProducts, setLedProductVisibility, type LedProduct } from '@/services/supabase';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase/client';
 import { deleteProductAction } from '@/app/products/actions';
@@ -270,7 +270,7 @@ export function LedProductAdmin() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchLedProductsWithOwner(supabase).then(({ data, error }) => {
+    fetchLedProducts(supabase, { includeOwner: true }).then(({ data, error }) => {
       setProductList(data);
       setLoadError(error);
       setLoading(false);

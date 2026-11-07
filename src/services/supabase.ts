@@ -48,6 +48,9 @@ export type LedProduct = LedProductData & {
 
 const LED_PRODUCT_WITH_OWNER_SELECT = '*, owner:users!led_products_created_by_fkey(full_name, email)';
 
+// Owner emails are only embedded for admin sessions; other users never receive them via product queries.
+const ledProductSelect = (includeOwner: boolean) => (includeOwner ? LED_PRODUCT_WITH_OWNER_SELECT : '*');
+
 export function mapLedProductRow(product: Record<string, unknown>): LedProduct {
   const owner = product.owner as { full_name?: string | null; email?: string | null } | null;
   const num = (v: unknown): number | null => (v == null ? null : Number(v));
@@ -109,18 +112,21 @@ export async function getLedProducts() {
   }
 }
 
-export async function fetchLedProductsWithOwner(client: SupabaseClient, ownerId?: string) {
-  let query = client.from("led_products").select(LED_PRODUCT_WITH_OWNER_SELECT);
+export async function fetchLedProducts(
+  client: SupabaseClient,
+  { ownerId, includeOwner }: { ownerId?: string; includeOwner: boolean },
+) {
+  let query = client.from("led_products").select(ledProductSelect(includeOwner));
   if (ownerId) query = query.eq("created_by", ownerId);
   const { data, error } = await query.order("created_at", { ascending: false });
   if (error) return { data: [] as LedProduct[], error: error.message };
   return { data: (data as unknown as Record<string, unknown>[]).map(mapLedProductRow), error: null };
 }
 
-export async function fetchLedProductWithOwner(client: SupabaseClient, id: string) {
+export async function fetchLedProduct(client: SupabaseClient, id: string, includeOwner: boolean) {
   const { data, error } = await client
     .from("led_products")
-    .select(LED_PRODUCT_WITH_OWNER_SELECT)
+    .select(ledProductSelect(includeOwner))
     .eq("id", id)
     .maybeSingle();
   if (error) return { data: null, error: error.message };
@@ -142,10 +148,11 @@ export async function setLedProductVisibility(client: SupabaseClient, id: string
 export async function findLedProductDuplicates(
   accessToken: string,
   candidate: { manufacturer: string; productName: string },
+  includeOwner: boolean,
 ): Promise<LedProduct[]> {
   const { data, error } = await getSupabaseUserClient(accessToken)
     .from("led_products")
-    .select(LED_PRODUCT_WITH_OWNER_SELECT);
+    .select(ledProductSelect(includeOwner));
   if (error) throw new Error(error.message);
   return (data as unknown as Record<string, unknown>[])
     .map(mapLedProductRow)
