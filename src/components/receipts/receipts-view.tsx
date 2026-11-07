@@ -19,6 +19,7 @@ export function ReceiptsView() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [viewReceipt, setViewReceipt] = useState<Receipt | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -31,8 +32,11 @@ export function ReceiptsView() {
 
   async function handleDownload(receipt: Receipt) {
     setDownloadingId(receipt.id);
+    setDownloadError(null);
     try {
       await downloadReceiptPdf(receipt);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : 'Could not download the receipt.');
     } finally {
       setDownloadingId(null);
     }
@@ -64,6 +68,7 @@ export function ReceiptsView() {
 
       {loading && <p className="text-sm text-muted-foreground">Loading receipts...</p>}
       {loadError && <p className="text-sm text-destructive">Could not load your receipts: {loadError}</p>}
+      {downloadError && <p className="text-sm text-destructive">{downloadError}</p>}
 
       {!loading && !loadError && receipts.length === 0 && (
         <div className="rounded-xl border border-dashed p-10 text-center text-muted-foreground">

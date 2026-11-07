@@ -93,25 +93,6 @@ export function mapLedProductRow(product: Record<string, unknown>): LedProduct {
   };
 }
 
-export async function getLedProducts() {
-  try {
-    const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase
-      .from("led_products")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      return { data: [], error: error.message };
-    }
-
-    return { data: (data as Record<string, unknown>[]).map(mapLedProductRow), error: null };
-  } catch (e) {
-    const error = e instanceof Error ? e.message : "An unknown error occurred";
-    return { data: [], error };
-  }
-}
-
 export async function fetchLedProducts(
   client: SupabaseClient,
   { ownerId, includeOwner }: { ownerId?: string; includeOwner: boolean },

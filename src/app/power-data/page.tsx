@@ -7,11 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { getProductsAction, getProcessorsAction } from './actions';
+import { getProcessorsAction } from './actions';
+import { loadLedProducts } from '@/lib/led-products-client';
 import type { Processor } from '@/services/supabase';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 import { LedProductCombobox } from '@/components/ui/led-product-combobox';
-import { getCachedProducts, setCachedProducts, getCachedProcessors, setCachedProcessors } from '@/lib/data-cache';
+import { getCachedProcessors, setCachedProcessors } from '@/lib/data-cache';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
 import { useSavedProjects } from '@/hooks/use-saved-projects';
@@ -76,34 +77,24 @@ export default function PowerDataPage() {
   const [bitDepth, setBitDepth] = usePersistentState('power-data:bitDepth', '8');
 
   useEffect(() => {
-    const cachedProducts = getCachedProducts();
     const cachedProcessors = getCachedProcessors();
 
-    if (cachedProducts) {
-      setProducts(cachedProducts);
-      setSelectedProductId(prev => prev && cachedProducts.some(p => p.id === prev) ? prev : cachedProducts[0].id);
-    }
     if (cachedProcessors) {
       setProcessors(cachedProcessors);
       setSelectedProcessorId(prev => prev && cachedProcessors.some(p => p.id === prev) ? prev : cachedProcessors[0].id);
     }
-    if (cachedProducts && cachedProcessors) {
-      setLoading(false);
-      return;
-    }
 
-    let p1: Promise<void> | null = null;
+    const p1 = loadLedProducts().then(({ data, error }) => {
+      if (error) {
+        console.error('Failed to fetch LED products:', error);
+        return;
+      }
+      if (data.length) {
+        setProducts(data);
+        setSelectedProductId(prev => prev && data.some(p => p.id === prev) ? prev : data[0].id);
+      }
+    });
     let p2: Promise<void> | null = null;
-
-    if (!cachedProducts) {
-      p1 = getProductsAction().then(({ data }) => {
-        if (data?.length) {
-          setProducts(data as LedProduct[]);
-          setCachedProducts('default', data as LedProduct[]);
-          setSelectedProductId(prev => prev && data.some(p => p.id === prev) ? prev : data[0].id);
-        }
-      });
-    }
     if (!cachedProcessors) {
       p2 = getProcessorsAction().then(({ data }) => {
         if (data?.length) {

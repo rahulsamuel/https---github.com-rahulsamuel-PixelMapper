@@ -9,14 +9,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Calculator, Spline } from 'lucide-react';
-import { getProducts } from './actions';
+import { loadLedProducts } from '@/lib/led-products-client';
 import { useAuth } from '@/contexts/auth-context';
 import type { Screen } from '@/contexts/pixel-map-types';
 import { getUserCloudProjects, type CloudProject } from '@/lib/cloud-projects';
 import { buildCalculatorTitle, getScreenSetupNotice, saveScreenProductToProject } from '@/lib/calculator-screens';
 import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
 import { usePersistentState } from '@/hooks/use-persistent-state';
-import { getCachedProducts, setCachedProducts } from '@/lib/data-cache';
 import {
   CurvingSettings,
   CurvingPreview,
@@ -159,28 +158,16 @@ export default function CalculatorPage() {
     };
 
     useEffect(() => {
-        async function fetchProducts() {
-            const cached = getCachedProducts();
-            if (cached) {
-                setProducts(cached as LedProduct[]);
-                if (cached.length > 0 && !formState.selectedProductId) {
-                    handleFormChange('selectedProductId', cached[0].id);
-                }
-                return;
-            }
-            const { data, error } = await getProducts();
-            if (data) {
-                setProducts(data as LedProduct[]);
-                setCachedProducts('default', data as LedProduct[]);
-                if (data.length > 0 && !formState.selectedProductId) {
-                    handleFormChange('selectedProductId', data[0].id);
-                }
-            }
+        loadLedProducts().then(({ data, error }) => {
             if (error) {
                 console.error("Failed to fetch LED products:", error);
+                return;
             }
-        }
-        fetchProducts();
+            setProducts(data);
+            if (data.length > 0 && !formState.selectedProductId) {
+                handleFormChange('selectedProductId', data[0].id);
+            }
+        });
     }, []);
 
     const selectedProduct = useMemo(() => {

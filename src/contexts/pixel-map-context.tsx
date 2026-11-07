@@ -6,8 +6,7 @@ import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo, apply
 import { useToast } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { isColorDark } from "@/lib/utils";
-import { getProducts } from "@/app/calculator/actions";
-import { getCachedProducts, setCachedProducts } from "@/lib/data-cache";
+import { loadLedProducts } from "@/lib/led-products-client";
 import { useAuth } from "./auth-context";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
@@ -139,22 +138,13 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [deliverablesScreenIds, setDeliverablesScreenIds] = useState<string[]>([]);
 
   useEffect(() => {
-      async function fetchProducts() {
-          const cached = getCachedProducts();
-          if (cached) {
-              setProducts(cached);
-              return;
-          }
-          const { data, error } = await getProducts();
-          if (data) {
-              setProducts(data as LedProduct[]);
-              setCachedProducts('default', data as LedProduct[]);
-          }
+      loadLedProducts().then(({ data, error }) => {
           if (error) {
               console.error("Failed to fetch LED products:", error);
+              return;
           }
-      }
-      fetchProducts();
+          setProducts(data);
+      });
   }, []);
 
   useEffect(() => {

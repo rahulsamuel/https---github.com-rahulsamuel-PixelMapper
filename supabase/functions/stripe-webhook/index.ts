@@ -16,6 +16,72 @@ type ReceiptItem = {
   led_product_id: string | null;
 };
 
+type ReceiptRow = {
+  receipt_number: string;
+  customer_email: string | null;
+  items: unknown;
+  product_fee_cents: number;
+  processing_fee_cents: number;
+  total_cents: number;
+  paid_at: string | null;
+  created_at: string;
+};
+
+function toPdfData(receipt: ReceiptRow): ReceiptPdfData {
+  return {
+    receipt_number: receipt.receipt_number,
+    customer_email: receipt.customer_email,
+    items: receipt.items as ReceiptItem[],
+    product_fee_cents: receipt.product_fee_cents,
+    processing_fee_cents: receipt.processing_fee_cents,
+    total_cents: receipt.total_cents,
+    date: new Date(receipt.paid_at ?? receipt.created_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+  };
+}
+
+async function receiptPdfResponse(req: Request, admin: SupabaseClient): Promise<Response> {
+  const token = req.headers.get("Authorization")?.replace(/^Bearer /, "");
+  const receiptId = new URL(req.url).searchParams.get("receipt_id");
+  if (!token || !receiptId) {
+    return new Response(JSON.stringify({ error: "Missing session or receipt" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const { data: userData, error: userError } = await admin.auth.getUser(token);
+  if (userError || !userData.user) {
+    return new Response(JSON.stringify({ error: "Please sign in to download receipts." }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const { data: receipt, error } = await admin
+    .from("receipts")
+    .select("receipt_number, customer_email, items, product_fee_cents, processing_fee_cents, total_cents, paid_at, created_at")
+    .eq("id", receiptId)
+    .eq("user_id", userData.user.id)
+    .eq("status", "paid")
+    .maybeSingle();
+  if (error) throw error;
+  if (!receipt) {
+    return new Response(JSON.stringify({ error: "Receipt not found" }), {
+      status: 404,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const pdf = await buildReceiptPdf(toPdfData(receipt));
+  return new Response(pdf, {
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="${receipt.receipt_number}.pdf"`,
+    },
+  });
+}
+
 async function emailReceiptIfNeeded(admin: SupabaseClient, receiptId: string): Promise<void> {
   const { data: receipt, error } = await admin
     .from("receipts")
@@ -35,15 +101,7 @@ async function emailReceiptIfNeeded(admin: SupabaseClient, receiptId: string): P
   }
 
   try {
-    const data: ReceiptPdfData = {
-      receipt_number: receipt.receipt_number,
-      customer_email: receipt.customer_email,
-      items: receipt.items as ReceiptItem[],
-      product_fee_cents: receipt.product_fee_cents,
-      processing_fee_cents: receipt.processing_fee_cents,
-      total_cents: receipt.total_cents,
-      date: new Date(receipt.paid_at ?? receipt.created_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
-    };
+    const data = toPdfData({ ...receipt, customer_email: receipt.customer_email });
     const pdf = await buildReceiptPdf(data);
     await sendReceiptEmail(apiKey, data, pdf);
 
@@ -59,6 +117,13 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    const admin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    if (req.method === "GET") return await receiptPdfResponse(req, admin);
+
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
     if (!stripeKey || !webhookSecret) {
@@ -91,11 +156,6 @@ Deno.serve(async (req: Request) => {
     } catch {
       return new Response("Invalid signature", { status: 400, headers: corsHeaders });
     }
-
-    const admin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
 
     if (event.type === "checkout.session.expired") {
       const session = event.data.object as Stripe.Checkout.Session;
