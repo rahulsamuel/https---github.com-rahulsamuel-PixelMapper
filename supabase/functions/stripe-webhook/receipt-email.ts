@@ -1,4 +1,4 @@
-import { BUSINESS_NAME, BUSINESS_TAGLINE, formatMoney, LOGO_URL, PRODUCT_FEE_CENTS, type ReceiptPdfData } from "./receipt-pdf.ts";
+import { BUSINESS_NAME, BUSINESS_TAGLINE, formatMoney, HEADER_BACKGROUND_HEX, ICON_URL, PRODUCT_FEE_CENTS, WORDMARK_URL, type ReceiptPdfData } from "./receipt-pdf.ts";
 
 function escapeHtml(value: string): string {
   return value
@@ -43,11 +43,17 @@ export function buildReceiptEmail(receipt: ReceiptPdfData): { subject: string; h
         <td align="center">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
             <tr>
-              <td style="padding:0 0 20px;" align="center">
-                <img src="${LOGO_URL}" alt="${BUSINESS_NAME}" height="36" style="display:block;height:36px;border:0;">
-                <p style="margin:8px 0 0;font-size:12px;color:#9a9a9a;">${BUSINESS_TAGLINE}</p>
+              <td style="background:${HEADER_BACKGROUND_HEX};border-radius:12px;padding:20px 24px;" align="left">
+                <table role="presentation" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="vertical-align:middle;padding-right:12px;"><img src="${ICON_URL}" alt="" width="40" height="40" style="display:block;width:40px;height:40px;border:0;"></td>
+                    <td style="vertical-align:middle;"><img src="${WORDMARK_URL}" alt="${BUSINESS_NAME}" height="32" style="display:block;height:32px;border:0;"></td>
+                  </tr>
+                </table>
+                <p style="margin:10px 0 0;font-size:12px;color:#9a9a9a;">${BUSINESS_TAGLINE}</p>
               </td>
             </tr>
+            <tr><td style="height:16px;"></td></tr>
             <tr>
               <td style="background:#ffffff;border-radius:12px;padding:28px;">
                 <p style="margin:0;font-size:14px;color:#6b6b6b;">Receipt from ${BUSINESS_NAME}</p>

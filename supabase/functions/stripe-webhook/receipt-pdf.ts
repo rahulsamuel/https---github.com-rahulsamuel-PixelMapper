@@ -17,17 +17,21 @@ export const BUSINESS_ADDRESS = [
   "Smyrna, GA 30080",
   "United States",
 ];
-export const LOGO_URL = "https://mapmyled.com/MapMyLED_wordmark_transparent.png";
+export const ICON_URL = "https://mapmyled.com/MapMyLED_app_icon%20copy%202.png";
+export const WORDMARK_URL = "https://mapmyled.com/MapMyLED_wordmark_transparent%20copy%202.png";
+export const HEADER_BACKGROUND_HEX = "#101219";
 export const PRODUCT_FEE_CENTS = 299;
 
 const PAGE_WIDTH = 612;
 const PAGE_HEIGHT = 792;
+const HEADER_HEIGHT = 96;
 const LEFT = 56;
 const RIGHT = 556;
 const CONTENT_BOTTOM = 700;
 const INK = rgb(0.07, 0.07, 0.07);
 const MUTED = rgb(0.42, 0.42, 0.42);
 const RULE = rgb(0.85, 0.85, 0.85);
+const HEADER_BG = rgb(16 / 255, 18 / 255, 25 / 255);
 
 export function formatMoney(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -41,9 +45,9 @@ function truncate(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max - 3)}...` : value;
 }
 
-async function loadLogo(doc: PDFDocument): Promise<PDFImage | null> {
+async function loadImage(doc: PDFDocument, url: string): Promise<PDFImage | null> {
   try {
-    const res = await fetch(LOGO_URL);
+    const res = await fetch(url);
     if (!res.ok) return null;
     return await doc.embedPng(new Uint8Array(await res.arrayBuffer()));
   } catch {
@@ -55,7 +59,7 @@ export async function buildReceiptPdf(receipt: ReceiptPdfData): Promise<Uint8Arr
   const doc = await PDFDocument.create();
   const regular = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const logo = await loadLogo(doc);
+  const [icon, wordmark] = await Promise.all([loadImage(doc, ICON_URL), loadImage(doc, WORDMARK_URL)]);
 
   const pages: PDFPage[] = [];
   let page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
@@ -77,30 +81,37 @@ export async function buildReceiptPdf(receipt: ReceiptPdfData): Promise<Uint8Arr
     t: number,
     size: number,
     value: string,
-    opts: { bold?: boolean; muted?: boolean; align?: "left" | "right" } = {},
+    opts: { bold?: boolean; muted?: boolean; white?: boolean; align?: "left" | "right" } = {},
   ) => {
     const font: PDFFont = opts.bold ? bold : regular;
     const text = toWinAnsi(value);
     const width = font.widthOfTextAtSize(text, size);
     const px = opts.align === "right" ? x - width : x;
-    page.drawText(text, { x: px, y: y(t) - size, size, font, color: opts.muted ? MUTED : INK });
+    const color = opts.white ? rgb(1, 1, 1) : opts.muted ? MUTED : INK;
+    page.drawText(text, { x: px, y: y(t) - size, size, font, color });
   };
   const rule = (t: number, left = LEFT) => {
     page.drawLine({ start: { x: left, y: y(t) }, end: { x: RIGHT, y: y(t) }, thickness: 0.75, color: RULE });
   };
 
-  top = 56;
-  write(LEFT, top, 28, "Receipt", { bold: true });
-
-  if (logo) {
-    const width = 150;
-    const height = (logo.height / logo.width) * width;
-    page.drawImage(logo, { x: RIGHT - width, y: y(top) - height + 8, width, height });
+  page.drawRectangle({ x: 0, y: y(HEADER_HEIGHT), width: PAGE_WIDTH, height: HEADER_HEIGHT, color: HEADER_BG });
+  if (icon) {
+    const size = 44;
+    page.drawImage(icon, { x: LEFT, y: y(HEADER_HEIGHT / 2) - size / 2, width: size, height: size });
+  }
+  if (wordmark) {
+    const height = 34;
+    const width = (wordmark.width / wordmark.height) * height;
+    const x = icon ? LEFT + 56 : LEFT;
+    page.drawImage(wordmark, { x, y: y(HEADER_HEIGHT / 2) - height / 2, width, height });
   } else {
-    write(RIGHT, top, 20, BUSINESS_NAME, { bold: true, align: "right" });
+    write(LEFT, HEADER_HEIGHT / 2 - 10, 20, BUSINESS_NAME, { bold: true, white: true });
   }
 
-  top = 116;
+  top = 128;
+  write(LEFT, top, 28, "Receipt", { bold: true });
+
+  top = 176;
   const meta: [string, string][] = [
     ["Receipt number", receipt.receipt_number],
     ["Date paid", receipt.date],
@@ -111,7 +122,7 @@ export async function buildReceiptPdf(receipt: ReceiptPdfData): Promise<Uint8Arr
     top += 16;
   }
 
-  top = 186;
+  top = 236;
   write(LEFT, top, 11, BUSINESS_NAME, { bold: true });
   write(LEFT + 100, top, 10, BUSINESS_TAGLINE, { muted: true });
   BUSINESS_ADDRESS.forEach((line, i) => write(LEFT, top + 18 + i * 14, 10, line));
@@ -121,10 +132,10 @@ export async function buildReceiptPdf(receipt: ReceiptPdfData): Promise<Uint8Arr
     write(340, top + 18, 10, receipt.customer_email);
   }
 
-  top = 296;
+  top = 330;
   write(LEFT, top, 18, `${formatMoney(receipt.total_cents)} paid on ${receipt.date}`, { bold: true });
 
-  top = 340;
+  top = 374;
   write(LEFT, top, 9, "Description", { muted: true });
   write(412, top, 9, "Qty", { muted: true, align: "right" });
   write(486, top, 9, "Unit price", { muted: true, align: "right" });
@@ -158,26 +169,11 @@ export async function buildReceiptPdf(receipt: ReceiptPdfData): Promise<Uint8Arr
     ["Amount paid", formatMoney(receipt.total_cents), true],
   ];
   for (const [label, value, isBold] of totals) {
+    ensureSpace(20);
     write(340, top, 10, label, { bold: isBold });
     write(RIGHT, top, 10, value, { bold: isBold, align: "right" });
     top += 18;
   }
-
-  top += 28;
-  ensureSpace(130);
-  write(LEFT, top, 14, "Payment history", { bold: true });
-  top += 30;
-  write(LEFT, top, 9, "Payment method", { muted: true });
-  write(250, top, 9, "Date", { muted: true });
-  write(440, top, 9, "Amount paid", { muted: true, align: "right" });
-  write(RIGHT, top, 9, "Receipt number", { muted: true, align: "right" });
-  top += 16;
-  rule(top);
-  top += 12;
-  write(LEFT, top, 10, "Card (Stripe)");
-  write(250, top, 10, receipt.date);
-  write(440, top, 10, formatMoney(receipt.total_cents), { align: "right" });
-  write(RIGHT, top, 10, receipt.receipt_number, { align: "right" });
 
   pages.forEach((p, index) => {
     page = p;
