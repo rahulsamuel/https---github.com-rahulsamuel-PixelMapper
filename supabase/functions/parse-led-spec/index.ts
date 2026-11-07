@@ -397,6 +397,18 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const { data: { user } } = await createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+  ).auth.getUser(authHeader.replace(/^Bearer\s+/i, ""));
+  if (!user) {
+    return new Response(
+      JSON.stringify({ error: "Please sign in to parse spec sheets." }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   const geminiKey = Deno.env.get("GOOGLE_AI_API_KEY");
   if (!geminiKey) {
     return new Response(

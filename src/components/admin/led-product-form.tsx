@@ -18,7 +18,7 @@ import { useAuth } from '@/contexts/auth-context';
 import {
   Upload, Link2, Sparkles, AlertCircle, ChevronRight,
   FileText, Image as ImageIcon, X, Check, RotateCcw,
-  Cpu, Zap, Eye, Layers, Weight, Ruler, Lock,
+  Cpu, Zap, Eye, Layers, Weight, Ruler,
   CheckSquare, Square, Database,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -238,7 +238,6 @@ function InputStep({ onParsed }: { onParsed: (products: ParsedProduct[], source:
   const { toast } = useToast();
 
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
   function handleFile(f: File) {
     const ok = ['application/pdf','image/jpeg','image/jpg','image/png','image/webp'].includes(f.type);
@@ -248,20 +247,23 @@ function InputStep({ onParsed }: { onParsed: (products: ParsedProduct[], source:
   }
 
   async function parse() {
-    setError(''); setLoading(true);
+    setError('');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) { setError('Please sign in to parse a spec sheet.'); return; }
+    setLoading(true);
     try {
       let res: Response;
       if (mode === 'file' && file) {
         const fd = new globalThis.FormData(); fd.append('file', file);
         res = await fetch(`${SUPABASE_URL}/functions/v1/parse-led-spec`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${ANON_KEY}` },
+          headers: { Authorization: `Bearer ${session.access_token}` },
           body: fd,
         });
       } else if (mode === 'url' && url.trim()) {
         res = await fetch(`${SUPABASE_URL}/functions/v1/parse-led-spec`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${ANON_KEY}`, 'Content-Type': 'application/json' },
+          headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ url: url.trim() }),
         });
       } else {
@@ -539,9 +541,6 @@ export function LedProductForm() {
   const [duplicateMatches, setDuplicateMatches] = useState<LedProduct[] | null>(null);
   const [confirmDuplicate, setConfirmDuplicate] = useState(false);
 
-  // Non-admins skip straight to manual review
-  const effectiveStep: WizardStep = !isAdmin && step === 'input' ? 'review' : step;
-
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -683,13 +682,13 @@ export function LedProductForm() {
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumb — only for admins using AI flow */}
-      {isAdmin && effectiveStep !== 'input' && (
+      {/* Breadcrumb */}
+      {step !== 'input' && (
         <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <button type="button" onClick={() => setStep('input')} className="hover:text-foreground transition-colors">Upload / URL</button>
           <ChevronRight className="w-3 h-3" />
-          {effectiveStep === 'select' && <span className="text-foreground font-medium">Select Variant</span>}
-          {effectiveStep === 'review' && (
+          {step === 'select' && <span className="text-foreground font-medium">Select Variant</span>}
+          {step === 'review' && (
             <>
               {parsedProducts.length > 1 && (
                 <>
@@ -703,8 +702,8 @@ export function LedProductForm() {
         </nav>
       )}
 
-      {/* ── Input step (admins only) ── */}
-      {effectiveStep === 'input' && (
+      {/* ── Input step ── */}
+      {step === 'input' && (
         <>
           <InputStep onParsed={handleParsed} />
           <Separator />
@@ -715,16 +714,8 @@ export function LedProductForm() {
         </>
       )}
 
-      {/* Non-admin notice on manual form */}
-      {!isAdmin && effectiveStep === 'review' && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-400">
-          <Lock className="w-4 h-4 mt-0.5 shrink-0" />
-          <span>AI spec parsing is available to admins only. Fill out the form manually below.</span>
-        </div>
-      )}
-
       {/* ── Select step ── */}
-      {effectiveStep === 'select' && (
+      {step === 'select' && (
         <SelectStep
           products={parsedProducts}
           onSelect={p => apply(p, specSource)}
@@ -734,7 +725,7 @@ export function LedProductForm() {
       )}
 
       {/* ── Review step ── */}
-      {effectiveStep === 'review' && (
+      {step === 'review' && (
         <Form {...form}>
           <form ref={formRef} action={formAction} className="space-y-6">
             <input type="hidden" name="accessToken" value={accessToken} />

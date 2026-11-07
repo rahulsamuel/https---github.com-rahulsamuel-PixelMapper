@@ -1,0 +1,17 @@
+{
+  "projectId": "65094513",
+  "functions": {
+    "parse-led-spec": {
+      "hasChanged": false,
+      "hash": "69be17394c29b2d83968b06a4903367ea0463a1cb251cbe1a16d7b9dfab9ea6c"
+    },
+    "parse-processor-spec": {
+      "hasChanged": false,
+      "hash": "c3fd93de7efb657e428528427ad23fe765917ccc244348488aed0cd32ccd03ab"
+    },
+    "parse-signal-flow-device": {
+      "hasChanged": false,
+      "hash": "132d3a2ec266f7883f6916bcd0889b096040dfb471c86bdabcd2f17f111e6bed"
+    }
+  }
+}
