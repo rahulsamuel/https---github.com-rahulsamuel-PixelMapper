@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ChevronDown, DraftingCompass, Calculator, Home, LineChart, LogOut, Package, Bolt, Server, Cable, User } from 'lucide-react';
+import { ChevronDown, DraftingCompass, Calculator, Home, LineChart, LogOut, Package, PackagePlus, Bolt, Server, Cable, User } from 'lucide-react';
 import { useAuth } from "@/contexts/auth-context";
 
 function getInitials(email: string | undefined): string {
@@ -35,6 +35,7 @@ export function AppHeader() {
     if (pathname.startsWith('/power-data')) return 'Power & Data';
     if (pathname.startsWith('/rack-drawing')) return 'Rack Drawing';
     if (pathname.startsWith('/signal-flow')) return 'Signal Flow';
+    if (pathname.startsWith('/my-products')) return 'My Products';
     if (pathname.startsWith('/admin')) return 'Admin';
     if (pathname.startsWith('/login')) return 'Login';
     return 'MapMyLED';
@@ -84,6 +85,10 @@ export function AppHeader() {
             <DropdownMenuItem onClick={() => handleNavigation('/admin/products')}>
               <Package className="mr-2 h-4 w-4" />
               <span>Products</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleNavigation('/my-products')}>
+              <PackagePlus className="mr-2 h-4 w-4" />
+              <span>My Products</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => handleNavigation('/')}>

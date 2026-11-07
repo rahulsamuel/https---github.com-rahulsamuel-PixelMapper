@@ -12,7 +12,7 @@ export default function AddLedPage() {
                 <CardHeader>
                     <CardTitle>Add New LED Product</CardTitle>
                     <CardDescription>
-                        Fill out the form below to add a new LED product to the database. 
+                        Pre-fills the form when a spec sheet or URL is parsed.
                         This will make it available in the calculator dropdowns.
                     </CardDescription>
                 </CardHeader>

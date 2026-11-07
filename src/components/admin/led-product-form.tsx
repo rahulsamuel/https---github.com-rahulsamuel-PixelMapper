@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase/client';
+import { DuplicateCompareDialog, specFromProduct, type ProductSpec } from '@/components/admin/duplicate-compare-dialog';
+import type { LedProduct } from '@/services/supabase';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -525,7 +527,7 @@ function SelectStep({ products, onSelect, onBack, onBulkSave }: {
 export function LedProductForm() {
   const [state, formAction] = useActionState(addProductAction, initialState);
   const { toast } = useToast();
-  const { isAdmin, user } = useAuth();
+  const { isAdmin } = useAuth();
   const formRef = useRef<HTMLFormElement>(null);
   const [accessToken, setAccessToken] = useState('');
 
@@ -534,6 +536,8 @@ export function LedProductForm() {
   const [specSource, setSpecSource] = useState('');
   const [previewImg, setPreviewImg] = useState('');
   const [aiPopulated, setAiPopulated] = useState(false);
+  const [duplicateMatches, setDuplicateMatches] = useState<LedProduct[] | null>(null);
+  const [confirmDuplicate, setConfirmDuplicate] = useState(false);
 
   // Non-admins skip straight to manual review
   const effectiveStep: WizardStep = !isAdmin && step === 'input' ? 'review' : step;
@@ -562,6 +566,11 @@ export function LedProductForm() {
 
   useEffect(() => {
     if (!state.message) return;
+    setConfirmDuplicate(false);
+    if (state.duplicates && state.duplicates.length > 0) {
+      setDuplicateMatches(state.duplicates);
+      return;
+    }
     if (state.success) {
       toast({ title: 'Product Added!', description: state.message });
       form.reset(); setStep('input'); setParsedProducts([]); setPreviewImg(''); setAiPopulated(false);
@@ -574,6 +583,33 @@ export function LedProductForm() {
       toast({ title: 'Error', description: state.message, variant: 'destructive' });
     }
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (confirmDuplicate) formRef.current?.requestSubmit();
+  }, [confirmDuplicate]);
+
+  function addAnyway() {
+    setDuplicateMatches(null);
+    setConfirmDuplicate(true);
+  }
+
+  function buildIncomingSpec(): ProductSpec {
+    const v = form.getValues();
+    return {
+      manufacturer: (v.manufacturer ?? '').toUpperCase(),
+      productName: (v.productName ?? '').toUpperCase(),
+      ownerLabel: isAdmin ? 'Shared (everyone)' : 'Private (only you)',
+      pixelPitchMm: v.pixelPitchMm ?? null,
+      tileWidthMm: v.tileWidthMm ?? null,
+      tileHeightMm: v.tileHeightMm ?? null,
+      tileWidthPx: v.tileWidthPx ?? null,
+      tileHeightPx: v.tileHeightPx ?? null,
+      wattsPerTile: v.maxPowerConsumption ?? null,
+      maxBrightnessNit: v.maxBrightness ?? null,
+      refreshRateHz: v.refreshRate ?? null,
+      tileWeightKg: v.tileWeightKg ?? null,
+    };
+  }
 
   const handleParsed = useCallback((products: ParsedProduct[], source: string) => {
     setParsedProducts(products); setSpecSource(source); setAiPopulated(true);
@@ -591,18 +627,25 @@ export function LedProductForm() {
   async function handleBulkSave(selected: ParsedProduct[]) {
     let saved = 0;
     let failed = 0;
+    let skipped = 0;
     for (const p of selected) {
       const defaults = toDefaults(p);
       const fd = buildFormData(defaults, specSource, accessToken);
       const result = await addProductAction(initialState, fd);
       if (result.success) saved++;
+      else if (result.duplicates?.length) skipped++;
       else failed++;
     }
     if (saved > 0) {
       toast({
         title: `${saved} product${saved > 1 ? 's' : ''} added!`,
-        description: failed > 0 ? `${failed} failed to save.` : 'All products saved to the database.',
+        description: [
+          failed > 0 ? `${failed} failed to save.` : '',
+          skipped > 0 ? `${skipped} skipped because a similar product already exists.` : '',
+        ].filter(Boolean).join(' ') || 'All products saved to the database.',
       });
+    } else if (skipped > 0) {
+      toast({ title: 'Nothing added', description: `${skipped} skipped because similar products already exist. Add them one at a time to compare.`, variant: 'destructive' });
     }
     if (failed > 0 && saved === 0) {
       toast({ title: 'Save failed', description: 'Could not save any products. Please try again.', variant: 'destructive' });
@@ -694,8 +737,8 @@ export function LedProductForm() {
       {effectiveStep === 'review' && (
         <Form {...form}>
           <form ref={formRef} action={formAction} className="space-y-6">
-            <input type="hidden" name="createdBy" value={user?.id ?? ''} />
             <input type="hidden" name="accessToken" value={accessToken} />
+            <input type="hidden" name="confirmDuplicate" value={confirmDuplicate ? 'true' : 'false'} />
             <input type="hidden" name="applicationIndoor" value={String(form.watch('applicationIndoor'))} />
             <input type="hidden" name="applicationOutdoor" value={String(form.watch('applicationOutdoor'))} />
             <input type="hidden" name="applicationFloor" value={String(form.watch('applicationFloor'))} />
@@ -836,6 +879,14 @@ export function LedProductForm() {
           </form>
         </Form>
       )}
+
+      <DuplicateCompareDialog
+        open={duplicateMatches !== null}
+        onOpenChange={open => { if (!open) setDuplicateMatches(null); }}
+        incoming={buildIncomingSpec()}
+        existing={(duplicateMatches ?? []).map(specFromProduct)}
+        onAddAnyway={addAnyway}
+      />
     </div>
   );
 }

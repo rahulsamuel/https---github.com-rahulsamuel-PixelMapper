@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -25,16 +25,13 @@ import {
 import {
   Pencil, Trash, Plus, Search, X, ChevronDown, ChevronRight,
   Layers, Zap, Ruler, Weight, Eye as EyeIcon, Cpu, Monitor,
-  ShieldCheck, Sun, Box, Cable,
+  ShieldCheck, Sun, Box, Cable, Globe, Lock,
 } from 'lucide-react';
 import Link from 'next/link';
-import type { LedProduct } from '@/services/supabase';
+import { fetchLedProductsWithOwner, setLedProductVisibility, type LedProduct } from '@/services/supabase';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase/client';
-
-interface Props {
-  products: LedProduct[];
-}
+import { deleteProductAction } from '@/app/products/actions';
 
 // ─── Detail View ────────────────────────────────────────────────────────────
 
@@ -60,7 +57,7 @@ function SpecGroup({ icon: Icon, title, children }: { icon: React.ElementType; t
   );
 }
 
-function ProductDetailDialog({ product, open, onOpenChange }: { product: LedProduct | null; open: boolean; onOpenChange: (v: boolean) => void }) {
+export function ProductDetailDialog({ product, open, onOpenChange }: { product: LedProduct | null; open: boolean; onOpenChange: (v: boolean) => void }) {
   if (!product) return null;
 
   return (
@@ -153,7 +150,14 @@ function ProductDetailDialog({ product, open, onOpenChange }: { product: LedProd
 
 // ─── Product Card ────────────────────────────────────────────────────────────
 
-function ProductCard({ product, onView, onDelete }: { product: LedProduct; onView: () => void; onDelete: () => void }) {
+export function ProductCard({ product, editHref, showOwner = false, onView, onDelete, onToggleVisibility }: {
+  product: LedProduct;
+  editHref: string;
+  showOwner?: boolean;
+  onView: () => void;
+  onDelete?: () => void;
+  onToggleVisibility?: () => void;
+}) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   return (
     <div className="group rounded-lg border bg-card hover:shadow-md transition-all duration-200 overflow-hidden">
@@ -179,11 +183,18 @@ function ProductCard({ product, onView, onDelete }: { product: LedProduct; onVie
               <p className="text-xs text-muted-foreground truncate">{product.manufacturer}</p>
             </div>
             <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Link href={`/admin/products/${product.id}/edit`}>
+              {onToggleVisibility && (
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onToggleVisibility}
+                  title={product.visibility === 'shared' ? 'Make private' : 'Make public'}>
+                  {product.visibility === 'shared' ? <Lock className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
+                </Button>
+              )}
+              <Link href={editHref}>
                 <Button variant="ghost" size="icon" className="h-7 w-7">
                   <Pencil className="w-3 h-3" />
                 </Button>
               </Link>
+              {onDelete && (
               <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
                 <AlertDialogTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -205,6 +216,7 @@ function ProductCard({ product, onView, onDelete }: { product: LedProduct; onVie
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              )}
             </div>
           </div>
 
@@ -215,6 +227,18 @@ function ProductCard({ product, onView, onDelete }: { product: LedProduct; onVie
             {product.tileWidthMm && product.tileHeightMm && <span className="tabular-nums">{product.tileWidthMm}×{product.tileHeightMm}mm</span>}
             {product.wattsPerTile > 0 && <span className="tabular-nums">{product.wattsPerTile}W</span>}
             {product.maxBrightnessNit && <span>{product.maxBrightnessNit} nit</span>}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[11px] text-muted-foreground">
+            <Badge variant={product.visibility === 'shared' ? 'default' : 'outline'} className="text-[9px] py-0 px-1.5">
+              {product.visibility === 'shared' ? 'Public' : 'Private'}
+            </Badge>
+            {showOwner && (
+              <span className="truncate">
+                Added by {product.ownerName ?? product.ownerEmail ?? 'unknown'}
+                {product.ownerName && product.ownerEmail ? ` (${product.ownerEmail})` : ''}
+              </span>
+            )}
           </div>
 
           {/* Application badges */}
@@ -231,7 +255,7 @@ function ProductCard({ product, onView, onDelete }: { product: LedProduct; onVie
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function LedProductAdmin({ products }: Props) {
+export function LedProductAdmin() {
   const [search, setSearch] = useState('');
   const [manufacturerFilter, setManufacturerFilter] = useState('all');
   const [applicationFilter, setApplicationFilter] = useState('all');
@@ -240,7 +264,18 @@ export function LedProductAdmin({ products }: Props) {
   const [deleteTarget, setDeleteTarget] = useState<LedProduct | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [productList, setProductList] = useState<LedProduct[]>(products);
+  const [productList, setProductList] = useState<LedProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchLedProductsWithOwner(supabase).then(({ data, error }) => {
+      setProductList(data);
+      setLoadError(error);
+      setLoading(false);
+    });
+  }, []);
 
   const manufacturers = useMemo(
     () => [...new Set(productList.map(p => p.manufacturer))].sort(),
@@ -294,11 +329,10 @@ export function LedProductAdmin({ products }: Props) {
     if (!deleteTarget) return;
     setDeleting(true);
     setDeleteError(null);
-    const { deleteProduct } = await import('@/app/admin/products/actions');
     const { data: { session } } = await supabase.auth.getSession();
     const fd = new FormData();
     if (session?.access_token) fd.append('accessToken', session.access_token);
-    const result = await deleteProduct(deleteTarget.id, fd);
+    const result = await deleteProductAction(deleteTarget.id, fd);
     if (result.success) {
       setProductList(prev => prev.filter(p => p.id !== deleteTarget.id));
       setDeleteTarget(null);
@@ -306,6 +340,17 @@ export function LedProductAdmin({ products }: Props) {
       setDeleteError(result.message);
     }
     setDeleting(false);
+  }
+
+  async function handleToggleVisibility(product: LedProduct) {
+    const next = product.visibility === 'shared' ? 'private' : 'shared';
+    setActionError(null);
+    const { error } = await setLedProductVisibility(supabase, product.id, next);
+    if (error) {
+      setActionError(error);
+      return;
+    }
+    setProductList(prev => prev.map(p => (p.id === product.id ? { ...p, visibility: next } : p)));
   }
 
   const clearFilters = () => {
@@ -397,6 +442,10 @@ export function LedProductAdmin({ products }: Props) {
         Showing {filtered.length} of {productList.length} products across {grouped.length} manufacturer{grouped.length !== 1 ? 's' : ''}
       </div>
 
+      {loading && <p className="text-sm text-muted-foreground">Loading products…</p>}
+      {loadError && <p className="text-sm text-destructive">Could not load products: {loadError}</p>}
+      {actionError && <p className="text-sm text-destructive">{actionError}</p>}
+
       {/* Grouped product list */}
       {filtered.length === 0 && (
         <div className="text-center py-16 text-muted-foreground">
@@ -430,8 +479,11 @@ export function LedProductAdmin({ products }: Props) {
                     <ProductCard
                       key={product.id}
                       product={product}
+                      editHref={`/admin/products/${product.id}/edit`}
+                      showOwner
                       onView={() => setViewProduct(product)}
                       onDelete={() => { setDeleteTarget(product); setDeleteError(null); }}
+                      onToggleVisibility={() => handleToggleVisibility(product)}
                     />
                   ))}
                 </div>

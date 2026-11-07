@@ -1,10 +1,9 @@
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+import { getSupabaseUserClient } from '@/lib/supabase/server';
+import { getSessionUser } from '@/lib/supabase/session-user';
+import { findLedProductDuplicates, type LedProduct } from '@/services/supabase';
 
 const formSchema = z.object({
   manufacturer: z.string().min(2, { message: "Manufacturer name must be at least 2 characters." }).transform(val => val.toUpperCase()),
@@ -47,28 +46,15 @@ export type FormState = {
   message: string;
   errors?: z.ZodIssue[];
   success: boolean;
+  duplicates?: LedProduct[];
 };
-
-async function verifyAdmin(accessToken: string | null): Promise<boolean> {
-  if (!accessToken) return false;
-  try {
-    const client = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${accessToken}` } },
-    });
-    const { data: { user } } = await client.auth.getUser(accessToken);
-    if (!user) return false;
-    return user.app_metadata?.['is_admin'] === true;
-  } catch {
-    return false;
-  }
-}
 
 export async function addProductAction(prevState: FormState, formData: FormData): Promise<FormState> {
   const accessToken = (formData.get('accessToken') as string) || null;
 
-  const isAdmin = await verifyAdmin(accessToken);
-  if (!isAdmin) {
-    return { success: false, message: 'Access denied. Only admins can add products.' };
+  const sessionUser = await getSessionUser(accessToken);
+  if (!sessionUser || !accessToken) {
+    return { success: false, message: 'Please sign in to add products.' };
   }
 
   const rawData: Record<string, unknown> = {
@@ -103,11 +89,22 @@ export async function addProductAction(prevState: FormState, formData: FormData)
   const d = validatedFields.data;
 
   try {
-    const client = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: `Bearer ${accessToken}` } },
-    });
+    const confirmed = formData.get('confirmDuplicate') === 'true';
+    if (!confirmed) {
+      const duplicates = await findLedProductDuplicates(accessToken, {
+        manufacturer: d.manufacturer,
+        productName: d.productName,
+      });
+      if (duplicates.length > 0) {
+        return {
+          success: false,
+          duplicates,
+          message: 'A similar product already exists. Compare the details before saving.',
+        };
+      }
+    }
 
-    const { error } = await client.from("led_products").insert({
+    const { error } = await getSupabaseUserClient(accessToken).from("led_products").insert({
       manufacturer: d.manufacturer,
       product_name: d.productName,
       tile_width_px: d.tileWidthPx,
@@ -137,14 +134,20 @@ export async function addProductAction(prevState: FormState, formData: FormData)
       application_floor: d.applicationFloor ?? false,
       product_image_url: d.productImageUrl || null,
       spec_sheet_url: d.specSheetUrl || null,
-      created_by: (formData.get('createdBy') as string) || null,
+      created_by: sessionUser.id,
+      visibility: sessionUser.isAdmin ? 'shared' : 'private',
     });
 
     if (error) {
       return { success: false, message: error.message };
     }
 
-    return { success: true, message: 'Product has been added to the database successfully!' };
+    return {
+      success: true,
+      message: sessionUser.isAdmin
+        ? 'Product has been added to the database successfully!'
+        : 'Product saved to your products. You can make it public from My Products.',
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'An unknown error occurred';
     return { success: false, message: `An unexpected error occurred: ${message}` };

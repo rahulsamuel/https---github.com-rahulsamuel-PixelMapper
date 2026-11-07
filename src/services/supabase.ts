@@ -1,4 +1,6 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServerClient, getSupabaseUserClient } from "@/lib/supabase/server";
+import { isNearMatch } from "@/lib/led-product-match";
 
 export type LedProductData = {
   manufacturer: string;
@@ -33,13 +35,21 @@ export type LedProductData = {
   specSheetUrl?: string | null;
 };
 
+export type LedProductVisibility = 'shared' | 'private';
+
 export type LedProduct = LedProductData & {
   id: string;
   createdBy: string | null;
   createdAt: string;
+  visibility: LedProductVisibility;
+  ownerName: string | null;
+  ownerEmail: string | null;
 };
 
-function mapRow(product: Record<string, unknown>): LedProduct {
+const LED_PRODUCT_WITH_OWNER_SELECT = '*, owner:users!led_products_created_by_fkey(full_name, email)';
+
+export function mapLedProductRow(product: Record<string, unknown>): LedProduct {
+  const owner = product.owner as { full_name?: string | null; email?: string | null } | null;
   const num = (v: unknown): number | null => (v == null ? null : Number(v));
   return {
     id: product.id as string,
@@ -74,55 +84,10 @@ function mapRow(product: Record<string, unknown>): LedProduct {
     specSheetUrl: product.spec_sheet_url as string | null,
     createdBy: product.created_by as string | null,
     createdAt: product.created_at as string,
+    visibility: (product.visibility as LedProductVisibility) ?? 'shared',
+    ownerName: owner?.full_name ?? null,
+    ownerEmail: owner?.email ?? null,
   };
-}
-
-export async function addLedProduct(data: LedProductData & { createdBy?: string }) {
-  try {
-    const supabase = getSupabaseServerClient();
-
-    const { error } = await supabase.from("led_products").insert({
-      manufacturer: data.manufacturer,
-      product_name: data.productName,
-      tile_width_px: data.tileWidthPx,
-      tile_height_px: data.tileHeightPx,
-      watts_per_tile: data.wattsPerTile,
-      avg_watts_per_tile: data.avgWattsPerTile ?? null,
-      pixel_pitch_mm: data.pixelPitchMm ?? null,
-      tile_width_mm: data.tileWidthMm ?? null,
-      tile_height_mm: data.tileHeightMm ?? null,
-      tile_depth_mm: data.tileDepthMm ?? null,
-      tile_weight_kg: data.tileWeightKg ?? null,
-      max_power_w_per_sqm: data.maxPowerWPerSqm ?? null,
-      avg_power_w_per_sqm: data.avgPowerWPerSqm ?? null,
-      max_brightness_nit: data.maxBrightnessNit ?? null,
-      refresh_rate_hz: data.refreshRateHz ?? null,
-      grayscale_bit: data.grayscaleBit ?? null,
-      contrast_ratio: data.contrastRatio ?? null,
-      color_temperature_k: data.colorTemperatureK ?? null,
-      viewing_angle_h: data.viewingAngleH ?? null,
-      viewing_angle_v: data.viewingAngleV ?? null,
-      drive_mode: data.driveMode ?? null,
-      led_type: data.ledType ?? null,
-      ip_rating: data.ipRating ?? null,
-      certification: data.certification ?? null,
-      application_indoor: data.applicationIndoor ?? false,
-      application_outdoor: data.applicationOutdoor ?? false,
-      application_floor: data.applicationFloor ?? false,
-      product_image_url: data.productImageUrl ?? null,
-      spec_sheet_url: data.specSheetUrl ?? null,
-      created_by: data.createdBy ?? null,
-    });
-
-    if (error) {
-      return { success: false, error: error.message };
-    }
-
-    return { success: true };
-  } catch (e) {
-    const error = e instanceof Error ? e.message : "An unknown error occurred";
-    return { success: false, error };
-  }
 }
 
 export async function getLedProducts() {
@@ -137,35 +102,54 @@ export async function getLedProducts() {
       return { data: [], error: error.message };
     }
 
-    return { data: (data as Record<string, unknown>[]).map(mapRow), error: null };
+    return { data: (data as Record<string, unknown>[]).map(mapLedProductRow), error: null };
   } catch (e) {
     const error = e instanceof Error ? e.message : "An unknown error occurred";
     return { data: [], error };
   }
 }
 
-export async function getLedProductById(id: string) {
-  try {
-    const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase
-      .from("led_products")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
+export async function fetchLedProductsWithOwner(client: SupabaseClient, ownerId?: string) {
+  let query = client.from("led_products").select(LED_PRODUCT_WITH_OWNER_SELECT);
+  if (ownerId) query = query.eq("created_by", ownerId);
+  const { data, error } = await query.order("created_at", { ascending: false });
+  if (error) return { data: [] as LedProduct[], error: error.message };
+  return { data: (data as unknown as Record<string, unknown>[]).map(mapLedProductRow), error: null };
+}
 
-    if (error) {
-      return { data: null, error: error.message };
-    }
+export async function fetchLedProductWithOwner(client: SupabaseClient, id: string) {
+  const { data, error } = await client
+    .from("led_products")
+    .select(LED_PRODUCT_WITH_OWNER_SELECT)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) return { data: null, error: error.message };
+  if (!data) return { data: null, error: "Product not found or you don't have access to it." };
+  return { data: mapLedProductRow(data as unknown as Record<string, unknown>), error: null };
+}
 
-    if (!data) {
-      return { data: null, error: "Product not found" };
-    }
+export async function setLedProductVisibility(client: SupabaseClient, id: string, visibility: LedProductVisibility) {
+  const { data, error } = await client
+    .from("led_products")
+    .update({ visibility })
+    .eq("id", id)
+    .select("id");
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) return { error: "Product not found or you don't have permission to change it." };
+  return { error: null };
+}
 
-    return { data: mapRow(data as Record<string, unknown>), error: null };
-  } catch (e) {
-    const error = e instanceof Error ? e.message : "An unknown error occurred";
-    return { data: null, error };
-  }
+export async function findLedProductDuplicates(
+  accessToken: string,
+  candidate: { manufacturer: string; productName: string },
+): Promise<LedProduct[]> {
+  const { data, error } = await getSupabaseUserClient(accessToken)
+    .from("led_products")
+    .select(LED_PRODUCT_WITH_OWNER_SELECT);
+  if (error) throw new Error(error.message);
+  return (data as unknown as Record<string, unknown>[])
+    .map(mapLedProductRow)
+    .filter(product => isNearMatch(candidate, product));
 }
 
 export async function updateLedProduct(id: string, data: LedProductData, accessToken: string) {
@@ -207,14 +191,18 @@ export async function updateLedProduct(id: string, data: LedProductData, accessT
     if (data.productImageUrl !== undefined) payload['product_image_url'] = data.productImageUrl ?? null;
     if (data.specSheetUrl !== undefined) payload['spec_sheet_url'] = data.specSheetUrl ?? null;
 
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("led_products")
       .update(payload)
-      .eq("id", id);
+      .eq("id", id)
+      .select("id");
 
     if (error) {
       console.error("updateLedProduct failed:", error.message, error.details);
       return { success: false, error: error.message };
+    }
+    if (!updated || updated.length === 0) {
+      return { success: false, error: "Product not found or you don't have permission to edit it." };
     }
 
     return { success: true };
@@ -224,13 +212,16 @@ export async function updateLedProduct(id: string, data: LedProductData, accessT
   }
 }
 
-export async function deleteLedProduct(id: string) {
+export async function deleteLedProduct(id: string, accessToken: string) {
   try {
-    const supabase = getSupabaseServerClient();
-    const { error } = await supabase.from("led_products").delete().eq("id", id);
+    const supabase = getSupabaseUserClient(accessToken);
+    const { data, error } = await supabase.from("led_products").delete().eq("id", id).select("id");
 
     if (error) {
       return { success: false, error: error.message };
+    }
+    if (!data || data.length === 0) {
+      return { success: false, error: "Product not found or you don't have permission to delete it." };
     }
 
     return { success: true };
