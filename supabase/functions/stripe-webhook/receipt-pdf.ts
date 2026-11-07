@@ -95,17 +95,21 @@ export async function buildReceiptPdf(receipt: ReceiptPdfData): Promise<Uint8Arr
   };
 
   page.drawRectangle({ x: 0, y: y(HEADER_HEIGHT), width: PAGE_WIDTH, height: HEADER_HEIGHT, color: HEADER_BG });
+  const iconSize = 44;
+  const wordmarkHeight = 34;
+  const wordmarkWidth = wordmark ? (wordmark.width / wordmark.height) * wordmarkHeight : 0;
+  const logoGap = 8;
+  const logosWidth = (icon ? iconSize : 0) + (icon && wordmark ? logoGap : 0) + wordmarkWidth;
+  let logoX = RIGHT - logosWidth;
   if (icon) {
-    const size = 44;
-    page.drawImage(icon, { x: LEFT, y: y(HEADER_HEIGHT / 2) - size / 2, width: size, height: size });
+    page.drawImage(icon, { x: logoX, y: y(HEADER_HEIGHT / 2) - iconSize / 2, width: iconSize, height: iconSize });
+    logoX += iconSize + logoGap;
   }
   if (wordmark) {
-    const height = 34;
-    const width = (wordmark.width / wordmark.height) * height;
-    const x = icon ? LEFT + 56 : LEFT;
-    page.drawImage(wordmark, { x, y: y(HEADER_HEIGHT / 2) - height / 2, width, height });
-  } else {
-    write(LEFT, HEADER_HEIGHT / 2 - 10, 20, BUSINESS_NAME, { bold: true, white: true });
+    page.drawImage(wordmark, { x: logoX, y: y(HEADER_HEIGHT / 2) - wordmarkHeight / 2, width: wordmarkWidth, height: wordmarkHeight });
+  }
+  if (!icon && !wordmark) {
+    write(RIGHT, HEADER_HEIGHT / 2 - 10, 20, BUSINESS_NAME, { bold: true, white: true, align: "right" });
   }
 
   top = 128;
@@ -175,11 +179,12 @@ export async function buildReceiptPdf(receipt: ReceiptPdfData): Promise<Uint8Arr
     top += 18;
   }
 
+  const footerTop = PAGE_HEIGHT - 72;
   pages.forEach((p, index) => {
     page = p;
-    rule(728);
-    write(LEFT, 740, 8, "Thank you for your purchase. Questions? Visit mapmyled.com/contact", { muted: true });
-    write(RIGHT, 740, 8, `Page ${index + 1} of ${pages.length}`, { muted: true, align: "right" });
+    page.drawRectangle({ x: 0, y: 0, width: PAGE_WIDTH, height: 72, color: HEADER_BG });
+    write(LEFT, footerTop + 26, 8, "Thank you for your purchase. Questions? Visit mapmyled.com/contact", { white: true });
+    write(RIGHT, footerTop + 26, 8, `Page ${index + 1} of ${pages.length}`, { white: true, align: "right" });
   });
 
   return await doc.save();
