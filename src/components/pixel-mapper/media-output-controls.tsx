@@ -292,6 +292,8 @@ export function MediaOutputControls() {
               isCurrentScreen={screen.id === currentScreen.id}
               rasterMapConfig={rasterMapConfigs[screen.rasterGroupId ?? 'raster-1'] ?? null}
               calculateAndApplyOptimalOffset={screen.id === currentScreen.id ? calculateAndApplyOptimalOffset : undefined}
+              labels={screen.id === currentScreen.id ? labels : null}
+              onPieceFocus={screen.id === currentScreen.id ? setRasterHighlightBounds : undefined}
             />
           ))}
         </div>
@@ -302,6 +304,8 @@ export function MediaOutputControls() {
 
 function ScreenRasterControls({
   screen,
+  labels,
+  onPieceFocus,
   rasterGroups,
   updateScreenById,
   isCurrentScreen,
@@ -309,6 +313,8 @@ function ScreenRasterControls({
   calculateAndApplyOptimalOffset,
 }: {
   screen: Screen;
+  labels: string[] | null;
+  onPieceFocus?: (bounds: RasterSegment['bounds']) => void;
   rasterGroups: RasterGroup[];
   updateScreenById: (id: string, updater: (s: Screen) => Screen) => void;
   isCurrentScreen: boolean;
@@ -532,11 +538,12 @@ function ScreenRasterControls({
             }
           });
           const labelAt = (x: number, y: number) => {
+            if (!labels) return '—';
             let index = y * effW + x;
-            if (currentScreen.sections.length > 0) {
+            if (screen.sections.length > 0) {
               let tileOffset = 0;
               let colStart = 0;
-              for (const section of currentScreen.sections) {
+              for (const section of screen.sections) {
                 if (x < colStart + section.columnCount) {
                   index = tileOffset + y * section.columnCount + (x - colStart);
                   break;
@@ -590,7 +597,7 @@ function ScreenRasterControls({
                 </span>
               </div>
               {screen.rasterSegments.map((seg, idx) => (
-                <div key={seg.id} onFocus={() => setRasterHighlightBounds(seg.bounds)} className="rounded-md border border-border/60 p-2 space-y-2 bg-muted/30">
+                <div key={seg.id} onFocus={() => onPieceFocus?.(seg.bounds)} className="rounded-md border border-border/60 p-2 space-y-2 bg-muted/30">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium">Piece {idx + 1}</span>
                     {screen.rasterSegments!.length > 1 && (
