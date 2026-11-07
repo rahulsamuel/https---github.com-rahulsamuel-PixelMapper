@@ -128,7 +128,7 @@ Deno.serve(async (req: Request) => {
           },
         },
       ],
-      success_url: `${returnUrl}${separator}checkout=success&receipt=${receipt.id}`,
+      success_url: `${new URL(returnUrl).origin}/my-products?checkout=success&receipt=${receipt.id}`,
       cancel_url: `${returnUrl}${separator}checkout=cancelled`,
     });
 

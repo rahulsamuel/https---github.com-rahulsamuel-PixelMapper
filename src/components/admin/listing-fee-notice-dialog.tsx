@@ -80,7 +80,7 @@ export function ListingFeeNoticeDialog({ onAccepted }: Props) {
             {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Continue to add product
           </Button>
-          <Button type="button" variant="ghost" className="w-full" disabled={saving} onClick={() => router.push('/calculator')}>
+          <Button type="button" variant="ghost" className="w-full" disabled={saving} onClick={() => router.push('/app')}>
             Go back
           </Button>
         </DialogFooter>

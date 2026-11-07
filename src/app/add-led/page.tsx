@@ -42,10 +42,10 @@ export default async function AddLedPage({ searchParams }: { searchParams: Promi
                 </CardContent>
             </Card>
             <div className="mt-4">
-              <Link href="/calculator">
+              <Link href="/app">
                   <Button variant="outline" className="w-full">
                       <ArrowLeft className="mr-2" />
-                      Back to LED Calculator
+                      Back to Pixel Map
                   </Button>
               </Link>
           </div>
