@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.39.0";
 import Stripe from "npm:stripe@14.25.0";
-import { buildReceiptPdf } from "./receipt-pdf.ts";
+import { buildReceiptPdf, type ReceiptPdfData } from "./receipt-pdf.ts";
+import { sendReceiptEmail } from "./receipt-email.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,12 +15,6 @@ type ReceiptItem = {
   row: Record<string, unknown>;
   led_product_id: string | null;
 };
-
-function toBase64(bytes: Uint8Array): string {
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary);
-}
 
 async function emailReceiptIfNeeded(admin: SupabaseClient, receiptId: string): Promise<void> {
   const { data: receipt, error } = await admin
@@ -40,7 +35,7 @@ async function emailReceiptIfNeeded(admin: SupabaseClient, receiptId: string): P
   }
 
   try {
-    const pdf = buildReceiptPdf({
+    const data: ReceiptPdfData = {
       receipt_number: receipt.receipt_number,
       customer_email: receipt.customer_email,
       items: receipt.items as ReceiptItem[],
@@ -48,20 +43,9 @@ async function emailReceiptIfNeeded(admin: SupabaseClient, receiptId: string): P
       processing_fee_cents: receipt.processing_fee_cents,
       total_cents: receipt.total_cents,
       date: new Date(receipt.paid_at ?? receipt.created_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
-    });
-
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: "MapMyLED <receipts@mapmyled.com>",
-        to: [receipt.customer_email],
-        subject: `Your MapMyLED receipt ${receipt.receipt_number}`,
-        text: "Thank you for your purchase. Your receipt is attached as a PDF. You can also view and download it under Receipts in your MapMyLED account.",
-        attachments: [{ filename: `${receipt.receipt_number}.pdf`, content: toBase64(pdf) }],
-      }),
-    });
-    if (!res.ok) throw new Error(`Resend responded ${res.status}: ${await res.text()}`);
+    };
+    const pdf = await buildReceiptPdf(data);
+    await sendReceiptEmail(apiKey, data, pdf);
 
     await admin.from("receipts").update({ email_sent_at: new Date().toISOString() }).eq("id", receiptId);
   } catch (err) {

@@ -1,3 +1,5 @@
+import { PDFDocument, PDFFont, PDFPage, PDFImage, StandardFonts, rgb } from "npm:pdf-lib@1.17.1";
+
 export type ReceiptPdfData = {
   receipt_number: string;
   customer_email: string | null;
@@ -8,107 +10,181 @@ export type ReceiptPdfData = {
   date: string;
 };
 
-const BUSINESS_NAME = "MapMyLED by PixlVision";
-const BUSINESS_ADDRESS = [
+export const BUSINESS_NAME = "MapMyLED";
+export const BUSINESS_TAGLINE = "by PixlVision";
+export const BUSINESS_ADDRESS = [
   "4480 South Cobb Drive Southeast Suite H # 621",
   "Smyrna, GA 30080",
   "United States",
 ];
-const PRODUCT_FEE_CENTS = 299;
+export const LOGO_URL = "https://mapmyled.com/MapMyLED_wordmark_transparent.png";
+export const PRODUCT_FEE_CENTS = 299;
+
+const PAGE_WIDTH = 612;
 const PAGE_HEIGHT = 792;
 const LEFT = 56;
 const RIGHT = 556;
+const CONTENT_BOTTOM = 700;
+const INK = rgb(0.07, 0.07, 0.07);
+const MUTED = rgb(0.42, 0.42, 0.42);
+const RULE = rgb(0.85, 0.85, 0.85);
 
-function escapePdfText(value: string): string {
-  return value
-    .replace(/[^\x20-\x7e]/g, "?")
-    .replace(/[\\()]/g, match => `\\${match}`);
+export function formatMoney(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
 }
 
-function formatMoney(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+function toWinAnsi(value: string): string {
+  return value.replace(/[^\x20-\x7e]/g, "?");
 }
 
 function truncate(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max - 3)}...` : value;
 }
 
-function assemblePdf(streamBody: string): Uint8Array {
-  const objects = [
-    "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>",
-    `<< /Length ${new TextEncoder().encode(streamBody).length} >>\nstream\n${streamBody}\nendstream`,
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
-  ];
-
-  let pdf = "%PDF-1.4\n";
-  const offsets: number[] = [];
-  objects.forEach((body, i) => {
-    offsets.push(pdf.length);
-    pdf += `${i + 1} 0 obj\n${body}\nendobj\n`;
-  });
-  const xrefOffset = pdf.length;
-  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  for (const offset of offsets) {
-    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+async function loadLogo(doc: PDFDocument): Promise<PDFImage | null> {
+  try {
+    const res = await fetch(LOGO_URL);
+    if (!res.ok) return null;
+    return await doc.embedPng(new Uint8Array(await res.arrayBuffer()));
+  } catch {
+    return null;
   }
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
-  return new TextEncoder().encode(pdf);
 }
 
-export function buildReceiptPdf(receipt: ReceiptPdfData): Uint8Array {
-  const ops: string[] = [];
-  const y = (top: number) => PAGE_HEIGHT - top;
+export async function buildReceiptPdf(receipt: ReceiptPdfData): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  const regular = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const logo = await loadLogo(doc);
 
-  const text = (x: number, top: number, size: number, value: string, bold = false) => {
-    ops.push(`BT /${bold ? "F2" : "F1"} ${size} Tf ${x} ${y(top)} Td (${escapePdfText(value)}) Tj ET`);
+  const pages: PDFPage[] = [];
+  let page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+  pages.push(page);
+  let top = 0;
+
+  const newPage = () => {
+    page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    pages.push(page);
+    top = 56;
   };
-  const textRight = (right: number, top: number, size: number, value: string, bold = false) => {
-    const width = value.length * size * 0.55;
-    text(right - width, top, size, value, bold);
+  const ensureSpace = (height: number) => {
+    if (top + height > CONTENT_BOTTOM) newPage();
   };
-  const rule = (top: number, left = LEFT) => {
-    ops.push(`0.8 w ${left} ${y(top)} m ${RIGHT} ${y(top)} l S`);
+  const y = (t: number) => PAGE_HEIGHT - t;
+
+  const write = (
+    x: number,
+    t: number,
+    size: number,
+    value: string,
+    opts: { bold?: boolean; muted?: boolean; align?: "left" | "right" } = {},
+  ) => {
+    const font: PDFFont = opts.bold ? bold : regular;
+    const text = toWinAnsi(value);
+    const width = font.widthOfTextAtSize(text, size);
+    const px = opts.align === "right" ? x - width : x;
+    page.drawText(text, { x: px, y: y(t) - size, size, font, color: opts.muted ? MUTED : INK });
+  };
+  const rule = (t: number, left = LEFT) => {
+    page.drawLine({ start: { x: left, y: y(t) }, end: { x: RIGHT, y: y(t) }, thickness: 0.75, color: RULE });
   };
 
-  text(LEFT, 64, 18, BUSINESS_NAME, true);
-  BUSINESS_ADDRESS.forEach((line, i) => text(LEFT, 82 + i * 13, 10, line));
+  top = 56;
+  write(LEFT, top, 28, "Receipt", { bold: true });
 
-  textRight(RIGHT, 64, 20, "RECEIPT", true);
-  textRight(RIGHT, 84, 10, `Receipt number: ${receipt.receipt_number}`);
-  textRight(RIGHT, 97, 10, `Date: ${receipt.date}`);
-  textRight(RIGHT, 110, 10, "Status: Paid");
+  if (logo) {
+    const width = 150;
+    const height = (logo.height / logo.width) * width;
+    page.drawImage(logo, { x: RIGHT - width, y: y(top) - height + 8, width, height });
+  } else {
+    write(RIGHT, top, 20, BUSINESS_NAME, { bold: true, align: "right" });
+  }
+
+  top = 116;
+  const meta: [string, string][] = [
+    ["Receipt number", receipt.receipt_number],
+    ["Date paid", receipt.date],
+  ];
+  for (const [label, value] of meta) {
+    write(LEFT, top, 10, label, { bold: true });
+    write(LEFT + 100, top, 10, value);
+    top += 16;
+  }
+
+  top = 186;
+  write(LEFT, top, 11, BUSINESS_NAME, { bold: true });
+  write(LEFT + 100, top, 10, BUSINESS_TAGLINE, { muted: true });
+  BUSINESS_ADDRESS.forEach((line, i) => write(LEFT, top + 18 + i * 14, 10, line));
+
   if (receipt.customer_email) {
-    text(LEFT, 122, 10, `Billed to: ${receipt.customer_email}`);
+    write(340, top, 11, "Bill to", { bold: true });
+    write(340, top + 18, 10, receipt.customer_email);
   }
 
-  rule(150);
-  text(LEFT, 172, 10, "Description", true);
-  textRight(RIGHT, 172, 10, "Amount", true);
-  rule(180);
+  top = 296;
+  write(LEFT, top, 18, `${formatMoney(receipt.total_cents)} paid on ${receipt.date}`, { bold: true });
 
-  let top = 198;
-  for (const item of receipt.items) {
-    text(LEFT, top, 10, truncate(`LED product listing fee: ${item.manufacturer} ${item.product_name}`, 80));
-    textRight(RIGHT, top, 10, formatMoney(PRODUCT_FEE_CENTS));
-    top += 20;
-  }
-
-  top += 6;
-  rule(top, LEFT + 300);
-  top += 18;
-  text(LEFT + 300, top, 10, "Product fees");
-  textRight(RIGHT, top, 10, formatMoney(receipt.product_fee_cents));
+  top = 340;
+  write(LEFT, top, 9, "Description", { muted: true });
+  write(412, top, 9, "Qty", { muted: true, align: "right" });
+  write(486, top, 9, "Unit price", { muted: true, align: "right" });
+  write(RIGHT, top, 9, "Amount", { muted: true, align: "right" });
   top += 16;
-  text(LEFT + 300, top, 10, "Card processing fee");
-  textRight(RIGHT, top, 10, formatMoney(receipt.processing_fee_cents));
-  top += 18;
-  text(LEFT + 300, top, 10, "Total paid", true);
-  textRight(RIGHT, top, 10, formatMoney(receipt.total_cents), true);
+  rule(top);
+  top += 12;
 
-  text(LEFT, 740, 9, "Thank you for your purchase.");
+  for (const item of receipt.items) {
+    ensureSpace(38);
+    write(LEFT, top, 10, "LED product listing fee");
+    write(412, top, 10, "1", { align: "right" });
+    write(486, top, 10, formatMoney(PRODUCT_FEE_CENTS), { align: "right" });
+    write(RIGHT, top, 10, formatMoney(PRODUCT_FEE_CENTS), { align: "right" });
+    write(LEFT, top + 15, 9, truncate(`${item.manufacturer} ${item.product_name}`, 70), { muted: true });
+    top += 38;
+  }
 
-  return assemblePdf(ops.join("\n"));
+  ensureSpace(60);
+  write(LEFT, top, 10, "Card processing fee");
+  write(412, top, 10, "1", { align: "right" });
+  write(486, top, 10, formatMoney(receipt.processing_fee_cents), { align: "right" });
+  write(RIGHT, top, 10, formatMoney(receipt.processing_fee_cents), { align: "right" });
+  top += 24;
+  rule(top, 340);
+  top += 12;
+
+  const totals: [string, string, boolean][] = [
+    ["Subtotal", formatMoney(receipt.product_fee_cents + receipt.processing_fee_cents), false],
+    ["Total", formatMoney(receipt.total_cents), false],
+    ["Amount paid", formatMoney(receipt.total_cents), true],
+  ];
+  for (const [label, value, isBold] of totals) {
+    write(340, top, 10, label, { bold: isBold });
+    write(RIGHT, top, 10, value, { bold: isBold, align: "right" });
+    top += 18;
+  }
+
+  top += 28;
+  ensureSpace(130);
+  write(LEFT, top, 14, "Payment history", { bold: true });
+  top += 30;
+  write(LEFT, top, 9, "Payment method", { muted: true });
+  write(250, top, 9, "Date", { muted: true });
+  write(440, top, 9, "Amount paid", { muted: true, align: "right" });
+  write(RIGHT, top, 9, "Receipt number", { muted: true, align: "right" });
+  top += 16;
+  rule(top);
+  top += 12;
+  write(LEFT, top, 10, "Card (Stripe)");
+  write(250, top, 10, receipt.date);
+  write(440, top, 10, formatMoney(receipt.total_cents), { align: "right" });
+  write(RIGHT, top, 10, receipt.receipt_number, { align: "right" });
+
+  pages.forEach((p, index) => {
+    page = p;
+    rule(728);
+    write(LEFT, 740, 8, "Thank you for your purchase. Questions? Visit mapmyled.com/contact", { muted: true });
+    write(RIGHT, 740, 8, `Page ${index + 1} of ${pages.length}`, { muted: true, align: "right" });
+  });
+
+  return await doc.save();
 }
