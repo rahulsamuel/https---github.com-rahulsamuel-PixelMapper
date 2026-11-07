@@ -1,5 +1,6 @@
-import { createClient } from "npm:@supabase/supabase-js@2.39.0";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.39.0";
 import Stripe from "npm:stripe@14.25.0";
+import { buildReceiptPdf } from "./receipt-pdf.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,6 +14,60 @@ type ReceiptItem = {
   row: Record<string, unknown>;
   led_product_id: string | null;
 };
+
+function toBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+async function emailReceiptIfNeeded(admin: SupabaseClient, receiptId: string): Promise<void> {
+  const { data: receipt, error } = await admin
+    .from("receipts")
+    .select("id, receipt_number, customer_email, items, product_fee_cents, processing_fee_cents, total_cents, paid_at, created_at, email_sent_at")
+    .eq("id", receiptId)
+    .maybeSingle();
+  if (error || !receipt) {
+    console.error("Receipt lookup for email failed", error?.message ?? receiptId);
+    return;
+  }
+  if (receipt.email_sent_at || !receipt.customer_email) return;
+
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  if (!apiKey) {
+    console.error("RESEND_API_KEY is not set; receipt email skipped", receipt.receipt_number);
+    return;
+  }
+
+  try {
+    const pdf = buildReceiptPdf({
+      receipt_number: receipt.receipt_number,
+      customer_email: receipt.customer_email,
+      items: receipt.items as ReceiptItem[],
+      product_fee_cents: receipt.product_fee_cents,
+      processing_fee_cents: receipt.processing_fee_cents,
+      total_cents: receipt.total_cents,
+      date: new Date(receipt.paid_at ?? receipt.created_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }),
+    });
+
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: "MapMyLED <receipts@mapmyled.com>",
+        to: [receipt.customer_email],
+        subject: `Your MapMyLED receipt ${receipt.receipt_number}`,
+        text: "Thank you for your purchase. Your receipt is attached as a PDF. You can also view and download it under Receipts in your MapMyLED account.",
+        attachments: [{ filename: `${receipt.receipt_number}.pdf`, content: toBase64(pdf) }],
+      }),
+    });
+    if (!res.ok) throw new Error(`Resend responded ${res.status}: ${await res.text()}`);
+
+    await admin.from("receipts").update({ email_sent_at: new Date().toISOString() }).eq("id", receiptId);
+  } catch (err) {
+    console.error("Receipt email failed", receipt.receipt_number, err instanceof Error ? err.message : err);
+  }
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -100,6 +155,7 @@ Deno.serve(async (req: Request) => {
       });
     }
     if (receipt.status === "paid") {
+      await emailReceiptIfNeeded(admin, receipt.id);
       return new Response(JSON.stringify({ received: true }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -126,6 +182,8 @@ Deno.serve(async (req: Request) => {
       .update({ status: "paid", paid_at: new Date().toISOString(), items })
       .eq("id", receipt.id);
     if (paidError) throw paidError;
+
+    await emailReceiptIfNeeded(admin, receipt.id);
 
     return new Response(JSON.stringify({ received: true }), {
       status: 200,
