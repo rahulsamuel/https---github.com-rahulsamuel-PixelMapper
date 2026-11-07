@@ -8,6 +8,7 @@ import {
   ArrowRight, CheckCircle2, Sparkles, Layers, Zap, Map,
   Palette, Download, LayoutGrid, ScanLine, MonitorPlay,
   ChevronRight, Users, Star, Shield, Server, Spline, UsersRound,
+  PackagePlus, Receipt,
 } from 'lucide-react';
 import { Logo } from '../logo';
 import { cn } from '@/lib/utils';
@@ -111,6 +112,22 @@ const features = [
     bg: 'bg-indigo-500/10',
     tag: 'Workflow',
   },
+  {
+    icon: PackagePlus,
+    title: 'Your Own LED Products',
+    description: 'Add a tile that is not in the library. Your products appear in the LED product dropdowns across the pixel mapper, calculator, and power data tools.',
+    color: 'text-lime-400',
+    bg: 'bg-lime-500/10',
+    tag: 'Library',
+  },
+  {
+    icon: Receipt,
+    title: 'Receipts & PDF Downloads',
+    description: 'Every listing fee payment gets a receipt in your account. Download the same PDF that is emailed to you.',
+    color: 'text-yellow-400',
+    bg: 'bg-yellow-500/10',
+    tag: 'Account',
+  },
 ];
 
 const tools = [
@@ -124,7 +141,7 @@ const stats = [
   { value: '50+',  label: 'LED Products' },
   { value: '∞',    label: 'Screen Configs' },
   { value: '4',    label: 'Pro Tools' },
-  { value: '100%', label: 'Free to Use' },
+  { value: '$2.99', label: 'Fee per LED product added' },
 ];
 
 const howItWorks = [
@@ -217,7 +234,7 @@ export function LandingPage() {
           <div className="animate-fade-up">
             <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/30 bg-primary/8 text-primary text-sm font-medium">
               <Sparkles className="w-3.5 h-3.5" />
-              Professional LED Wall Tool — 100% Free
+              Professional LED Wall Tool — Free Tools
             </span>
           </div>
 
@@ -230,7 +247,7 @@ export function LandingPage() {
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
               Design pixel maps, calculate power loads, configure data wiring, and generate
-              print-ready deliverables — all in your browser, all for free.
+              print-ready deliverables — all in your browser. Add your own LED products for a small listing fee.
             </p>
           </div>
 
@@ -510,6 +527,52 @@ export function LandingPage() {
                   </Button>
                 </Link>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════ ADD YOUR LED PRODUCTS ═══════════════════ */}
+      <section className="py-24 lg:py-32 border-t border-border/30">
+        <div className="container px-4 md:px-8">
+          <div className="grid lg:grid-cols-2 gap-12 items-center max-w-5xl mx-auto">
+            <div className="space-y-5">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border text-xs text-muted-foreground font-medium">
+                <PackagePlus className="w-3.5 h-3.5" />
+                Your own LED products
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">Add any LED product for a small listing fee</h2>
+              <p className="text-muted-foreground leading-relaxed">
+                Working with a tile that is not in our library? Add it yourself. Once paid, it shows up in your own LED product dropdowns so you can use it in every tool.
+              </p>
+              <ol className="space-y-3">
+                {['Add your product with its specs', 'Pay the small listing fee at checkout', 'Use it in your pixel map, calculator, and power data'].map((t, i) => (
+                  <li key={t} className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center shrink-0">{i + 1}</span>
+                    {t}
+                  </li>
+                ))}
+              </ol>
+              <Link href="/add-led">
+                <Button variant="outline" className="gap-2 group mt-2">
+                  Add an LED Product <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                </Button>
+              </Link>
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-card/60 p-8 space-y-6">
+              <div className="space-y-2">
+                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Listing fee</div>
+                <div className="text-4xl font-bold text-primary">$2.99 <span className="text-base font-medium text-muted-foreground">per product</span></div>
+                <p className="text-sm text-muted-foreground">Plus a card processing fee, about $3.40 in total for one product.</p>
+              </div>
+              <ul className="space-y-3">
+                {['Charged per product you add', 'Only your products are listed for you', 'A receipt for every payment, downloadable as PDF'].map(t => (
+                  <li key={t} className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                    {t}
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
