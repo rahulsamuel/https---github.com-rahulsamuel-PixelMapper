@@ -47,6 +47,7 @@ export type FormState = {
   errors?: z.ZodIssue[];
   success: boolean;
   duplicates?: LedProduct[];
+  checkoutRows?: Record<string, unknown>[];
 };
 
 export async function addProductAction(prevState: FormState, formData: FormData): Promise<FormState> {
@@ -104,7 +105,7 @@ export async function addProductAction(prevState: FormState, formData: FormData)
       }
     }
 
-    const { error } = await getSupabaseUserClient(accessToken).from("led_products").insert({
+    const row = {
       manufacturer: d.manufacturer,
       product_name: d.productName,
       tile_width_px: d.tileWidthPx,
@@ -136,17 +137,24 @@ export async function addProductAction(prevState: FormState, formData: FormData)
       spec_sheet_url: d.specSheetUrl || null,
       created_by: sessionUser.id,
       visibility: sessionUser.isAdmin ? 'shared' : 'private',
-    });
+    };
 
+    if (!sessionUser.isAdmin) {
+      return {
+        success: false,
+        checkoutRows: [row],
+        message: 'Payment is required to save this product.',
+      };
+    }
+
+    const { error } = await getSupabaseUserClient(accessToken).from('led_products').insert(row);
     if (error) {
       return { success: false, message: error.message };
     }
 
     return {
       success: true,
-      message: sessionUser.isAdmin
-        ? 'Product has been added to the database successfully!'
-        : 'Product saved to your products. You can make it public from My Products.',
+      message: 'Product has been added to the database successfully!',
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'An unknown error occurred';

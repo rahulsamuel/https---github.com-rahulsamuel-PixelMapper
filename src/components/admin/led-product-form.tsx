@@ -15,6 +15,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/auth-context';
+import { CheckoutSummaryDialog } from '@/components/admin/checkout-summary-dialog';
+import { startProductCheckout } from '@/lib/product-checkout';
 import {
   Upload, Link2, Sparkles, AlertCircle, ChevronRight,
   FileText, Image as ImageIcon, X, Check, RotateCcw,
@@ -540,6 +542,8 @@ export function LedProductForm() {
   const [aiPopulated, setAiPopulated] = useState(false);
   const [duplicateMatches, setDuplicateMatches] = useState<LedProduct[] | null>(null);
   const [confirmDuplicate, setConfirmDuplicate] = useState(false);
+  const [pendingCheckoutRows, setPendingCheckoutRows] = useState<Record<string, unknown>[]>([]);
+  const [checkingOut, setCheckingOut] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -570,6 +574,10 @@ export function LedProductForm() {
       setDuplicateMatches(state.duplicates);
       return;
     }
+    if (state.checkoutRows) {
+      setPendingCheckoutRows(state.checkoutRows);
+      return;
+    }
     if (state.success) {
       toast({ title: 'Product Added!', description: state.message });
       form.reset(); setStep('input'); setParsedProducts([]); setPreviewImg(''); setAiPopulated(false);
@@ -584,12 +592,34 @@ export function LedProductForm() {
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    const checkout = new URLSearchParams(window.location.search).get('checkout');
+    if (!checkout) return;
+    if (checkout === 'success') {
+      toast({ title: 'Payment received', description: 'Your product is being saved. Your receipt is available under your account menu.' });
+    } else if (checkout === 'cancelled') {
+      toast({ title: 'Checkout cancelled', description: 'You were not charged and no product was saved.' });
+    }
+    window.history.replaceState(null, '', window.location.pathname);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     if (confirmDuplicate) formRef.current?.requestSubmit();
   }, [confirmDuplicate]);
 
   function addAnyway() {
     setDuplicateMatches(null);
     setConfirmDuplicate(true);
+  }
+
+  async function confirmCheckout() {
+    setCheckingOut(true);
+    try {
+      const url = await startProductCheckout(pendingCheckoutRows, accessToken);
+      window.location.assign(url);
+    } catch (err) {
+      toast({ title: 'Checkout failed', description: err instanceof Error ? err.message : 'Please try again.', variant: 'destructive' });
+      setCheckingOut(false);
+    }
   }
 
   function buildIncomingSpec(): ProductSpec {
@@ -627,14 +657,17 @@ export function LedProductForm() {
     let saved = 0;
     let failed = 0;
     let skipped = 0;
+    const queued: Record<string, unknown>[] = [];
     for (const p of selected) {
       const defaults = toDefaults(p);
       const fd = buildFormData(defaults, specSource, accessToken);
       const result = await addProductAction(initialState, fd);
-      if (result.success) saved++;
+      if (result.checkoutRows) queued.push(...result.checkoutRows);
+      else if (result.success) saved++;
       else if (result.duplicates?.length) skipped++;
       else failed++;
     }
+    if (queued.length > 0) setPendingCheckoutRows(queued);
     if (saved > 0) {
       toast({
         title: `${saved} product${saved > 1 ? 's' : ''} added!`,
@@ -646,7 +679,7 @@ export function LedProductForm() {
     } else if (skipped > 0) {
       toast({ title: 'Nothing added', description: `${skipped} skipped because similar products already exist. Add them one at a time to compare.`, variant: 'destructive' });
     }
-    if (failed > 0 && saved === 0) {
+    if (failed > 0 && saved === 0 && queued.length === 0) {
       toast({ title: 'Save failed', description: 'Could not save any products. Please try again.', variant: 'destructive' });
     }
     setStep('input');
@@ -870,6 +903,14 @@ export function LedProductForm() {
           </form>
         </Form>
       )}
+
+      <CheckoutSummaryDialog
+        open={pendingCheckoutRows.length > 0}
+        productCount={pendingCheckoutRows.length}
+        submitting={checkingOut}
+        onOpenChange={open => { if (!open) setPendingCheckoutRows([]); }}
+        onConfirm={confirmCheckout}
+      />
 
       <DuplicateCompareDialog
         open={duplicateMatches !== null}

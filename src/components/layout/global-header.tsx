@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User, ShieldCheck, Menu, X, Package, Plus } from 'lucide-react';
+import { LogOut, User, ShieldCheck, Menu, X, Package, Plus, Receipt } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -167,6 +167,10 @@ export function GlobalHeader() {
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push('/receipts')}>
+                    <Receipt className="mr-2 h-4 w-4" />
+                    <span>Receipts</span>
+                  </DropdownMenuItem>
                   {user?.email === 'rahulsamuel@gmail.com' && (
                     <DropdownMenuItem onClick={() => router.push('/admin/products')}>
                       <ShieldCheck className="mr-2 h-4 w-4" />
@@ -242,6 +246,15 @@ export function GlobalHeader() {
                     </div>
                   </Link>
                 )}
+                <Link href="/receipts" onClick={() => setMobileOpen(false)}>
+                  <div className={cn(
+                    'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
+                    isActive('/receipts') ? 'bg-primary/12 text-primary font-medium' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  )}>
+                    <Receipt className="h-3.5 w-3.5" />
+                    Receipts
+                  </div>
+                </Link>
                 <button
                   onClick={() => { signOut(); setMobileOpen(false); }}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors w-full text-left"

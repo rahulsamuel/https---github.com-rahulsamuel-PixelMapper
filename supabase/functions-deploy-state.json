@@ -12,6 +12,14 @@
     "parse-signal-flow-device": {
       "hasChanged": false,
       "hash": "132d3a2ec266f7883f6916bcd0889b096040dfb471c86bdabcd2f17f111e6bed"
+    },
+    "create-product-checkout": {
+      "hasChanged": false,
+      "hash": "ba94c6c4f65c54fd42065d40a59ec38c0a5436879fb3f97bdd2ddfc69262017f"
+    },
+    "stripe-webhook": {
+      "hasChanged": false,
+      "hash": "cf8ae2b99aa8f906139c026e6e34b2b676046b94165132984cfd28bd8c9ddbb1"
     }
   }
 }
