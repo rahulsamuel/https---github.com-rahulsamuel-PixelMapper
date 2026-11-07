@@ -1,5 +1,6 @@
 
 import { LedProductForm } from "@/components/admin/led-product-form";
+import { ListingFeeGate } from "@/components/admin/listing-fee-gate";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
@@ -17,7 +18,9 @@ export default function AddLedPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <LedProductForm />
+                    <ListingFeeGate>
+                        <LedProductForm />
+                    </ListingFeeGate>
                 </CardContent>
             </Card>
             <div className="mt-4">
