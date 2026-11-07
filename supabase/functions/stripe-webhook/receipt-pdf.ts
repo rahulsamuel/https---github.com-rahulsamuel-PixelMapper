@@ -32,6 +32,7 @@ const INK = rgb(0.07, 0.07, 0.07);
 const MUTED = rgb(0.42, 0.42, 0.42);
 const RULE = rgb(0.85, 0.85, 0.85);
 const HEADER_BG = rgb(16 / 255, 18 / 255, 25 / 255);
+const ON_DARK_MUTED = rgb(0.66, 0.68, 0.74);
 
 export function formatMoney(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -81,13 +82,13 @@ export async function buildReceiptPdf(receipt: ReceiptPdfData): Promise<Uint8Arr
     t: number,
     size: number,
     value: string,
-    opts: { bold?: boolean; muted?: boolean; white?: boolean; align?: "left" | "right" } = {},
+    opts: { bold?: boolean; muted?: boolean; white?: boolean; onDark?: boolean; align?: "left" | "right" } = {},
   ) => {
     const font: PDFFont = opts.bold ? bold : regular;
     const text = toWinAnsi(value);
     const width = font.widthOfTextAtSize(text, size);
     const px = opts.align === "right" ? x - width : x;
-    const color = opts.white ? rgb(1, 1, 1) : opts.muted ? MUTED : INK;
+    const color = opts.white ? rgb(1, 1, 1) : opts.onDark ? ON_DARK_MUTED : opts.muted ? MUTED : INK;
     page.drawText(text, { x: px, y: y(t) - size, size, font, color });
   };
   const rule = (t: number, left = LEFT) => {
@@ -96,20 +97,25 @@ export async function buildReceiptPdf(receipt: ReceiptPdfData): Promise<Uint8Arr
 
   page.drawRectangle({ x: 0, y: y(HEADER_HEIGHT), width: PAGE_WIDTH, height: HEADER_HEIGHT, color: HEADER_BG });
   const iconSize = 44;
+  const iconTop = 18;
   const wordmarkHeight = 34;
+  const wordmarkTop = 23;
   const wordmarkWidth = wordmark ? (wordmark.width / wordmark.height) * wordmarkHeight : 0;
   const logoGap = 8;
   const logosWidth = (icon ? iconSize : 0) + (icon && wordmark ? logoGap : 0) + wordmarkWidth;
   let logoX = RIGHT - logosWidth;
   if (icon) {
-    page.drawImage(icon, { x: logoX, y: y(HEADER_HEIGHT / 2) - iconSize / 2, width: iconSize, height: iconSize });
+    page.drawImage(icon, { x: logoX, y: y(iconTop + iconSize), width: iconSize, height: iconSize });
     logoX += iconSize + logoGap;
   }
   if (wordmark) {
-    page.drawImage(wordmark, { x: logoX, y: y(HEADER_HEIGHT / 2) - wordmarkHeight / 2, width: wordmarkWidth, height: wordmarkHeight });
+    page.drawImage(wordmark, { x: logoX, y: y(wordmarkTop + wordmarkHeight), width: wordmarkWidth, height: wordmarkHeight });
   }
-  if (!icon && !wordmark) {
+  if (icon || wordmark) {
+    write(RIGHT, 68, 9, BUSINESS_TAGLINE, { onDark: true, align: "right" });
+  } else {
     write(RIGHT, HEADER_HEIGHT / 2 - 10, 20, BUSINESS_NAME, { bold: true, white: true, align: "right" });
+    write(RIGHT, 68, 9, BUSINESS_TAGLINE, { onDark: true, align: "right" });
   }
 
   top = 128;
@@ -128,7 +134,6 @@ export async function buildReceiptPdf(receipt: ReceiptPdfData): Promise<Uint8Arr
 
   top = 236;
   write(LEFT, top, 11, BUSINESS_NAME, { bold: true });
-  write(LEFT + 100, top, 10, BUSINESS_TAGLINE, { muted: true });
   BUSINESS_ADDRESS.forEach((line, i) => write(LEFT, top + 18 + i * 14, 10, line));
 
   if (receipt.customer_email) {

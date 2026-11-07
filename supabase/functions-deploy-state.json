@@ -19,11 +19,11 @@
     },
     "stripe-webhook": {
       "hasChanged": false,
-      "hash": "64fb49ba29a2a1b74e604eb4c94bbfb690c44a52663ca096d3b2eea2457ed062"
+      "hash": "324f0cc4f07f70215d6693bb181e14680e53586dab35a22fe0c2bd23c5f910df"
     },
     "send-test-receipt": {
       "hasChanged": false,
-      "hash": "dbd15c271986c5476a36b8adee2939e858601f9df5609c15da7880e969ab7701"
+      "hash": "3cbce71bec97dc5114a183e207d0dd42c132a93ec7ca46a8075b2178926ab193"
     }
   }
 }

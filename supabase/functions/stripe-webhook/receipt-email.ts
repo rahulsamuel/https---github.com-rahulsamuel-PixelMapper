@@ -44,13 +44,21 @@ export function buildReceiptEmail(receipt: ReceiptPdfData): { subject: string; h
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:520px;">
             <tr>
               <td style="background:${HEADER_BACKGROUND_HEX};border-radius:12px;padding:20px 24px;" align="right">
-                <table role="presentation" cellspacing="0" cellpadding="0" align="right">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                   <tr>
-                    <td style="vertical-align:middle;padding-right:8px;"><img src="${ICON_URL}" alt="" width="40" height="40" style="display:block;width:40px;height:40px;border:0;"></td>
-                    <td style="vertical-align:middle;"><img src="${WORDMARK_URL}" alt="${BUSINESS_NAME}" height="32" style="display:block;height:32px;border:0;"></td>
+                    <td align="right">
+                      <table role="presentation" cellspacing="0" cellpadding="0">
+                        <tr>
+                          <td style="vertical-align:middle;padding-right:8px;"><img src="${ICON_URL}" alt="" width="40" height="40" style="display:block;width:40px;height:40px;border:0;"></td>
+                          <td style="vertical-align:middle;"><img src="${WORDMARK_URL}" alt="${BUSINESS_NAME}" height="32" style="display:block;height:32px;border:0;"></td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td align="right" style="padding-top:8px;font-size:11px;line-height:16px;color:#9a9a9a;text-align:right;">${BUSINESS_TAGLINE}</td>
                   </tr>
                 </table>
-                <p style="margin:10px 0 0;font-size:12px;color:#9a9a9a;text-align:right;">${BUSINESS_TAGLINE}</p>
               </td>
             </tr>
             <tr><td style="height:16px;"></td></tr>
