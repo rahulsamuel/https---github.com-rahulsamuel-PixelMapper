@@ -68,6 +68,7 @@ export function LedGrid() {
     activeTool,
     setDragOverlayRef,
     selectedTileIds,
+    rasterHighlightBounds,
     handleGridMouseDown,
     handleGridMouseMove,
     handleGridMouseUp,
@@ -127,6 +128,7 @@ export function LedGrid() {
         randomizeModuleColors,
         showSliceOffsetLabels,
         selectedTileIds,
+        highlightBounds: rasterHighlightBounds,
         topHalfTile,
         bottomHalfTile,
         leftHalfTile,
@@ -136,7 +138,7 @@ export function LedGrid() {
         totalGridPixelHeight,
       }, layoutRef.current);
     });
-  }, [currentScreen, tiles, labels, sliceOffsetLabels, sections, effectiveScreenWidth, effectiveScreenHeight, effectiveScreenWidthFromSections, tileColor, tileColorTwo, borderWidth, borderColor, onOffMode, alternatingPixels, showLabels, labelFontSize, labelColor, labelColorMode, labelPosition, showModules, moduleBorderColor, randomizeModuleColors, showSliceOffsetLabels, selectedTileIds, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, zoom, totalGridPixelWidth, totalGridPixelHeight]);
+  }, [currentScreen, tiles, labels, sliceOffsetLabels, sections, effectiveScreenWidth, effectiveScreenHeight, effectiveScreenWidthFromSections, tileColor, tileColorTwo, borderWidth, borderColor, onOffMode, alternatingPixels, showLabels, labelFontSize, labelColor, labelColorMode, labelPosition, showModules, moduleBorderColor, randomizeModuleColors, showSliceOffsetLabels, selectedTileIds, rasterHighlightBounds, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, zoom, totalGridPixelWidth, totalGridPixelHeight]);
 
   useEffect(() => {
     scheduleRedraw();

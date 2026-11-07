@@ -108,6 +108,7 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const [isWallLayoutDownloading, setIsWallLayoutDownloading] = useState(false);
   const [includeTextOverlaysInDownload, setIncludeTextOverlaysInDownload] = useState(true);
   const [selectedTileIds, setSelectedTileIds] = useState<number[]>([]);
+  const [rasterHighlightBounds, setRasterHighlightBounds] = useState<{ minX: number; minY: number; maxX: number; maxY: number } | null>(null);
   const dragStateRef = useRef<{ startX: number; startY: number; active: boolean } | null>(null);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("Untitled Project");
@@ -3717,6 +3718,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     selectionRect: null,
     setDragOverlayRef,
     selectedTileIds,
+    rasterHighlightBounds,
+    setRasterHighlightBounds,
     handleGridMouseDown,
     handleGridMouseMove,
     handleGridMouseUp,

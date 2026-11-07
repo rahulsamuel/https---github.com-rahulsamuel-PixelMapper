@@ -46,6 +46,8 @@ export function MediaOutputControls() {
     calculateAndApplyOptimalOffset,
     currentScreen,
     updateScreenById,
+    labels,
+    setRasterHighlightBounds,
     rasterBgColor,
     setRasterBgColor,
   } = usePixelMap();
@@ -54,6 +56,8 @@ export function MediaOutputControls() {
   const [customHeight, setCustomHeight] = useState("1080");
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editingGroupName, setEditingGroupName] = useState('');
+
+  useEffect(() => () => setRasterHighlightBounds(null), [setRasterHighlightBounds]);
 
   const activeConfig = rasterMapConfigs[activeRasterGroupId] ?? null;
 
@@ -527,6 +531,22 @@ function ScreenRasterControls({
               }
             }
           });
+          const labelAt = (x: number, y: number) => {
+            let index = y * effW + x;
+            if (currentScreen.sections.length > 0) {
+              let tileOffset = 0;
+              let colStart = 0;
+              for (const section of currentScreen.sections) {
+                if (x < colStart + section.columnCount) {
+                  index = tileOffset + y * section.columnCount + (x - colStart);
+                  break;
+                }
+                tileOffset += section.columnCount * effH;
+                colStart += section.columnCount;
+              }
+            }
+            return labels[index] || '—';
+          };
           const totalTiles = effW * effH;
           const remainingCount = totalTiles - coveredTiles.size;
 
@@ -570,7 +590,7 @@ function ScreenRasterControls({
                 </span>
               </div>
               {screen.rasterSegments.map((seg, idx) => (
-                <div key={seg.id} className="rounded-md border border-border/60 p-2 space-y-2 bg-muted/30">
+                <div key={seg.id} onFocus={() => setRasterHighlightBounds(seg.bounds)} className="rounded-md border border-border/60 p-2 space-y-2 bg-muted/30">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium">Piece {idx + 1}</span>
                     {screen.rasterSegments!.length > 1 && (
@@ -581,7 +601,7 @@ function ScreenRasterControls({
                   </div>
                   <div className="grid grid-cols-2 gap-1.5">
                     <div className="grid gap-0.5">
-                      <Label className="text-[10px]">Start Tile X</Label>
+                      <div className="flex items-center justify-between gap-1"><Label className="text-[10px]">Start Tile X</Label><span className="text-[10px] font-medium text-primary">{labelAt(seg.bounds.minX, seg.bounds.minY)}</span></div>
                       <Input
                         type="number"
                         min={1}
@@ -595,7 +615,7 @@ function ScreenRasterControls({
                       />
                     </div>
                     <div className="grid gap-0.5">
-                      <Label className="text-[10px]">End Tile X</Label>
+                      <div className="flex items-center justify-between gap-1"><Label className="text-[10px]">End Tile X</Label><span className="text-[10px] font-medium text-primary">{labelAt(seg.bounds.maxX, seg.bounds.maxY)}</span></div>
                       <Input
                         type="number"
                         min={1}
@@ -609,7 +629,7 @@ function ScreenRasterControls({
                       />
                     </div>
                     <div className="grid gap-0.5">
-                      <Label className="text-[10px]">Start Tile Y</Label>
+                      <div className="flex items-center justify-between gap-1"><Label className="text-[10px]">Start Tile Y</Label><span className="text-[10px] font-medium text-primary">{labelAt(seg.bounds.minX, seg.bounds.minY)}</span></div>
                       <Input
                         type="number"
                         min={1}
@@ -623,7 +643,7 @@ function ScreenRasterControls({
                       />
                     </div>
                     <div className="grid gap-0.5">
-                      <Label className="text-[10px]">End Tile Y</Label>
+                      <div className="flex items-center justify-between gap-1"><Label className="text-[10px]">End Tile Y</Label><span className="text-[10px] font-medium text-primary">{labelAt(seg.bounds.maxX, seg.bounds.maxY)}</span></div>
                       <Input
                         type="number"
                         min={1}
@@ -639,7 +659,7 @@ function ScreenRasterControls({
                   </div>
                   <div className="grid grid-cols-2 gap-1.5">
                     <div className="grid gap-0.5">
-                      <Label className="text-[10px]">Position X</Label>
+                      <div className="flex items-center justify-between gap-1"><Label className="text-[10px]">Position X</Label><span className="text-[10px] text-muted-foreground">{`(${seg.offset.x},${seg.offset.y})`}</span></div>
                       <Input
                         type="number"
                         value={seg.offset.x}
@@ -648,7 +668,7 @@ function ScreenRasterControls({
                       />
                     </div>
                     <div className="grid gap-0.5">
-                      <Label className="text-[10px]">Position Y</Label>
+                      <div className="flex items-center justify-between gap-1"><Label className="text-[10px]">Position Y</Label><span className="text-[10px] text-muted-foreground">{`(${seg.offset.x},${seg.offset.y})`}</span></div>
                       <Input
                         type="number"
                         value={seg.offset.y}

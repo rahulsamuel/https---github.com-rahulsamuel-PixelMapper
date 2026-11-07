@@ -27,6 +27,7 @@ export interface GridRenderParams {
   randomizeModuleColors: boolean;
   showSliceOffsetLabels: boolean;
   selectedTileIds: number[];
+  highlightBounds: { minX: number; minY: number; maxX: number; maxY: number } | null;
   topHalfTile: boolean;
   bottomHalfTile: boolean;
   leftHalfTile: boolean;
@@ -226,6 +227,7 @@ export function renderGridToCanvas(
   }
 
   const selectedSet = new Set(params.selectedTileIds);
+  const highlightRects: [number, number, number, number][] = [];
 
   const drawTile = (
     tile: Tile | undefined,
@@ -242,6 +244,8 @@ export function renderGridToCanvas(
     const sy = drawY * z;
     const sw = w * z;
     const sh = h * z;
+    const hb = params.highlightBounds;
+    if (hb && gx >= hb.minX && gx <= hb.maxX && gy >= hb.minY && gy <= hb.maxY) highlightRects.push([sx, sy, sw, sh]);
 
     if (tile.deleted) {
       ctx.fillStyle = '#000000';
@@ -362,6 +366,10 @@ export function renderGridToCanvas(
       }
     }
   }
+
+  ctx.strokeStyle = '#facc15';
+  ctx.lineWidth = 2;
+  for (const [hx, hy, hw, hh] of highlightRects) ctx.strokeRect(hx + 1, hy + 1, hw - 2, hh - 2);
 
   ctx.restore();
 }
