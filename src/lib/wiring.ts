@@ -730,50 +730,6 @@ export function getWiringData({
               }
           }
       });
-  } else if (rasterMapConfig && rasterMapConfig.slices.length > 0 && rasterMapConfig.outputWidth > 0 && rasterMapConfig.outputHeight > 0) {
-    const currentScreenArrangement = rasterMapConfig.screenArrangement.find(s => s.screenId === screenId);
-    if (currentScreenArrangement) {
-        let groupCounter = dataPortStartNumber - 1;
-        rasterMapConfig.slices.forEach(slice => {
-            const sliceTiles: number[] = [];
-            
-            activeTileIndices.forEach(index => {
-                const { x, y } = getVisualCoords(index);
-
-                const {minX, minY} = currentScreenArrangement.activeBounds;
-                let tileContentY = 0;
-                for (let i = minY; i < y; i++) {
-                    const isTopRow = topHalfTile && i === 0;
-                    const isBottomRow = bottomHalfTile && i === screenHeight - 1;
-                    tileContentY += (isTopRow || isBottomRow) ? tileHeight / 2 : tileHeight;
-                }
-                let tileContentX = 0;
-                for (let i = minX; i < x; i++) {
-                    const isLeftHalf = leftHalfTile && i === 0;
-                    const isRightHalf = rightHalfTile && i === visualWidth - 1;
-                    tileContentX += (isLeftHalf || isRightHalf) ? tileWidth / 2 : tileWidth;
-                }
-
-                const absoluteContentX = tileContentX + currentScreenArrangement.x;
-                const absoluteContentY = tileContentY + currentScreenArrangement.y;
-                
-                if (
-                    absoluteContentX >= slice.x &&
-                    absoluteContentX < slice.x + slice.width &&
-                    absoluteContentY >= slice.y &&
-                    absoluteContentY < slice.y + slice.height
-                ) {
-                    sliceTiles.push(index);
-                }
-            });
-
-            if (sliceTiles.length > 0) {
-                const pathOrder = getPathOrder(sliceTiles, wiringPattern, visualWidth, screenHeight, undefined, hasSections ? getVisualCoords : undefined);
-                const tilesPath = pathOrder.map(index => ({ tile: allTilesData[index], index }));
-                groupCounter = applyDataWiring(tilesPath, wiringPortConfig, dataPortStartNumber, processorType, groupCounter);
-            }
-        });
-    }
   } else {
     const dataPathOrder = getPathOrder(activeTileIndices, wiringPattern, visualWidth, screenHeight, undefined, hasSections ? getVisualCoords : undefined);
     const dataTilesPath = dataPathOrder.map(index => ({ tile: allTilesData[index], index }));
