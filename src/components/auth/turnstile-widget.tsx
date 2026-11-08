@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
-const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? '';
+const SITE_KEY = '0x4AAAAAAF4TM-4tBKS8k2ch';
 
 interface TurnstileApi {
   render: (
@@ -53,7 +53,6 @@ export function TurnstileWidget({ onTokenChange }: { onTokenChange: (token: stri
   });
 
   useEffect(() => {
-    if (!SITE_KEY) return;
     let widgetId: string | null = null;
     let cancelled = false;
 
@@ -74,14 +73,6 @@ export function TurnstileWidget({ onTokenChange }: { onTokenChange: (token: stri
       if (widgetId && window.turnstile) window.turnstile.remove(widgetId);
     };
   }, []);
-
-  if (!SITE_KEY) {
-    return (
-      <p className="text-xs text-destructive text-center">
-        The security check is not configured yet. Sign-in is unavailable until it is set up.
-      </p>
-    );
-  }
 
   return <div ref={containerRef} className="flex justify-center" />;
 }
