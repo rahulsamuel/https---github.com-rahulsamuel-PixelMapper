@@ -12,6 +12,7 @@ import { Eye, EyeOff, Loader2, Mail, Lock, User, Building2, ArrowRight } from 'l
 import { cn } from '@/lib/utils';
 import { getSafeNextPath } from '@/lib/safe-redirect';
 import { TurnstileWidget } from '@/components/auth/turnstile-widget';
+import { DISPOSABLE_EMAIL_MESSAGE, isDisposableEmail } from '@/lib/validation/disposable-email';
 import { emailField, plainText } from '@/lib/validation/fields';
 import { z } from 'zod';
 
@@ -68,6 +69,11 @@ export function LoginForm() {
       const parsed = signUpSchema.safeParse({ email, password, confirmPassword, fullName, company });
       if (!parsed.success) {
         toast({ title: 'Check your details', description: parsed.error.issues[0]?.message, variant: 'destructive' });
+        setIsLoading(false);
+        return;
+      }
+      if (await isDisposableEmail(parsed.data.email)) {
+        toast({ title: 'Use a permanent email', description: DISPOSABLE_EMAIL_MESSAGE, variant: 'destructive' });
         setIsLoading(false);
         return;
       }
