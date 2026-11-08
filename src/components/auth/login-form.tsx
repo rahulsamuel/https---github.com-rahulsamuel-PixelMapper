@@ -78,7 +78,7 @@ export function LoginForm() {
   };
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-sm p-8 shadow-xl shadow-black/10 space-y-6">
+    <div className="rounded-xl border border-border bg-card p-8 space-y-6">
       {/* Header */}
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">
@@ -87,7 +87,7 @@ export function LoginForm() {
         <p className="text-sm text-muted-foreground">
           {mode === 'login'
             ? 'Sign in to access your projects and saved configurations.'
-            : 'Join MapMyLED and start designing professional LED layouts.'}
+            : 'Create an account to save projects and add your own LED products.'}
         </p>
       </div>
 
