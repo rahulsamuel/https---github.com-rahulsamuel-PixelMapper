@@ -11,9 +11,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/lib/supabase/client';
+import { emailField, plainText } from '@/lib/validation/fields';
 import { MessageSquare, Loader2 } from 'lucide-react';
+import { z } from 'zod';
 
 export type FeedbackCategory = 'bug_report' | 'feature_request' | 'suggestion' | 'correction' | 'other';
+
+const feedbackSchema = z.object({
+  message: plainText(2000).min(1, { message: 'Please enter your feedback.' }),
+  name: plainText(100),
+  email: z.union([z.literal(''), emailField]),
+});
 
 const CATEGORY_LABELS: Record<FeedbackCategory, string> = {
   bug_report: 'Bug Report',
@@ -58,8 +66,13 @@ export function FeedbackModal({ open, onOpenChange, downloadType, onDontShowAgai
   const { user } = useAuth();
 
   const handleSubmit = async () => {
-    if (!message.trim()) {
-      toast({ title: 'Please enter your feedback', variant: 'destructive' });
+    const parsed = feedbackSchema.safeParse({
+      message,
+      name: isAnonymous ? '' : name,
+      email: isAnonymous ? '' : email || user?.email || '',
+    });
+    if (!parsed.success) {
+      toast({ title: 'Check your feedback', description: parsed.error.issues[0]?.message, variant: 'destructive' });
       return;
     }
 
@@ -68,9 +81,9 @@ export function FeedbackModal({ open, onOpenChange, downloadType, onDontShowAgai
       const { error } = await supabase.from('download_feedback').insert({
         category,
         download_type: downloadType,
-        message: message.trim(),
-        submitter_name: isAnonymous ? null : (name.trim() || null),
-        submitter_email: isAnonymous ? null : (email.trim() || user?.email || null),
+        message: parsed.data.message,
+        submitter_name: isAnonymous ? null : (parsed.data.name || null),
+        submitter_email: isAnonymous ? null : (parsed.data.email || null),
         is_anonymous: isAnonymous,
         user_id: user?.id || null,
       });

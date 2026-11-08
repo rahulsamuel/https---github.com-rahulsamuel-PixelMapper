@@ -3,6 +3,7 @@
 import { addProcessor, updateProcessor, deleteProcessor } from '@/services/supabase';
 import type { ProcessorData } from '@/services/supabase';
 import { getSessionUser } from '@/lib/supabase/session-user';
+import { optionalHttpUrlField } from '@/lib/validation/fields';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -25,8 +26,8 @@ const schema = z.object({
   notes: z.string().optional(),
   distributionPerPort: z.coerce.number().min(1).default(1),
   distributionUnitName: z.string().optional(),
-  specSheetUrl: z.string().url().optional().or(z.literal('')),
-  productImageUrl: z.string().url().optional().or(z.literal('')),
+  specSheetUrl: optionalHttpUrlField,
+  productImageUrl: optionalHttpUrlField,
   isActive: z.boolean().default(true),
 });
 

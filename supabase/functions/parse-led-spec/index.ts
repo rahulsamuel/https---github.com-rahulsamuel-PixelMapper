@@ -1,5 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.39.0";
+import { isRateLimited } from "../_shared/rate-limit.ts";
+import { isPublicHttpUrl } from "../_shared/public-url.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -250,6 +252,7 @@ async function storeImage(
   filename: string
 ): Promise<string | null> {
   try {
+    if (!isPublicHttpUrl(imageUrl)) return null;
     const resp = await fetch(imageUrl, {
       headers: BROWSER_HEADERS,
       redirect: "follow",
@@ -408,6 +411,12 @@ Deno.serve(async (req: Request) => {
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
+  if (await isRateLimited("parse-led-spec", user.id, 30, 3600)) {
+    return new Response(
+      JSON.stringify({ error: "You have reached the spec sheet limit. Please try again later." }),
+      { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
 
   const geminiKey = Deno.env.get("GOOGLE_AI_API_KEY");
   if (!geminiKey) {
@@ -472,6 +481,12 @@ Deno.serve(async (req: Request) => {
       if (!url) {
         return new Response(
           JSON.stringify({ error: "No URL provided" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (!isPublicHttpUrl(url)) {
+        return new Response(
+          JSON.stringify({ error: "Please enter a public web link (http or https)." }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }

@@ -1,6 +1,8 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+import { plainText } from '@/lib/validation/fields';
+import { clientIp, isRateLimited } from '@/lib/rate-limit';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,32 +17,50 @@ const TRACKED_TYPES = new Set([
   'project-file',
 ]);
 
-function getClientIp(req: NextRequest): string {
-  return (
-    req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    req.headers.get('x-real-ip') ||
-    ''
-  );
-}
+const MAX_PROJECT_DATA_CHARS = 2_000_000;
+
+const bodySchema = z.object({
+  eventType: plainText(50, 1),
+  eventData: z.record(z.unknown()),
+});
+
+const downloadEventSchema = z.object({
+  type: plainText(50).optional(),
+  thumbnail: z.string().max(5_000_000).optional(),
+  sessionId: plainText(100).optional(),
+  screenName: plainText(200).optional(),
+  gridWidth: z.number().int().min(0).max(100_000).optional(),
+  gridHeight: z.number().int().min(0).max(100_000).optional(),
+  projectData: z.unknown().optional().refine(
+    v => v === undefined || JSON.stringify(v).length <= MAX_PROJECT_DATA_CHARS,
+    { message: 'Project data is too large.' },
+  ),
+  filename: plainText(255).optional(),
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { eventType, eventData } = body;
-
-    if (!eventType || !eventData) {
-      return NextResponse.json({ message: 'Missing required event data' }, { status: 400 });
+    if (await isRateLimited('track', clientIp(req.headers), 120, 600)) {
+      return NextResponse.json({ message: 'Too many requests' }, { status: 429 });
     }
 
+    const body = bodySchema.safeParse(await req.json().catch(() => null));
+    if (!body.success) {
+      return NextResponse.json({ message: 'Missing required event data' }, { status: 400 });
+    }
+    const { eventType, eventData } = body.data;
+
     if (eventType === 'download') {
+      const parsed = downloadEventSchema.safeParse(eventData);
+      if (!parsed.success) {
+        return NextResponse.json({ message: 'Invalid event data' }, { status: 400 });
+      }
       const {
         type, thumbnail, sessionId,
         screenName, gridWidth, gridHeight, projectData, filename,
-      } = eventData;
+      } = parsed.data;
 
-      const ip = getClientIp(req);
-
-      if (TRACKED_TYPES.has(type)) {
+      if (type && TRACKED_TYPES.has(type)) {
         await supabase.from('pixel_map_snapshots').insert({
           session_id: sessionId ?? '',
           screen_name: screenName ?? filename ?? type,
@@ -50,7 +70,7 @@ export async function POST(req: NextRequest) {
           project_data: projectData ?? null,
           download_type: type,
           filename: filename ?? '',
-          ip_address: ip,
+          ip_address: clientIp(req.headers),
         });
       }
     }

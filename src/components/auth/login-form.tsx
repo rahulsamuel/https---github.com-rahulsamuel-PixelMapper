@@ -10,6 +10,29 @@ import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Loader2, Mail, Lock, User, Building2, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getSafeNextPath } from '@/lib/safe-redirect';
+import { emailField, plainText } from '@/lib/validation/fields';
+import { z } from 'zod';
+
+const signInSchema = z.object({
+  email: emailField,
+  password: z.string().min(1, { message: 'Password is required.' }).max(256),
+});
+
+const signUpSchema = z
+  .object({
+    email: emailField,
+    password: z
+      .string()
+      .min(8, { message: 'Password must be at least 8 characters.' })
+      .max(72, { message: 'Password must be 72 characters or fewer.' }),
+    confirmPassword: z.string(),
+    fullName: plainText(100).refine(v => v.length > 0, { message: 'Please enter your full name.' }),
+    company: plainText(100),
+  })
+  .refine(d => d.password === d.confirmPassword, {
+    message: 'Passwords do not match.',
+    path: ['confirmPassword'],
+  });
 
 export function LoginForm() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -31,37 +54,27 @@ export function LoginForm() {
     e.preventDefault();
     setIsLoading(true);
 
-    if (!email || !password) {
-      toast({ title: 'Missing fields', description: 'Email and password are required.', variant: 'destructive' });
-      setIsLoading(false);
-      return;
-    }
-
     if (mode === 'signup') {
-      if (!fullName.trim()) {
-        toast({ title: 'Missing fields', description: 'Please enter your full name.', variant: 'destructive' });
+      const parsed = signUpSchema.safeParse({ email, password, confirmPassword, fullName, company });
+      if (!parsed.success) {
+        toast({ title: 'Check your details', description: parsed.error.issues[0]?.message, variant: 'destructive' });
         setIsLoading(false);
         return;
       }
-      if (password !== confirmPassword) {
-        toast({ title: 'Passwords do not match', description: 'Please check your password confirmation.', variant: 'destructive' });
-        setIsLoading(false);
-        return;
-      }
-      if (password.length < 8) {
-        toast({ title: 'Password too short', description: 'Password must be at least 8 characters.', variant: 'destructive' });
-        setIsLoading(false);
-        return;
-      }
-
-      const { error } = await signUp(email, password, fullName, company);
+      const { error } = await signUp(parsed.data.email, parsed.data.password, parsed.data.fullName, parsed.data.company);
       if (error) {
         toast({ title: 'Sign up failed', description: error, variant: 'destructive' });
       } else {
         toast({ title: 'Account created!', description: 'Welcome to MapMyLED. You are now signed in.' });
       }
     } else {
-      const result = await signIn(email, password);
+      const parsed = signInSchema.safeParse({ email, password });
+      if (!parsed.success) {
+        toast({ title: 'Check your details', description: parsed.error.issues[0]?.message, variant: 'destructive' });
+        setIsLoading(false);
+        return;
+      }
+      const result = await signIn(parsed.data.email, parsed.data.password);
       if (result.error) {
         toast({ title: 'Login failed', description: result.error, variant: 'destructive' });
       } else {

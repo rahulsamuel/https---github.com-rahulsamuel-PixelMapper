@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { getSupabaseUserClient } from '@/lib/supabase/server';
 import { getSessionUser } from '@/lib/supabase/session-user';
 import { findLedProductDuplicates, type LedProduct } from '@/services/supabase';
+import { optionalHttpUrlField, optionalSpecSheetField } from '@/lib/validation/fields';
 
 const formSchema = z.object({
   manufacturer: z.string().min(2, { message: "Manufacturer name must be at least 2 characters." }).transform(val => val.toUpperCase()),
@@ -38,8 +39,8 @@ const formSchema = z.object({
   applicationOutdoor: z.boolean().default(false),
   applicationFloor: z.boolean().default(false),
 
-  productImageUrl: z.string().optional(),
-  specSheetUrl: z.string().optional(),
+  productImageUrl: optionalHttpUrlField,
+  specSheetUrl: optionalSpecSheetField,
 });
 
 export type FormState = {
