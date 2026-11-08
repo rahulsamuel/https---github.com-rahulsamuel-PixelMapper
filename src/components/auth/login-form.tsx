@@ -61,9 +61,11 @@ export function LoginForm() {
         setIsLoading(false);
         return;
       }
-      const { error } = await signUp(parsed.data.email, parsed.data.password, parsed.data.fullName, parsed.data.company);
+      const { error, needsVerification } = await signUp(parsed.data.email, parsed.data.password, parsed.data.fullName, parsed.data.company);
       if (error) {
         toast({ title: 'Sign up failed', description: error, variant: 'destructive' });
+      } else if (needsVerification) {
+        router.push(`/verify-email?email=${encodeURIComponent(parsed.data.email)}`);
       } else {
         toast({ title: 'Account created!', description: 'Welcome to MapMyLED. You are now signed in.' });
       }
@@ -77,6 +79,8 @@ export function LoginForm() {
       const result = await signIn(parsed.data.email, parsed.data.password);
       if (result.error) {
         toast({ title: 'Login failed', description: result.error, variant: 'destructive' });
+      } else if (result.needsVerification) {
+        router.push(`/verify-email?email=${encodeURIComponent(parsed.data.email)}`);
       } else {
         router.push(getSafeNextPath(window.location.search) ?? (result.isAdmin ? '/admin/tracking' : '/app'));
       }
