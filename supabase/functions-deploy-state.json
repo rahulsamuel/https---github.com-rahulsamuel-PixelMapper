@@ -11,11 +11,11 @@
     },
     "parse-processor-spec": {
       "hasChanged": false,
-      "hash": "c3fd93de7efb657e428528427ad23fe765917ccc244348488aed0cd32ccd03ab"
+      "hash": "8eac15cba7a2104f6c6fcca51c54cdbd9fd85921a6bd8da76d773cf549a8038cac9d399ea6a1e3490c74bff91d0d95cd6faf422c54d4c4ebf82a9bd85a92ad58"
     },
     "parse-signal-flow-device": {
       "hasChanged": false,
-      "hash": "132d3a2ec266f7883f6916bcd0889b096040dfb471c86bdabcd2f17f111e6bed"
+      "hash": "e9993e8ee656d1331e2c6f552092ae91cd7e77b8ffc7e2bf4702369ace5b300cac9d399ea6a1e3490c74bff91d0d95cd6faf422c54d4c4ebf82a9bd85a92ad58"
     },
     "stripe-webhook": {
       "hasChanged": false,

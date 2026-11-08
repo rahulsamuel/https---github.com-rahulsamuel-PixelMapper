@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { requireAdmin } from "../_shared/require-admin.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,6 +102,13 @@ function parseJsonResponse(text: string): Record<string, unknown>[] {
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
+  }
+
+  if (!(await requireAdmin(req))) {
+    return new Response(
+      JSON.stringify({ error: "Only admins can parse processor sheets." }),
+      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 
   const geminiKey = Deno.env.get("GOOGLE_AI_API_KEY");
