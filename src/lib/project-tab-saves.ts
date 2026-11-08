@@ -61,7 +61,10 @@ export async function loadPowerDataSettings(
     .eq("screen_id", screenId)
     .maybeSingle();
 
-  if (error) return { data: null, error: error.message };
+  if (error) {
+    console.error('src/lib/project-tab-saves.ts:', error.message);
+    return { data: null, error: 'Something went wrong. Please try again.' };
+  }
   return { data: parsePowerDataSettings(data?.settings), error: null };
 }
 
@@ -77,7 +80,10 @@ export async function savePowerDataSettings(
       { onConflict: "project_id,screen_id" }
     );
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.error('src/lib/project-tab-saves.ts:', error.message);
+    return { success: false, error: 'Something went wrong. Please try again.' };
+  }
   return { success: true, error: null };
 }
 
@@ -88,7 +94,10 @@ export async function loadRackDrawingSettings(projectId: string): Promise<SaveRe
     .eq("project_id", projectId)
     .maybeSingle();
 
-  if (error) return { data: null, error: error.message };
+  if (error) {
+    console.error('src/lib/project-tab-saves.ts:', error.message);
+    return { data: null, error: 'Something went wrong. Please try again.' };
+  }
   return { data: data?.settings ?? null, error: null };
 }
 
@@ -103,7 +112,10 @@ export async function saveRackDrawingSettings(
       { onConflict: "project_id" }
     );
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.error('src/lib/project-tab-saves.ts:', error.message);
+    return { success: false, error: 'Something went wrong. Please try again.' };
+  }
   return { success: true, error: null };
 }
 
@@ -119,7 +131,10 @@ export async function loadPreVisualSave(projectId: string): Promise<SaveResult<P
     .eq("project_id", projectId)
     .maybeSingle();
 
-  if (error) return { data: null, error: error.message };
+  if (error) {
+    console.error('src/lib/project-tab-saves.ts:', error.message);
+    return { data: null, error: 'Something went wrong. Please try again.' };
+  }
   if (!data) return { data: null, error: null };
   return {
     data: { settings: data.settings, screens: Array.isArray(data.screens) ? data.screens : [] },
@@ -143,6 +158,9 @@ export async function savePreVisualSave(
       { onConflict: "project_id" }
     );
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.error('src/lib/project-tab-saves.ts:', error.message);
+    return { success: false, error: 'Something went wrong. Please try again.' };
+  }
   return { success: true, error: null };
 }

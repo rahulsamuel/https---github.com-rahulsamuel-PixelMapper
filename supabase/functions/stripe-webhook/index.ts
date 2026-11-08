@@ -16,6 +16,49 @@ type ReceiptItem = {
   led_product_id: string | null;
 };
 
+/** Columns a buyer is allowed to supply for a product listing. Anything else in a
+ * stored receipt item is ignored, so a crafted checkout payload cannot write columns
+ * such as id, created_by or visibility through the service-role insert below. */
+const ALLOWED_PRODUCT_COLUMNS = [
+  "manufacturer",
+  "product_name",
+  "tile_width_px",
+  "tile_height_px",
+  "watts_per_tile",
+  "avg_watts_per_tile",
+  "pixel_pitch_mm",
+  "tile_width_mm",
+  "tile_height_mm",
+  "tile_depth_mm",
+  "tile_weight_kg",
+  "max_power_w_per_sqm",
+  "avg_power_w_per_sqm",
+  "max_brightness_nit",
+  "refresh_rate_hz",
+  "grayscale_bit",
+  "contrast_ratio",
+  "color_temperature_k",
+  "viewing_angle_h",
+  "viewing_angle_v",
+  "drive_mode",
+  "led_type",
+  "ip_rating",
+  "certification",
+  "application_indoor",
+  "application_outdoor",
+  "application_floor",
+  "product_image_url",
+  "spec_sheet_url",
+] as const;
+
+function sanitizeProductRow(row: Record<string, unknown>): Record<string, unknown> {
+  const clean: Record<string, unknown> = {};
+  for (const key of ALLOWED_PRODUCT_COLUMNS) {
+    if (row[key] !== undefined) clean[key] = row[key];
+  }
+  return clean;
+}
+
 type ReceiptRow = {
   receipt_number: string;
   customer_email: string | null;
@@ -211,7 +254,11 @@ Deno.serve(async (req: Request) => {
       if (item.led_product_id) continue;
       const { data: created, error: productError } = await admin
         .from("led_products")
-        .insert({ ...item.row, created_by: receipt.user_id, visibility: "private" })
+        .insert({
+          ...sanitizeProductRow((item.row ?? {}) as Record<string, unknown>),
+          created_by: receipt.user_id,
+          visibility: "private",
+        })
         .select("id")
         .single();
       if (productError || !created) {
@@ -234,8 +281,8 @@ Deno.serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return new Response(JSON.stringify({ error: message }), {
+    console.error("stripe-webhook failed:", err instanceof Error ? err.message : err);
+    return new Response(JSON.stringify({ error: "Webhook processing failed." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

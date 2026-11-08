@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.39.0";
 import { isRateLimited } from "../_shared/rate-limit.ts";
-import { isPublicHttpUrl } from "../_shared/public-url.ts";
+import { isPublicHttpUrl, safeFetch } from "../_shared/public-url.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -253,9 +253,8 @@ async function storeImage(
 ): Promise<string | null> {
   try {
     if (!isPublicHttpUrl(imageUrl)) return null;
-    const resp = await fetch(imageUrl, {
+    const resp = await safeFetch(imageUrl, {
       headers: BROWSER_HEADERS,
-      redirect: "follow",
     });
     if (!resp.ok) return null;
     const contentType = resp.headers.get("content-type") || "image/jpeg";
@@ -314,9 +313,8 @@ const BROWSER_HEADERS: Record<string, string> = {
 
 async function fetchPage(url: string): Promise<{ text: string; html: string; contentType: string; ok: boolean; status: number; statusText: string }> {
   // First attempt with full Chrome browser headers
-  let resp = await fetch(url, {
+  let resp = await safeFetch(url, {
     headers: BROWSER_HEADERS,
-    redirect: "follow",
   });
 
   if (resp.ok) {
@@ -338,7 +336,7 @@ async function fetchPage(url: string): Promise<{ text: string; html: string; con
       "sec-ch-ua": "",
       "sec-ch-ua-platform": '"macOS"',
     };
-    resp = await fetch(url, { headers: retryHeaders, redirect: "follow" });
+    resp = await safeFetch(url, { headers: retryHeaders });
     if (resp.ok) {
       const contentType = resp.headers.get("content-type") || "text/html";
       if (contentType.includes("application/pdf")) {
@@ -359,7 +357,7 @@ async function fetchPage(url: string): Promise<{ text: string; html: string; con
       "Accept-Encoding": "gzip, deflate",
       "Referer": new URL(url).origin,
     };
-    resp = await fetch(url, { headers: ffHeaders, redirect: "follow" });
+    resp = await safeFetch(url, { headers: ffHeaders });
     if (resp.ok) {
       const contentType = resp.headers.get("content-type") || "text/html";
       if (contentType.includes("application/pdf")) {
@@ -504,7 +502,7 @@ Deno.serve(async (req: Request) => {
 
       if (pageResult.contentType.includes("application/pdf")) {
         // URL points to a PDF — re-fetch as buffer and send inline
-        const pdfResp = await fetch(url, { headers: BROWSER_HEADERS, redirect: "follow" });
+        const pdfResp = await safeFetch(url, { headers: BROWSER_HEADERS });
         const pdfBuffer = await pdfResp.arrayBuffer();
         const uint8 = new Uint8Array(pdfBuffer);
         const base64 = uint8ToBase64(uint8);

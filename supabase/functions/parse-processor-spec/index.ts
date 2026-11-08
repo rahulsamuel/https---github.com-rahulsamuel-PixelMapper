@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { requireAdmin } from "../_shared/require-admin.ts";
-import { isPublicHttpUrl } from "../_shared/public-url.ts";
+import { isPublicHttpUrl, safeFetch } from "../_shared/public-url.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -160,7 +160,7 @@ Deno.serve(async (req: Request) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const pageResp = await fetch(url, {
+      const pageResp = await safeFetch(url, {
         headers: { "User-Agent": "Mozilla/5.0 (compatible; MapMyLED/1.0)" },
       });
       if (!pageResp.ok) {

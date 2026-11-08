@@ -150,7 +150,8 @@ export async function addProductAction(prevState: FormState, formData: FormData)
 
     const { error } = await getSupabaseUserClient(accessToken).from('led_products').insert(row);
     if (error) {
-      return { success: false, message: error.message };
+      console.error('addLedProduct insert failed:', error.message);
+      return { success: false, message: 'Could not save the product. Please try again.' };
     }
 
     return {
@@ -158,7 +159,7 @@ export async function addProductAction(prevState: FormState, formData: FormData)
       message: 'Product has been added to the database successfully!',
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'An unknown error occurred';
-    return { success: false, message: `An unexpected error occurred: ${message}` };
+    console.error('addLedProduct failed:', error instanceof Error ? error.message : error);
+    return { success: false, message: 'An unexpected error occurred. Please try again.' };
   }
 }

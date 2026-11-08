@@ -10,6 +10,9 @@ export async function deleteProductAction(productId: string, formData: FormData)
     return { success: false, message: 'Please sign in to delete products.' };
   }
   const { success, error } = await deleteLedProduct(productId, accessToken);
-  if (!success) return { success: false, message: `Failed to delete: ${error}` };
+  if (!success) {
+    console.error('deleteProductAction failed:', error);
+    return { success: false, message: 'Could not delete the product. Please try again.' };
+  }
   return { success: true, message: 'Product deleted.' };
 }

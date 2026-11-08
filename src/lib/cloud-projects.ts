@@ -27,7 +27,10 @@ export async function saveCloudProject(
     .select("id")
     .single();
 
-  if (error) return { success: false, projectId: null, error: error.message };
+  if (error) {
+    console.error('src/lib/cloud-projects.ts:', error.message);
+    return { success: false, projectId: null, error: 'Something went wrong. Please try again.' };
+  }
   return { success: true, projectId: data.id, error: null };
 }
 
@@ -45,7 +48,10 @@ export async function updateCloudProject(
     })
     .eq("id", projectId);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.error('src/lib/cloud-projects.ts:', error.message);
+    return { success: false, error: 'Something went wrong. Please try again.' };
+  }
   return { success: true, error: null };
 }
 
@@ -58,7 +64,10 @@ export async function getUserCloudProjects(
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
 
-  if (error) return { data: [], error: error.message };
+  if (error) {
+    console.error('src/lib/cloud-projects.ts:', error.message);
+    return { data: [], error: 'Something went wrong. Please try again.' };
+  }
 
   return {
     data: data.map((p) => ({
@@ -82,7 +91,10 @@ export async function getCloudProject(
     .eq("id", projectId)
     .maybeSingle();
 
-  if (error) return { data: null, error: error.message };
+  if (error) {
+    console.error('src/lib/cloud-projects.ts:', error.message);
+    return { data: null, error: 'Something went wrong. Please try again.' };
+  }
   if (!data) return { data: null, error: null };
 
   return {
@@ -106,6 +118,9 @@ export async function deleteCloudProject(
     .delete()
     .eq("id", projectId);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.error('src/lib/cloud-projects.ts:', error.message);
+    return { success: false, error: 'Something went wrong. Please try again.' };
+  }
   return { success: true, error: null };
 }

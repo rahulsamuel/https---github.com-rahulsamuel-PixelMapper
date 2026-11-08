@@ -224,7 +224,8 @@ function TrackingPageInner() {
       .eq('id', snapshot.id)
       .maybeSingle();
     if (error) {
-      setFetchError(error.message);
+      console.error('Snapshot fetch failed:', error.message);
+      setFetchError('Could not load that snapshot.');
       return;
     }
     if (data?.thumbnail) {

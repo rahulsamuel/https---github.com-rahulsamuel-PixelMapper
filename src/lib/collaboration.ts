@@ -22,24 +22,28 @@ export async function inviteCollaborator(
   projectId: string,
   email: string
 ): Promise<{ success: boolean; error: string | null }> {
-  const { data: userData, error: userError } = await supabase
-    .from("users")
-    .select("id")
-    .eq("email", email.trim().toLowerCase())
-    .maybeSingle();
-
-  if (userError) return { success: false, error: userError.message };
-  if (!userData) return { success: false, error: "No user found with that email." };
-
-  const { error } = await supabase
-    .from("project_collaborators")
-    .insert({ project_id: projectId, user_id: userData.id });
+  const { data, error } = await supabase.rpc("invite_project_collaborator", {
+    p_project_id: projectId,
+    p_email: email,
+  });
 
   if (error) {
-    if (error.code === "23505") return { success: false, error: "User is already a collaborator." };
-    return { success: false, error: error.message };
+    console.error("inviteCollaborator failed:", error.message);
+    return { success: false, error: "Could not send the invite. Please try again." };
   }
-  return { success: true, error: null };
+
+  switch (data) {
+    case "ok":
+      return { success: true, error: null };
+    case "exists":
+      return { success: false, error: "User is already a collaborator." };
+    case "self":
+      return { success: false, error: "You already own this project." };
+    case "not_found":
+      return { success: false, error: "No user found with that email." };
+    default:
+      return { success: false, error: "You do not have permission to invite collaborators to this project." };
+  }
 }
 
 export async function removeCollaborator(
@@ -52,7 +56,10 @@ export async function removeCollaborator(
     .eq("project_id", projectId)
     .eq("user_id", userId);
 
-  if (error) return { success: false, error: error.message };
+  if (error) {
+    console.error("removeCollaborator failed:", error.message);
+    return { success: false, error: "Could not remove the collaborator. Please try again." };
+  }
   return { success: true, error: null };
 }
 
@@ -69,7 +76,10 @@ export async function getCollaborators(
     `)
     .eq("project_id", projectId);
 
-  if (error) return { data: [], error: error.message };
+  if (error) {
+    console.error("getCollaborators failed:", error.message);
+    return { data: [], error: "Could not load collaborators." };
+  }
 
   return {
     data: data.map((c: any) => ({
@@ -92,7 +102,10 @@ export async function getProjectOwner(
     .eq("id", projectId)
     .maybeSingle();
 
-  if (error) return { email: null, userId: null, error: error.message };
+  if (error) {
+    console.error("getProjectOwner failed:", error.message);
+    return { email: null, userId: null, error: "Could not load the project owner." };
+  }
   if (!data) return { email: null, userId: null, error: "Project not found." };
 
   return { email: (data.users as any).email, userId: data.user_id, error: null };
@@ -115,7 +128,10 @@ export async function getSharedProjects(
     `)
     .eq("user_id", userId);
 
-  if (collabError) return { data: [], error: collabError.message };
+  if (collabError) {
+    console.error("getSharedProjects failed:", collabError.message);
+    return { data: [], error: "Could not load shared projects." };
+  }
 
   return {
     data: (collabData as any[]).map((c) => {
@@ -141,7 +157,10 @@ export async function getOwnedProjects(
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
 
-  if (error) return { data: [], error: error.message };
+  if (error) {
+    console.error("getOwnedProjects failed:", error.message);
+    return { data: [], error: "Could not load your projects." };
+  }
 
   return {
     data: (data as any[]).map((p) => ({

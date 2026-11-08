@@ -9,5 +9,9 @@ export async function recordListingFeeAcknowledgement(): Promise<string | null> 
     non_refundable_acknowledged: true,
     terms_version: LISTING_FEE_TERMS_VERSION,
   });
-  return error ? error.message : null;
+  if (error) {
+    console.error('listing-fee-acknowledgement:', error.message);
+    return 'Something went wrong. Please try again.';
+  }
+  return null;
 }

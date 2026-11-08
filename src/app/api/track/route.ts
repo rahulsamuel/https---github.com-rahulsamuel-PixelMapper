@@ -78,7 +78,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error('Error tracking event:', error);
-    const message = error instanceof Error ? error.message : 'An unknown error occurred';
-    return NextResponse.json({ message: 'Failed to track event', error: message }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to track event' }, { status: 500 });
   }
 }

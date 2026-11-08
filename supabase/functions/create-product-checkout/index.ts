@@ -33,14 +33,72 @@ function generateReceiptNumber() {
   return `MML-${date}-${hex}`;
 }
 
-function isValidReturnUrl(value: unknown): value is string {
-  if (typeof value !== "string") return false;
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://mapmyled.com",
+  "https://www.mapmyled.com",
+  "http://localhost:3000",
+  "http://localhost:9002",
+];
+
+function allowedOrigins(): string[] {
+  const configured = (Deno.env.get("ALLOWED_RETURN_ORIGINS") ?? "")
+    .split(",")
+    .map(v => v.trim().replace(/\/$/, ""))
+    .filter(v => v.length > 0);
+  return configured.length > 0 ? configured : DEFAULT_ALLOWED_ORIGINS;
+}
+
+/** Returns the allow-listed origin for a caller-supplied return URL, or null. */
+function safeReturnOrigin(value: unknown): string | null {
+  if (typeof value !== "string") return null;
   try {
     const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:";
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    return allowedOrigins().includes(url.origin) ? url.origin : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+/** Columns a buyer is allowed to supply for a product listing. */
+const ALLOWED_PRODUCT_COLUMNS = [
+  "manufacturer",
+  "product_name",
+  "tile_width_px",
+  "tile_height_px",
+  "watts_per_tile",
+  "avg_watts_per_tile",
+  "pixel_pitch_mm",
+  "tile_width_mm",
+  "tile_height_mm",
+  "tile_depth_mm",
+  "tile_weight_kg",
+  "max_power_w_per_sqm",
+  "avg_power_w_per_sqm",
+  "max_brightness_nit",
+  "refresh_rate_hz",
+  "grayscale_bit",
+  "contrast_ratio",
+  "color_temperature_k",
+  "viewing_angle_h",
+  "viewing_angle_v",
+  "drive_mode",
+  "led_type",
+  "ip_rating",
+  "certification",
+  "application_indoor",
+  "application_outdoor",
+  "application_floor",
+  "product_image_url",
+  "spec_sheet_url",
+] as const;
+
+function sanitizeProductRow(row: Record<string, unknown>): Record<string, unknown> {
+  const clean: Record<string, unknown> = {};
+  for (const key of ALLOWED_PRODUCT_COLUMNS) {
+    if (row[key] !== undefined) clean[key] = row[key];
+  }
+  return clean;
 }
 
 Deno.serve(async (req: Request) => {
@@ -72,9 +130,12 @@ Deno.serve(async (req: Request) => {
     if (!rows.every(r => r && typeof r === "object" && typeof r.manufacturer === "string" && typeof r.product_name === "string")) {
       return jsonResponse({ error: "One or more products are incomplete." }, 400);
     }
-    if (!isValidReturnUrl(returnUrl)) {
+    const returnOrigin = safeReturnOrigin(returnUrl);
+    if (!returnOrigin) {
       return jsonResponse({ error: "Invalid return address." }, 400);
     }
+
+    const safeRows = rows.map(row => sanitizeProductRow(row as Record<string, unknown>));
 
     const { productFeeCents, processingFeeCents, totalCents } = calculateFees(rows.length);
     const admin = createClient(supabaseUrl, serviceKey);
@@ -86,7 +147,12 @@ Deno.serve(async (req: Request) => {
         receipt_number: generateReceiptNumber(),
         status: "pending",
         customer_email: user.email ?? null,
-        items: rows.map(row => ({ manufacturer: row.manufacturer, product_name: row.product_name, row, led_product_id: null })),
+        items: safeRows.map(row => ({
+          manufacturer: row.manufacturer,
+          product_name: row.product_name,
+          row,
+          led_product_id: null,
+        })),
         product_fee_cents: productFeeCents,
         processing_fee_cents: processingFeeCents,
         total_cents: totalCents,
@@ -104,7 +170,6 @@ Deno.serve(async (req: Request) => {
       httpClient: Stripe.createFetchHttpClient(),
     });
 
-    const separator = returnUrl.includes("?") ? "&" : "?";
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       customer_email: user.email ?? undefined,
@@ -128,8 +193,8 @@ Deno.serve(async (req: Request) => {
           },
         },
       ],
-      success_url: `${new URL(returnUrl).origin}/my-products?checkout=success&receipt=${receipt.id}`,
-      cancel_url: `${returnUrl}${separator}checkout=cancelled`,
+      success_url: `${returnOrigin}/my-products?checkout=success&receipt=${receipt.id}`,
+      cancel_url: `${returnOrigin}/add-led?checkout=cancelled`,
     });
 
     if (!session.url) {
@@ -139,7 +204,7 @@ Deno.serve(async (req: Request) => {
 
     return jsonResponse({ url: session.url, receiptId: receipt.id }, 200);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return jsonResponse({ error: message }, 500);
+    console.error("create-product-checkout failed:", err instanceof Error ? err.message : err);
+    return jsonResponse({ error: "Could not start checkout. Please try again." }, 500);
   }
 });

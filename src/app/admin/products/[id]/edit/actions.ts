@@ -74,10 +74,9 @@ export async function updateProductAction(productId: string, prevState: FormStat
     };
   } catch (error) {
     console.error('Update product error:', error);
-    const message = error instanceof Error ? error.message : 'An unknown error occurred';
     return {
       success: false,
-      message: `An unexpected error occurred: ${message}`,
+      message: 'Could not update the product. Please try again.',
     };
   }
 }
