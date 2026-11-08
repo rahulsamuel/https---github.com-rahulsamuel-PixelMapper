@@ -15,9 +15,10 @@ interface AuthContextType {
   user: User | null;
   isAdmin: boolean;
   loading: boolean;
-  signUp: (email: string, password: string, fullName?: string, company?: string) => Promise<{ error: string | null; needsVerification?: boolean }>;
-  signIn: (email: string, password: string) => Promise<{ error: string | null; isAdmin?: boolean; needsVerification?: boolean }>;
-  signInAdmin: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, captchaToken: string, fullName?: string, company?: string) => Promise<{ error: string | null; needsVerification?: boolean }>;
+  signIn: (email: string, password: string, captchaToken: string) => Promise<{ error: string | null; isAdmin?: boolean; needsVerification?: boolean }>;
+  requestPasswordReset: (email: string, captchaToken: string) => Promise<{ error: string | null }>;
+  updatePassword: (password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -76,7 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => { subscription.unsubscribe(); };
   }, []);
 
-  const signUp = async (email: string, password: string, fullName?: string, company?: string) => {
+  const signUp = async (email: string, password: string, captchaToken: string, fullName?: string, company?: string) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -84,6 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         options: {
           data: { full_name: fullName ?? '', company: company ?? '' },
           emailRedirectTo: `${window.location.origin}/app`,
+          captchaToken,
         },
       });
       if (error) return { error: error.message };
@@ -103,9 +105,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, captchaToken: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken } });
       if (error) {
         if (error.message.toLowerCase().includes('email not confirmed')) {
           return { error: null, needsVerification: true };
@@ -141,25 +143,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signInAdmin = async (email: string, password: string) => {
+  const requestPasswordReset = async (email: string, captchaToken: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+        captchaToken,
+      });
       if (error) return { error: error.message };
-      if (!data.user || !data.session) return { error: "Authentication failed" };
-      const admin = sessionIsAdmin(data.session);
-      if (!admin) {
-        await supabase.auth.signOut();
-        return { error: "Access denied. Admin privileges required." };
-      }
-      await supabase.from('users').upsert(
-        { id: data.user.id, email: data.user.email! },
-        { onConflict: 'id', ignoreDuplicates: true }
-      );
-      setUser({ id: data.user.id, email: data.user.email! });
-      setIsAdmin(true);
       return { error: null };
     } catch {
-      return { error: "An unexpected error occurred" };
+      return { error: "An unexpected error occurred. Please try again." };
+    }
+  };
+
+  const updatePassword = async (password: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      if (error) return { error: error.message };
+      return { error: null };
+    } catch {
+      return { error: "An unexpected error occurred. Please try again." };
     }
   };
 
@@ -171,7 +174,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, loading, signUp, signIn, signInAdmin, signOut }}>
+    <AuthContext.Provider value={{ user, isAdmin, loading, signUp, signIn, requestPasswordReset, updatePassword, signOut }}>
       {children}
     </AuthContext.Provider>
   );

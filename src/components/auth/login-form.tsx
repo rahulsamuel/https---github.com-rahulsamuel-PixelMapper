@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Loader2, Mail, Lock, User, Building2, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getSafeNextPath } from '@/lib/safe-redirect';
+import { TurnstileWidget } from '@/components/auth/turnstile-widget';
 import { emailField, plainText } from '@/lib/validation/fields';
 import { z } from 'zod';
 
@@ -45,13 +47,21 @@ export function LoginForm() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [company, setCompany] = useState('');
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
+  const resetCaptcha = () => {
+    setCaptchaToken(null);
+    setCaptchaKey(k => k + 1);
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!captchaToken) return;
     setIsLoading(true);
 
     if (mode === 'signup') {
@@ -61,7 +71,8 @@ export function LoginForm() {
         setIsLoading(false);
         return;
       }
-      const { error, needsVerification } = await signUp(parsed.data.email, parsed.data.password, parsed.data.fullName, parsed.data.company);
+      const { error, needsVerification } = await signUp(parsed.data.email, parsed.data.password, captchaToken, parsed.data.fullName, parsed.data.company);
+      resetCaptcha();
       if (error) {
         toast({ title: 'Sign up failed', description: error, variant: 'destructive' });
       } else if (needsVerification) {
@@ -76,7 +87,8 @@ export function LoginForm() {
         setIsLoading(false);
         return;
       }
-      const result = await signIn(parsed.data.email, parsed.data.password);
+      const result = await signIn(parsed.data.email, parsed.data.password, captchaToken);
+      resetCaptcha();
       if (result.error) {
         toast({ title: 'Login failed', description: result.error, variant: 'destructive' });
       } else if (result.needsVerification) {
@@ -199,6 +211,14 @@ export function LoginForm() {
           </div>
         </div>
 
+        {mode === 'login' && (
+          <div className="flex justify-end">
+            <Link href="/forgot-password" className="text-xs text-primary hover:underline transition-colors">
+              Forgot password?
+            </Link>
+          </div>
+        )}
+
         {/* Confirm password (sign-up only) */}
         {mode === 'signup' && (
           <div className="space-y-1.5">
@@ -233,10 +253,12 @@ export function LoginForm() {
           </div>
         )}
 
+        <TurnstileWidget key={captchaKey} onTokenChange={setCaptchaToken} />
+
         <Button
           type="submit"
           className="w-full h-10 font-semibold gap-2 group mt-2"
-          disabled={isLoading}
+          disabled={isLoading || !captchaToken}
         >
           {isLoading ? (
             <><Loader2 className="h-4 w-4 animate-spin" /> {mode === 'login' ? 'Signing in…' : 'Creating account…'}</>
