@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Eye, EyeOff, Loader2, Mail, Lock, User, Building2, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getSafeNextPath } from '@/lib/safe-redirect';
 
 export function LoginForm() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -64,7 +65,7 @@ export function LoginForm() {
       if (result.error) {
         toast({ title: 'Login failed', description: result.error, variant: 'destructive' });
       } else {
-        router.push(result.isAdmin ? '/admin/tracking' : '/app');
+        router.push(getSafeNextPath(window.location.search) ?? (result.isAdmin ? '/admin/tracking' : '/app'));
       }
     }
 

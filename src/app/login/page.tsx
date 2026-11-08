@@ -6,6 +6,7 @@ import { LoginForm } from '@/components/auth/login-form';
 import { Logo } from '@/components/logo';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
+import { getSafeNextPath } from '@/lib/safe-redirect';
 
 export default function LoginPage() {
   const { user, isAdmin, loading } = useAuth();
@@ -13,7 +14,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace(isAdmin ? '/admin/tracking' : '/app');
+      router.replace(getSafeNextPath(window.location.search) ?? (isAdmin ? '/admin/tracking' : '/app'));
     }
   }, [user, isAdmin, loading, router]);
 

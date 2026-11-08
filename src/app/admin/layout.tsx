@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
+import { RequireAuth } from "@/components/auth/require-auth";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  return <RequireAuth adminOnly>{children}</RequireAuth>;
 }

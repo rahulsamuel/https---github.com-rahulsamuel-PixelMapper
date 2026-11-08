@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
+import { RequireAuth } from "@/components/auth/require-auth";
 
 export default function AddLedLayout({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  return <RequireAuth>{children}</RequireAuth>;
 }
