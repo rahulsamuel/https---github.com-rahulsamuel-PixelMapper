@@ -8,7 +8,7 @@ export async function isRateLimited(
 ): Promise<boolean> {
   const { data, error } = await createClient(
     Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   ).rpc("consume_rate_limit", {
     p_key: `${scope}:${identifier}`,
     p_limit: limit,
