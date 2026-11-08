@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
     if (eventType === 'download') {
       const {
-        type, thumbnail, userId, sessionId,
+        type, thumbnail, sessionId,
         screenName, gridWidth, gridHeight, projectData, filename,
       } = eventData;
 
@@ -42,7 +42,6 @@ export async function POST(req: NextRequest) {
 
       if (TRACKED_TYPES.has(type)) {
         await supabase.from('pixel_map_snapshots').insert({
-          user_id: userId ?? null,
           session_id: sessionId ?? '',
           screen_name: screenName ?? filename ?? type,
           grid_width: gridWidth ?? 0,

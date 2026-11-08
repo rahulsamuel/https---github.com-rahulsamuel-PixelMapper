@@ -219,83 +219,6 @@ export async function deleteLedProduct(id: string, accessToken: string) {
   }
 }
 
-export async function savePixelMapProject(data: {
-  userId: string;
-  projectName: string;
-  projectData: unknown;
-  projectId?: string;
-}) {
-  try {
-    const supabase = getSupabaseServerClient();
-
-    if (data.projectId) {
-      const { error } = await supabase
-        .from("pixel_map_projects")
-        .update({
-          project_name: data.projectName,
-          project_data: data.projectData,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", data.projectId);
-
-      if (error) {
-        return { success: false, error: error.message, projectId: null };
-      }
-
-      return { success: true, projectId: data.projectId };
-    } else {
-      const { data: newProject, error } = await supabase
-        .from("pixel_map_projects")
-        .insert({
-          user_id: data.userId,
-          project_name: data.projectName,
-          project_data: data.projectData,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        return { success: false, error: error.message, projectId: null };
-      }
-
-      return { success: true, projectId: newProject.id };
-    }
-  } catch (e) {
-    const error = e instanceof Error ? e.message : "An unknown error occurred";
-    return { success: false, error, projectId: null };
-  }
-}
-
-export async function getUserPixelMapProjects(userId: string) {
-  try {
-    const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase
-      .from("pixel_map_projects")
-      .select("*")
-      .eq("user_id", userId)
-      .order("updated_at", { ascending: false });
-
-    if (error) {
-      return { data: [], error: error.message };
-    }
-
-    return {
-      data: (data as Record<string, unknown>[]).map((project) => ({
-        id: project.id as string,
-        userId: project.user_id as string,
-        projectName: project.project_name as string,
-        projectData: project.project_data,
-        createdAt: project.created_at as string,
-        updatedAt: project.updated_at as string,
-      })),
-      error: null,
-    };
-  } catch (e) {
-    const error = e instanceof Error ? e.message : "An unknown error occurred";
-    return { data: [], error };
-  }
-}
-
 // ──────────────────────────────────────────────
 // Rack Equipment Library
 // ──────────────────────────────────────────────
@@ -350,61 +273,6 @@ export async function getRackEquipmentLibrary(includeInactive = false) {
     return { data: (data as Record<string, unknown>[]).map(mapRackEquipmentRow), error: null };
   } catch (e) {
     return { data: [], error: e instanceof Error ? e.message : 'Unknown error' };
-  }
-}
-
-export async function addRackEquipment(data: RackEquipmentData) {
-  try {
-    const supabase = getSupabaseServerClient();
-    const { error } = await supabase.from('rack_equipment_library').insert({
-      name: data.name,
-      model: data.model ?? null,
-      ru: data.ru,
-      type: data.type,
-      color: data.color,
-      wattage: data.wattage ?? null,
-      mountable_at: data.mountableAt,
-      is_active: data.isActive,
-      front_image_url: data.frontImageUrl ?? null,
-      rear_image_url: data.rearImageUrl ?? null,
-    });
-    if (error) return { success: false, error: error.message };
-    return { success: true };
-  } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
-  }
-}
-
-export async function updateRackEquipment(id: string, data: Partial<RackEquipmentData>) {
-  try {
-    const supabase = getSupabaseServerClient();
-    const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (data.name !== undefined) payload.name = data.name;
-    if (data.model !== undefined) payload.model = data.model ?? null;
-    if (data.ru !== undefined) payload.ru = data.ru;
-    if (data.type !== undefined) payload.type = data.type;
-    if (data.color !== undefined) payload.color = data.color;
-    if (data.wattage !== undefined) payload.wattage = data.wattage ?? null;
-    if (data.mountableAt !== undefined) payload.mountable_at = data.mountableAt;
-    if (data.isActive !== undefined) payload.is_active = data.isActive;
-    if (data.frontImageUrl !== undefined) payload.front_image_url = data.frontImageUrl ?? null;
-    if (data.rearImageUrl !== undefined) payload.rear_image_url = data.rearImageUrl ?? null;
-    const { error } = await supabase.from('rack_equipment_library').update(payload).eq('id', id);
-    if (error) return { success: false, error: error.message };
-    return { success: true };
-  } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
-  }
-}
-
-export async function deleteRackEquipment(id: string) {
-  try {
-    const supabase = getSupabaseServerClient();
-    const { error } = await supabase.from('rack_equipment_library').delete().eq('id', id);
-    if (error) return { success: false, error: error.message };
-    return { success: true };
-  } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : 'Unknown error' };
   }
 }
 
@@ -498,9 +366,9 @@ export async function getProcessorById(id: string) {
   }
 }
 
-export async function addProcessor(data: ProcessorData) {
+export async function addProcessor(data: ProcessorData, accessToken: string) {
   try {
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseUserClient(accessToken);
     const { error } = await supabase.from('processor_library').insert({
       manufacturer: data.manufacturer,
       model_name: data.modelName,
@@ -532,9 +400,9 @@ export async function addProcessor(data: ProcessorData) {
   }
 }
 
-export async function updateProcessor(id: string, data: Partial<ProcessorData>) {
+export async function updateProcessor(id: string, data: Partial<ProcessorData>, accessToken: string) {
   try {
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseUserClient(accessToken);
     const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (data.manufacturer !== undefined) payload.manufacturer = data.manufacturer;
     if (data.modelName !== undefined) payload.model_name = data.modelName;
@@ -566,9 +434,9 @@ export async function updateProcessor(id: string, data: Partial<ProcessorData>) 
   }
 }
 
-export async function deleteProcessor(id: string) {
+export async function deleteProcessor(id: string, accessToken: string) {
   try {
-    const supabase = getSupabaseServerClient();
+    const supabase = getSupabaseUserClient(accessToken);
     const { error } = await supabase.from('processor_library').delete().eq('id', id);
     if (error) return { success: false, error: error.message };
     return { success: true };

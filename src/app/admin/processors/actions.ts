@@ -2,6 +2,7 @@
 
 import { addProcessor, updateProcessor, deleteProcessor } from '@/services/supabase';
 import type { ProcessorData } from '@/services/supabase';
+import { getSessionUser } from '@/lib/supabase/session-user';
 import { z } from 'zod';
 
 const schema = z.object({
@@ -31,6 +32,11 @@ const schema = z.object({
 
 export type ProcessorFormState = { message: string; success: boolean; errors?: z.ZodIssue[] };
 
+async function adminAccessToken(token: string | null): Promise<string | null> {
+  const sessionUser = await getSessionUser(token);
+  return sessionUser?.isAdmin && token ? token : null;
+}
+
 function rawFromFormData(formData: FormData): Record<string, unknown> {
   const raw: Record<string, unknown> = { ...Object.fromEntries(formData.entries()) };
   raw.isActive = formData.get('isActive') === 'true';
@@ -51,6 +57,8 @@ export async function addProcessorAction(
   _prev: ProcessorFormState,
   formData: FormData
 ): Promise<ProcessorFormState> {
+  const accessToken = await adminAccessToken((formData.get('accessToken') as string) || null);
+  if (!accessToken) return { success: false, message: 'Admin sign-in required.' };
   const validated = schema.safeParse(rawFromFormData(formData));
   if (!validated.success) {
     return { success: false, errors: validated.error.issues, message: 'Please correct the errors.' };
@@ -80,7 +88,7 @@ export async function addProcessorAction(
     productImageUrl: d.productImageUrl || null,
     isActive: d.isActive,
   };
-  const { success, error } = await addProcessor(payload);
+  const { success, error } = await addProcessor(payload, accessToken);
   if (!success) return { success: false, message: `Failed to save: ${error}` };
   return { success: true, message: 'Processor added successfully.' };
 }
@@ -95,6 +103,8 @@ export async function updateProcessorAction(
     return { success: false, errors: validated.error.issues, message: 'Please correct the errors.' };
   }
   const d = validated.data;
+  const accessToken = await adminAccessToken((formData.get('accessToken') as string) || null);
+  if (!accessToken) return { success: false, message: 'Admin sign-in required.' };
   const { success, error } = await updateProcessor(id, {
     manufacturer: d.manufacturer,
     modelName: d.modelName,
@@ -118,13 +128,18 @@ export async function updateProcessorAction(
     specSheetUrl: d.specSheetUrl || null,
     productImageUrl: d.productImageUrl || null,
     isActive: d.isActive,
-  });
+  }, accessToken);
   if (!success) return { success: false, message: `Failed to update: ${error}` };
   return { success: true, message: 'Processor updated.' };
 }
 
-export async function deleteProcessorAction(id: string): Promise<{ success: boolean; message: string }> {
-  const { success, error } = await deleteProcessor(id);
+export async function deleteProcessorAction(
+  id: string,
+  accessToken: string | null
+): Promise<{ success: boolean; message: string }> {
+  const adminToken = await adminAccessToken(accessToken);
+  if (!adminToken) return { success: false, message: 'Admin sign-in required.' };
+  const { success, error } = await deleteProcessor(id, adminToken);
   if (!success) return { success: false, message: `Failed to delete: ${error}` };
   return { success: true, message: 'Processor deleted.' };
 }

@@ -68,7 +68,14 @@ function ProcessorForm({
   const [parseError, setParseError] = useState('');
   const [parsedOptions, setParsedOptions] = useState<ParsedProduct[]>([]);
   const [showAiPanel, setShowAiPanel] = useState(false);
+  const [accessToken, setAccessToken] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.access_token) setAccessToken(session.access_token);
+    });
+  }, []);
 
   const action = processorId
     ? updateProcessorAction.bind(null, processorId)
@@ -196,6 +203,7 @@ function ProcessorForm({
 
   return (
     <form action={formAction}>
+      <input type="hidden" name="accessToken" value={accessToken} />
       {/* AI Parse panel */}
       <div className="mb-4 border rounded-lg overflow-hidden">
         <button
@@ -592,7 +600,8 @@ export function ProcessorAdmin({ processors: initial }: Props) {
   async function handleDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
-    const result = await deleteProcessorAction(deleteTarget.id);
+    const { data: { session } } = await supabase.auth.getSession();
+    const result = await deleteProcessorAction(deleteTarget.id, session?.access_token ?? null);
     if (result.success) {
       setProcessors(prev => prev.filter(p => p.id !== deleteTarget.id));
       setDeleteTarget(null);
