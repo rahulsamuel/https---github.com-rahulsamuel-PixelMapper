@@ -136,6 +136,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
   } | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
+  const [bendingConnectionId, setBendingConnectionId] = useState<string | null>(null);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<DeviceCategory>>(new Set());
   const [dbDevices, setDbDevices] = useState<SidebarItem[]>([]);
   const [loadingProcessors, setLoadingProcessors] = useState(true);
@@ -254,6 +255,30 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
     };
   }, [draggingDevice, dragOffset, update]);
 
+  // Drag a cable's middle point to bend its route
+  useEffect(() => {
+    if (!bendingConnectionId) return;
+    const handleMove = (e: globalThis.MouseEvent) => {
+      if (!canvasRef.current) return;
+      const rect = canvasRef.current.getBoundingClientRect();
+      const x = (e.clientX - rect.left + canvasRef.current.scrollLeft) / zoom;
+      const y = (e.clientY - rect.top + canvasRef.current.scrollTop) / zoom;
+      update((prev) => ({
+        ...prev,
+        connections: prev.connections.map((c) =>
+          c.id === bendingConnectionId ? { ...c, bend: { x, y } } : c
+        ),
+      }));
+    };
+    const handleUp = () => setBendingConnectionId(null);
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+    };
+  }, [bendingConnectionId, zoom, update]);
+
   // Track mouse for cable drawing
   useEffect(() => {
     if (!connectingFrom) return;
@@ -298,6 +323,20 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
     portY: number
   ) => {
     e.stopPropagation();
+    const portKey = `${device.id}:${portId}`;
+    const attached = data.connections.filter(
+      (c) =>
+        `${c.fromDeviceId}:${c.fromPortId}` === portKey || `${c.toDeviceId}:${c.toPortId}` === portKey
+    );
+    if (attached.length > 0) {
+      const removedIds = new Set(attached.map((c) => c.id));
+      update((prev) => ({
+        ...prev,
+        connections: prev.connections.filter((c) => !removedIds.has(c.id)),
+      }));
+      if (selectedConnectionId && removedIds.has(selectedConnectionId)) setSelectedConnectionId(null);
+      return;
+    }
     if (connectingFrom) {
       if (connectingFrom.deviceId === device.id && connectingFrom.portId === portId) {
         setConnectingFrom(null);
@@ -334,11 +373,12 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
     }
   };
 
-  const handleConnectionClick = (e: MouseEvent, connId: string) => {
+  const handleConnectionMouseDown = (e: MouseEvent, connId: string) => {
     e.stopPropagation();
     setSelectedConnectionId(connId);
     setSelectedDeviceId(null);
     setPanelClosed(false);
+    setBendingConnectionId(connId);
   };
 
   const deleteSelected = () => {
@@ -385,6 +425,10 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
     }));
   };
 
+  const connectedPortKeys = new Set(
+    data.connections.flatMap((c) => [`${c.fromDeviceId}:${c.fromPortId}`, `${c.toDeviceId}:${c.toPortId}`])
+  );
+
   const getCableColor = (cableTypeId: string) => {
     const ct = data.cableTypes.find((c) => c.id === cableTypeId);
     return ct?.color ?? "#64748b";
@@ -410,7 +454,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
     const toPoint = [...toPos.inputs, ...toPos.outputs].find((p) => p.port.id === conn.toPortId);
     if (!fromPoint || !toPoint) return null;
 
-    return buildCablePath(fromPoint, toPoint, cableStyle);
+    return buildCablePath(fromPoint, toPoint, cableStyle, conn.bend);
   };
 
   const toggleCategory = (cat: DeviceCategory) => {
@@ -545,7 +589,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
               const color = getCableColor(conn.cableType);
               const isSelected = conn.id === selectedConnectionId;
               return (
-                <g key={conn.id} className="pointer-events-auto cursor-pointer" onClick={(e) => handleConnectionClick(e, conn.id)}>
+                <g key={conn.id} className="pointer-events-auto cursor-grab" onMouseDown={(e) => handleConnectionMouseDown(e, conn.id)}>
                   <path d={path.d} fill="none" stroke="transparent" strokeWidth={16} />
                   <path
                     d={path.d}
@@ -566,6 +610,16 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
                     >
                       {conn.label}
                     </text>
+                  )}
+                  {isSelected && (
+                    <circle
+                      cx={path.midX}
+                      cy={path.midY}
+                      r={7}
+                      fill={color}
+                      stroke="white"
+                      strokeWidth={2}
+                    />
                   )}
                 </g>
               );
@@ -624,7 +678,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
                     return (
                       <div key={p.port.id} className="absolute flex items-center" style={{ left: -PORT_RADIUS, top: absY - DEVICE_HEADER_HEIGHT - PORT_RADIUS }}>
                         <button
-                          className="rounded-full border-2 border-white/60 hover:border-white hover:scale-125 transition-transform"
+                          className={cn("rounded-full border-2 border-white/60 hover:border-white hover:scale-125 transition-transform", connectedPortKeys.has(`${device.id}:${p.port.id}`) && "ring-2 ring-white ring-offset-1 ring-offset-[#0a0a0a]")}
                           style={{
                             width: PORT_RADIUS * 2,
                             height: PORT_RADIUS * 2,
@@ -656,7 +710,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
                           {p.port.label}
                         </span>
                         <button
-                          className="rounded-full border-2 border-white/60 hover:border-white hover:scale-125 transition-transform"
+                          className={cn("rounded-full border-2 border-white/60 hover:border-white hover:scale-125 transition-transform", connectedPortKeys.has(`${device.id}:${p.port.id}`) && "ring-2 ring-white ring-offset-1 ring-offset-[#0a0a0a]")}
                           style={{
                             width: PORT_RADIUS * 2,
                             height: PORT_RADIUS * 2,

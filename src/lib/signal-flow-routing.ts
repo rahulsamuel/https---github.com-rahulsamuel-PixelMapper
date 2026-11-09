@@ -18,11 +18,23 @@ export const CABLE_STYLE_OPTIONS: { value: CableStyle; label: string; descriptio
   { value: "rounded-elbow", label: "Rounded L", description: "Right-angle cables with rounded turns" },
 ];
 
-export function buildCablePath(from: RoutePoint, to: RoutePoint, style: CableStyle): RoutedCable {
+export function buildCablePath(
+  from: RoutePoint,
+  to: RoutePoint,
+  style: CableStyle,
+  bend?: RoutePoint
+): RoutedCable {
   const midX = (from.x + to.x) / 2;
   const midY = (from.y + to.y) / 2;
 
   if (style === "curved") {
+    if (bend) {
+      return {
+        d: `${curveSegment(from, bend)} ${curveSegment(bend, to, false)}`,
+        midX: bend.x,
+        midY: bend.y,
+      };
+    }
     return {
       d: `M ${from.x} ${from.y} C ${midX} ${from.y}, ${midX} ${to.y}, ${to.x} ${to.y}`,
       midX,
@@ -30,8 +42,15 @@ export function buildCablePath(from: RoutePoint, to: RoutePoint, style: CableSty
     };
   }
 
-  const points = [from, { x: midX, y: from.y }, { x: midX, y: to.y }, to];
-  return { d: roundedPolylinePath(points, ELBOW_CORNER_RADIUS), midX, midY };
+  const bendX = bend ? bend.x : midX;
+  const points = [from, { x: bendX, y: from.y }, { x: bendX, y: to.y }, to];
+  return { d: roundedPolylinePath(points, ELBOW_CORNER_RADIUS), midX: bendX, midY };
+}
+
+function curveSegment(a: RoutePoint, b: RoutePoint, startWithMove = true): string {
+  const midX = (a.x + b.x) / 2;
+  const body = `C ${midX} ${a.y}, ${midX} ${b.y}, ${b.x} ${b.y}`;
+  return startWithMove ? `M ${a.x} ${a.y} ${body}` : body;
 }
 
 function distance(a: RoutePoint, b: RoutePoint): number {
