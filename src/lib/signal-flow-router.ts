@@ -27,9 +27,11 @@ const GRID = 14;
 const PAD = 56;
 const STUB = 24;
 const OBSTACLE_MARGIN = GRID;
-const TURN_COST = 2;
-const OVERLAP_COST = 30;
-const CROSSING_COST = 6;
+const NEAR_OBSTACLE_BAND = 2;
+const TURN_COST = 6;
+const OVERLAP_COST = 60;
+const CROSSING_COST = 14;
+const NEAR_OBSTACLE_COST = 3;
 const HOP_CLEARANCE = CORNER_RADIUS + HOP_RADIUS + 2;
 const NO_DIR = 4;
 const DX = [1, -1, 0, 0];
@@ -39,6 +41,7 @@ interface Grid {
   width: number;
   height: number;
   blocked: Uint8Array;
+  nearObstacle: Uint8Array;
   usedH: Uint8Array;
   usedV: Uint8Array;
 }
@@ -92,9 +95,28 @@ function createGrid(obstacles: RouteObstacle[], requests: RouteRequest[]): Grid 
     width,
     height,
     blocked,
+    nearObstacle: markNearObstacles(blocked, width, height),
     usedH: new Uint8Array(width * height),
     usedV: new Uint8Array(width * height),
   };
+}
+
+function markNearObstacles(blocked: Uint8Array, width: number, height: number): Uint8Array {
+  const near = new Uint8Array(width * height);
+  for (let gy = 0; gy < height; gy++) {
+    for (let gx = 0; gx < width; gx++) {
+      if (!blocked[gy * width + gx]) continue;
+      for (let dy = -NEAR_OBSTACLE_BAND; dy <= NEAR_OBSTACLE_BAND; dy++) {
+        for (let dx = -NEAR_OBSTACLE_BAND; dx <= NEAR_OBSTACLE_BAND; dx++) {
+          const nx = gx + dx;
+          const ny = gy + dy;
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+          near[ny * width + nx] = 1;
+        }
+      }
+    }
+  }
+  return near;
 }
 
 function routeRequest(grid: Grid, req: RouteRequest): CableRoute {
@@ -185,6 +207,7 @@ function findGridPath(grid: Grid, startIdx: number, goalIdx: number): number[] |
 
       let cost = 1;
       if (dir !== NO_DIR && nd !== dir) cost += TURN_COST;
+      if (grid.nearObstacle[next]) cost += NEAR_OBSTACLE_COST;
       const edge = Math.min(node, next);
       if (DX[nd] !== 0) {
         if (grid.usedH[edge]) cost += OVERLAP_COST;

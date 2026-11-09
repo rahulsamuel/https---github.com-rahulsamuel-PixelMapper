@@ -15,8 +15,8 @@ export interface CableRoute {
   hops: CableHop[];
 }
 
-export const CORNER_RADIUS = 14;
-export const HOP_RADIUS = 6;
+export const CORNER_RADIUS = 8;
+export const HOP_RADIUS = 5;
 
 export const CABLE_STYLE_OPTIONS: { value: CableStyle; label: string; description: string }[] = [
   { value: "curved", label: "Curved", description: "Smooth curved cables" },
