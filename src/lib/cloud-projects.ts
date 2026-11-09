@@ -82,6 +82,36 @@ export async function getUserCloudProjects(
   };
 }
 
+export interface CloudProjectSummary {
+  id: string;
+  projectName: string;
+  updatedAt: string;
+}
+
+export async function getUserCloudProjectSummaries(
+  userId: string
+): Promise<{ data: CloudProjectSummary[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from("pixel_map_projects")
+    .select("id, project_name, updated_at")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    console.error('src/lib/cloud-projects.ts:', error.message);
+    return { data: [], error: 'Something went wrong. Please try again.' };
+  }
+
+  return {
+    data: data.map((p) => ({
+      id: p.id,
+      projectName: p.project_name,
+      updatedAt: p.updated_at,
+    })),
+    error: null,
+  };
+}
+
 export async function getCloudProject(
   projectId: string
 ): Promise<{ data: CloudProject | null; error: string | null }> {

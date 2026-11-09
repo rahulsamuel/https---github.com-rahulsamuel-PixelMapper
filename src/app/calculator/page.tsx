@@ -3,16 +3,16 @@
 
 import dynamic from 'next/dynamic';
 import { computeLedPower } from '@/lib/led-power';
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Calculator, Spline } from 'lucide-react';
 import { loadLedProducts } from '@/lib/led-products-client';
-import { useAuth } from '@/contexts/auth-context';
+import { useSavedPixelMapSelection } from '@/hooks/use-saved-pixel-map-selection';
 import type { Screen } from '@/contexts/pixel-map-types';
-import { getUserCloudProjects, type CloudProject } from '@/lib/cloud-projects';
+import type { CloudProject } from '@/lib/cloud-projects';
 import { buildCalculatorTitle, getScreenProductId, getScreenSetupNotice, saveScreenProductToProject } from '@/lib/calculator-screens';
 import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
 import { usePersistentState } from '@/hooks/use-persistent-state';
@@ -33,20 +33,7 @@ const ResultsDisplay = dynamic(() => import('@/components/calculator/results-dis
   loading: () => <ResultsDisplaySkeleton />,
 });
 
-interface LedProduct {
-    id: string;
-    manufacturer: string;
-    productName: string;
-    tileWidthPx: number;
-    tileHeightPx: number;
-    tileWidthMm: number;
-    tileHeightMm: number;
-    tileWeightKg: number;
-    wattsPerTile: number;
-    maxPowerWPerSqm: number | null;
-    avgPowerWPerSqm: number | null;
-    [key: string]: any;
-}
+import type { LedProduct } from '@/services/supabase';
 
 interface FormState {
     projectName: string;
@@ -88,35 +75,15 @@ export default function CalculatorPage() {
     });
     const [curvingState, setCurvingState] = useState<CurvingState>(DEFAULT_CURVING_STATE);
 
-    const { user } = useAuth();
-    const userId = user?.id ?? null;
-    const [savedProjects, setSavedProjects] = useState<CloudProject[]>([]);
-    const [projectsLoading, setProjectsLoading] = useState(false);
-    const [projectsError, setProjectsError] = useState<string | null>(null);
-    const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
-    const [activeScreenId, setActiveScreenId] = useState<string | null>(null);
-    const [savedProductId, setSavedProductId] = useState<string | null>(null);
+    const { signedIn, summaries, listLoading, listError, activeProject, projectError, activeScreenId, selectProject, selectScreen, refreshActiveProject } = useSavedPixelMapSelection('calculator');
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 
-    const loadSavedProjects = useCallback(async (id: string) => {
-        setProjectsLoading(true);
-        const { data, error } = await getUserCloudProjects(id);
-        setSavedProjects(data);
-        setProjectsError(error);
-        setProjectsLoading(false);
-    }, []);
-
-    useEffect(() => {
-        if (userId) loadSavedProjects(userId);
-    }, [userId, loadSavedProjects]);
-
-    const activeProject = savedProjects.find(p => p.id === activeProjectId) ?? null;
     const activeScreen = activeProject?.projectData.screens.find(s => s.id === activeScreenId) ?? null;
+    const savedProductId = activeScreen ? getScreenProductId(activeScreen) : null;
 
     const applyScreen = (project: CloudProject, screen: Screen) => {
-        setActiveScreenId(screen.id);
-        setSavedProductId(getScreenProductId(screen));
+        selectScreen(screen.id);
         setSaveError(null);
         setFormState(prev => ({
             ...prev,
@@ -128,12 +95,9 @@ export default function CalculatorPage() {
         setActiveTab('results');
     };
 
-    const handleSelectProject = (projectId: string | null) => {
-        setActiveProjectId(projectId);
-        setActiveScreenId(null);
-        setSavedProductId(null);
+    const handleSelectProject = async (projectId: string | null) => {
         setSaveError(null);
-        const project = savedProjects.find(p => p.id === projectId);
+        const project = await selectProject(projectId);
         const firstScreen = project?.projectData.screens[0];
         if (project && firstScreen) applyScreen(project, firstScreen);
     };
@@ -157,8 +121,7 @@ export default function CalculatorPage() {
             setSaveError(error ?? 'Could not save to the Pixel Map project.');
             return;
         }
-        setSavedProductId(formState.selectedProductId);
-        if (userId) await loadSavedProjects(userId);
+        await refreshActiveProject();
     };
 
     useEffect(() => {
@@ -262,13 +225,13 @@ export default function CalculatorPage() {
                 <div className="flex-1 overflow-y-auto">
                     <div className="p-4 space-y-6">
                         <SavedProjectPicker
-                            signedIn={userId !== null}
-                            projects={savedProjects}
-                            projectsLoading={projectsLoading}
-                            projectsError={projectsError}
+                            signedIn={signedIn}
+                            projects={summaries}
+                            projectsLoading={listLoading}
+                            projectsError={listError ?? projectError}
                             activeProject={activeProject}
                             activeScreenId={activeScreenId}
-                            saveAvailable={activeScreenId !== null}
+                            saveAvailable={activeScreen !== null}
                             screenNotice={screenNotice}
                             hasUnsavedChanges={hasUnsavedChanges}
                             saving={saving}

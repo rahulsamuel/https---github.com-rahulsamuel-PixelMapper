@@ -10,21 +10,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type { CloudProject } from '@/lib/cloud-projects';
+import type { CloudProject, CloudProjectSummary } from '@/lib/cloud-projects';
 import type { Screen } from '@/contexts/pixel-map-types';
 
 const MANUAL_VALUE = '__manual__';
 
 interface SavedProjectPickerProps {
   signedIn: boolean;
-  projects: CloudProject[];
+  projects: CloudProjectSummary[];
   projectsLoading: boolean;
   projectsError: string | null;
   activeProject: CloudProject | null;
   showScreens?: boolean;
   activeScreenId: string | null;
   saveAvailable: boolean;
-  screenNotice: string | null;
+  screenNotice?: string | null;
   hasUnsavedChanges: boolean;
   saving: boolean;
   saveError: string | null;

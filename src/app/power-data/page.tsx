@@ -9,13 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { getProcessorsAction } from './actions';
 import { loadLedProducts } from '@/lib/led-products-client';
-import type { Processor } from '@/services/supabase';
+import type { LedProduct, Processor } from '@/services/supabase';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 import { LedProductCombobox } from '@/components/ui/led-product-combobox';
 import { getCachedProcessors, setCachedProcessors } from '@/lib/data-cache';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
-import { useSavedProjects } from '@/hooks/use-saved-projects';
+import { useSavedPixelMapSelection } from '@/hooks/use-saved-pixel-map-selection';
 import { getScreenProductId } from '@/lib/calculator-screens';
 import {
   loadPowerDataSettings,
@@ -24,21 +24,6 @@ import {
   type PowerDataSettings,
 } from '@/lib/project-tab-saves';
 
-interface LedProduct {
-  id: string;
-  manufacturer: string;
-  productName: string;
-  tileWidthPx: number;
-  tileHeightPx: number;
-  wattsPerTile: number;
-  maxPowerWPerSqm: number | null;
-  pixelPitchMm?: number | null;
-  tileWidthMm?: number | null;
-  tileHeightMm?: number | null;
-  tileWeightKg?: number | null;
-  maxBrightnessNit?: number | null;
-  [key: string]: unknown;
-}
 
 function ProductInfoPanel({ product }: { product: LedProduct }) {
   const rows: { label: string; value: string }[] = [];
@@ -112,16 +97,15 @@ export default function PowerDataPage() {
   const selectedProduct = useMemo(() => products.find(p => p.id === selectedProductId), [products, selectedProductId]);
   const selectedProcessor = useMemo(() => processors.find(p => p.id === selectedProcessorId), [processors, selectedProcessorId]);
 
-  const { signedIn, projects, loading: projectsLoading, error: projectsError } = useSavedProjects();
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
-  const [activeScreenId, setActiveScreenId] = useState<string | null>(null);
+  const {
+    signedIn, summaries, listLoading, listError, activeProject, projectError,
+    activeScreenId, selectProject, selectScreen,
+  } = useSavedPixelMapSelection('power-data');
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
-  const [screenNotice, setScreenNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const requestedScreenRef = useRef<string | null>(null);
+  const pendingApplyScreenRef = useRef<string | null>(null);
 
-  const activeProject = projects.find(p => p.id === activeProjectId) ?? null;
   const activeScreen = activeProject?.projectData.screens.find(s => s.id === activeScreenId) ?? null;
   const currentSettings: PowerDataSettings = {
     productId: selectedProductId,
@@ -144,41 +128,47 @@ export default function PowerDataPage() {
     setBitDepth(s.bitDepth);
   };
 
-  const loadScreen = async (projectId: string, screenId: string) => {
-    requestedScreenRef.current = screenId;
-    setActiveScreenId(screenId);
+  const handleSelectProject = async (projectId: string | null) => {
+    setSavedSnapshot(null);
     setSaveError(null);
-    setScreenNotice(null);
-    const { data, error } = await loadPowerDataSettings(projectId, screenId);
-    if (requestedScreenRef.current !== screenId) return;
-    if (error) {
-      setSaveError(error);
-      return;
-    }
-    const screen = projects.find(p => p.id === projectId)?.projectData.screens.find(s => s.id === screenId);
-    const screenProductId = screen ? getScreenProductId(screen) : null;
-    const withScreenProduct = (s: PowerDataSettings): PowerDataSettings => ({ ...s, productId: screenProductId ?? s.productId });
-    if (data) {
-      const settings = withScreenProduct(data);
-      applySettings(settings);
-      setSavedSnapshot(powerDataSnapshot(settings));
-    } else {
-      const settings = withScreenProduct(currentSettings);
-      if (screenProductId) setSelectedProductId(screenProductId);
-      setSavedSnapshot(powerDataSnapshot(settings));
-      setScreenNotice('This screen has no saved power settings yet. Save to keep these settings with it.');
+    const project = await selectProject(projectId);
+    const firstScreen = project?.projectData.screens[0];
+    if (project && firstScreen) {
+      pendingApplyScreenRef.current = firstScreen.id;
+      selectScreen(firstScreen.id);
     }
   };
 
-  const handleSelectProject = (projectId: string | null) => {
-    setActiveProjectId(projectId);
-    setActiveScreenId(null);
-    setSavedSnapshot(null);
-    setScreenNotice(null);
+  const handleSelectScreen = (screenId: string) => {
     setSaveError(null);
-    const firstScreen = projects.find(p => p.id === projectId)?.projectData.screens[0];
-    if (projectId && firstScreen) loadScreen(projectId, firstScreen.id);
+    pendingApplyScreenRef.current = screenId;
+    selectScreen(screenId);
   };
+
+  useEffect(() => {
+    const screen = activeProject?.projectData.screens.find(s => s.id === activeScreenId);
+    if (!activeProject || !screen) return;
+    const screenProductId = getScreenProductId(screen);
+    const shouldApply = pendingApplyScreenRef.current === screen.id;
+    let stale = false;
+    loadPowerDataSettings(activeProject.id, screen.id).then(({ data, error }) => {
+      if (stale) return;
+      if (error) {
+        setSaveError(error);
+        return;
+      }
+      const saved = data ? { ...data, productId: screenProductId ?? data.productId } : null;
+      if (shouldApply) {
+        if (saved) applySettings(saved);
+        else if (screenProductId) setSelectedProductId(screenProductId);
+      }
+      setSavedSnapshot(saved ? powerDataSnapshot(saved) : null);
+    });
+    return () => {
+      stale = true;
+    };
+  }, [activeProject, activeScreenId]);
+
 
   const handleSave = async () => {
     if (!activeProject || !activeScreen) return;
@@ -191,7 +181,6 @@ export default function PowerDataPage() {
       return;
     }
     setSavedSnapshot(powerDataSnapshot(currentSettings));
-    setScreenNotice(null);
   };
 
   const debouncedAmperage = useDebouncedValue(circuitAmperage, 50);
@@ -250,18 +239,17 @@ export default function PowerDataPage() {
 
             <SavedProjectPicker
               signedIn={signedIn}
-              projects={projects}
-              projectsLoading={projectsLoading}
-              projectsError={projectsError}
+              projects={summaries}
+              projectsLoading={listLoading}
+              projectsError={listError ?? projectError}
               activeProject={activeProject}
               activeScreenId={activeScreenId}
               saveAvailable={activeScreen !== null}
-              screenNotice={screenNotice}
               hasUnsavedChanges={hasUnsavedChanges}
               saving={saving}
               saveError={saveError}
               onSelectProject={handleSelectProject}
-              onSelectScreen={(screenId) => activeProject && loadScreen(activeProject.id, screenId)}
+              onSelectScreen={handleSelectScreen}
               onSave={handleSave}
             />
 
