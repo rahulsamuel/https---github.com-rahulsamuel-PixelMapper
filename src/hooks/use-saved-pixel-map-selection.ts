@@ -1,34 +1,42 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { usePersistentState } from "@/hooks/use-persistent-state";
 import {
+  getCachedCloudProject,
+  getCachedCloudProjectSummaries,
   getCloudProject,
   getUserCloudProjectSummaries,
   type CloudProject,
   type CloudProjectSummary,
 } from "@/lib/cloud-projects";
 
-export function useSavedPixelMapSelection(storageKey: string) {
+export const SELECTED_PROJECT_STORAGE_KEY = "saved-pixel-map:projectId";
+export const SELECTED_SCREEN_STORAGE_KEY = "saved-pixel-map:screenId";
+
+export function useSavedPixelMapSelection() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
 
-  const [summaries, setSummaries] = useState<CloudProjectSummary[]>([]);
+  const [activeProjectId, setActiveProjectId] = usePersistentState<string | null>(SELECTED_PROJECT_STORAGE_KEY, null);
+  const [activeScreenId, setActiveScreenId] = usePersistentState<string | null>(SELECTED_SCREEN_STORAGE_KEY, null);
+
+  const [summaries, setSummaries] = useState<CloudProjectSummary[]>(() =>
+    (userId && getCachedCloudProjectSummaries(userId)) || []
+  );
   const [listLoading, setListLoading] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
 
-  const [activeProjectId, setActiveProjectId] = usePersistentState<string | null>(`${storageKey}:projectId`, null);
-  const [activeScreenId, setActiveScreenId] = usePersistentState<string | null>(`${storageKey}:screenId`, null);
-  const [activeProject, setActiveProject] = useState<CloudProject | null>(null);
-  const [projectLoading, setProjectLoading] = useState(false);
+  const [activeProject, setActiveProject] = useState<CloudProject | null>(() =>
+    activeProjectId ? getCachedCloudProject(activeProjectId) : null
+  );
   const [projectError, setProjectError] = useState<string | null>(null);
-  const latestProjectRequestRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!userId) return;
     let stale = false;
-    setListLoading(true);
+    if (!getCachedCloudProjectSummaries(userId)) setListLoading(true);
     getUserCloudProjectSummaries(userId).then(({ data, error }) => {
       if (stale) return;
       setSummaries(data);
@@ -40,20 +48,11 @@ export function useSavedPixelMapSelection(storageKey: string) {
     };
   }, [userId]);
 
-  const loadProject = useCallback(async (projectId: string) => {
-    latestProjectRequestRef.current = projectId;
-    setProjectLoading(true);
-    const result = await getCloudProject(projectId);
-    if (latestProjectRequestRef.current !== projectId) return null;
-    setProjectLoading(false);
-    return result;
-  }, []);
-
   useEffect(() => {
-    if (!userId || !activeProjectId || activeProject?.id === activeProjectId) return;
+    if (!userId || !activeProjectId) return;
     let stale = false;
-    loadProject(activeProjectId).then((result) => {
-      if (!result || stale) return;
+    getCloudProject(activeProjectId).then((result) => {
+      if (stale) return;
       if (result.error) {
         setProjectError(result.error);
         return;
@@ -61,14 +60,18 @@ export function useSavedPixelMapSelection(storageKey: string) {
       if (!result.data) {
         setActiveProjectId(null);
         setActiveScreenId(null);
+        setActiveProject(null);
         return;
       }
-      setActiveProject(result.data);
+      const fresh = result.data;
+      setActiveProject((prev) =>
+        prev?.id === fresh.id && prev.updatedAt === fresh.updatedAt ? prev : fresh
+      );
     });
     return () => {
       stale = true;
     };
-  }, [userId, activeProjectId, activeProject?.id, loadProject, setActiveProjectId, setActiveScreenId]);
+  }, [userId, activeProjectId, setActiveProjectId, setActiveScreenId]);
 
   const selectProject = useCallback(
     async (projectId: string | null): Promise<CloudProject | null> => {
@@ -79,8 +82,7 @@ export function useSavedPixelMapSelection(storageKey: string) {
         setActiveProject(null);
         return null;
       }
-      const result = await loadProject(projectId);
-      if (!result) return null;
+      const result = await getCloudProject(projectId);
       if (result.error) {
         setProjectError(result.error);
         return null;
@@ -94,27 +96,26 @@ export function useSavedPixelMapSelection(storageKey: string) {
       setActiveScreenId(null);
       return result.data;
     },
-    [loadProject, setActiveProjectId, setActiveScreenId]
+    [setActiveProjectId, setActiveScreenId]
   );
 
   const refreshActiveProject = useCallback(async () => {
     if (!activeProjectId) return;
-    const result = await loadProject(activeProjectId);
-    if (!result) return;
+    const result = await getCloudProject(activeProjectId);
     if (result.error) {
       setProjectError(result.error);
       return;
     }
     if (result.data) setActiveProject(result.data);
-  }, [activeProjectId, loadProject]);
+  }, [activeProjectId]);
 
   return {
     signedIn: userId !== null,
     summaries,
     listLoading,
     listError,
+    activeProjectId,
     activeProject,
-    projectLoading,
     projectError,
     activeScreenId,
     selectProject,

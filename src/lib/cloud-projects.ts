@@ -12,6 +12,17 @@ export interface CloudProject {
   updatedAt: string;
 }
 
+const projectCache = new Map<string, CloudProject>();
+let summaryCache: { userId: string; items: CloudProjectSummary[] } | null = null;
+
+export function getCachedCloudProject(projectId: string): CloudProject | null {
+  return projectCache.get(projectId) ?? null;
+}
+
+export function getCachedCloudProjectSummaries(userId: string): CloudProjectSummary[] | null {
+  return summaryCache?.userId === userId ? summaryCache.items : null;
+}
+
 export async function saveCloudProject(
   userId: string,
   projectName: string,
@@ -39,18 +50,28 @@ export async function updateCloudProject(
   projectName: string,
   projectData: ProjectData
 ): Promise<{ success: boolean; error: string | null }> {
+  const updatedAt = new Date().toISOString();
   const { error } = await supabase
     .from("pixel_map_projects")
     .update({
       project_name: projectName,
       project_data: projectData,
-      updated_at: new Date().toISOString(),
+      updated_at: updatedAt,
     })
     .eq("id", projectId);
 
   if (error) {
     console.error('src/lib/cloud-projects.ts:', error.message);
     return { success: false, error: 'Something went wrong. Please try again.' };
+  }
+  const cached = projectCache.get(projectId);
+  if (cached) {
+    projectCache.set(projectId, {
+      ...cached,
+      projectName,
+      projectData,
+      updatedAt: updatedAt,
+    });
   }
   return { success: true, error: null };
 }
@@ -102,14 +123,13 @@ export async function getUserCloudProjectSummaries(
     return { data: [], error: 'Something went wrong. Please try again.' };
   }
 
-  return {
-    data: data.map((p) => ({
-      id: p.id,
-      projectName: p.project_name,
-      updatedAt: p.updated_at,
-    })),
-    error: null,
-  };
+  const items = data.map((p) => ({
+    id: p.id,
+    projectName: p.project_name,
+    updatedAt: p.updated_at,
+  }));
+  summaryCache = { userId, items };
+  return { data: items, error: null };
 }
 
 export async function getCloudProject(
@@ -127,17 +147,16 @@ export async function getCloudProject(
   }
   if (!data) return { data: null, error: null };
 
-  return {
-    data: {
-      id: data.id,
-      userId: data.user_id,
-      projectName: data.project_name,
-      projectData: data.project_data as ProjectData,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-    },
-    error: null,
+  const project: CloudProject = {
+    id: data.id,
+    userId: data.user_id,
+    projectName: data.project_name,
+    projectData: data.project_data as ProjectData,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
   };
+  projectCache.set(project.id, project);
+  return { data: project, error: null };
 }
 
 export async function deleteCloudProject(
@@ -152,5 +171,6 @@ export async function deleteCloudProject(
     console.error('src/lib/cloud-projects.ts:', error.message);
     return { success: false, error: 'Something went wrong. Please try again.' };
   }
+  projectCache.delete(projectId);
   return { success: true, error: null };
 }

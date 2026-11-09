@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils';
 import { downloadRackPng } from '@/lib/rack-download';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
-import { useSavedProjects } from '@/hooks/use-saved-projects';
+import { useSavedPixelMapSelection } from '@/hooks/use-saved-pixel-map-selection';
 import { loadRackDrawingSettings, saveRackDrawingSettings } from '@/lib/project-tab-saves';
 
 interface RackState {
@@ -77,15 +77,13 @@ export function RackBuilder() {
   const [activeSide, setActiveSide] = usePersistentState<RackSide>('rack-builder:activeSide', 'front');
   const [showImages, setShowImages] = usePersistentState<boolean>('rack-builder:showImages', true);
   const [libraryVersion, setLibraryVersion] = useState(0);
-  const { signedIn, projects, loading: projectsLoading, error: projectsError } = useSavedProjects();
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const { signedIn, summaries, listLoading, listError, activeProjectId, activeProject, projectError, selectProject } = useSavedPixelMapSelection();
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const requestedProjectRef = useRef<string | null>(null);
 
-  const activeProject = projects.find(p => p.id === activeProjectId) ?? null;
   const currentSnapshot = JSON.stringify({ racks, nextRackId });
   const hasUnsavedChanges = activeProjectId !== null && savedSnapshot !== currentSnapshot;
 
@@ -113,14 +111,22 @@ export function RackBuilder() {
     }
   };
 
-  const handleSelectProject = (projectId: string | null) => {
+  const handleSelectProject = async (projectId: string | null) => {
     requestedProjectRef.current = projectId;
-    setActiveProjectId(projectId);
     setSavedSnapshot(null);
     setNotice(null);
     setSaveError(null);
-    if (projectId) loadProject(projectId);
+    const project = await selectProject(projectId);
+    if (projectId && project) loadProject(projectId);
   };
+
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current || !activeProjectId) return;
+    restoredRef.current = true;
+    requestedProjectRef.current = activeProjectId;
+    loadProject(activeProjectId);
+  });
 
   const handleSave = async () => {
     if (!activeProjectId) return;
@@ -242,9 +248,9 @@ export function RackBuilder() {
           projectPicker={
             <SavedProjectPicker
               signedIn={signedIn}
-              projects={projects}
-              projectsLoading={projectsLoading}
-              projectsError={projectsError}
+              projects={summaries}
+              projectsLoading={listLoading}
+              projectsError={listError ?? projectError}
               activeProject={activeProject}
               showScreens={false}
               activeScreenId={null}

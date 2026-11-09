@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePersistentState } from "@/hooks/use-persistent-state";
 import { ScreenPreview } from "./screen-preview";
 import { PreVisualControls } from "./pre-visual-controls";
@@ -13,7 +13,7 @@ import { PanelLeftClose, PanelLeftOpen, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
 import { SavedProjectPicker } from "@/components/calculator/saved-project-picker";
-import { useSavedProjects } from "@/hooks/use-saved-projects";
+import { useSavedPixelMapSelection } from "@/hooks/use-saved-pixel-map-selection";
 import { loadPreVisualSave, savePreVisualSave } from "@/lib/project-tab-saves";
 
 interface Product {
@@ -101,15 +101,13 @@ export function PreVisualBuilder() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const exportRef = useRef<HTMLDivElement>(null);
-  const { signedIn, projects, loading: projectsLoading, error: projectsError } = useSavedProjects();
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const { signedIn, summaries, listLoading, listError, activeProjectId, activeProject, projectError, selectProject } = useSavedPixelMapSelection();
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const requestedProjectRef = useRef<string | null>(null);
 
-  const activeProject = projects.find(p => p.id === activeProjectId) ?? null;
   const currentSnapshot = JSON.stringify({ settings, screens });
   const hasUnsavedChanges = activeProjectId !== null && savedSnapshot !== currentSnapshot;
 
@@ -206,14 +204,22 @@ export function PreVisualBuilder() {
     }
   };
 
-  const handleSelectProject = (projectId: string | null) => {
+  const handleSelectProject = async (projectId: string | null) => {
     requestedProjectRef.current = projectId;
-    setActiveProjectId(projectId);
     setSavedSnapshot(null);
     setNotice(null);
     setSaveError(null);
-    if (projectId) loadProject(projectId);
+    const project = await selectProject(projectId);
+    if (projectId && project) loadProject(projectId);
   };
+
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (loading || restoredRef.current || !activeProjectId) return;
+    restoredRef.current = true;
+    requestedProjectRef.current = activeProjectId;
+    loadProject(activeProjectId);
+  });
 
   const handleSave = async () => {
     if (!activeProjectId) return;
@@ -242,9 +248,9 @@ export function PreVisualBuilder() {
         <div className="flex-shrink-0 px-4 pt-4 pb-4 border-b">
           <SavedProjectPicker
             signedIn={signedIn}
-            projects={projects}
-            projectsLoading={projectsLoading}
-            projectsError={projectsError}
+            projects={summaries}
+            projectsLoading={listLoading}
+            projectsError={listError ?? projectError}
             activeProject={activeProject}
             showScreens={false}
             activeScreenId={null}

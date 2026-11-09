@@ -64,7 +64,7 @@ function greatestCommonDivisor(a: number, b: number): number {
 
 export default function CalculatorPage() {
     const [products, setProducts] = useState<LedProduct[]>([]);
-    const [activeTab, setActiveTab] = usePersistentState<string>('calculator:activeTab', 'results');
+    const [activeTab, setActiveTab] = useState<string>('results');
     const [formState, setFormState] = usePersistentState<FormState>('calculator:formState', {
         projectName: "My LED Project",
         selectedProductId: null,
@@ -75,7 +75,7 @@ export default function CalculatorPage() {
     });
     const [curvingState, setCurvingState] = useState<CurvingState>(DEFAULT_CURVING_STATE);
 
-    const { signedIn, summaries, listLoading, listError, activeProject, projectError, activeScreenId, selectProject, selectScreen, refreshActiveProject } = useSavedPixelMapSelection('calculator');
+    const { signedIn, summaries, listLoading, listError, activeProject, projectError, activeScreenId, selectProject, selectScreen, refreshActiveProject } = useSavedPixelMapSelection();
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
 

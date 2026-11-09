@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { SavedProjectPicker } from "@/components/calculator/saved-project-picker";
-import { useSavedProjects } from "@/hooks/use-saved-projects";
+import { useSavedPixelMapSelection } from "@/hooks/use-saved-pixel-map-selection";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,8 +41,7 @@ const EMPTY_DATA: SignalFlowData = {
 export default function SignalFlowPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { signedIn, projects, loading: projectsLoading, error: projectsError } = useSavedProjects();
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const { signedIn, summaries, listLoading, listError, activeProjectId, activeProject, projectError, selectProject } = useSavedPixelMapSelection();
   const [diagram, setDiagram] = useState<SignalFlowDiagram | null>(null);
   const [diagramData, setDiagramData] = useState<SignalFlowData>(EMPTY_DATA);
   const [loadingDiagram, setLoadingDiagram] = useState(false);
@@ -90,8 +89,6 @@ export default function SignalFlowPage() {
     );
   }, [dbCableTypes]);
 
-  const selectedProject = projects.find((p) => p.id === selectedProjectId) ?? null;
-
   // Load diagram when project is selected
   const loadDiagram = useCallback(async (projectId: string) => {
     setLoadingDiagram(true);
@@ -117,12 +114,19 @@ export default function SignalFlowPage() {
     setDirty(false);
   }, [toast, dbCableTypes]);
 
-  const handleSelectProject = (projectId: string | null) => {
-    setSelectedProjectId(projectId);
+  const handleSelectProject = async (projectId: string | null) => {
     setDiagram(null);
     setDirty(false);
-    if (projectId) loadDiagram(projectId);
+    const project = await selectProject(projectId);
+    if (projectId && project) loadDiagram(projectId);
   };
+
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current || !activeProjectId) return;
+    restoredRef.current = true;
+    loadDiagram(activeProjectId);
+  }, [activeProjectId, loadDiagram]);
 
   const handleDataChange = (newData: SignalFlowData) => {
     setDiagramData(newData);
@@ -132,12 +136,12 @@ export default function SignalFlowPage() {
   };
 
   const handleSave = async () => {
-    if (!user || !selectedProject) return;
+    if (!user || !activeProject) return;
     setSaving(true);
     const { success, error } = await saveSignalFlowDiagram(
-      selectedProject.id,
+      activeProject.id,
       user.id,
-      `${selectedProject.projectName} — Signal Flow`,
+      `${activeProject.projectName} — Signal Flow`,
       diagramData,
       diagram?.id
     );
@@ -151,7 +155,7 @@ export default function SignalFlowPage() {
       setDirty(false);
       lastSavedRef.current = JSON.stringify(diagramData);
       // Fetch the diagram id without toggling loadingDiagram (avoids blanking canvas)
-      const { data: fresh } = await getSignalFlowDiagram(selectedProject.id);
+      const { data: fresh } = await getSignalFlowDiagram(activeProject.id);
       if (fresh) setDiagram(fresh);
     }
   };
@@ -164,11 +168,11 @@ export default function SignalFlowPage() {
   // Auto-save on unmount / page leave if dirty
   useEffect(() => {
     const handler = () => {
-      if (dirty && user && selectedProject) {
+      if (dirty && user && activeProject) {
         saveSignalFlowDiagram(
-          selectedProject.id,
+          activeProject.id,
           user.id,
-          `${selectedProject.projectName} — Signal Flow`,
+          `${activeProject.projectName} — Signal Flow`,
           diagramData,
           diagram?.id
         );
@@ -176,9 +180,9 @@ export default function SignalFlowPage() {
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [dirty, user, selectedProject, diagramData, diagram]);
+  }, [dirty, user, activeProject, diagramData, diagram]);
 
-  const exportTitle = selectedProject?.projectName ?? "Signal Flow Diagram";
+  const exportTitle = activeProject?.projectName ?? "Signal Flow Diagram";
 
   const handleExportHtml = async () => {
     if (!exportSurfaceRef.current) return;
@@ -269,13 +273,13 @@ export default function SignalFlowPage() {
             projectPicker={
               <SavedProjectPicker
                 signedIn={signedIn}
-                projects={projects}
-                projectsLoading={projectsLoading}
-                projectsError={projectsError}
-                activeProject={selectedProject}
+                projects={summaries}
+                projectsLoading={listLoading}
+                projectsError={listError ?? projectError}
+                activeProject={activeProject}
                 showScreens={false}
                 activeScreenId={null}
-                saveAvailable={selectedProject !== null}
+                saveAvailable={activeProject !== null}
                 screenNotice={null}
                 hasUnsavedChanges={dirty}
                 saving={saving}

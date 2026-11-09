@@ -100,7 +100,7 @@ export default function PowerDataPage() {
   const {
     signedIn, summaries, listLoading, listError, activeProject, projectError,
     activeScreenId, selectProject, selectScreen,
-  } = useSavedPixelMapSelection('power-data');
+  } = useSavedPixelMapSelection();
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
