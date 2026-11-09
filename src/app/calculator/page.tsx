@@ -13,7 +13,7 @@ import { loadLedProducts } from '@/lib/led-products-client';
 import { useAuth } from '@/contexts/auth-context';
 import type { Screen } from '@/contexts/pixel-map-types';
 import { getUserCloudProjects, type CloudProject } from '@/lib/cloud-projects';
-import { buildCalculatorTitle, getScreenSetupNotice, saveScreenProductToProject } from '@/lib/calculator-screens';
+import { buildCalculatorTitle, getScreenProductId, getScreenSetupNotice, saveScreenProductToProject } from '@/lib/calculator-screens';
 import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 import {
@@ -116,12 +116,12 @@ export default function CalculatorPage() {
 
     const applyScreen = (project: CloudProject, screen: Screen) => {
         setActiveScreenId(screen.id);
-        setSavedProductId(screen.selectedProductId ?? null);
+        setSavedProductId(getScreenProductId(screen));
         setSaveError(null);
         setFormState(prev => ({
             ...prev,
             projectName: project.projectName,
-            selectedProductId: screen.selectedProductId ?? null,
+            selectedProductId: getScreenProductId(screen),
             screenWidthTiles: screen.dimensions.screenWidth,
             screenHeightTiles: screen.dimensions.screenHeight,
         }));
@@ -145,9 +145,13 @@ export default function CalculatorPage() {
 
     const handleSaveScreen = async () => {
         if (!activeProject || !activeScreen) return;
+        if (formState.selectedProductId && !selectedProduct) {
+            setSaveError('LED products are still loading. Try again in a moment.');
+            return;
+        }
         setSaving(true);
         setSaveError(null);
-        const { success, error } = await saveScreenProductToProject(activeProject.id, activeScreen.id, formState.selectedProductId);
+        const { success, error } = await saveScreenProductToProject(activeProject.id, activeScreen.id, selectedProduct);
         setSaving(false);
         if (!success) {
             setSaveError(error ?? 'Could not save to the Pixel Map project.');
