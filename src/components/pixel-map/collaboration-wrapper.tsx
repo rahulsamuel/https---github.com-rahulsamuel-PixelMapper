@@ -13,6 +13,8 @@ import { supabase } from "@/lib/supabase/client";
 import { saveCloudProject } from "@/lib/cloud-projects";
 import type { ProjectData } from "@/contexts/pixel-map-context";
 
+const ACTIVE_PROJECT_KEY = "pixel-map:activeProjectId";
+
 export function CollaborationWrapper() {
   const {
     activeProjectId,
@@ -49,16 +51,17 @@ export function CollaborationWrapper() {
     setProjectName(data.project_name);
     setActiveProjectId(projectId);
     loadedRef.current = projectId;
+    localStorage.setItem(ACTIVE_PROJECT_KEY, projectId);
 
     const url = new URL(window.location.href);
     url.searchParams.set("project", projectId);
     window.history.replaceState({}, "", url.toString());
   }, [loadProjectData, setActiveProjectId, setProjectName, toast]);
 
-  // Load project from URL param on mount
+  // Load project from URL param, or the last opened project, on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const projectId = params.get("project");
+    const projectId = params.get("project") ?? localStorage.getItem(ACTIVE_PROJECT_KEY);
     if (projectId && projectId !== loadedRef.current && user) {
       loadedRef.current = projectId;
       (async () => {
@@ -68,10 +71,15 @@ export function CollaborationWrapper() {
           .eq("id", projectId)
           .maybeSingle();
 
-        if (error || !data) return;
+        if (error) return;
+        if (!data) {
+          localStorage.removeItem(ACTIVE_PROJECT_KEY);
+          return;
+        }
         loadProjectData(data.project_data as ProjectData);
         setProjectName(data.project_name);
         setActiveProjectId(projectId);
+        localStorage.setItem(ACTIVE_PROJECT_KEY, projectId);
       })();
     }
   }, [user, loadProjectData, setActiveProjectId, setProjectName]);
@@ -120,6 +128,7 @@ export function CollaborationWrapper() {
     startNewProject();
     setActiveProjectId(null);
     loadedRef.current = null;
+    localStorage.removeItem(ACTIVE_PROJECT_KEY);
     const url = new URL(window.location.href);
     url.searchParams.delete("project");
     window.history.replaceState({}, "", url.toString());
