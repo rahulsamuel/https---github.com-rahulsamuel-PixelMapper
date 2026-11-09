@@ -140,6 +140,43 @@ const CATEGORY_ORDER: DeviceCategory[] = [
   "other",
 ];
 
+const BEND_GRID = 8;
+
+function snapBendPoint(x: number, y: number) {
+  return { x: Math.round(x / BEND_GRID) * BEND_GRID, y: Math.round(y / BEND_GRID) * BEND_GRID };
+}
+
+function distanceToSegment(p: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lengthSq = dx * dx + dy * dy;
+  const t = lengthSq === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSq));
+  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+}
+
+function nearestSegmentIndex(anchors: { x: number; y: number }[], p: { x: number; y: number }) {
+  let best = 0;
+  let bestDistance = Infinity;
+  for (let i = 0; i < anchors.length - 1; i++) {
+    const d = distanceToSegment(p, anchors[i], anchors[i + 1]);
+    if (d < bestDistance) {
+      bestDistance = d;
+      best = i;
+    }
+  }
+  return best;
+}
+
+function resolveConnectionEndpoints(conn: SignalFlowConnection, devices: SignalFlowDevice[]) {
+  const fromDevice = devices.find((d) => d.id === conn.fromDeviceId);
+  const toDevice = devices.find((d) => d.id === conn.toDeviceId);
+  if (!fromDevice || !toDevice) return null;
+  const from = resolveEndpoint(fromDevice, conn.fromPortId);
+  const to = resolveEndpoint(toDevice, conn.toPortId);
+  if (!from || !to) return null;
+  return { from, to };
+}
+
 export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loading }: SignalFlowCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
@@ -153,7 +190,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
   } | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
-  const [bendingConnectionId, setBendingConnectionId] = useState<string | null>(null);
+  const [draggingBend, setDraggingBend] = useState<{ connectionId: string; index: number } | null>(null);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<DeviceCategory>>(new Set());
   const [dbDevices, setDbDevices] = useState<SidebarItem[]>([]);
   const [loadingProcessors, setLoadingProcessors] = useState(true);
@@ -175,13 +212,9 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
   const cableRoutes = useMemo(() => {
     const inputs: CableRouteInput[] = [];
     for (const conn of data.connections) {
-      const fromDevice = data.devices.find((d) => d.id === conn.fromDeviceId);
-      const toDevice = data.devices.find((d) => d.id === conn.toDeviceId);
-      if (!fromDevice || !toDevice) continue;
-      const from = resolveEndpoint(fromDevice, conn.fromPortId);
-      const to = resolveEndpoint(toDevice, conn.toPortId);
-      if (!from || !to) continue;
-      inputs.push({ id: conn.id, from, to, bend: conn.bend });
+      const endpoints = resolveConnectionEndpoints(conn, data.devices);
+      if (!endpoints) continue;
+      inputs.push({ id: conn.id, ...endpoints, bends: conn.bends });
     }
     const obstacles = data.devices.map((d) => ({ x: d.x, y: d.y, width: d.width, height: d.height }));
     return routeCables(inputs, obstacles, cableStyle);
@@ -287,29 +320,34 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
     };
   }, [draggingDevice, dragOffset, update]);
 
-  // Drag a cable's middle point to bend its route
+  // Drag a bend point to reshape the cable route
   useEffect(() => {
-    if (!bendingConnectionId) return;
+    if (!draggingBend) return;
+    const { connectionId, index } = draggingBend;
     const handleMove = (e: globalThis.MouseEvent) => {
       if (!canvasRef.current) return;
       const rect = canvasRef.current.getBoundingClientRect();
-      const x = (e.clientX - rect.left + canvasRef.current.scrollLeft) / zoom;
-      const y = (e.clientY - rect.top + canvasRef.current.scrollTop) / zoom;
+      const point = snapBendPoint(
+        (e.clientX - rect.left + canvasRef.current.scrollLeft) / zoom,
+        (e.clientY - rect.top + canvasRef.current.scrollTop) / zoom
+      );
       update((prev) => ({
         ...prev,
         connections: prev.connections.map((c) =>
-          c.id === bendingConnectionId ? { ...c, bend: { x, y } } : c
+          c.id === connectionId && c.bends
+            ? { ...c, bends: c.bends.map((b, i) => (i === index ? point : b)) }
+            : c
         ),
       }));
     };
-    const handleUp = () => setBendingConnectionId(null);
+    const handleUp = () => setDraggingBend(null);
     window.addEventListener("mousemove", handleMove);
     window.addEventListener("mouseup", handleUp);
     return () => {
       window.removeEventListener("mousemove", handleMove);
       window.removeEventListener("mouseup", handleUp);
     };
-  }, [bendingConnectionId, zoom, update]);
+  }, [draggingBend, zoom, update]);
 
   // Track mouse for cable drawing
   useEffect(() => {
@@ -405,12 +443,40 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
     }
   };
 
-  const handleConnectionMouseDown = (e: MouseEvent, connId: string) => {
+  const handleConnectionMouseDown = (e: MouseEvent, conn: SignalFlowConnection) => {
     e.stopPropagation();
-    setSelectedConnectionId(connId);
+    setSelectedConnectionId(conn.id);
     setSelectedDeviceId(null);
     setPanelClosed(false);
-    setBendingConnectionId(connId);
+    const endpoints = resolveConnectionEndpoints(conn, data.devices);
+    if (!endpoints || !canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const point = snapBendPoint(
+      (e.clientX - rect.left + canvasRef.current.scrollLeft) / zoom,
+      (e.clientY - rect.top + canvasRef.current.scrollTop) / zoom
+    );
+    const bends = conn.bends ?? [];
+    const index = nearestSegmentIndex([endpoints.from.point, ...bends, endpoints.to.point], point);
+    const nextBends = [...bends.slice(0, index), point, ...bends.slice(index)];
+    update((prev) => ({
+      ...prev,
+      connections: prev.connections.map((c) => (c.id === conn.id ? { ...c, bends: nextBends } : c)),
+    }));
+    setDraggingBend({ connectionId: conn.id, index });
+  };
+
+  const handleBendMouseDown = (e: MouseEvent, connectionId: string, index: number) => {
+    e.stopPropagation();
+    setDraggingBend({ connectionId, index });
+  };
+
+  const removeBend = (connectionId: string, index: number) => {
+    update((prev) => ({
+      ...prev,
+      connections: prev.connections.map((c) =>
+        c.id === connectionId && c.bends ? { ...c, bends: c.bends.filter((_, i) => i !== index) } : c
+      ),
+    }));
   };
 
   const deleteSelected = () => {
@@ -603,7 +669,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
               const color = getCableColor(conn.cableType);
               const isSelected = conn.id === selectedConnectionId;
               return (
-                <g key={conn.id} className="pointer-events-auto cursor-grab" onMouseDown={(e) => handleConnectionMouseDown(e, conn.id)}>
+                <g key={conn.id} className="pointer-events-auto cursor-grab" onMouseDown={(e) => handleConnectionMouseDown(e, conn)}>
                   <path d={path.d} fill="none" stroke="transparent" strokeWidth={16} />
                   <path
                     d={path.d}
@@ -626,16 +692,24 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
                       {conn.label}
                     </text>
                   )}
-                  {isSelected && (
-                    <circle
-                      cx={path.midX}
-                      cy={path.midY}
-                      r={7}
-                      fill={color}
-                      stroke="white"
-                      strokeWidth={2}
-                    />
-                  )}
+                  {isSelected &&
+                    (conn.bends ?? []).map((bend, index) => (
+                      <circle
+                        key={index}
+                        cx={bend.x}
+                        cy={bend.y}
+                        r={5}
+                        fill="white"
+                        stroke={color}
+                        strokeWidth={2}
+                        className="pointer-events-auto cursor-move"
+                        onMouseDown={(e) => handleBendMouseDown(e, conn.id, index)}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          removeBend(conn.id, index);
+                        }}
+                      />
+                    ))}
                 </g>
               );
             })}
@@ -800,7 +874,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
         </button>
       </div>
       {((selectedDeviceId || selectedConnectionId) && !panelClosed) && (
-        <div className="w-64 flex-shrink-0 border-l bg-sidebar flex flex-col overflow-hidden">
+        <div className="w-56 flex-shrink-0 border-l bg-sidebar flex flex-col overflow-hidden">
           {selectedDeviceId && (() => {
             const device = data.devices.find((d) => d.id === selectedDeviceId);
             if (!device) return null;
@@ -1047,21 +1121,26 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
                     })}
                   </div>
                 </div>
-                {conn.bend && cableStyle === "rounded-elbow" && (
-                  <button
-                    className="w-full text-xs text-primary hover:underline"
-                    onClick={() =>
-                      update((prev) => ({
-                        ...prev,
-                        connections: prev.connections.map((c) =>
-                          c.id === conn.id ? { ...c, bend: undefined } : c
-                        ),
-                      }))
-                    }
-                  >
-                    Reset route to automatic
-                  </button>
-                )}
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Click a cable to add a bend point. Drag a point to reshape the route, double-click it to remove.
+                  </p>
+                  {conn.bends && conn.bends.length > 0 && (
+                    <button
+                      className="w-full text-xs text-primary hover:underline"
+                      onClick={() =>
+                        update((prev) => ({
+                          ...prev,
+                          connections: prev.connections.map((c) =>
+                            c.id === conn.id ? { ...c, bends: undefined } : c
+                          ),
+                        }))
+                      }
+                    >
+                      Reset route to automatic
+                    </button>
+                  )}
+                </div>
                 <div className="text-xs text-muted-foreground space-y-1 border rounded-md p-2 bg-muted/30">
                   <p><span className="text-muted-foreground/60">Cable:</span> {getCableName(conn.cableType)}</p>
                   <p><span className="text-muted-foreground/60">Color:</span> <span className="inline-block w-3 h-3 rounded-full align-middle ml-1" style={{ backgroundColor: getCableColor(conn.cableType) }} /></p>

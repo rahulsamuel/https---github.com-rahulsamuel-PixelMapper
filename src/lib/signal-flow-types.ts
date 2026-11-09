@@ -69,7 +69,7 @@ export interface SignalFlowConnection {
   toPortId: string;
   cableType: string;
   label: string;
-  bend?: { x: number; y: number };
+  bends?: { x: number; y: number }[];
   lineStyle?: CableLineStyle;
 }
 

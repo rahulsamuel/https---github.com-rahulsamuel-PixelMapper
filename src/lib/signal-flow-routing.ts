@@ -22,7 +22,7 @@ export interface CableRouteInput {
   id: string;
   from: RouteEndpoint;
   to: RouteEndpoint;
-  bend?: RoutePoint;
+  bends?: RoutePoint[];
 }
 
 export interface RoutedCable {
@@ -47,7 +47,7 @@ export function routeCables(
 
   if (style === "curved") {
     for (const input of inputs) {
-      routes.set(input.id, buildCablePath(input.from.point, input.to.point, "curved", input.bend));
+      routes.set(input.id, buildCablePath(input.from.point, input.to.point, "curved", input.bends));
     }
     return routes;
   }
@@ -57,7 +57,7 @@ export function routeCables(
       id: input.id,
       from: input.from,
       to: input.to,
-      waypoints: input.bend ? [input.bend] : [],
+      waypoints: input.bends ?? [],
     })),
     obstacles
   );
@@ -74,18 +74,17 @@ export function buildCablePath(
   from: RoutePoint,
   to: RoutePoint,
   style: CableStyle,
-  bend?: RoutePoint
+  bends: RoutePoint[] = []
 ): RoutedCable {
   const midX = (from.x + to.x) / 2;
   const midY = (from.y + to.y) / 2;
 
   if (style === "curved") {
-    if (bend) {
-      return {
-        d: `${curveSegment(from, bend)} ${curveSegment(bend, to, false)}`,
-        midX: bend.x,
-        midY: bend.y,
-      };
+    if (bends.length > 0) {
+      const anchors = [from, ...bends, to];
+      const d = anchors.slice(1).map((end, i) => curveSegment(anchors[i], end, i === 0)).join(" ");
+      const middle = bends[Math.floor(bends.length / 2)];
+      return { d, midX: middle.x, midY: middle.y };
     }
     return {
       d: `M ${from.x} ${from.y} C ${midX} ${from.y}, ${midX} ${to.y}, ${to.x} ${to.y}`,
