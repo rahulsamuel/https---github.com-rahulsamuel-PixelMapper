@@ -26,11 +26,12 @@ import {
   saveSignalFlowDiagram,
   type SignalFlowDiagram,
 } from "@/lib/signal-flow-client";
-import { downloadSignalFlowHtml, downloadSignalFlowPdf } from "@/lib/signal-flow-download";
+import { downloadSignalFlow, type SignalFlowExportFormat, type SignalFlowExportMode } from "@/lib/signal-flow-download";
+import { SignalFlowExportMenu, type SignalFlowExportJob } from "@/components/signal-flow/signal-flow-export-menu";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase/client";
-import { Download, Trash2, Cable } from "lucide-react";
+import { Trash2, Cable } from "lucide-react";
 
 const EMPTY_DATA: SignalFlowData = {
   devices: [],
@@ -47,7 +48,7 @@ export default function SignalFlowPage() {
   const [loadingDiagram, setLoadingDiagram] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const [exporting, setExporting] = useState<"html" | "pdf" | null>(null);
+  const [exporting, setExporting] = useState<SignalFlowExportJob | null>(null);
   const exportSurfaceRef = useRef<HTMLDivElement | null>(null);
   const lastSavedRef = useRef<string>("");
 
@@ -184,25 +185,13 @@ export default function SignalFlowPage() {
 
   const exportTitle = activeProject?.projectName ?? "Signal Flow Diagram";
 
-  const handleExportHtml = async () => {
+  const handleExport = async (format: SignalFlowExportFormat, mode: SignalFlowExportMode) => {
     if (!exportSurfaceRef.current) return;
-    setExporting("html");
+    setExporting({ format, mode });
     try {
-      await downloadSignalFlowHtml(exportSurfaceRef.current, exportTitle);
+      await downloadSignalFlow(format, mode, exportSurfaceRef.current, exportTitle);
     } catch {
-      toast({ title: "Export failed", description: "Could not generate HTML export.", variant: "destructive" });
-    } finally {
-      setExporting(null);
-    }
-  };
-
-  const handleExportPdf = async () => {
-    if (!exportSurfaceRef.current) return;
-    setExporting("pdf");
-    try {
-      await downloadSignalFlowPdf(exportSurfaceRef.current, exportTitle);
-    } catch {
-      toast({ title: "Export failed", description: "Could not generate PDF export.", variant: "destructive" });
+      toast({ title: "Export failed", description: `Could not generate the ${format.toUpperCase()} export.`, variant: "destructive" });
     } finally {
       setExporting(null);
     }
@@ -223,24 +212,11 @@ export default function SignalFlowPage() {
           </div>
 
           <div className="flex items-center gap-2 ml-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportHtml}
+            <SignalFlowExportMenu
               disabled={diagramData.devices.length === 0 || exporting !== null}
-            >
-              <Download className="mr-1.5 h-3.5 w-3.5" />
-              {exporting === "html" ? "Exporting…" : "HTML"}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportPdf}
-              disabled={diagramData.devices.length === 0 || exporting !== null}
-            >
-              <Download className="mr-1.5 h-3.5 w-3.5" />
-              {exporting === "pdf" ? "Exporting…" : "PDF"}
-            </Button>
+              exporting={exporting}
+              onExport={handleExport}
+            />
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" size="sm" disabled={diagramData.devices.length === 0}>
