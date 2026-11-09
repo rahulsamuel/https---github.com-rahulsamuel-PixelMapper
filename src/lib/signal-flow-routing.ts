@@ -1,8 +1,28 @@
 import type { CableStyle } from "@/lib/signal-flow-types";
+import { routeOrthogonalCables } from "@/lib/signal-flow-cable-router";
 
 export interface RoutePoint {
   x: number;
   y: number;
+}
+
+export interface RouteEndpoint {
+  point: RoutePoint;
+  side: 1 | -1;
+}
+
+export interface RouteObstacle {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface CableRouteInput {
+  id: string;
+  from: RouteEndpoint;
+  to: RouteEndpoint;
+  bend?: RoutePoint;
 }
 
 export interface RoutedCable {
@@ -15,8 +35,40 @@ const ELBOW_CORNER_RADIUS = 14;
 
 export const CABLE_STYLE_OPTIONS: { value: CableStyle; label: string; description: string }[] = [
   { value: "curved", label: "Curved", description: "Smooth curved cables" },
-  { value: "rounded-elbow", label: "Rounded L", description: "Right-angle cables with rounded turns" },
+  { value: "rounded-elbow", label: "Rounded L", description: "Right-angle cables that route around devices" },
 ];
+
+export function routeCables(
+  inputs: CableRouteInput[],
+  obstacles: RouteObstacle[],
+  style: CableStyle
+): Map<string, RoutedCable> {
+  const routes = new Map<string, RoutedCable>();
+
+  if (style === "curved") {
+    for (const input of inputs) {
+      routes.set(input.id, buildCablePath(input.from.point, input.to.point, "curved", input.bend));
+    }
+    return routes;
+  }
+
+  const polylines = routeOrthogonalCables(
+    inputs.map((input) => ({
+      id: input.id,
+      from: input.from,
+      to: input.to,
+      waypoints: input.bend ? [input.bend] : [],
+    })),
+    obstacles
+  );
+  for (const [id, points] of polylines) {
+    routes.set(id, {
+      d: roundedPolylinePath(points, ELBOW_CORNER_RADIUS),
+      ...polylineMidpoint(points),
+    });
+  }
+  return routes;
+}
 
 export function buildCablePath(
   from: RoutePoint,
@@ -42,9 +94,8 @@ export function buildCablePath(
     };
   }
 
-  const bendX = bend ? bend.x : midX;
-  const points = [from, { x: bendX, y: from.y }, { x: bendX, y: to.y }, to];
-  return { d: roundedPolylinePath(points, ELBOW_CORNER_RADIUS), midX: bendX, midY };
+  const points = [from, { x: midX, y: from.y }, { x: midX, y: to.y }, to];
+  return { d: roundedPolylinePath(points, ELBOW_CORNER_RADIUS), midX, midY };
 }
 
 function curveSegment(a: RoutePoint, b: RoutePoint, startWithMove = true): string {
@@ -63,6 +114,22 @@ function pointTowards(from: RoutePoint, to: RoutePoint, amount: number): RoutePo
     x: from.x + ((to.x - from.x) * amount) / length,
     y: from.y + ((to.y - from.y) * amount) / length,
   };
+}
+
+function polylineMidpoint(points: RoutePoint[]): { midX: number; midY: number } {
+  let total = 0;
+  for (let i = 1; i < points.length; i++) total += distance(points[i - 1], points[i]);
+  let remaining = total / 2;
+  for (let i = 1; i < points.length; i++) {
+    const segment = distance(points[i - 1], points[i]);
+    if (remaining <= segment && segment > 0) {
+      const p = pointTowards(points[i - 1], points[i], remaining);
+      return { midX: p.x, midY: p.y };
+    }
+    remaining -= segment;
+  }
+  const last = points[points.length - 1];
+  return { midX: last.x, midY: last.y };
 }
 
 function roundedPolylinePath(points: RoutePoint[], radius: number): string {

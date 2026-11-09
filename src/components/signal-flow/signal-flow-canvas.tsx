@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, type MouseEvent, type ReactNode } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo, type MouseEvent, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase/client";
 import {
@@ -24,7 +24,13 @@ import {
   type PortDirection,
   type SignalFlowPort,
 } from "@/lib/signal-flow-types";
-import { buildCablePath, CABLE_STYLE_OPTIONS } from "@/lib/signal-flow-routing";
+import {
+  buildCablePath,
+  CABLE_STYLE_OPTIONS,
+  routeCables,
+  type CableRouteInput,
+  type RouteEndpoint,
+} from "@/lib/signal-flow-routing";
 import { useAuth } from "@/contexts/auth-context";
 import {
   ChevronDown,
@@ -93,6 +99,15 @@ function getAllPortPositions(device: SignalFlowDevice) {
   };
 }
 
+function resolveEndpoint(device: SignalFlowDevice, portId: string): RouteEndpoint | null {
+  const positions = getAllPortPositions(device);
+  const inputPos = positions.inputs.find((p) => p.port.id === portId);
+  if (inputPos) return { point: { x: inputPos.x, y: inputPos.y }, side: -1 };
+  const outputPos = positions.outputs.find((p) => p.port.id === portId);
+  if (outputPos) return { point: { x: outputPos.x, y: outputPos.y }, side: 1 };
+  return null;
+}
+
 interface SidebarItem {
   preset: DevicePreset;
   source: "default" | "database";
@@ -156,6 +171,21 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
   const setCableStyle = (style: CableStyle) => {
     update((prev) => ({ ...prev, cableStyle: style }));
   };
+
+  const cableRoutes = useMemo(() => {
+    const inputs: CableRouteInput[] = [];
+    for (const conn of data.connections) {
+      const fromDevice = data.devices.find((d) => d.id === conn.fromDeviceId);
+      const toDevice = data.devices.find((d) => d.id === conn.toDeviceId);
+      if (!fromDevice || !toDevice) continue;
+      const from = resolveEndpoint(fromDevice, conn.fromPortId);
+      const to = resolveEndpoint(toDevice, conn.toPortId);
+      if (!from || !to) continue;
+      inputs.push({ id: conn.id, from, to, bend: conn.bend });
+    }
+    const obstacles = data.devices.map((d) => ({ x: d.x, y: d.y, width: d.width, height: d.height }));
+    return routeCables(inputs, obstacles, cableStyle);
+  }, [data.devices, data.connections, cableStyle]);
 
   // Load signal flow devices from database
   useEffect(() => {
@@ -441,24 +471,6 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
     return ct?.name ?? "Custom";
   };
 
-  const getConnPath = (conn: SignalFlowConnection) => {
-    const fromDevice = data.devices.find((d) => d.id === conn.fromDeviceId);
-    const toDevice = data.devices.find((d) => d.id === conn.toDeviceId);
-    if (!fromDevice || !toDevice) return null;
-    const fromPort = fromDevice.ports.find((p) => p.id === conn.fromPortId);
-    const toPort = toDevice.ports.find((p) => p.id === conn.toPortId);
-    if (!fromPort || !toPort) return null;
-
-    const fromPos = getAllPortPositions(fromDevice);
-    const toPos = getAllPortPositions(toDevice);
-
-    const fromPoint = [...fromPos.inputs, ...fromPos.outputs].find((p) => p.port.id === conn.fromPortId);
-    const toPoint = [...toPos.inputs, ...toPos.outputs].find((p) => p.port.id === conn.toPortId);
-    if (!fromPoint || !toPoint) return null;
-
-    return buildCablePath(fromPoint, toPoint, cableStyle, conn.bend);
-  };
-
   const toggleCategory = (cat: DeviceCategory) => {
     setCollapsedCategories((prev) => {
       const next = new Set(prev);
@@ -586,7 +598,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
           {/* SVG layer for connections */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ overflow: "visible" }}>
             {data.connections.map((conn) => {
-              const path = getConnPath(conn);
+              const path = cableRoutes.get(conn.id);
               if (!path) return null;
               const color = getCableColor(conn.cableType);
               const isSelected = conn.id === selectedConnectionId;
@@ -1035,6 +1047,21 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
                     })}
                   </div>
                 </div>
+                {conn.bend && cableStyle === "rounded-elbow" && (
+                  <button
+                    className="w-full text-xs text-primary hover:underline"
+                    onClick={() =>
+                      update((prev) => ({
+                        ...prev,
+                        connections: prev.connections.map((c) =>
+                          c.id === conn.id ? { ...c, bend: undefined } : c
+                        ),
+                      }))
+                    }
+                  >
+                    Reset route to automatic
+                  </button>
+                )}
                 <div className="text-xs text-muted-foreground space-y-1 border rounded-md p-2 bg-muted/30">
                   <p><span className="text-muted-foreground/60">Cable:</span> {getCableName(conn.cableType)}</p>
                   <p><span className="text-muted-foreground/60">Color:</span> <span className="inline-block w-3 h-3 rounded-full align-middle ml-1" style={{ backgroundColor: getCableColor(conn.cableType) }} /></p>
