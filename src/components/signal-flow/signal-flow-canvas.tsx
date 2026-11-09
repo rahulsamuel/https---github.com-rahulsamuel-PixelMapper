@@ -191,6 +191,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [draggingBend, setDraggingBend] = useState<{ connectionId: string; index: number } | null>(null);
+  const [selectedBendIndex, setSelectedBendIndex] = useState<number | null>(null);
   const [collapsedCategories, setCollapsedCategories] = useState<Set<DeviceCategory>>(new Set());
   const [dbDevices, setDbDevices] = useState<SidebarItem[]>([]);
   const [loadingProcessors, setLoadingProcessors] = useState(true);
@@ -363,6 +364,13 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
     };
   }, [connectingFrom]);
 
+  const handleCanvasMouseDown = () => {
+    if (connectingFrom) return;
+    setSelectedDeviceId(null);
+    setSelectedConnectionId(null);
+    setSelectedBendIndex(null);
+  };
+
   const handleCanvasClick = (e: MouseEvent) => {
     if (e.target === canvasRef.current) {
       setSelectedConnectionId(null);
@@ -463,10 +471,12 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
       connections: prev.connections.map((c) => (c.id === conn.id ? { ...c, bends: nextBends } : c)),
     }));
     setDraggingBend({ connectionId: conn.id, index });
+    setSelectedBendIndex(index);
   };
 
   const handleBendMouseDown = (e: MouseEvent, connectionId: string, index: number) => {
     e.stopPropagation();
+    setSelectedBendIndex(index);
     setDraggingBend({ connectionId, index });
   };
 
@@ -480,6 +490,11 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
   };
 
   const deleteSelected = () => {
+    if (selectedConnectionId && selectedBendIndex !== null) {
+      removeBend(selectedConnectionId, selectedBendIndex);
+      setSelectedBendIndex(null);
+      return;
+    }
     if (selectedDeviceId) {
       update((prev) => ({
         ...prev,
@@ -514,7 +529,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [selectedDeviceId, selectedConnectionId]);
+  }, [selectedDeviceId, selectedConnectionId, selectedBendIndex, deleteSelected]);
 
   const renameDevice = (deviceId: string, name: string) => {
     update((prev) => ({
@@ -648,6 +663,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
             "radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)",
           backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
         }}
+        onMouseDown={handleCanvasMouseDown}
         onClick={handleCanvasClick}
         onWheel={(e) => {
           if (e.ctrlKey || e.metaKey) {
@@ -699,15 +715,11 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
                         cx={bend.x}
                         cy={bend.y}
                         r={5}
-                        fill="white"
+                        fill={selectedBendIndex === index ? color : "white"}
                         stroke={color}
                         strokeWidth={2}
                         className="pointer-events-auto cursor-move"
                         onMouseDown={(e) => handleBendMouseDown(e, conn.id, index)}
-                        onDoubleClick={(e) => {
-                          e.stopPropagation();
-                          removeBend(conn.id, index);
-                        }}
                       />
                     ))}
                 </g>
@@ -1123,8 +1135,19 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
                 </div>
                 <div className="space-y-2">
                   <p className="text-xs text-muted-foreground">
-                    Click a cable to add a bend point. Drag a point to reshape the route, double-click it to remove.
+                    Click a cable to add a bend point. Drag a point to move it. Click a point to select it, then delete it below or with the Delete key.
                   </p>
+                  {conn.bends && selectedBendIndex !== null && selectedBendIndex < conn.bends.length && (
+                    <button
+                      className="w-full text-xs text-red-500 hover:underline"
+                      onClick={() => {
+                        removeBend(conn.id, selectedBendIndex);
+                        setSelectedBendIndex(null);
+                      }}
+                    >
+                      Delete selected bend point
+                    </button>
+                  )}
                   {conn.bends && conn.bends.length > 0 && (
                     <button
                       className="w-full text-xs text-primary hover:underline"
