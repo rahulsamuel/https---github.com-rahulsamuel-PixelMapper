@@ -9,7 +9,12 @@ import { PixelMapLayout } from "./pixel-map-layout";
 import { ShareDialog } from "./share-dialog";
 import { ProjectSwitcher } from "./project-switcher";
 import { useCollaborationNotifications } from "@/hooks/use-collaboration-notifications";
-import { SELECTED_PROJECT_STORAGE_KEY } from "@/hooks/use-saved-pixel-map-selection";
+import {
+  SELECTED_PROJECT_STORAGE_KEY,
+  SELECTED_SCREEN_STORAGE_KEY,
+  readStoredSelection,
+  writeStoredSelection,
+} from "@/hooks/use-saved-pixel-map-selection";
 import {
   getCachedCloudProject,
   getCloudProject,
@@ -27,6 +32,7 @@ export function CollaborationWrapper() {
     projectName,
     startNewProject,
     currentScreenId,
+    setCurrentScreenId,
     activeTab,
   } = usePixelMap();
   const { user } = useAuth();
@@ -40,16 +46,19 @@ export function CollaborationWrapper() {
 
   useCollaborationNotifications();
 
-  useEffect(() => {
-    if (activeProjectId) localStorage.setItem(SELECTED_PROJECT_STORAGE_KEY, activeProjectId);
-  }, [activeProjectId]);
-
   const applyProject = useCallback((project: CloudProject) => {
     loadProjectData(project.projectData);
     setProjectName(project.projectName);
     setActiveProjectId(project.id);
     appliedRef.current = { id: project.id, updatedAt: project.updatedAt };
   }, [loadProjectData, setActiveProjectId, setProjectName]);
+
+  const restoreStoredScreen = useCallback((project: CloudProject) => {
+    const storedScreenId = readStoredSelection(SELECTED_SCREEN_STORAGE_KEY);
+    if (storedScreenId && project.projectData.screens.some((s) => s.id === storedScreenId)) {
+      setCurrentScreenId(storedScreenId);
+    }
+  }, [setCurrentScreenId]);
 
   const switchToProject = useCallback(async (projectId: string) => {
     const { data, error } = await getCloudProject(projectId);
@@ -65,8 +74,16 @@ export function CollaborationWrapper() {
   }, [applyProject, toast]);
 
   useEffect(() => {
+    if (activeProjectId) writeStoredSelection(SELECTED_PROJECT_STORAGE_KEY, activeProjectId);
+  }, [activeProjectId]);
+
+  useEffect(() => {
+    if (restored && currentScreenId) writeStoredSelection(SELECTED_SCREEN_STORAGE_KEY, currentScreenId);
+  }, [restored, currentScreenId]);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const projectId = params.get("project") ?? localStorage.getItem(SELECTED_PROJECT_STORAGE_KEY);
+    const projectId = params.get("project") ?? readStoredSelection(SELECTED_PROJECT_STORAGE_KEY);
     if (!projectId) {
       setRestored(true);
       return;
@@ -74,7 +91,10 @@ export function CollaborationWrapper() {
 
     if (appliedRef.current?.id !== projectId) {
       const cached = getCachedCloudProject(projectId);
-      if (cached) applyProject(cached);
+      if (cached) {
+        applyProject(cached);
+        restoreStoredScreen(cached);
+      }
     }
     setRestored(true);
 
@@ -92,11 +112,12 @@ export function CollaborationWrapper() {
       }
       if (appliedRef.current?.id === data.id && appliedRef.current.updatedAt === data.updatedAt) return;
       applyProject(data);
+      restoreStoredScreen(data);
     });
     return () => {
       stale = true;
     };
-  }, [user, applyProject]);
+  }, [user, applyProject, restoreStoredScreen]);
 
   const { onlineUsers, updateCursor } = usePresence({
     projectId: activeProjectId,

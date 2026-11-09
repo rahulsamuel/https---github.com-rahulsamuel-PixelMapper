@@ -15,6 +15,19 @@ import {
 export const SELECTED_PROJECT_STORAGE_KEY = "saved-pixel-map:projectId";
 export const SELECTED_SCREEN_STORAGE_KEY = "saved-pixel-map:screenId";
 
+export function readStoredSelection(key: string): string | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as string | null) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeStoredSelection(key: string, value: string | null) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
 export function useSavedPixelMapSelection() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
