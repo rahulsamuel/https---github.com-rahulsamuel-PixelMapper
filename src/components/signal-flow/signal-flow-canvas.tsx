@@ -9,6 +9,8 @@ import {
   CATEGORY_INFO,
   PRESET_CATEGORY_MAP,
   CABLE_TYPE_NAMES,
+  CABLE_LINE_STYLE_OPTIONS,
+  DEFAULT_CABLE_LINE_STYLE,
   checkPortCompatibility,
   customDevicePreset,
   DEFAULT_CABLE_STYLE,
@@ -596,6 +598,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
                     fill="none"
                     stroke={color}
                     strokeWidth={isSelected ? 4 : 2.5}
+                    strokeDasharray={conn.lineStyle === "dashed" ? "10 6" : undefined}
                     opacity={isSelected ? 1 : 0.8}
                   />
                   {conn.label && (
@@ -1004,6 +1007,33 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
                       }))
                     }
                   />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground">Line Style</label>
+                  <div className="flex gap-1">
+                    {CABLE_LINE_STYLE_OPTIONS.map((option) => {
+                      const active = (conn.lineStyle ?? DEFAULT_CABLE_LINE_STYLE) === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          className={cn(
+                            "flex-1 h-8 rounded text-xs font-medium transition-colors",
+                            active ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted border"
+                          )}
+                          onClick={() =>
+                            update((prev) => ({
+                              ...prev,
+                              connections: prev.connections.map((c) =>
+                                c.id === conn.id ? { ...c, lineStyle: option.value } : c
+                              ),
+                            }))
+                          }
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div className="text-xs text-muted-foreground space-y-1 border rounded-md p-2 bg-muted/30">
                   <p><span className="text-muted-foreground/60">Cable:</span> {getCableName(conn.cableType)}</p>

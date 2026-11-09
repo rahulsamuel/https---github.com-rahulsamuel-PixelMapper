@@ -70,7 +70,17 @@ export interface SignalFlowConnection {
   cableType: string;
   label: string;
   bend?: { x: number; y: number };
+  lineStyle?: CableLineStyle;
 }
+
+export type CableLineStyle = "solid" | "dashed";
+
+export const DEFAULT_CABLE_LINE_STYLE: CableLineStyle = "solid";
+
+export const CABLE_LINE_STYLE_OPTIONS: { value: CableLineStyle; label: string }[] = [
+  { value: "solid", label: "Continuous" },
+  { value: "dashed", label: "Dashed" },
+];
 
 export interface CableType {
   id: string;
