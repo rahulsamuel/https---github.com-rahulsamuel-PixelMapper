@@ -11,6 +11,8 @@ import {
   CABLE_TYPE_NAMES,
   checkPortCompatibility,
   customDevicePreset,
+  DEFAULT_CABLE_STYLE,
+  type CableStyle,
   type SignalFlowDevice,
   type SignalFlowConnection,
   type SignalFlowData,
@@ -20,6 +22,7 @@ import {
   type PortDirection,
   type SignalFlowPort,
 } from "@/lib/signal-flow-types";
+import { buildCablePath, CABLE_STYLE_OPTIONS } from "@/lib/signal-flow-routing";
 import { useAuth } from "@/contexts/auth-context";
 import {
   ChevronDown,
@@ -145,6 +148,11 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
   const zoomIn = () => setZoom((z) => Math.min(z + 0.1, 2.5));
   const zoomOut = () => setZoom((z) => Math.max(z - 0.1, 0.3));
   const zoomReset = () => setZoom(1);
+
+  const cableStyle = data.cableStyle ?? DEFAULT_CABLE_STYLE;
+  const setCableStyle = (style: CableStyle) => {
+    update((prev) => ({ ...prev, cableStyle: style }));
+  };
 
   // Load signal flow devices from database
   useEffect(() => {
@@ -402,17 +410,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
     const toPoint = [...toPos.inputs, ...toPos.outputs].find((p) => p.port.id === conn.toPortId);
     if (!fromPoint || !toPoint) return null;
 
-    const midX = (fromPoint.x + toPoint.x) / 2;
-
-    return {
-      d: `M ${fromPoint.x} ${fromPoint.y} C ${midX} ${fromPoint.y}, ${midX} ${toPoint.y}, ${toPoint.x} ${toPoint.y}`,
-      fromX: fromPoint.x,
-      fromY: fromPoint.y,
-      toX: toPoint.x,
-      toY: toPoint.y,
-      midX: (fromPoint.x + toPoint.x) / 2,
-      midY: (fromPoint.y + toPoint.y) / 2,
-    };
+    return buildCablePath(fromPoint, toPoint, cableStyle);
   };
 
   const toggleCategory = (cat: DeviceCategory) => {
@@ -574,7 +572,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
             })}
             {connectingFrom && (
               <path
-                d={`M ${connectingFrom.x} ${connectingFrom.y} C ${connectingFrom.x + 60} ${connectingFrom.y}, ${mousePos.x - 60} ${mousePos.y}, ${mousePos.x} ${mousePos.y}`}
+                d={buildCablePath(connectingFrom, mousePos, cableStyle).d}
                 fill="none"
                 stroke="#94a3b8"
                 strokeWidth={2}
@@ -687,6 +685,25 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
             </div>
           )}
         </div>
+      </div>
+
+      {/* Cable style */}
+      <div className="absolute bottom-4 right-16 z-30 flex items-center gap-1 bg-sidebar border rounded-lg shadow-lg p-1">
+        {CABLE_STYLE_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => setCableStyle(option.value)}
+            className={cn(
+              "h-8 px-3 rounded text-xs font-medium transition-colors",
+              cableStyle === option.value
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-muted"
+            )}
+            title={option.description}
+          >
+            {option.label}
+          </button>
+        ))}
       </div>
 
       {/* Zoom controls */}

@@ -77,10 +77,15 @@ export interface CableType {
   color: string;
 }
 
+export type CableStyle = "curved" | "rounded-elbow";
+
+export const DEFAULT_CABLE_STYLE: CableStyle = "curved";
+
 export interface SignalFlowData {
   devices: SignalFlowDevice[];
   connections: SignalFlowConnection[];
   cableTypes: CableType[];
+  cableStyle?: CableStyle;
 }
 
 export const DEFAULT_CABLE_TYPES: CableType[] = [
