@@ -125,6 +125,17 @@ export default function CalculatorPage() {
     };
 
     useEffect(() => {
+        if (!activeProject || !activeScreen) return;
+        setFormState(prev => ({
+            ...prev,
+            projectName: activeProject.projectName,
+            selectedProductId: savedProductId ?? prev.selectedProductId,
+            screenWidthTiles: activeScreen.dimensions.screenWidth,
+            screenHeightTiles: activeScreen.dimensions.screenHeight,
+        }));
+    }, [activeProject, activeScreenId]);
+
+    useEffect(() => {
         loadLedProducts().then(({ data, error }) => {
             if (error) {
                 console.error("Failed to fetch LED products:", error);

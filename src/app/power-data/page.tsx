@@ -16,7 +16,7 @@ import { getCachedProcessors, setCachedProcessors } from '@/lib/data-cache';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
 import { useSavedPixelMapSelection } from '@/hooks/use-saved-pixel-map-selection';
-import { getScreenProductId } from '@/lib/calculator-screens';
+import { getScreenProductId, saveScreenProductToProject } from '@/lib/calculator-screens';
 import {
   loadPowerDataSettings,
   powerDataSnapshot,
@@ -99,7 +99,7 @@ export default function PowerDataPage() {
 
   const {
     signedIn, summaries, listLoading, listError, activeProject, projectError,
-    activeScreenId, selectProject, selectScreen,
+    activeScreenId, selectProject, selectScreen, refreshActiveProject,
   } = useSavedPixelMapSelection();
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -158,10 +158,8 @@ export default function PowerDataPage() {
         return;
       }
       const saved = data ? { ...data, productId: screenProductId ?? data.productId } : null;
-      if (shouldApply) {
-        if (saved) applySettings(saved);
-        else if (screenProductId) setSelectedProductId(screenProductId);
-      }
+      if (shouldApply && saved) applySettings(saved);
+      if (screenProductId) setSelectedProductId(screenProductId);
       setSavedSnapshot(saved ? powerDataSnapshot(saved) : null);
     });
     return () => {
@@ -174,12 +172,19 @@ export default function PowerDataPage() {
     if (!activeProject || !activeScreen) return;
     setSaving(true);
     setSaveError(null);
+    const productResult = await saveScreenProductToProject(activeProject.id, activeScreen.id, selectedProduct ?? null);
+    if (!productResult.success) {
+      setSaving(false);
+      setSaveError(productResult.error ?? 'Could not save the LED product to the project.');
+      return;
+    }
     const { success, error } = await savePowerDataSettings(activeProject.id, activeScreen.id, currentSettings);
     setSaving(false);
     if (!success) {
       setSaveError(error ?? 'Could not save to the project.');
       return;
     }
+    await refreshActiveProject();
     setSavedSnapshot(powerDataSnapshot(currentSettings));
   };
 
@@ -352,6 +357,32 @@ export default function PowerDataPage() {
             </>
           ) : (
             <>
+          {activeScreen && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base text-muted-foreground">{activeScreen.name}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-3 text-xs text-muted-foreground">
+                  <div>
+                    <p className="text-2xl font-bold text-foreground tabular-nums">{activeScreen.dimensions.screenWidth} × {activeScreen.dimensions.screenHeight}</p>
+                    <p>Tiles wide × high</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground tabular-nums">{activeScreen.dimensions.screenWidth * activeScreen.dimensions.screenHeight}</p>
+                    <p>Total tiles</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground tabular-nums">
+                      {maxTilesPerPowerCircuit > 0 ? Math.ceil((activeScreen.dimensions.screenWidth * activeScreen.dimensions.screenHeight) / maxTilesPerPowerCircuit) : '—'}
+                    </p>
+                    <p>Power circuits needed</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Power result */}
           <Card>
             <CardHeader className="pb-2">
