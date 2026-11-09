@@ -9,11 +9,11 @@ export interface OrthogonalRouteInput {
 
 const GRID = 8;
 const PORT_EXIT = 16;
-const CLEARANCE = 8;
-const TURN_COST = 4;
-const OCCUPIED_COST = 40;
-const NEAR_COST = 4;
-const NEAR_RADIUS = 2;
+const CLEARANCE = 12;
+const TURN_COST = 6;
+const OCCUPIED_COST = 400;
+const NEAR_COST = 8;
+const NEAR_RADIUS = 1;
 const GRID_PADDING_CELLS = 6;
 
 const DIRS = [

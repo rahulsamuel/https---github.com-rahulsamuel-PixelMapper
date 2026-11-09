@@ -609,7 +609,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
                     d={path.d}
                     fill="none"
                     stroke={color}
-                    strokeWidth={isSelected ? 4 : 2.5}
+                    strokeWidth={isSelected ? 3 : 2}
                     strokeDasharray={conn.lineStyle === "dashed" ? "10 6" : undefined}
                     opacity={isSelected ? 1 : 0.8}
                   />
