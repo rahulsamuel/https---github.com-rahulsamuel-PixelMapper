@@ -26,7 +26,7 @@ export interface RouteRequest {
 const GRID = 14;
 const PAD = 56;
 const STUB = 24;
-const OBSTACLE_MARGIN = GRID;
+const OBSTACLE_MARGIN = 20;
 const NEAR_OBSTACLE_BAND = 2;
 const TURN_COST = 6;
 const OVERLAP_COST = 60;

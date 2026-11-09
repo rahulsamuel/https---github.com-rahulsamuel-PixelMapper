@@ -620,7 +620,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
               <div
                 key={device.id}
                 className={cn(
-                  "absolute rounded-lg shadow-lg border-2 transition-shadow select-none",
+                  "absolute rounded-lg border-2 select-none",
                   isSelected ? "border-primary shadow-primary/20 ring-2 ring-primary/30" : "border-white/10"
                 )}
                 style={{
