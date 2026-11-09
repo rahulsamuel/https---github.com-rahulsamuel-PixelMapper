@@ -16,6 +16,7 @@ import { getCachedProcessors, setCachedProcessors } from '@/lib/data-cache';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
 import { useSavedProjects } from '@/hooks/use-saved-projects';
+import { getScreenProductId } from '@/lib/calculator-screens';
 import {
   loadPowerDataSettings,
   powerDataSnapshot,
@@ -154,11 +155,17 @@ export default function PowerDataPage() {
       setSaveError(error);
       return;
     }
+    const screen = projects.find(p => p.id === projectId)?.projectData.screens.find(s => s.id === screenId);
+    const screenProductId = screen ? getScreenProductId(screen) : null;
+    const withScreenProduct = (s: PowerDataSettings): PowerDataSettings => ({ ...s, productId: screenProductId ?? s.productId });
     if (data) {
-      applySettings(data);
-      setSavedSnapshot(powerDataSnapshot(data));
+      const settings = withScreenProduct(data);
+      applySettings(settings);
+      setSavedSnapshot(powerDataSnapshot(settings));
     } else {
-      setSavedSnapshot(powerDataSnapshot(currentSettings));
+      const settings = withScreenProduct(currentSettings);
+      if (screenProductId) setSelectedProductId(screenProductId);
+      setSavedSnapshot(powerDataSnapshot(settings));
       setScreenNotice('This screen has no saved power settings yet. Save to keep these settings with it.');
     }
   };
