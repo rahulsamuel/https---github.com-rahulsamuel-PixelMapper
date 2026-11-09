@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
 import type { Session } from "@supabase/supabase-js";
-import { verifyTurnstileToken } from "@/lib/auth/verify-turnstile";
 
 interface User {
   id: string;
@@ -80,14 +79,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUp = async (email: string, password: string, captchaToken: string, fullName?: string, company?: string) => {
     try {
-      const captchaError = await verifyTurnstileToken(captchaToken);
-      if (captchaError) return { error: captchaError };
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: { full_name: fullName ?? '', company: company ?? '' },
           emailRedirectTo: `${window.location.origin}/app`,
+          captchaToken,
         },
       });
       if (error) return { error: error.message };
@@ -109,9 +107,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signIn = async (email: string, password: string, captchaToken: string) => {
     try {
-      const captchaError = await verifyTurnstileToken(captchaToken);
-      if (captchaError) return { error: captchaError };
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+        options: { captchaToken },
+      });
       if (error) {
         if (error.message.toLowerCase().includes('email not confirmed')) {
           return { error: null, needsVerification: true };
@@ -149,10 +149,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const requestPasswordReset = async (email: string, captchaToken: string) => {
     try {
-      const captchaError = await verifyTurnstileToken(captchaToken);
-      if (captchaError) return { error: captchaError };
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
+        captchaToken,
       });
       if (error) return { error: error.message };
       return { error: null };
