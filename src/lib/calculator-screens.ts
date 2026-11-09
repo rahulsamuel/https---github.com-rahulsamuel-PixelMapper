@@ -2,7 +2,7 @@ import type { Screen } from "@/contexts/pixel-map-types";
 import { getCloudProject, updateCloudProject } from "@/lib/cloud-projects";
 
 export function getScreenSetupNotice(screen: Screen, productId: string | null): string | null {
-  if (!productId) return "This screen has no LED product yet. Finish setting it up in the Pixel Map.";
+  if (!productId || productId === 'custom') return "This screen has no LED product yet. Finish setting it up in the Pixel Map.";
   if (!(screen.dimensions.screenWidth > 0 && screen.dimensions.screenHeight > 0)) {
     return "This screen has no size yet. Finish setting it up in the Pixel Map.";
   }

@@ -325,7 +325,13 @@ export default function CalculatorPage() {
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="results" className="flex-1 overflow-auto mt-0">
-                        {results ? <ResultsDisplay results={results} title={reportTitle} formState={formState} product={selectedProduct} /> : <ResultsDisplaySkeleton />}
+                        {results ? (
+                            <ResultsDisplay results={results} title={reportTitle} formState={formState} product={selectedProduct} />
+                        ) : screenNotice ? (
+                            <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">{screenNotice}</div>
+                        ) : (
+                            <ResultsDisplaySkeleton />
+                        )}
                     </TabsContent>
                     <TabsContent value="curving" className="flex-1 min-h-0 mt-0">
                         {selectedProduct ? (
