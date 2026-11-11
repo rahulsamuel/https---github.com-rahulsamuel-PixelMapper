@@ -16,7 +16,7 @@ import { getCachedProcessors, setCachedProcessors } from '@/lib/data-cache';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
 import { useSavedPixelMapSelection } from '@/hooks/use-saved-pixel-map-selection';
-import { getScreenProductId, saveScreenProductToProject } from '@/lib/calculator-screens';
+import { getScreenProductId, getScreenSetupNotice, saveScreenProductToProject } from '@/lib/calculator-screens';
 import { checkSaveTarget } from '@/lib/project-selection-guard';
 import { ProjectMismatchDialog } from '@/components/projects/project-mismatch-dialog';
 import { useSaveActivity } from '@/contexts/save-activity-context';
@@ -161,9 +161,9 @@ export default function PowerDataPage() {
         setSaveError(error);
         return;
       }
-      const saved = data ? { ...data, productId: screenProductId ?? data.productId } : null;
+      const saved = data ? { ...data, productId: screenProductId ?? '' } : null;
       if (shouldApply && saved) applySettings(saved);
-      if (screenProductId) setSelectedProductId(screenProductId);
+      setSelectedProductId(screenProductId ?? '');
       setSavedSnapshot(saved ? powerDataSnapshot(saved) : null);
     });
     return () => {
@@ -281,6 +281,11 @@ export default function PowerDataPage() {
                 value={selectedProductId}
                 onChange={setSelectedProductId}
               />
+              {activeScreen && getScreenSetupNotice(activeScreen, selectedProductId || null) && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  {getScreenSetupNotice(activeScreen, selectedProductId || null)}
+                </p>
+              )}
               {selectedProduct && <ProductInfoPanel product={selectedProduct} />}
             </div>
 

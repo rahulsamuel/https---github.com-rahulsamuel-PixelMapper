@@ -187,10 +187,6 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
       updateCurrentScreen(screen => {
           const newDimensions = typeof updater === 'function' ? updater(screen.dimensions) : updater;
           const updatedScreen = { ...screen, dimensions: newDimensions };
-          if (screen.selectedProductId !== 'custom') {
-            updatedScreen.selectedProductId = 'custom';
-          }
-          
           const totalTiles = newDimensions.screenWidth * newDimensions.screenHeight;
           let newTiles: Tile[];
           if (totalTiles > 0 && totalTiles <= 4096) {
@@ -2890,8 +2886,9 @@ const handleRightHalfTileChange = (add: boolean) => {
       gear,
       wallLayoutLegend,
       deliverablesScreenIds,
+      pixelMapMode,
     };
-  }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioFormat, audioEmbedded, samplingRate, audioBitRate, imageFormat, rasterMapConfigs, rasterGroups, activeRasterGroupId, rasterBgColor, includeTextOverlaysInDownload, deliverablesScreenIds]);
+  }, [screens, currentScreenId, activeTab, projectNumber, versionNumber, projectNotes, mediaServer, preferredCodec, videoContainer, frameRate, audioFormat, audioEmbedded, samplingRate, audioBitRate, imageFormat, rasterMapConfigs, rasterGroups, activeRasterGroupId, rasterBgColor, includeTextOverlaysInDownload, deliverablesScreenIds, pixelMapMode]);
 
   const loadProjectData = useCallback((data: ProjectData) => {
     let maxId = 0;
@@ -2971,6 +2968,9 @@ const handleRightHalfTileChange = (add: boolean) => {
     }
     if (data.deliverablesScreenIds) {
       setDeliverablesScreenIds(data.deliverablesScreenIds);
+    }
+    if (data.pixelMapMode) {
+      setPixelMapModeState(data.pixelMapMode);
     }
   }, []);
 
@@ -3162,6 +3162,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     setVersionNumber("1.0");
     setProjectNotes("");
     setDeliverablesScreenIds([]);
+    setPixelMapModeState('basic');
     toast({ title: "New Project", description: "Started a new project. Use Undo to bring back your previous work." });
   }, [toast]);
 

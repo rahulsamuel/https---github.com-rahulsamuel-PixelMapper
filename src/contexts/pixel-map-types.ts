@@ -384,6 +384,7 @@ export interface ProjectData {
   gear?: GearConfig;
   wallLayoutLegend?: WallLayoutLegendEntry[];
   deliverablesScreenIds?: string[];
+  pixelMapMode?: PixelMapMode;
 }
 
 export interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels' | 'nextTileId' | 'moduleColors' | 'outputCount' | 'outputResolutionPreset' | 'outputResolutionWidth' | 'outputResolutionHeight'> {
