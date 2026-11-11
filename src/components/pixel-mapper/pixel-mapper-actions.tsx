@@ -1,7 +1,7 @@
 
 "use client";
 
-import { usePixelMap } from "@/contexts/pixel-map-context";
+import { usePixelMap, type ProjectData } from "@/contexts/pixel-map-context";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { ProjectVersionsDialog } from "./project-versions-dialog";
 import {
   Download,
   Upload,
@@ -66,6 +67,7 @@ export function PixelMapActions() {
   const [showLoadConfirm, setShowLoadConfirm] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [exportFileName, setExportFileName] = useState("");
+  const [versionsProject, setVersionsProject] = useState<CloudProject | null>(null);
 
   const loadUserProjects = useCallback(async () => {
     if (!user) return;
@@ -164,6 +166,14 @@ export function PixelMapActions() {
     setCloudProjects((prev) => prev.filter((p) => p.id !== projectId));
     toast({ title: "Project Deleted" });
     setShowDeleteConfirm(null);
+  };
+
+  const handleVersionRestored = (projectId: string, restoredName: string, data: ProjectData) => {
+    if (projectId === activeProjectId) {
+      loadProjectData(data);
+      setProjectName(restoredName);
+    }
+    loadUserProjects();
   };
 
   const handleLoginRedirect = () => {
@@ -385,6 +395,18 @@ export function PixelMapActions() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+                    aria-label="Version history"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setVersionsProject(project);
+                    }}
+                  >
+                    <Clock className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 text-destructive hover:text-destructive hover:bg-destructive/10 transition-opacity"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -399,6 +421,12 @@ export function PixelMapActions() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ProjectVersionsDialog
+        project={versionsProject}
+        onClose={() => setVersionsProject(null)}
+        onRestored={handleVersionRestored}
+      />
 
       {/* Load confirmation */}
       <AlertDialog open={showLoadConfirm} onOpenChange={setShowLoadConfirm}>

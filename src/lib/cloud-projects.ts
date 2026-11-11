@@ -174,3 +174,51 @@ export async function deleteCloudProject(
   projectCache.delete(projectId);
   return { success: true, error: null };
 }
+
+export interface ProjectVersionSummary {
+  id: string;
+  projectName: string;
+  createdAt: string;
+}
+
+export async function listProjectVersions(
+  projectId: string
+): Promise<{ data: ProjectVersionSummary[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from("pixel_map_project_versions")
+    .select("id, project_name, created_at")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    console.error('src/lib/cloud-projects.ts:', error.message);
+    return { data: [], error: 'Something went wrong. Please try again.' };
+  }
+
+  return {
+    data: data.map((v) => ({
+      id: v.id,
+      projectName: v.project_name,
+      createdAt: v.created_at,
+    })),
+    error: null,
+  };
+}
+
+export async function getProjectVersionData(
+  versionId: string
+): Promise<{ data: ProjectData | null; error: string | null }> {
+  const { data, error } = await supabase
+    .from("pixel_map_project_versions")
+    .select("project_data")
+    .eq("id", versionId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('src/lib/cloud-projects.ts:', error.message);
+    return { data: null, error: 'Something went wrong. Please try again.' };
+  }
+  if (!data) return { data: null, error: 'This version could not be found.' };
+  return { data: data.project_data as ProjectData, error: null };
+}
