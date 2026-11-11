@@ -15,8 +15,9 @@ import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
 import { SavedProjectPicker } from "@/components/calculator/saved-project-picker";
 import { useSavedPixelMapSelection } from "@/hooks/use-saved-pixel-map-selection";
 import { loadPreVisualSave, savePreVisualSave } from "@/lib/project-tab-saves";
-import { isSaveTargetCurrent } from "@/lib/project-selection-guard";
+import { checkSaveTarget } from "@/lib/project-selection-guard";
 import { ProjectMismatchDialog } from "@/components/projects/project-mismatch-dialog";
+import { useSaveActivity } from "@/contexts/save-activity-context";
 
 interface Product {
   id: string;
@@ -103,10 +104,10 @@ export function PreVisualBuilder() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const exportRef = useRef<HTMLDivElement>(null);
-  const { signedIn, summaries, listLoading, listError, activeProjectId, activeProject, projectError, selectProject } = useSavedPixelMapSelection();
+  const { signedIn, summaries, listLoading, listError, activeProjectId, activeProject, projectError, selectProject, refreshActiveProject, tabIdentifiers } = useSavedPixelMapSelection();
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const { isSaving: saving, trackSave } = useSaveActivity();
   const [saveError, setSaveError] = useState<string | null>(null);
   const [mismatchOpen, setMismatchOpen] = useState(false);
   const requestedProjectRef = useRef<string | null>(null);
@@ -224,24 +225,28 @@ export function PreVisualBuilder() {
     loadProject(activeProjectId);
   });
 
-  const handleSave = async () => {
+  const handleSave = () => trackSave(async () => {
     if (!activeProjectId) return;
-    if (!isSaveTargetCurrent(activeProjectId)) {
+    const check = await checkSaveTarget(activeProjectId, "pre_visual", tabIdentifiers.pre_visual ?? null);
+    if (check === "mismatch") {
       setMismatchOpen(true);
       return;
     }
-    setSaving(true);
+    if (check === "error") {
+      setSaveError("Could not verify this project. Please try again.");
+      return;
+    }
     setSaveError(null);
     const snapshot = currentSnapshot;
     const { success, error } = await savePreVisualSave(activeProjectId, { settings, screens });
-    setSaving(false);
     if (!success) {
       setSaveError(error ?? "Could not save to the project.");
       return;
     }
+    await refreshActiveProject();
     setSavedSnapshot(snapshot);
     setNotice(null);
-  };
+  });
 
   return (
     <div className="flex h-[calc(100svh-3.5rem)] overflow-hidden">

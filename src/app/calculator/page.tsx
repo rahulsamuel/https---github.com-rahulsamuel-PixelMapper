@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, Calculator, Spline } from 'lucide-react';
 import { loadLedProducts } from '@/lib/led-products-client';
 import { useSavedPixelMapSelection } from '@/hooks/use-saved-pixel-map-selection';
+import { useSaveActivity } from '@/contexts/save-activity-context';
 import type { Screen } from '@/contexts/pixel-map-types';
 import type { CloudProject } from '@/lib/cloud-projects';
 import { buildCalculatorTitle, getScreenProductId, getScreenSetupNotice, saveScreenProductToProject } from '@/lib/calculator-screens';
@@ -76,7 +77,7 @@ export default function CalculatorPage() {
     const [curvingState, setCurvingState] = useState<CurvingState>(DEFAULT_CURVING_STATE);
 
     const { signedIn, summaries, listLoading, listError, activeProject, projectError, activeScreenId, selectProject, selectScreen, refreshActiveProject } = useSavedPixelMapSelection();
-    const [saving, setSaving] = useState(false);
+    const { isSaving: saving, trackSave } = useSaveActivity();
     const [saveError, setSaveError] = useState<string | null>(null);
 
     const activeScreen = activeProject?.projectData.screens.find(s => s.id === activeScreenId) ?? null;
@@ -107,22 +108,20 @@ export default function CalculatorPage() {
         if (activeProject && screen) applyScreen(activeProject, screen);
     };
 
-    const handleSaveScreen = async () => {
+    const handleSaveScreen = () => trackSave(async () => {
         if (!activeProject || !activeScreen) return;
         if (formState.selectedProductId && !selectedProduct) {
             setSaveError('LED products are still loading. Try again in a moment.');
             return;
         }
-        setSaving(true);
         setSaveError(null);
         const { success, error } = await saveScreenProductToProject(activeProject.id, activeScreen.id, selectedProduct);
-        setSaving(false);
         if (!success) {
             setSaveError(error ?? 'Could not save to the Pixel Map project.');
             return;
         }
         await refreshActiveProject();
-    };
+    });
 
     useEffect(() => {
         if (!activeProject || !activeScreen) return;

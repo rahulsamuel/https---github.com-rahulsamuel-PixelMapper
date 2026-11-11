@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select';
 import type { CloudProject, CloudProjectSummary } from '@/lib/cloud-projects';
 import type { Screen } from '@/contexts/pixel-map-types';
+import { Loader2 } from 'lucide-react';
 
 const MANUAL_VALUE = '__manual__';
 
@@ -66,11 +67,14 @@ export function SavedProjectPicker({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>Saved Pixel Map Project</Label>
+        <div className="flex items-center gap-1.5">
+          <Label>Saved Pixel Map Project</Label>
+          {saving && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" aria-label="Saving" />}
+        </div>
         <Select
           value={activeProject ? activeProject.id : MANUAL_VALUE}
           onValueChange={(value) => onSelectProject(value === MANUAL_VALUE ? null : value)}
-          disabled={projectsLoading}
+          disabled={projectsLoading || saving}
         >
           <SelectTrigger>
             <SelectValue placeholder={projectsLoading ? 'Loading projects...' : 'Choose a project'} />
@@ -125,8 +129,10 @@ export function SavedProjectPicker({
             disabled={!hasUnsavedChanges || saving}
             onClick={onSave}
           >
+            {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
             {saving ? 'Saving...' : 'Save to Pixel Map Project'}
           </Button>
+          {saving && <p className="text-xs text-muted-foreground">Switching projects is available once the save finishes.</p>}
           {hasUnsavedChanges ? (
             <p className="text-xs text-muted-foreground">Changes are only kept here until you save them.</p>
           ) : (

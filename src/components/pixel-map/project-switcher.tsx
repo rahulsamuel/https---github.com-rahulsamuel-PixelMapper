@@ -12,6 +12,7 @@ import { FolderKanban, ChevronDown, Loader2, Plus, Users, Crown } from "lucide-r
 import { getOwnedProjects, getSharedProjects, type SharedProject } from "@/lib/collaboration";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
+import { useSaveActivity } from "@/contexts/save-activity-context";
 
 interface ProjectSwitcherProps {
   activeProjectId: string | null;
@@ -27,6 +28,7 @@ export function ProjectSwitcher({
   onNewProject,
 }: ProjectSwitcherProps) {
   const { user } = useAuth();
+  const { isSaving } = useSaveActivity();
   const [open, setOpen] = useState(false);
   const [ownedProjects, setOwnedProjects] = useState<SharedProject[]>([]);
   const [sharedProjects, setSharedProjects] = useState<SharedProject[]>([]);
@@ -59,16 +61,21 @@ export function ProjectSwitcher({
   const displayName = currentProjectName || "Untitled Project";
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open && !isSaving} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
           size="sm"
           className="h-8 gap-2 max-w-[200px] px-2"
+          disabled={isSaving}
         >
           <FolderKanban className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span className="truncate text-sm font-medium">{displayName}</span>
-          <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          {isSaving ? (
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" aria-label="Saving" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="start">
@@ -78,6 +85,7 @@ export function ProjectSwitcher({
             variant="ghost"
             size="sm"
             className="h-7 text-xs gap-1.5"
+            disabled={isSaving}
             onClick={() => {
               setOpen(false);
               onNewProject();

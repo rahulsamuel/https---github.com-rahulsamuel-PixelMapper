@@ -51,6 +51,7 @@ import {
 } from "@/lib/cloud-projects";
 import { isSaveTargetCurrent } from "@/lib/project-selection-guard";
 import { ProjectMismatchDialog } from "@/components/projects/project-mismatch-dialog";
+import { useSaveActivity } from "@/contexts/save-activity-context";
 
 export function PixelMapActions() {
   const { exportProject, importProject, getProjectData, loadProjectData, activeProjectId, setActiveProjectId, projectName, setProjectName, undo, redo, canUndo, canRedo, startNewProject } = usePixelMap();
@@ -59,7 +60,7 @@ export function PixelMapActions() {
   const router = useRouter();
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  const [isSaving, setIsSaving] = useState(false);
+  const { isSaving, trackSave } = useSaveActivity();
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [cloudProjects, setCloudProjects] = useState<CloudProject[]>([]);
   const [showProjectsDialog, setShowProjectsDialog] = useState(false);
@@ -117,31 +118,29 @@ export function PixelMapActions() {
       setShowLoginWarning(true);
       return;
     }
-    setIsSaving(true);
-    const projectData = getProjectData();
-    if (activeProjectId) {
-      if (!isSaveTargetCurrent(activeProjectId)) {
-        setIsSaving(false);
-        setMismatchOpen(true);
-        return;
+    await trackSave(async () => {
+      const projectData = getProjectData();
+      if (activeProjectId) {
+        if (!isSaveTargetCurrent(activeProjectId)) {
+          setMismatchOpen(true);
+          return;
+        }
+        const { success, error } = await updateCloudProject(activeProjectId, projectName, projectData);
+        if (!success) {
+          toast({ title: "Save Failed", description: error ?? "Unknown error.", variant: "destructive" });
+          return;
+        }
+        toast({ title: "Saved to Cloud", description: `"${projectName}" updated successfully.` });
+      } else {
+        const { success, error, projectId } = await saveCloudProject(user.id, projectName, projectData);
+        if (!success) {
+          toast({ title: "Save Failed", description: error ?? "Unknown error.", variant: "destructive" });
+          return;
+        }
+        if (projectId) setActiveProjectId(projectId);
+        toast({ title: "Saved to Cloud", description: `"${projectName}" saved successfully.` });
       }
-      const { success, error } = await updateCloudProject(activeProjectId, projectName, projectData);
-      setIsSaving(false);
-      if (!success) {
-        toast({ title: "Save Failed", description: error ?? "Unknown error.", variant: "destructive" });
-        return;
-      }
-      toast({ title: "Saved to Cloud", description: `"${projectName}" updated successfully.` });
-    } else {
-      const { success, error, projectId } = await saveCloudProject(user.id, projectName, projectData);
-      setIsSaving(false);
-      if (!success) {
-        toast({ title: "Save Failed", description: error ?? "Unknown error.", variant: "destructive" });
-        return;
-      }
-      if (projectId) setActiveProjectId(projectId);
-      toast({ title: "Saved to Cloud", description: `"${projectName}" saved successfully.` });
-    }
+    });
     if (showProjectsDialog) loadUserProjects();
   };
 

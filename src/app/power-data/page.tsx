@@ -17,8 +17,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
 import { useSavedPixelMapSelection } from '@/hooks/use-saved-pixel-map-selection';
 import { getScreenProductId, saveScreenProductToProject } from '@/lib/calculator-screens';
-import { isSaveTargetCurrent } from '@/lib/project-selection-guard';
+import { checkSaveTarget } from '@/lib/project-selection-guard';
 import { ProjectMismatchDialog } from '@/components/projects/project-mismatch-dialog';
+import { useSaveActivity } from '@/contexts/save-activity-context';
 import {
   loadPowerDataSettings,
   powerDataSnapshot,
@@ -101,10 +102,10 @@ export default function PowerDataPage() {
 
   const {
     signedIn, summaries, listLoading, listError, activeProject, projectError,
-    activeScreenId, selectProject, selectScreen, refreshActiveProject,
+    activeScreenId, selectProject, selectScreen, refreshActiveProject, tabIdentifiers,
   } = useSavedPixelMapSelection();
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const { isSaving: saving, trackSave } = useSaveActivity();
   const [saveError, setSaveError] = useState<string | null>(null);
   const [mismatchOpen, setMismatchOpen] = useState(false);
   const pendingApplyScreenRef = useRef<string | null>(null);
@@ -171,29 +172,31 @@ export default function PowerDataPage() {
   }, [activeProject, activeScreenId]);
 
 
-  const handleSave = async () => {
+  const handleSave = () => trackSave(async () => {
     if (!activeProject || !activeScreen) return;
-    if (!isSaveTargetCurrent(activeProject.id)) {
+    const check = await checkSaveTarget(activeProject.id, 'power_data', tabIdentifiers.power_data ?? null);
+    if (check === 'mismatch') {
       setMismatchOpen(true);
       return;
     }
-    setSaving(true);
+    if (check === 'error') {
+      setSaveError('Could not verify this project. Please try again.');
+      return;
+    }
     setSaveError(null);
     const productResult = await saveScreenProductToProject(activeProject.id, activeScreen.id, selectedProduct ?? null);
     if (!productResult.success) {
-      setSaving(false);
       setSaveError(productResult.error ?? 'Could not save the LED product to the project.');
       return;
     }
     const { success, error } = await savePowerDataSettings(activeProject.id, activeScreen.id, currentSettings);
-    setSaving(false);
     if (!success) {
       setSaveError(error ?? 'Could not save to the project.');
       return;
     }
     await refreshActiveProject();
     setSavedSnapshot(powerDataSnapshot(currentSettings));
-  };
+  });
 
   const debouncedAmperage = useDebouncedValue(circuitAmperage, 50);
   const debouncedSafetyMargin = useDebouncedValue(safetyMargin, 50);

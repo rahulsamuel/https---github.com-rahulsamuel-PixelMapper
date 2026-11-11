@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase/client";
+import { ensureTabIdentifier } from "@/lib/project-tab-identifiers";
 
 export interface PowerDataSettings {
   productId: string;
@@ -73,6 +74,8 @@ export async function savePowerDataSettings(
   screenId: string,
   settings: PowerDataSettings
 ): Promise<{ success: boolean; error: string | null }> {
+  const ensured = await ensureTabIdentifier(projectId, "power_data");
+  if (ensured.error) return { success: false, error: ensured.error };
   const { error } = await supabase
     .from("power_data_settings")
     .upsert(
@@ -105,6 +108,8 @@ export async function saveRackDrawingSettings(
   projectId: string,
   settings: unknown
 ): Promise<{ success: boolean; error: string | null }> {
+  const ensured = await ensureTabIdentifier(projectId, "rack_drawing");
+  if (ensured.error) return { success: false, error: ensured.error };
   const { error } = await supabase
     .from("rack_drawing_saves")
     .upsert(
@@ -146,6 +151,8 @@ export async function savePreVisualSave(
   projectId: string,
   save: PreVisualSave
 ): Promise<{ success: boolean; error: string | null }> {
+  const ensured = await ensureTabIdentifier(projectId, "pre_visual");
+  if (ensured.error) return { success: false, error: ensured.error };
   const { error } = await supabase
     .from("pre_visual_saves")
     .upsert(

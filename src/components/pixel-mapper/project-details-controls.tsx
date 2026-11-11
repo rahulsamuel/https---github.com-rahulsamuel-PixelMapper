@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { ProjectTabIdentifiers } from "./project-tab-identifiers";
 import { useState, useEffect } from "react";
 
 const MEDIA_SERVERS = [
@@ -95,6 +96,7 @@ export function ProjectDetailsControls() {
           <p className="font-mono text-xs text-muted-foreground break-all">
             {activeProjectId ?? "Not saved to the cloud yet"}
           </p>
+          <ProjectTabIdentifiers projectId={activeProjectId} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="project-number">Project Number</Label>

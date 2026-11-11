@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/contexts/auth-context';
+import { SaveActivityProvider } from '@/contexts/save-activity-context';
 import { GlobalHeader } from '@/components/layout/global-header';
 import { FeedbackPromptProvider } from '@/components/feedback/feedback-prompt';
 
@@ -25,6 +26,7 @@ export default function RootLayout({
       <head />
       <body className="font-body antialiased min-h-svh">
         <AuthProvider>
+          <SaveActivityProvider>
           <FeedbackPromptProvider>
             <div className="flex flex-col min-h-svh">
               <GlobalHeader />
@@ -33,6 +35,7 @@ export default function RootLayout({
               </main>
             </div>
           </FeedbackPromptProvider>
+          </SaveActivityProvider>
         </AuthProvider>
         <Toaster />
       </body>

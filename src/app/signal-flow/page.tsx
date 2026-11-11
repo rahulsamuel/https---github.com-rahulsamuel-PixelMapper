@@ -28,8 +28,9 @@ import {
 } from "@/lib/signal-flow-client";
 import { downloadSignalFlow, type SignalFlowExportFormat, type SignalFlowExportMode } from "@/lib/signal-flow-download";
 import { SignalFlowExportMenu, type SignalFlowExportJob } from "@/components/signal-flow/signal-flow-export-menu";
-import { isSaveTargetCurrent } from "@/lib/project-selection-guard";
+import { checkSaveTarget, isSaveTargetCurrent } from "@/lib/project-selection-guard";
 import { ProjectMismatchDialog } from "@/components/projects/project-mismatch-dialog";
+import { useSaveActivity } from "@/contexts/save-activity-context";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase/client";
@@ -44,11 +45,11 @@ const EMPTY_DATA: SignalFlowData = {
 export default function SignalFlowPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { signedIn, summaries, listLoading, listError, activeProjectId, activeProject, projectError, selectProject } = useSavedPixelMapSelection();
+  const { signedIn, summaries, listLoading, listError, activeProjectId, activeProject, projectError, selectProject, refreshActiveProject, tabIdentifiers } = useSavedPixelMapSelection();
   const [diagram, setDiagram] = useState<SignalFlowDiagram | null>(null);
   const [diagramData, setDiagramData] = useState<SignalFlowData>(EMPTY_DATA);
   const [loadingDiagram, setLoadingDiagram] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const { isSaving: saving, trackSave } = useSaveActivity();
   const [mismatchOpen, setMismatchOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [exporting, setExporting] = useState<SignalFlowExportJob | null>(null);
@@ -139,13 +140,17 @@ export default function SignalFlowPage() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = () => trackSave(async () => {
     if (!user || !activeProject) return;
-    if (!isSaveTargetCurrent(activeProject.id)) {
+    const check = await checkSaveTarget(activeProject.id, "signal_flow", tabIdentifiers.signal_flow ?? null);
+    if (check === "mismatch") {
       setMismatchOpen(true);
       return;
     }
-    setSaving(true);
+    if (check === "error") {
+      toast({ title: "Save failed", description: "Could not verify this project. Please try again.", variant: "destructive" });
+      return;
+    }
     const { success, error } = await saveSignalFlowDiagram(
       activeProject.id,
       user.id,
@@ -153,7 +158,6 @@ export default function SignalFlowPage() {
       diagramData,
       diagram?.id
     );
-    setSaving(false);
     if (error) {
       toast({ title: "Save failed", description: error, variant: "destructive" });
       return;
@@ -162,11 +166,12 @@ export default function SignalFlowPage() {
       toast({ title: "Saved", description: "Signal flow diagram saved to cloud." });
       setDirty(false);
       lastSavedRef.current = JSON.stringify(diagramData);
+      await refreshActiveProject();
       // Fetch the diagram id without toggling loadingDiagram (avoids blanking canvas)
       const { data: fresh } = await getSignalFlowDiagram(activeProject.id);
       if (fresh) setDiagram(fresh);
     }
-  };
+  });
 
   const handleClear = () => {
     setDiagramData(EMPTY_DATA);

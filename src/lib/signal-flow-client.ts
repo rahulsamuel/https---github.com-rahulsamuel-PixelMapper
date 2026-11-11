@@ -2,6 +2,7 @@
 
 import { supabase } from "@/lib/supabase/client";
 import type { SignalFlowData } from "@/lib/signal-flow-types";
+import { ensureTabIdentifier } from "@/lib/project-tab-identifiers";
 
 export interface SignalFlowDiagram {
   id: string;
@@ -46,6 +47,9 @@ export async function saveSignalFlowDiagram(
   diagramData: SignalFlowData,
   existingId?: string
 ): Promise<{ success: boolean; id: string | null; error: string | null }> {
+  const ensured = await ensureTabIdentifier(projectId, "signal_flow");
+  if (ensured.error) return { success: false, id: null, error: ensured.error };
+
   if (existingId) {
     const { error } = await supabase
       .from("signal_flow_diagrams")

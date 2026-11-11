@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { usePersistentState } from "@/hooks/use-persistent-state";
+import { fetchTabIdentifiers, type TabIdentifiers } from "@/lib/project-tab-identifiers";
 import {
   getCachedCloudProject,
   getCachedCloudProjectSummaries,
@@ -45,6 +46,7 @@ export function useSavedPixelMapSelection() {
     activeProjectId ? getCachedCloudProject(activeProjectId) : null
   );
   const [projectError, setProjectError] = useState<string | null>(null);
+  const [tabIdentifiers, setTabIdentifiers] = useState<TabIdentifiers>({});
 
   useEffect(() => {
     if (!userId) return;
@@ -86,6 +88,20 @@ export function useSavedPixelMapSelection() {
     };
   }, [userId, activeProjectId, setActiveProjectId, setActiveScreenId]);
 
+  useEffect(() => {
+    if (!userId || !activeProjectId) {
+      setTabIdentifiers({});
+      return;
+    }
+    let stale = false;
+    fetchTabIdentifiers(activeProjectId).then(({ data }) => {
+      if (!stale && data) setTabIdentifiers(data);
+    });
+    return () => {
+      stale = true;
+    };
+  }, [userId, activeProjectId]);
+
   const selectProject = useCallback(
     async (projectId: string | null): Promise<CloudProject | null> => {
       setProjectError(null);
@@ -120,6 +136,8 @@ export function useSavedPixelMapSelection() {
       return;
     }
     if (result.data) setActiveProject(result.data);
+    const identifiers = await fetchTabIdentifiers(activeProjectId);
+    if (identifiers.data) setTabIdentifiers(identifiers.data);
   }, [activeProjectId]);
 
   return {
@@ -131,6 +149,7 @@ export function useSavedPixelMapSelection() {
     activeProject,
     projectError,
     activeScreenId,
+    tabIdentifiers,
     selectProject,
     selectScreen: setActiveScreenId,
     refreshActiveProject,
