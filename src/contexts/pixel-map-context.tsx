@@ -28,10 +28,11 @@ import type {
   ScreenArrangement, RasterMapConfig, WallLayoutLegendEntry, RasterArgs,
   ScreenSection, Screen, CalculatorTabData, PowerDataTabData,
   RackDrawingTabData, ProcessorEntry, DataPortEntry, PowerPortEntry,
-  FiberBoxEntry, ScreenDevice, CableRun, GearConfig, ProjectData, PixelMapState,
+  FiberBoxEntry, ScreenDevice, CableRun, GearConfig, ProjectData, PixelMapState, WiringGroup,
 } from "./pixel-map-types";
 
 import { formatFractionalInch, trackEvent, repositionDefaultLogo, createNewScreen } from "./pixel-map-helpers";
+import { rebuildWiringGroups, removeWiringGroup, replaceScreenWiring } from "@/lib/wiring-groups";
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
 
@@ -946,6 +947,30 @@ const handleRightHalfTileChange = (add: boolean) => {
         return { ...screen, tiles: newTiles };
     });
   }, [updateCurrentScreen, effectiveScreenWidth, effectiveScreenHeight]);
+
+  const addWiringGroup = useCallback((group: Omit<WiringGroup, 'id'>) => {
+    updateCurrentScreen(screen => {
+      const wiringGroups = [...screen.wiringGroups, { ...group, id: crypto.randomUUID() }];
+      const { screenWidth, screenHeight } = screen.dimensions;
+      return { ...screen, wiringGroups, tiles: rebuildWiringGroups(screen.tiles, wiringGroups, screenWidth, screenHeight) };
+    });
+  }, [updateCurrentScreen]);
+
+  const updateWiringGroup = useCallback((groupId: string, changes: Partial<Omit<WiringGroup, 'id' | 'kind'>>) => {
+    updateCurrentScreen(screen => {
+      const wiringGroups = screen.wiringGroups.map(group => group.id === groupId ? { ...group, ...changes } : group);
+      const { screenWidth, screenHeight } = screen.dimensions;
+      return { ...screen, wiringGroups, tiles: rebuildWiringGroups(screen.tiles, wiringGroups, screenWidth, screenHeight) };
+    });
+  }, [updateCurrentScreen]);
+
+  const deleteWiringGroup = useCallback((groupId: string) => {
+    updateCurrentScreen(screen => removeWiringGroup(screen, groupId));
+  }, [updateCurrentScreen]);
+
+  const replaceWiringGroupsOnScreen = useCallback((screenId: string, groups: WiringGroup[]) => {
+    setScreens(prevScreens => prevScreens.map(screen => screen.id === screenId ? replaceScreenWiring(screen, groups) : screen));
+  }, []);
 
   const addProcessor = useCallback((entry: Omit<ProcessorEntry, 'id'>) => {
     const id = `proc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -3919,6 +3944,10 @@ const handleRightHalfTileChange = (add: boolean) => {
     setIsManualDataModalOpen,
     selectedTileForData,
     applyManualDataWiring,
+    addWiringGroup,
+    updateWiringGroup,
+    deleteWiringGroup,
+    replaceWiringGroupsOnScreen,
     showModules: currentScreen.showModules,
     setShowModules,
     moduleBorderColor: currentScreen.moduleBorderColor,

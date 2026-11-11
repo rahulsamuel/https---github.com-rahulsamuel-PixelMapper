@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { WiringGroupPanel } from "./wiring-group-panel";
 
 export function PowerControls() {
   const {
@@ -121,6 +122,7 @@ export function PowerControls() {
         <Label htmlFor="power-arrow-gap">Arrow Gap: {powerArrowGap}</Label>
         <Slider id="power-arrow-gap" min={0} max={100} step={1} value={[powerArrowGap]} onValueChange={(v) => setPowerArrowGap(v[0])} />
       </div>
+      <WiringGroupPanel kind="power" />
     </div>
   );
 }

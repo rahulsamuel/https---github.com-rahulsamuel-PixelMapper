@@ -30,6 +30,7 @@ export interface Tile {
     tileCount: number;
     pattern: WiringPattern;
     runLength?: number;
+    groupId?: string;
   };
   dataCircuit?: {
     mainLabel: string;
@@ -37,6 +38,7 @@ export interface Tile {
     tileCount: number;
     pattern: WiringPattern;
     runLength?: number;
+    groupId?: string;
   };
 }
 
@@ -193,6 +195,7 @@ export interface Screen {
   lastRasterArgs: RasterArgs | null;
   wiringPortConfig: string;
   devices: ScreenDevice[];
+  wiringGroups: WiringGroup[];
   dataPortStartNumber: number;
   showDataLabels: boolean;
   showPowerLabels: boolean;
@@ -317,6 +320,20 @@ export interface PowerPortEntry {
   screenId: string;
   tileCount: number;
   sliceKey?: string;
+}
+
+export interface WiringGroup {
+  id: string;
+  name: string;
+  kind: 'data' | 'power';
+  tileCoords: { x: number; y: number }[];
+  pattern: WiringPattern;
+  runLength?: number;
+  tilesPerCircuit: number;
+  mainTemplate: string;
+  backupTemplate: string;
+  startNumber: number;
+  customLabels: Record<number, { main?: string; backup?: string }>;
 }
 
 export interface ScreenDevice {
@@ -541,6 +558,10 @@ export interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'
   setIsManualDataModalOpen: Dispatch<SetStateAction<boolean>>;
   selectedTileForData: number | null;
   applyManualDataWiring: (args: { startTileId: number; mainLabel: string; backupLabel: string; numTiles: number; pattern: WiringPattern; }) => void;
+  addWiringGroup: (group: Omit<WiringGroup, 'id'>) => void;
+  updateWiringGroup: (groupId: string, changes: Partial<Omit<WiringGroup, 'id' | 'kind'>>) => void;
+  deleteWiringGroup: (groupId: string) => void;
+  replaceWiringGroupsOnScreen: (screenId: string, groups: WiringGroup[]) => void;
   setShowModules: Dispatch<SetStateAction<boolean>>;
   setModuleBorderColor: Dispatch<SetStateAction<string>>;
   setRandomizeModuleColors: Dispatch<SetStateAction<boolean>>;

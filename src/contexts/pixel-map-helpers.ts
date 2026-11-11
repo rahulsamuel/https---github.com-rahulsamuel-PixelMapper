@@ -91,6 +91,7 @@ export const createNewScreen = (name: string, idCounter: number): Screen => {
     lastRasterArgs: null,
     wiringPortConfig: "4",
     devices: [],
+    wiringGroups: [],
     dataPortStartNumber: 1,
     tilesPerPowerString: "20",
     showDataLabels: true,

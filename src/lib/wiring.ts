@@ -680,11 +680,11 @@ export function getWiringData({
       const dataCircuitGroups = new Map<string, DataCircuitEntry>();
       tiles.forEach((tile, gridIndex) => {
           if (tile.deleted || !tile.dataCircuit) return;
-          const { mainLabel } = tile.dataCircuit;
-          if (!dataCircuitGroups.has(mainLabel)) {
-              dataCircuitGroups.set(mainLabel, { gridIndices: [], circuit: tile.dataCircuit });
+          const key = `${tile.dataCircuit.groupId ?? ''}:${tile.dataCircuit.mainLabel}`;
+          if (!dataCircuitGroups.has(key)) {
+              dataCircuitGroups.set(key, { gridIndices: [], circuit: tile.dataCircuit });
           }
-          dataCircuitGroups.get(mainLabel)!.gridIndices.push(gridIndex);
+          dataCircuitGroups.get(key)!.gridIndices.push(gridIndex);
       });
 
       dataCircuitGroups.forEach(({ gridIndices, circuit }) => {
@@ -742,11 +742,11 @@ export function getWiringData({
       const powerCircuitGroups = new Map<string, PowerCircuitEntry>();
       tiles.forEach((tile, gridIndex) => {
           if (tile.deleted || !tile.powerCircuit) return;
-          const { label } = tile.powerCircuit;
-          if (!powerCircuitGroups.has(label)) {
-              powerCircuitGroups.set(label, { gridIndices: [], circuit: tile.powerCircuit });
+          const key = `${tile.powerCircuit.groupId ?? ''}:${tile.powerCircuit.label}`;
+          if (!powerCircuitGroups.has(key)) {
+              powerCircuitGroups.set(key, { gridIndices: [], circuit: tile.powerCircuit });
           }
-          powerCircuitGroups.get(label)!.gridIndices.push(gridIndex);
+          powerCircuitGroups.get(key)!.gridIndices.push(gridIndex);
       });
 
       powerCircuitGroups.forEach(({ gridIndices, circuit }) => {

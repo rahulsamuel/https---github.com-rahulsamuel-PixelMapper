@@ -16,6 +16,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Cpu, Eraser } from "lucide-react";
+import { WiringGroupPanel } from "./wiring-group-panel";
+import { WiringCopyButton } from "./wiring-copy-dialog";
 
 export function WiringControls() {
   const {
@@ -181,6 +183,8 @@ export function WiringControls() {
         <Label htmlFor="arrow-gap">Arrow Gap: {arrowGap}</Label>
         <Slider id="arrow-gap" min={0} max={100} step={1} value={[arrowGap]} onValueChange={(v) => setArrowGap(v[0])} />
       </div>
+      <WiringGroupPanel kind="data" />
+      <WiringCopyButton />
       <Button
         variant="outline"
         size="sm"
