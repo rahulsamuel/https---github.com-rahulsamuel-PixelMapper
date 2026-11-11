@@ -15,8 +15,8 @@ interface AuthContextType {
   user: User | null;
   isAdmin: boolean;
   loading: boolean;
-  signUp: (email: string, password: string, captchaToken: string, fullName?: string, company?: string) => Promise<{ error: string | null; needsVerification?: boolean }>;
-  signIn: (email: string, password: string, captchaToken: string) => Promise<{ error: string | null; isAdmin?: boolean; needsVerification?: boolean }>;
+  signUp: (email: string, password: string, fullName?: string, company?: string) => Promise<{ error: string | null; needsVerification?: boolean }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null; isAdmin?: boolean; needsVerification?: boolean }>;
   requestPasswordReset: (email: string, captchaToken: string) => Promise<{ error: string | null }>;
   updatePassword: (password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -77,7 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => { subscription.unsubscribe(); };
   }, []);
 
-  const signUp = async (email: string, password: string, captchaToken: string, fullName?: string, company?: string) => {
+  const signUp = async (email: string, password: string, fullName?: string, company?: string) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -85,7 +85,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         options: {
           data: { full_name: fullName ?? '', company: company ?? '' },
           emailRedirectTo: `${window.location.origin}/app`,
-          captchaToken,
         },
       });
       if (error) return { error: error.message };
@@ -105,13 +104,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signIn = async (email: string, password: string, captchaToken: string) => {
+  const signIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-        options: { captchaToken },
-      });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         if (error.message.toLowerCase().includes('email not confirmed')) {
           return { error: null, needsVerification: true };
