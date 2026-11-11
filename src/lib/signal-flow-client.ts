@@ -54,7 +54,8 @@ export async function saveSignalFlowDiagram(
         diagram_data: diagramData,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", existingId);
+      .eq("id", existingId)
+      .eq("project_id", projectId);
 
     if (error) return { success: false, id: null, error: error.message };
     return { success: true, id: existingId, error: null };
