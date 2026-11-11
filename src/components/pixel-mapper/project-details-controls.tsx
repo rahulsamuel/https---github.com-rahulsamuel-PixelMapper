@@ -43,6 +43,7 @@ export function ProjectDetailsControls() {
     screens,
     currentScreen,
     updateScreenById,
+    activeProjectId,
   } = usePixelMap();
 
   const OUTPUT_RESOLUTION_PRESETS = [
@@ -89,6 +90,12 @@ export function ProjectDetailsControls() {
       {/* Core Details */}
       <div className="space-y-4">
         <h3 className="text-sm font-bold uppercase tracking-wider text-primary">Core Details</h3>
+        <div className="space-y-2">
+          <Label>Project ID</Label>
+          <p className="font-mono text-xs text-muted-foreground break-all">
+            {activeProjectId ?? "Not saved to the cloud yet"}
+          </p>
+        </div>
         <div className="space-y-2">
           <Label htmlFor="project-number">Project Number</Label>
           <Input

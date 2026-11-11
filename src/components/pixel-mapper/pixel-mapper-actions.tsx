@@ -49,6 +49,8 @@ import {
   deleteCloudProject,
   type CloudProject,
 } from "@/lib/cloud-projects";
+import { isSaveTargetCurrent } from "@/lib/project-selection-guard";
+import { ProjectMismatchDialog } from "@/components/projects/project-mismatch-dialog";
 
 export function PixelMapActions() {
   const { exportProject, importProject, getProjectData, loadProjectData, activeProjectId, setActiveProjectId, projectName, setProjectName, undo, redo, canUndo, canRedo, startNewProject } = usePixelMap();
@@ -66,6 +68,7 @@ export function PixelMapActions() {
   const [projectToLoad, setProjectToLoad] = useState<CloudProject | null>(null);
   const [showLoadConfirm, setShowLoadConfirm] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [mismatchOpen, setMismatchOpen] = useState(false);
   const [exportFileName, setExportFileName] = useState("");
   const [versionsProject, setVersionsProject] = useState<CloudProject | null>(null);
 
@@ -117,6 +120,11 @@ export function PixelMapActions() {
     setIsSaving(true);
     const projectData = getProjectData();
     if (activeProjectId) {
+      if (!isSaveTargetCurrent(activeProjectId)) {
+        setIsSaving(false);
+        setMismatchOpen(true);
+        return;
+      }
       const { success, error } = await updateCloudProject(activeProjectId, projectName, projectData);
       setIsSaving(false);
       if (!success) {
@@ -188,6 +196,11 @@ export function PixelMapActions() {
 
   return (
     <div className="space-y-3">
+      <ProjectMismatchDialog
+        open={mismatchOpen}
+        onBackToList={() => { setMismatchOpen(false); setActiveProjectId(null); handleOpenProjects(); }}
+        onClose={() => setMismatchOpen(false)}
+      />
       {/* Local export / import */}
       <div className="grid grid-cols-2 gap-2">
         <Button onClick={handleExportClick} variant="outline" size="sm">

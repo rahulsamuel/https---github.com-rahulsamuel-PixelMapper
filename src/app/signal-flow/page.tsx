@@ -28,6 +28,8 @@ import {
 } from "@/lib/signal-flow-client";
 import { downloadSignalFlow, type SignalFlowExportFormat, type SignalFlowExportMode } from "@/lib/signal-flow-download";
 import { SignalFlowExportMenu, type SignalFlowExportJob } from "@/components/signal-flow/signal-flow-export-menu";
+import { isSaveTargetCurrent } from "@/lib/project-selection-guard";
+import { ProjectMismatchDialog } from "@/components/projects/project-mismatch-dialog";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase/client";
@@ -47,6 +49,7 @@ export default function SignalFlowPage() {
   const [diagramData, setDiagramData] = useState<SignalFlowData>(EMPTY_DATA);
   const [loadingDiagram, setLoadingDiagram] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [mismatchOpen, setMismatchOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [exporting, setExporting] = useState<SignalFlowExportJob | null>(null);
   const exportSurfaceRef = useRef<HTMLDivElement | null>(null);
@@ -138,6 +141,10 @@ export default function SignalFlowPage() {
 
   const handleSave = async () => {
     if (!user || !activeProject) return;
+    if (!isSaveTargetCurrent(activeProject.id)) {
+      setMismatchOpen(true);
+      return;
+    }
     setSaving(true);
     const { success, error } = await saveSignalFlowDiagram(
       activeProject.id,
@@ -169,7 +176,7 @@ export default function SignalFlowPage() {
   // Auto-save on unmount / page leave if dirty
   useEffect(() => {
     const handler = () => {
-      if (dirty && user && activeProject) {
+      if (dirty && user && activeProject && isSaveTargetCurrent(activeProject.id)) {
         saveSignalFlowDiagram(
           activeProject.id,
           user.id,
@@ -199,6 +206,11 @@ export default function SignalFlowPage() {
 
   return (
     <div className="flex h-[calc(100svh-3.5rem)] overflow-hidden">
+      <ProjectMismatchDialog
+        open={mismatchOpen}
+        onBackToList={() => { setMismatchOpen(false); selectProject(null); }}
+        onClose={() => setMismatchOpen(false)}
+      />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <div className="flex-shrink-0 border-b bg-background px-3 py-2 flex items-center gap-3">
           {dirty && (

@@ -26,6 +26,8 @@ import { usePersistentState } from '@/hooks/use-persistent-state';
 import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
 import { useSavedPixelMapSelection } from '@/hooks/use-saved-pixel-map-selection';
 import { loadRackDrawingSettings, saveRackDrawingSettings } from '@/lib/project-tab-saves';
+import { isSaveTargetCurrent } from '@/lib/project-selection-guard';
+import { ProjectMismatchDialog } from '@/components/projects/project-mismatch-dialog';
 
 interface RackState {
   id: number;
@@ -82,6 +84,7 @@ export function RackBuilder() {
   const [notice, setNotice] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [mismatchOpen, setMismatchOpen] = useState(false);
   const requestedProjectRef = useRef<string | null>(null);
 
   const currentSnapshot = JSON.stringify({ racks, nextRackId });
@@ -130,6 +133,10 @@ export function RackBuilder() {
 
   const handleSave = async () => {
     if (!activeProjectId) return;
+    if (!isSaveTargetCurrent(activeProjectId)) {
+      setMismatchOpen(true);
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     const snapshot = currentSnapshot;
@@ -239,6 +246,11 @@ export function RackBuilder() {
 
   return (
     <DndProvider backend={HTML5Backend}>
+      <ProjectMismatchDialog
+        open={mismatchOpen}
+        onBackToList={() => { setMismatchOpen(false); handleSelectProject(null); }}
+        onClose={() => setMismatchOpen(false)}
+      />
       <div className="flex h-[calc(100svh-3.5rem)] overflow-hidden">
         <EquipmentSidebar
           equipment={equipmentLibrary}

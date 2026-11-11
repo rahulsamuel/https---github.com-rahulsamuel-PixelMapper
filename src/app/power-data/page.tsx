@@ -17,6 +17,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
 import { useSavedPixelMapSelection } from '@/hooks/use-saved-pixel-map-selection';
 import { getScreenProductId, saveScreenProductToProject } from '@/lib/calculator-screens';
+import { isSaveTargetCurrent } from '@/lib/project-selection-guard';
+import { ProjectMismatchDialog } from '@/components/projects/project-mismatch-dialog';
 import {
   loadPowerDataSettings,
   powerDataSnapshot,
@@ -104,6 +106,7 @@ export default function PowerDataPage() {
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [mismatchOpen, setMismatchOpen] = useState(false);
   const pendingApplyScreenRef = useRef<string | null>(null);
 
   const activeScreen = activeProject?.projectData.screens.find(s => s.id === activeScreenId) ?? null;
@@ -170,6 +173,10 @@ export default function PowerDataPage() {
 
   const handleSave = async () => {
     if (!activeProject || !activeScreen) return;
+    if (!isSaveTargetCurrent(activeProject.id)) {
+      setMismatchOpen(true);
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     const productResult = await saveScreenProductToProject(activeProject.id, activeScreen.id, selectedProduct ?? null);
@@ -233,6 +240,11 @@ export default function PowerDataPage() {
 
   return (
     <div className="h-[calc(100svh-3.5rem)] flex overflow-hidden">
+      <ProjectMismatchDialog
+        open={mismatchOpen}
+        onBackToList={() => { setMismatchOpen(false); handleSelectProject(null); }}
+        onClose={() => setMismatchOpen(false)}
+      />
       {/* Left sidebar */}
       <div className="w-80 flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden">
         <div className="flex-shrink-0 px-4 pt-4 pb-2 border-b">
