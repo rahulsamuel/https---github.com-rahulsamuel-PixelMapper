@@ -76,7 +76,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
     moveScreenDown,
     zoom, setZoom, activeBounds, deletedCount, coloredCount, restoreDeletedTiles, resetAllColors, activeTool, rasterMapConfig, activeTab, setActiveTab, topHalfTile, bottomHalfTile, leftHalfTile, rightHalfTile, effectiveScreenHeight, effectiveScreenWidth, effectiveScreenWidthFromSections, isWiringMirrored, setIsWiringMirrored, wiringData, showDataLabels, showPowerLabels, sections,
     isManualPowerModalOpen, setIsManualPowerModalOpen, selectedTileForPower, applyManualPowerWiring,
-    isManualDataModalOpen, setIsManualDataModalOpen, selectedTileForData, applyManualDataWiring,
+    isManualDataModalOpen, setIsManualDataModalOpen, selectedTileForData, applyManualDataWiring, createDataGroupFromStart,
     isSyncing,
     pixelMapMode,
     setPixelMapMode,
@@ -263,6 +263,11 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
             onSubmit={(data) => {
               if (selectedTileForData !== null) {
                 applyManualDataWiring({ startTileId: selectedTileForData, ...data });
+              }
+            }}
+            onSubmitGroup={(data) => {
+              if (selectedTileForData !== null) {
+                createDataGroupFromStart({ startTileId: selectedTileForData, ...data });
               }
             }}
           />

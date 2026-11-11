@@ -559,6 +559,7 @@ export interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'
   selectedTileForData: number | null;
   applyManualDataWiring: (args: { startTileId: number; mainLabel: string; backupLabel: string; numTiles: number; pattern: WiringPattern; }) => void;
   addWiringGroup: (group: Omit<WiringGroup, 'id'>) => void;
+  createDataGroupFromStart: (args: { startTileId: number; totalTiles: number; tilesPerCircuit: number; startNumber: number; mainTemplate: string; backupTemplate: string; pattern: WiringPattern; runLength?: number; }) => void;
   updateWiringGroup: (groupId: string, changes: Partial<Omit<WiringGroup, 'id' | 'kind'>>) => void;
   deleteWiringGroup: (groupId: string) => void;
   replaceWiringGroupsOnScreen: (screenId: string, groups: WiringGroup[]) => void;

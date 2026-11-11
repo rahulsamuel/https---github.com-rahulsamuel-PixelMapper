@@ -1,5 +1,5 @@
 import type { Screen, Tile, WiringGroup } from "@/contexts/pixel-map-types";
-import { getPathOrder } from "@/lib/wiring";
+import { getPathOrder, type WiringPattern } from "@/lib/wiring";
 
 export function formatGroupLabel(template: string, number: number): string {
   return template.split("{n}").join(String(number));
@@ -88,6 +88,24 @@ export function replaceScreenWiring(screen: Screen, groups: WiringGroup[]): Scre
     wiringGroups: groups,
     tiles: rebuildWiringGroups(cleared, groups, screenWidth, screenHeight),
   };
+}
+
+export function getTileCoordsFromStart(
+  tiles: Tile[],
+  startTileId: number,
+  count: number,
+  pattern: WiringPattern,
+  screenWidth: number,
+  screenHeight: number,
+  runLength?: number
+): { x: number; y: number }[] {
+  const indices = tiles.flatMap((tile, index) => (tile.deleted ? [] : [index]));
+  const ordered = getPathOrder(indices, pattern, screenWidth, screenHeight, runLength);
+  const startPosition = ordered.findIndex(index => tiles[index].id === startTileId);
+  if (startPosition < 0) return [];
+  return ordered
+    .slice(startPosition, startPosition + count)
+    .map(index => ({ x: index % screenWidth, y: Math.floor(index / screenWidth) }));
 }
 
 export function groupsFitScreen(groups: WiringGroup[], screen: Screen): boolean {

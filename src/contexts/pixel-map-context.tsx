@@ -32,7 +32,7 @@ import type {
 } from "./pixel-map-types";
 
 import { formatFractionalInch, trackEvent, repositionDefaultLogo, createNewScreen } from "./pixel-map-helpers";
-import { rebuildWiringGroups, removeWiringGroup, replaceScreenWiring } from "@/lib/wiring-groups";
+import { rebuildWiringGroups, removeWiringGroup, replaceScreenWiring, getTileCoordsFromStart, formatGroupLabel } from "@/lib/wiring-groups";
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
 
@@ -971,6 +971,38 @@ const handleRightHalfTileChange = (add: boolean) => {
   const replaceWiringGroupsOnScreen = useCallback((screenId: string, groups: WiringGroup[]) => {
     setScreens(prevScreens => prevScreens.map(screen => screen.id === screenId ? replaceScreenWiring(screen, groups) : screen));
   }, []);
+
+  const createDataGroupFromStart = useCallback((args: {
+    startTileId: number;
+    totalTiles: number;
+    tilesPerCircuit: number;
+    startNumber: number;
+    mainTemplate: string;
+    backupTemplate: string;
+    pattern: WiringPattern;
+    runLength?: number;
+  }) => {
+    updateCurrentScreen(screen => {
+      const { screenWidth, screenHeight } = screen.dimensions;
+      const tileCoords = getTileCoordsFromStart(screen.tiles, args.startTileId, args.totalTiles, args.pattern, screenWidth, screenHeight, args.runLength);
+      if (tileCoords.length === 0) return screen;
+      const group: WiringGroup = {
+        id: crypto.randomUUID(),
+        name: `Group from ${formatGroupLabel(args.mainTemplate, args.startNumber)}`,
+        kind: 'data',
+        tileCoords,
+        pattern: args.pattern,
+        runLength: args.runLength,
+        tilesPerCircuit: args.tilesPerCircuit,
+        mainTemplate: args.mainTemplate,
+        backupTemplate: args.backupTemplate,
+        startNumber: args.startNumber,
+        customLabels: {},
+      };
+      const wiringGroups = [...screen.wiringGroups, group];
+      return { ...screen, wiringGroups, tiles: rebuildWiringGroups(screen.tiles, wiringGroups, screenWidth, screenHeight) };
+    });
+  }, [updateCurrentScreen]);
 
   const addProcessor = useCallback((entry: Omit<ProcessorEntry, 'id'>) => {
     const id = `proc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -3945,6 +3977,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     selectedTileForData,
     applyManualDataWiring,
     addWiringGroup,
+    createDataGroupFromStart,
     updateWiringGroup,
     deleteWiringGroup,
     replaceWiringGroupsOnScreen,
