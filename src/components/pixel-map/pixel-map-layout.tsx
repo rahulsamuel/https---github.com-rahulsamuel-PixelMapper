@@ -255,24 +255,22 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
           />
         </Suspense>
       )}
-      {isManualDataModalOpen && (
-        <Suspense fallback={null}>
-          <ManualDataWiringModal
-            isOpen={isManualDataModalOpen}
-            onClose={() => setIsManualDataModalOpen(false)}
-            onSubmit={(data) => {
-              if (selectedTileForData !== null) {
-                applyManualDataWiring({ startTileId: selectedTileForData, ...data });
-              }
-            }}
-            onSubmitGroup={(data) => {
-              if (selectedTileForData !== null) {
-                createDataGroupFromStart({ startTileId: selectedTileForData, ...data });
-              }
-            }}
-          />
-        </Suspense>
-      )}
+      <Suspense fallback={null}>
+        <ManualDataWiringModal
+          isOpen={isManualDataModalOpen}
+          onClose={() => setIsManualDataModalOpen(false)}
+          onSubmit={(data) => {
+            if (selectedTileForData !== null) {
+              applyManualDataWiring({ startTileId: selectedTileForData, ...data });
+            }
+          }}
+          onSubmitGroup={(data) => {
+            if (selectedTileForData !== null) {
+              createDataGroupFromStart({ startTileId: selectedTileForData, ...data });
+            }
+          }}
+        />
+      </Suspense>
       <AlertDialog open={showAdvancedPrompt} onOpenChange={setShowAdvancedPrompt}>
         <AlertDialogContent>
           <AlertDialogHeader>
