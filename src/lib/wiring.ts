@@ -520,6 +520,23 @@ export function applyManualPowerWiring(
     return newTiles;
 }
 
+export function getDataPathFromStart(
+    tiles: Tile[],
+    startTileGridIndex: number,
+    dataPattern: WiringPattern,
+    screenWidth: number,
+    screenHeight: number,
+    runLength?: number,
+): number[] {
+    const activeTileIndices = tiles.map((t, i) => !t.deleted ? i : -1).filter(i => i !== -1);
+    if (isCustomSerpentine(dataPattern)) {
+        return generateManualSerpentinePath(startTileGridIndex, activeTileIndices, dataPattern, screenWidth, screenHeight, runLength || 4);
+    }
+    const pathOrder = getPathOrder(activeTileIndices, dataPattern, screenWidth, screenHeight, runLength);
+    const startPosition = pathOrder.indexOf(startTileGridIndex);
+    return startPosition === -1 ? [] : pathOrder.slice(startPosition);
+}
+
 export function applyManualDataWiring(
     tiles: Tile[],
     startTileId: number,
@@ -554,19 +571,8 @@ export function applyManualDataWiring(
     }
 
     const activeTileIndices = newTiles.map((t, i) => !t.deleted ? i : -1).filter(i => i !== -1);
-    const pathOrder = isCustomSerpentine(dataPattern)
-      ? generateManualSerpentinePath(startTileGridIndex, activeTileIndices, dataPattern, screenWidth, screenHeight, runLength || 4)
-      : getPathOrder(activeTileIndices, dataPattern, screenWidth, screenHeight, runLength);
-    const startTilePathIndex = isCustomSerpentine(dataPattern) ? 0 : pathOrder.indexOf(startTileGridIndex);
-    if (startTilePathIndex === -1) return tiles; 
-
-    const circuitTilesIndices: number[] = [];
-    for (let i = 0; i < numTiles; i++) {
-        const currentPathIndex = startTilePathIndex + i;
-        if (currentPathIndex < pathOrder.length) {
-            circuitTilesIndices.push(pathOrder[currentPathIndex]);
-        }
-    }
+    const circuitTilesIndices = getDataPathFromStart(newTiles, startTileGridIndex, dataPattern, screenWidth, screenHeight, runLength).slice(0, numTiles);
+    if (circuitTilesIndices.length === 0) return tiles;
     
     circuitTilesIndices.forEach(tileIndex => {
         if (newTiles[tileIndex]?.dataCircuit) {
