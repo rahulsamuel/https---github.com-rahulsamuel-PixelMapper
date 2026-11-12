@@ -3119,14 +3119,14 @@ const handleRightHalfTileChange = (add: boolean) => {
   }, [screens, getProjectData]);
 
   const clearAllWiring = useCallback(() => {
-    setScreens(prevScreens => prevScreens.map(s => ({
+    setScreens(prevScreens => prevScreens.map(s => s.id !== currentScreenId ? s : ({
       ...s,
       tiles: s.tiles.map(t => ({ ...t, dataCircuit: undefined, powerCircuit: undefined, powerPortLabel: undefined })),
       wiringPattern: 'serpentine-horizontal',
       powerWiringPattern: 'left-right',
     })));
-    toast({ title: "Wiring Cleared", description: "All manual wiring has been removed." });
-  }, [toast]);
+    toast({ title: "Wiring Cleared", description: "All wiring has been removed from the active screen." });
+  }, [currentScreenId, toast]);
 
   const clearDataWiring = useCallback(() => {
     setScreens(prevScreens => prevScreens.map(screen => {
