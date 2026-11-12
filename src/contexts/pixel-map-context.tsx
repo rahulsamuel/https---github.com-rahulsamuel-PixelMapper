@@ -2,7 +2,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode, Dispatch, SetStateAction, useMemo } from "react";
-import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo, applyManualPowerWiring as applyManualPowerWiringLogic, applyManualDataWiring as applyManualDataWiringLogic, getDataPathFromStart } from "@/lib/wiring";
+import { getWiringData, type WiringPattern, getPathOrder, type WiringInfo, applyManualPowerWiring as applyManualPowerWiringLogic, applyManualDataWiring as applyManualDataWiringLogic, generateManualSerpentinePath, isCustomSerpentine } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { isColorDark } from "@/lib/utils";
@@ -32,7 +32,7 @@ import type {
 } from "./pixel-map-types";
 
 import { formatFractionalInch, trackEvent, repositionDefaultLogo, createNewScreen } from "./pixel-map-helpers";
-import { rebuildWiringGroups, removeWiringGroup, replaceScreenWiring } from "@/lib/wiring-groups";
+import { rebuildWiringGroups, removeWiringGroup, replaceScreenWiring, getTileCoordsFromStart, formatGroupLabel } from "@/lib/wiring-groups";
 
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
 
@@ -972,13 +972,37 @@ const handleRightHalfTileChange = (add: boolean) => {
     setScreens(prevScreens => prevScreens.map(screen => screen.id === screenId ? replaceScreenWiring(screen, groups) : screen));
   }, []);
 
-  const getDataPathTileIds = useCallback((startTileId: number, pattern: WiringPattern, runLength?: number): number[] => {
-    const { tiles } = currentScreen;
-    const startIndex = tiles.findIndex(t => t.id === startTileId);
-    if (startIndex === -1) return [];
-    return getDataPathFromStart(tiles, startIndex, pattern, effectiveScreenWidth, effectiveScreenHeight, runLength)
-      .map(index => tiles[index].id);
-  }, [currentScreen, effectiveScreenWidth, effectiveScreenHeight]);
+  const createDataGroupFromStart = useCallback((args: {
+    startTileId: number;
+    totalTiles: number;
+    tilesPerCircuit: number;
+    startNumber: number;
+    mainTemplate: string;
+    backupTemplate: string;
+    pattern: WiringPattern;
+    runLength?: number;
+  }) => {
+    updateCurrentScreen(screen => {
+      const { screenWidth, screenHeight } = screen.dimensions;
+      const tileCoords = getTileCoordsFromStart(screen.tiles, args.startTileId, args.totalTiles, args.pattern, screenWidth, screenHeight, args.runLength);
+      if (tileCoords.length === 0) return screen;
+      const group: WiringGroup = {
+        id: crypto.randomUUID(),
+        name: `Group from ${formatGroupLabel(args.mainTemplate, args.startNumber)}`,
+        kind: 'data',
+        tileCoords,
+        pattern: args.pattern,
+        runLength: args.runLength,
+        tilesPerCircuit: args.tilesPerCircuit,
+        mainTemplate: args.mainTemplate,
+        backupTemplate: args.backupTemplate,
+        startNumber: args.startNumber,
+        customLabels: {},
+      };
+      const wiringGroups = [...screen.wiringGroups, group];
+      return { ...screen, wiringGroups, tiles: rebuildWiringGroups(screen.tiles, wiringGroups, screenWidth, screenHeight) };
+    });
+  }, [updateCurrentScreen]);
 
   const addProcessor = useCallback((entry: Omit<ProcessorEntry, 'id'>) => {
     const id = `proc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -3952,8 +3976,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     setIsManualDataModalOpen,
     selectedTileForData,
     applyManualDataWiring,
-    getDataPathTileIds,
     addWiringGroup,
+    createDataGroupFromStart,
     updateWiringGroup,
     deleteWiringGroup,
     replaceWiringGroupsOnScreen,
