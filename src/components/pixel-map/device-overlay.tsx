@@ -1,13 +1,9 @@
 "use client";
 
 import type { PointerEvent } from "react";
+import { BUILT_IN_DEVICE_IMAGES, deviceSize, type DeviceRoute, type Point } from "@/lib/device-wiring-layout";
 import { usePixelMap } from "@/contexts/pixel-map-context";
-import { deviceSize, type DeviceRoute, type Point } from "@/lib/device-wiring-layout";
 
-const DEVICE_IMAGES: Record<string, string> = {
-  CVT10: "/assets/images/equipment-previews/WhatsApp_Image_2026-11-04_at_2.34.23_PM.jpeg",
-  "XD Box": "/assets/images/equipment-previews/XD_BOX.jpg",
-};
 const LINE_COLOR = "#a855f7";
 const LINE_WIDTH = 4;
 
@@ -20,7 +16,7 @@ interface DeviceOverlayProps {
 }
 
 export function DeviceOverlay({ origins, routes, onDragStart, onDragMove, onDragEnd }: DeviceOverlayProps) {
-  const { devices } = usePixelMap();
+  const { devices, deviceModelImages } = usePixelMap();
 
   return (
     <>
@@ -41,6 +37,7 @@ export function DeviceOverlay({ origins, routes, onDragStart, onDragMove, onDrag
       {devices.map(device => {
         const origin = origins[device.id];
         const size = deviceSize(device);
+        const imageSrc = deviceModelImages[device.model] ?? BUILT_IN_DEVICE_IMAGES[device.model];
         return (
           <div
             key={device.id}
@@ -52,8 +49,8 @@ export function DeviceOverlay({ origins, routes, onDragStart, onDragMove, onDrag
             style={{ left: origin.x, top: origin.y, width: size.w, height: size.h }}
           >
             <span className="absolute -top-5 left-0 whitespace-nowrap text-xs font-medium text-foreground">{device.label}</span>
-            {DEVICE_IMAGES[device.model] ? (
-              <img src={DEVICE_IMAGES[device.model]} alt={device.label} draggable={false} className="size-full rounded-sm object-fill shadow-sm" />
+            {imageSrc ? (
+              <img src={imageSrc} alt={device.label} draggable={false} className="size-full rounded-sm object-fill shadow-sm" />
             ) : (
               <div className="size-full rounded-sm border bg-muted" />
             )}

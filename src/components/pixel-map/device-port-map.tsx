@@ -1,8 +1,9 @@
 import { usePixelMap } from "@/contexts/pixel-map-context";
-import { dataLabelFor } from "@/lib/device-wiring-layout";
+import { dataLabelFor, portLabelOffsets } from "@/lib/device-wiring-layout";
 
 export function DevicePortMap() {
   const { devices } = usePixelMap();
+  const offsets = portLabelOffsets(devices);
 
   if (devices.length === 0) {
     return <p className="text-sm text-muted-foreground">Add a device in the Devices section to see its port connections.</p>;
@@ -16,7 +17,7 @@ export function DevicePortMap() {
           <div className="grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2">
             {Array.from({ length: device.portCount }, (_, i) => i + 1).map(port => (
               <div key={port} className="rounded border bg-background px-2 py-1 text-xs tabular-nums text-foreground">
-                Port {port} to {dataLabelFor(device, port)}
+                Port {port} to {dataLabelFor(device, port, offsets[device.id])}
               </div>
             ))}
           </div>

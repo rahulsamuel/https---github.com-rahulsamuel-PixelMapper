@@ -621,6 +621,8 @@ export interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'
   addScreenDevice: (device: Omit<ScreenDevice, 'id'>) => void;
   updateScreenDevice: (id: string, patch: Partial<ScreenDevice>) => void;
   removeScreenDevice: (id: string) => void;
+  deviceModelImages: Record<string, string>;
+  uploadDeviceModelImage: (model: string, file: File) => Promise<void>;
   addCable: (entry: Omit<CableRun, 'id'>) => string;
   updateCable: (id: string, patch: Partial<CableRun>) => void;
   removeCable: (id: string) => void;

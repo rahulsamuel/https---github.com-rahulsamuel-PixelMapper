@@ -10,6 +10,7 @@ import { loadLedProducts } from "@/lib/led-products-client";
 import { useAuth } from "./auth-context";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
+import { supabase } from "@/lib/supabase/client";
 
 export type {
   Tile, ActiveBounds, ProcessorType, PixelMapMode,
@@ -318,6 +319,34 @@ export function PixelMapProvider({ children }: { children: ReactNode }) {
   const setRasterOffset = (updater: SetStateAction<{x: number, y: number}>) => updateCurrentScreen(s => ({ ...s, rasterOffset: typeof updater === 'function' ? updater(s.rasterOffset) : updater }));
   const setLastRasterArgs = (updater: SetStateAction<RasterArgs | null>) => updateCurrentScreen(s => ({ ...s, lastRasterArgs: typeof updater === 'function' ? updater(s.lastRasterArgs) : updater }));
   const setWiringPortConfig = (updater: SetStateAction<string>) => updateCurrentScreen(s => ({ ...s, wiringPortConfig: typeof updater === 'function' ? updater(s.wiringPortConfig) : updater }));
+
+  const [deviceModelImages, setDeviceModelImages] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let cancelled = false;
+    supabase.from("device_model_images").select("model, image_url").then(({ data, error }) => {
+      if (cancelled) return;
+      if (error || !data) {
+        toast({ title: "Could not load device pictures", description: error?.message ?? "Please refresh the page.", variant: "destructive" });
+        return;
+      }
+      setDeviceModelImages(Object.fromEntries(data.map(row => [row.model, row.image_url])));
+    });
+    return () => { cancelled = true; };
+  }, [toast]);
+
+  const uploadDeviceModelImage = useCallback(async (model: string, file: File) => {
+    const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+    const path = `${model.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.${extension}`;
+    const { error: uploadError } = await supabase.storage.from("device-images").upload(path, file, { upsert: true, contentType: file.type });
+    if (uploadError) throw uploadError;
+    const { data: publicUrlData } = supabase.storage.from("device-images").getPublicUrl(path);
+    const imageUrl = `${publicUrlData.publicUrl}?v=${Date.now()}`;
+    const { error: saveError } = await supabase
+      .from("device_model_images")
+      .upsert({ model, image_url: imageUrl, updated_at: new Date().toISOString() });
+    if (saveError) throw saveError;
+    setDeviceModelImages(prev => ({ ...prev, [model]: imageUrl }));
+  }, []);
 
   const addScreenDevice = (device: Omit<ScreenDevice, 'id'>) => updateCurrentScreen(s => ({
     ...s,
@@ -4029,6 +4058,8 @@ const handleRightHalfTileChange = (add: boolean) => {
     addScreenDevice,
     updateScreenDevice,
     removeScreenDevice,
+    deviceModelImages,
+    uploadDeviceModelImage,
     devices: currentScreen.devices ?? [],    addCable,
     updateCable,
     removeCable,
