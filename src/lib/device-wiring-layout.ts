@@ -56,8 +56,12 @@ export function dataLabelFor(device: ScreenDevice, port: number, labelOffset: nu
   return device.role === "backup" ? `${n}B` : `${n}A`;
 }
 
+function portKey(label: string) {
+  return (label.split("-").pop() ?? "").trim().toUpperCase();
+}
+
 function findAnchor(anchors: DataPortAnchor[], device: ScreenDevice, label: string) {
-  return anchors.find(a => (device.role === "backup" ? a.backupLabel : a.dataLabel) === label);
+  return anchors.find(a => portKey(device.role === "backup" ? a.backupLabel : a.dataLabel) === label);
 }
 
 const roundOneDecimal = (m: number) => Math.round(m * 10) / 10;
