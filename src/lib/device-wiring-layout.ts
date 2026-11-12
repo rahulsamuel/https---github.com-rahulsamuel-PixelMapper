@@ -27,6 +27,7 @@ const SLACK_M = 1;
 const PX_PER_MM = 0.5;
 const PHYSICAL_MM: Record<string, { w: number; h: number }> = {
   CVT10: { w: 254.3, h: 50.6 },
+  "XD Box": { w: 482.6, h: 88.5 },
 };
 
 export function deviceSize(device: ScreenDevice) {
