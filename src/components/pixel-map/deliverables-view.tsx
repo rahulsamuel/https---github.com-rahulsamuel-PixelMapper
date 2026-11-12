@@ -151,14 +151,16 @@ export function DeliverablesView() {
   const screenData = useMemo(() => {
     return selectedScreens.map((screen, idx) => {
       const activeTileCount = screen.tiles.filter(t => !t.deleted).length;
-      const effectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
       const hasSections = screen.sections.length > 0;
+      const halfColumns = (screen.leftHalfTile ? 0.5 : 0) + (screen.rightHalfTile ? 0.5 : 0);
+      const halfRows = (screen.topHalfTile ? 0.5 : 0) + (screen.bottomHalfTile ? 0.5 : 0);
+      const effectiveHeightTiles = screen.dimensions.screenHeight + halfRows;
       const resWidth = hasSections
         ? screen.sections.reduce((total, section) => total + section.columnCount * section.tileWidthPx, 0)
-        : screen.dimensions.screenWidth * screen.dimensions.tileWidth;
+        : (screen.dimensions.screenWidth + halfColumns) * screen.dimensions.tileWidth;
       const resHeight = hasSections
-        ? (screen.sections[0]?.tileHeightPx ?? screen.dimensions.tileHeight) * effectiveHeight
-        : screen.dimensions.screenHeight * screen.dimensions.tileHeight;
+        ? (screen.sections[0]?.tileHeightPx ?? screen.dimensions.tileHeight) * effectiveHeightTiles
+        : effectiveHeightTiles * screen.dimensions.tileHeight;
       const totalPixels = resWidth * resHeight;
       const g = gcd(resWidth, resHeight);
       const aspectRatio = `${resWidth / g}:${resHeight / g}`;
@@ -178,24 +180,36 @@ export function DeliverablesView() {
           productName: `${entry.product.productName}${sizeLabel}`,
           dimensions: `${entry.product.tileWidthPx} × ${entry.product.tileHeightPx} px`,
         });
+        const halfWidthScale = !entry.section && (screen.leftHalfTile || screen.rightHalfTile) ? 0.5 : 1;
+        const halfHeightScale = !entry.section && (screen.topHalfTile || screen.bottomHalfTile) ? 0.5 : 1;
+        if (!entry.section && (halfWidthScale < 1 || halfHeightScale < 1)) {
+          const halfWidthMm = (widthMm ?? 0) * halfWidthScale;
+          const halfHeightMm = (heightMm ?? 0) * halfHeightScale;
+          const halfSizeLabel = halfWidthMm && halfHeightMm ? ` (${Math.round(halfWidthMm)}x${Math.round(halfHeightMm)})` : '';
+          result.push({
+            key: `${key}:half`,
+            manufacturer: entry.product.manufacturer,
+            productName: `${entry.product.productName} Half Tile${halfSizeLabel}`,
+            dimensions: `${Math.round(entry.product.tileWidthPx * halfWidthScale)} × ${Math.round(entry.product.tileHeightPx * halfHeightScale)} px`,
+          });
+        }
         return result;
       }, []);
       const ledProductDimensions = ledProducts.map(product => product.dimensions).join(' / ') || 'N/A';
       const ledManufacturer = Array.from(new Set(ledProducts.map(product => product.manufacturer))).join(' / ') || 'N/A';
       const ledProductName = ledProducts.map(product => product.productName).join(' / ') || 'N/A';
       const screenRes = `${resWidth.toLocaleString()} × ${resHeight.toLocaleString()} px`;
-      const effectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
       let physWmm = 0;
       let physHmm = 0;
       if (hasSections) {
         physWmm = screen.sections.reduce((sum, section) => sum + (section.tileWidthMm || 0) * section.columnCount, 0);
-        physHmm = (screen.sections[0]?.tileHeightMm || 0) * effectiveHeight;
+        physHmm = (screen.sections[0]?.tileHeightMm || 0) * effectiveHeightTiles;
       } else {
         const screenProduct = products.find((p: LedProduct) => p.id === screen.selectedProductId);
         const tileWmm = (screenProduct?.tileWidthMm as number | undefined) || screen.customTileWidthMm || 0;
         const tileHmm = (screenProduct?.tileHeightMm as number | undefined) || screen.customTileHeightMm || 0;
-        physWmm = tileWmm * effectiveWidth;
-        physHmm = tileHmm * effectiveHeight;
+        physWmm = tileWmm * (screen.dimensions.screenWidth + halfColumns);
+        physHmm = tileHmm * effectiveHeightTiles;
       }
       const physicalDimensions = formatPhysicalDimensions(physWmm, physHmm);
       const containerExtension = videoContainer.trim().toLowerCase().replace(/^\./, '') || 'mp4';
