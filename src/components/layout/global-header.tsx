@@ -10,10 +10,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User, ShieldCheck, Menu, X, Package, Plus, Receipt } from 'lucide-react';
+import { LogOut, User, ShieldCheck, Menu, X, Package, Plus, Receipt, Cpu, Cable, Server, Box, LineChart, MessageSquare, Boxes } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -25,6 +29,16 @@ function getInitials(email: string | undefined): string {
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return email.slice(0, 2).toUpperCase();
 }
+
+const adminItems = [
+  { href: '/admin/products',            label: 'LED Products',    icon: Package },
+  { href: '/admin/processors',          label: 'Processors',      icon: Cpu },
+  { href: '/admin/signal-flow-devices', label: 'SF Devices',      icon: Cable },
+  { href: '/admin/rack-equipment',      label: 'Rack Equipment',  icon: Server },
+  { href: '/admin/models',              label: '3D Models',       icon: Box },
+  { href: '/admin/tracking',            label: 'Tracking',        icon: LineChart },
+  { href: '/admin/feedback',            label: 'Feedback',        icon: MessageSquare },
+];
 
 const navItems = [
   { href: '/app',          label: 'Pixel Map' },
@@ -91,60 +105,6 @@ export function GlobalHeader() {
                   Add LED Product
                 </Button>
               </Link>
-              {user?.email === 'rahulsamuel@gmail.com' && (
-                <>
-                  {!pathname.startsWith('/admin') && (
-                    <Link href="/admin/products">
-                      <Button variant="ghost" size="sm" className="h-8 px-3 text-sm text-muted-foreground hover:text-foreground gap-1.5">
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                        Admin
-                      </Button>
-                    </Link>
-                  )}
-                  {pathname.startsWith('/admin') && (
-                    <div className="flex items-center gap-1">
-                      <div className="flex items-center gap-0.5 px-1.5 py-1 rounded-lg bg-muted/60">
-                        <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 mr-1 pl-1">LED</span>
-                        <Link href="/admin/products">
-                          <Button variant={pathname.startsWith('/admin/products') || pathname.startsWith('/admin/add-led') ? 'secondary' : 'ghost'} size="sm" className="h-7 px-2.5 text-xs gap-1.5">
-                            Products
-                          </Button>
-                        </Link>
-                        <Link href="/admin/processors">
-                          <Button variant={pathname.startsWith('/admin/processors') ? 'secondary' : 'ghost'} size="sm" className="h-7 px-2.5 text-xs gap-1.5">
-                            Processors
-                          </Button>
-                        </Link>
-                      </div>
-                      <Link href="/admin/signal-flow-devices">
-                        <Button variant={pathname.startsWith('/admin/signal-flow-devices') ? 'secondary' : 'ghost'} size="sm" className="h-8 px-3 text-sm gap-1.5">
-                          SF Devices
-                        </Button>
-                      </Link>
-                      <Link href="/admin/rack-equipment">
-                        <Button variant={pathname.startsWith('/admin/rack-equipment') ? 'secondary' : 'ghost'} size="sm" className="h-8 px-3 text-sm gap-1.5">
-                          Rack Equipment
-                        </Button>
-                      </Link>
-                      <Link href="/admin/models">
-                        <Button variant={pathname.startsWith('/admin/models') ? 'secondary' : 'ghost'} size="sm" className="h-8 px-3 text-sm gap-1.5">
-                          3D Models
-                        </Button>
-                      </Link>
-                      <Link href="/admin/tracking">
-                        <Button variant={pathname.startsWith('/admin/tracking') ? 'secondary' : 'ghost'} size="sm" className="h-8 px-3 text-sm gap-1.5">
-                          Tracking
-                        </Button>
-                      </Link>
-                      <Link href="/admin/feedback">
-                        <Button variant={pathname.startsWith('/admin/feedback') ? 'secondary' : 'ghost'} size="sm" className="h-8 px-3 text-sm gap-1.5">
-                          Feedback
-                        </Button>
-                      </Link>
-                    </div>
-                  )}
-                </>
-              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="relative h-8 w-8 rounded-full p-0">
@@ -172,10 +132,22 @@ export function GlobalHeader() {
                     <span>Receipts</span>
                   </DropdownMenuItem>
                   {user?.email === 'rahulsamuel@gmail.com' && (
-                    <DropdownMenuItem onClick={() => router.push('/admin/products')}>
-                      <ShieldCheck className="mr-2 h-4 w-4" />
-                      <span>Admin</span>
-                    </DropdownMenuItem>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        <span>Admin</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuPortal>
+                        <DropdownMenuSubContent className="w-56">
+                          {adminItems.map(({ href, label, icon: Icon }) => (
+                            <DropdownMenuItem key={href} onClick={() => router.push(href)}>
+                              <Icon className="mr-2 h-4 w-4" />
+                              <span>{label}</span>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuPortal>
+                    </DropdownMenuSub>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
@@ -238,14 +210,17 @@ export function GlobalHeader() {
                     Add LED Product
                   </div>
                 </Link>
-                {user?.email === 'rahulsamuel@gmail.com' && !pathname.startsWith('/admin') && (
-                  <Link href="/admin/products" onClick={() => setMobileOpen(false)}>
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                      <ShieldCheck className="h-3.5 w-3.5" />
-                      Admin
+                {user?.email === 'rahulsamuel@gmail.com' && adminItems.map(({ href, label, icon: Icon }) => (
+                  <Link key={href} href={href} onClick={() => setMobileOpen(false)}>
+                    <div className={cn(
+                      'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
+                      isActive(href) ? 'bg-primary/12 text-primary font-medium' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    )}>
+                      <Icon className="h-3.5 w-3.5" />
+                      {label}
                     </div>
                   </Link>
-                )}
+                ))}
                 <Link href="/receipts" onClick={() => setMobileOpen(false)}>
                   <div className={cn(
                     'flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors',
