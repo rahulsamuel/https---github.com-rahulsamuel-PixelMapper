@@ -9,6 +9,7 @@ import { isColorDark } from "@/lib/utils";
 import { loadLedProducts } from "@/lib/led-products-client";
 import { useAuth } from "./auth-context";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
+import { readStoredSelection, SELECTED_PROJECT_STORAGE_KEY } from "@/hooks/use-saved-pixel-map-selection";
 import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
 import { supabase } from "@/lib/supabase/client";
 
@@ -3009,6 +3010,7 @@ const handleRightHalfTileChange = (add: boolean) => {
   useEffect(() => {
     if (hasRestoredRef.current) return;
     hasRestoredRef.current = true;
+    if (readStoredSelection(SELECTED_PROJECT_STORAGE_KEY)) return;
     try {
       const saved = localStorage.getItem(AUTOSAVE_KEY);
       if (saved) {
