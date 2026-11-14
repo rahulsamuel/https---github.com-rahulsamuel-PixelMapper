@@ -41,7 +41,7 @@ export function DownloadsControls() {
     const pngDownloadDisabled = isGridEmpty || !isGridTab;
     const wiringDownloadDisabled = isGridEmpty || !isWiringTab;
     const compositeWiringDownloadDisabled = isGridEmpty || !isWiringTab || !rasterMapConfig || !hasMultipleScreens;
-    const slicesDownloadDisabled = !rasterMapConfig || rasterMapConfig.slices.length === 0;
+    const slicesDownloadDisabled = !isRasterTab || !rasterMapConfig || rasterMapConfig.slices.length === 0;
 
     let pngTooltip;
     if (isGridEmpty) {
@@ -71,6 +71,8 @@ export function DownloadsControls() {
     let slicesDownloadTooltip;
     if (!rasterMapConfig || rasterMapConfig.slices.length === 0) {
         slicesDownloadTooltip = "Generate a raster map with slices first.";
+    } else if (!isRasterTab) {
+        slicesDownloadTooltip = "Switch to the Raster Map Preview tab to download.";
     }
 
     // Collect unique colors present in the current screen for the legend editor
