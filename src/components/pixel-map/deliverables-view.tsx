@@ -539,12 +539,12 @@ export function DeliverablesView() {
             <ReportSection icon={<Cpu className="size-4" />} title="Pixel Map Generator">
               {screenData.map((sd) => (
                 <div id={`pixel-map-${sd.screen.id}`} key={sd.screen.id} className="scroll-mt-6 border border-slate-200 rounded-lg overflow-hidden mb-4 last:mb-0">
-                  <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <div className="grid grid-cols-2">
                     {/* Left: Pixel map preview (clickable to download) */}
-                    <div className="min-w-0 bg-slate-900 flex flex-col items-center justify-center p-6 min-h-[200px] relative group">
+                    <div className="bg-slate-900 flex flex-col items-center justify-center p-6 min-h-[200px] relative group">
                       {sd.previewImage ? (
                         <>
-                          <img src={sd.previewImage} alt={`Pixel map ${sd.screen.name}`} className="block w-full h-[250px] object-contain" />
+                          <img src={sd.previewImage} alt={`Pixel map ${sd.screen.name}`} className="max-w-full max-h-[250px] object-contain" />
                           <button
                             onClick={() => handleDownloadPixelMap(sd)}
                             className="no-print mt-3 flex items-center gap-1.5 text-xs bg-blue-600 text-white rounded px-3 py-1.5 hover:bg-blue-700 transition-colors"
