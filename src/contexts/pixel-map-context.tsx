@@ -9,7 +9,6 @@ import { isColorDark } from "@/lib/utils";
 import { loadLedProducts } from "@/lib/led-products-client";
 import { useAuth } from "./auth-context";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
-import { readStoredSelection, SELECTED_PROJECT_STORAGE_KEY } from "@/hooks/use-saved-pixel-map-selection";
 import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
 import { supabase } from "@/lib/supabase/client";
 
@@ -3004,39 +3003,6 @@ const handleRightHalfTileChange = (add: boolean) => {
       setPixelMapModeState(data.pixelMapMode);
     }
   }, []);
-
-  const AUTOSAVE_KEY = 'pixel-mapper-autosave';
-  const hasRestoredRef = useRef(false);
-  useEffect(() => {
-    if (hasRestoredRef.current) return;
-    hasRestoredRef.current = true;
-    if (readStoredSelection(SELECTED_PROJECT_STORAGE_KEY)) return;
-    try {
-      const saved = localStorage.getItem(AUTOSAVE_KEY);
-      if (saved) {
-        const data = JSON.parse(saved) as ProjectData;
-        if (data.screens && data.screens.length > 0) {
-          loadProjectData(data);
-        }
-      }
-    } catch {
-      // ignore corrupt autosave data
-    }
-  }, [loadProjectData]);
-
-  const localSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    localSaveTimerRef.current = setTimeout(() => {
-      try {
-        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(getProjectData()));
-      } catch {
-        // storage full or unavailable
-      }
-    }, 1000);
-    return () => {
-      if (localSaveTimerRef.current) clearTimeout(localSaveTimerRef.current);
-    };
-  }, [getProjectData]);
 
   const pushHistory = useCallback(() => {
     historyRef.current.past.push(getProjectData());

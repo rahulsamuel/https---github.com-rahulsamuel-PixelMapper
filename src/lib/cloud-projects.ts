@@ -1,7 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase/client";
-import type { ProjectData } from "@/contexts/pixel-map-context";
+import type { ProjectData, Screen } from "@/contexts/pixel-map-context";
 
 export interface CloudProject {
   id: string;
@@ -45,11 +45,31 @@ export async function saveCloudProject(
   return { success: true, projectId: data.id, error: null };
 }
 
+export async function storedScreensMatch(
+  projectId: string,
+  screens: Screen[]
+): Promise<{ ok: boolean; error: string | null }> {
+  const { data, error } = await supabase
+    .from("pixel_map_projects")
+    .select("project_data")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (error) return { ok: false, error: 'Something went wrong. Please try again.' };
+  const storedScreens = (data?.project_data?.screens ?? []) as Screen[];
+  if (storedScreens.length === 0) return { ok: true, error: null };
+  const storedIds = new Set(storedScreens.map(s => s.id));
+  if (screens.some(s => storedIds.has(s.id))) return { ok: true, error: null };
+  console.warn('src/lib/cloud-projects.ts: blocked save, screens do not belong to project', projectId);
+  return { ok: false, error: 'This save was blocked because the open screens do not belong to the selected project. Reload the project and try again.' };
+}
+
 export async function updateCloudProject(
   projectId: string,
   projectName: string,
   projectData: ProjectData
 ): Promise<{ success: boolean; error: string | null }> {
+  const match = await storedScreensMatch(projectId, projectData.screens);
+  if (!match.ok) return { success: false, error: match.error };
   const updatedAt = new Date().toISOString();
   const { error } = await supabase
     .from("pixel_map_projects")

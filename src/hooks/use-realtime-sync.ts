@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { storedScreensMatch } from "@/lib/cloud-projects";
 import type { ProjectData, Screen } from "@/contexts/pixel-map-context";
 
 const SAVE_DEBOUNCE_MS = 5000;
@@ -41,6 +42,11 @@ export function useRealtimeSync({
     saveTimerRef.current = setTimeout(async () => {
       const data = dataRef.current();
       setIsSyncing(true);
+      const match = await storedScreensMatch(projectId, data.screens);
+      if (!match.ok) {
+        setIsSyncing(false);
+        return;
+      }
       const { error } = await supabase
         .from("pixel_map_projects")
         .update({
