@@ -31,6 +31,7 @@ export function useRealtimeSync({
   const dataRef = useRef(getProjectData);
   const lastBroadcastScreensRef = useRef<Screen[]>([]);
   const isMergingRef = useRef(false);
+  const savedProjectIdRef = useRef<string | null>(null);
 
   dataRef.current = getProjectData;
 
@@ -55,6 +56,12 @@ export function useRealtimeSync({
   // Detect local screen changes, broadcast them, and schedule a DB save.
   useEffect(() => {
     if (!projectId || !userId) return;
+
+    if (savedProjectIdRef.current !== projectId) {
+      savedProjectIdRef.current = projectId;
+      lastBroadcastScreensRef.current = screens;
+      return;
+    }
 
     if (isMergingRef.current) {
       lastBroadcastScreensRef.current = screens;
