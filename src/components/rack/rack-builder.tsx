@@ -86,6 +86,7 @@ export function RackBuilder() {
   const { isSaving: saving, trackSave } = useSaveActivity();
   const [saveError, setSaveError] = useState<string | null>(null);
   const [mismatchOpen, setMismatchOpen] = useState(false);
+  const [pendingSwitch, setPendingSwitch] = useState<{ projectId: string | null } | null>(null);
   const requestedProjectRef = useRef<string | null>(null);
 
   const currentSnapshot = JSON.stringify({ racks, nextRackId });
@@ -122,6 +123,14 @@ export function RackBuilder() {
     setSaveError(null);
     const project = await selectProject(projectId);
     if (projectId && project) loadProject(projectId);
+  };
+
+  const requestSelectProject = (projectId: string | null) => {
+    if (hasUnsavedChanges) {
+      setPendingSwitch({ projectId });
+      return;
+    }
+    handleSelectProject(projectId);
   };
 
   const restoredRef = useRef(false);
@@ -256,6 +265,28 @@ export function RackBuilder() {
         onBackToList={() => { setMismatchOpen(false); handleSelectProject(null); }}
         onClose={() => setMismatchOpen(false)}
       />
+      <AlertDialog open={pendingSwitch !== null} onOpenChange={(open) => { if (!open) setPendingSwitch(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Switch projects without saving?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This project&apos;s rack drawing has changes that haven&apos;t been saved. If you switch now, those changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Stay here</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const target = pendingSwitch?.projectId ?? null;
+                setPendingSwitch(null);
+                handleSelectProject(target);
+              }}
+            >
+              Switch without saving
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <div className="flex h-[calc(100svh-3.5rem)] overflow-hidden">
         <EquipmentSidebar
           equipment={equipmentLibrary}
@@ -276,7 +307,8 @@ export function RackBuilder() {
               hasUnsavedChanges={hasUnsavedChanges}
               saving={saving}
               saveError={saveError}
-              onSelectProject={handleSelectProject}
+              saveLabel="Save Rack Drawing"
+              onSelectProject={requestSelectProject}
               onSave={handleSave}
             />
           }

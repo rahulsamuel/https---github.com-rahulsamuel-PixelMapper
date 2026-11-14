@@ -29,6 +29,7 @@ interface SavedProjectPickerProps {
   hasUnsavedChanges: boolean;
   saving: boolean;
   saveError: string | null;
+  saveLabel?: string;
   onSelectProject: (projectId: string | null) => void;
   onSelectScreen?: (screenId: string) => void;
   onSave: () => void;
@@ -47,6 +48,7 @@ export function SavedProjectPicker({
   hasUnsavedChanges,
   saving,
   saveError,
+  saveLabel = 'Save to Pixel Map Project',
   onSelectProject,
   onSelectScreen,
   onSave,
@@ -130,7 +132,7 @@ export function SavedProjectPicker({
             onClick={onSave}
           >
             {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-            {saving ? 'Saving...' : 'Save to Pixel Map Project'}
+            {saving ? 'Saving...' : saveLabel}
           </Button>
           {saving && <p className="text-xs text-muted-foreground">Switching projects is available once the save finishes.</p>}
           {hasUnsavedChanges ? (
