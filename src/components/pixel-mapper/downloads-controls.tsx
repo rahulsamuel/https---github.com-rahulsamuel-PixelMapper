@@ -18,7 +18,6 @@ export function DownloadsControls() {
     handleDownloadWiringDiagram,
     handleDownloadCompositeWiringDiagram,
     downloadRasterSlices,
-    handleDownloadFullRaster,
     rasterMapConfig,
     activeBounds,
     activeTab,
@@ -41,9 +40,8 @@ export function DownloadsControls() {
 
     const pngDownloadDisabled = isGridEmpty || !isGridTab;
     const wiringDownloadDisabled = isGridEmpty || !isWiringTab;
-    const compositeWiringDownloadDisabled = isGridEmpty || !rasterMapConfig || !hasMultipleScreens;
+    const compositeWiringDownloadDisabled = isGridEmpty || !isWiringTab || !rasterMapConfig || !hasMultipleScreens;
     const slicesDownloadDisabled = !rasterMapConfig || rasterMapConfig.slices.length === 0;
-    const fullRasterDownloadDisabled = !rasterMapConfig || !isRasterTab;
 
     let pngTooltip;
     if (isGridEmpty) {
@@ -62,17 +60,12 @@ export function DownloadsControls() {
     let compositeWiringTooltip;
     if (isGridEmpty) {
         compositeWiringTooltip = "Cannot download an empty grid.";
+    } else if (!isWiringTab) {
+        compositeWiringTooltip = "Switch to the Wiring Diagram tab to download.";
     } else if (!rasterMapConfig) {
         compositeWiringTooltip = "Generate a raster map first to set screen positions.";
     } else if (!hasMultipleScreens) {
         compositeWiringTooltip = "This download is for projects with multiple screens.";
-    }
-
-    let fullRasterTooltip;
-    if (!rasterMapConfig) {
-        fullRasterTooltip = "Generate a raster map first.";
-    } else if (!isRasterTab) {
-        fullRasterTooltip = "Switch to the Raster Map Preview tab to download.";
     }
 
     let slicesDownloadTooltip;
@@ -220,25 +213,6 @@ export function DownloadsControls() {
                     <Button size="sm" onClick={downloadRasterSlices} variant="outline" className="w-full justify-start">
                         <Download className="mr-2" />
                         Download Raster Slices
-                    </Button>
-                )}
-
-                {fullRasterDownloadDisabled ? (
-                     <Tooltip>
-                        <TooltipTrigger asChild>
-                            <div className="w-full">
-                                <Button size="sm" variant="outline" className="w-full justify-start" disabled>
-                                    <Download className="mr-2" />
-                                    Download Full Raster Map
-                                </Button>
-                            </div>
-                        </TooltipTrigger>
-                        <TooltipContent><p>{fullRasterTooltip}</p></TooltipContent>
-                    </Tooltip>
-                ) : (
-                    <Button size="sm" onClick={handleDownloadFullRaster} variant="outline" className="w-full justify-start">
-                        <Download className="mr-2" />
-                        Download Full Raster Map
                     </Button>
                 )}
 

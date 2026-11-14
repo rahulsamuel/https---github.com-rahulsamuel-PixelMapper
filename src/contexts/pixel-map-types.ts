@@ -445,7 +445,6 @@ export interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'
   setIncludeTextOverlaysInDownload: Dispatch<SetStateAction<boolean>>;
   handleDownloadWiringDiagram: () => void;
   handleDownloadCompositeWiringDiagram: () => void;
-  handleDownloadFullRaster: () => void;
   wallLayoutLegend: WallLayoutLegendEntry[];
   setWallLayoutLegend: Dispatch<SetStateAction<WallLayoutLegendEntry[]>>;
   handleDownloadWallLayout: () => void;

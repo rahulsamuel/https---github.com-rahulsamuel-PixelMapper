@@ -2675,62 +2675,6 @@ const handleRightHalfTileChange = (add: boolean) => {
     }
   }, [wiringDiagramRef, currentScreen, wiringData, drawTextOverlaysOnCtx, includeTextOverlaysInDownload, toast, activeBounds, subscriptionStatus]);
 
-  const handleDownloadFullRaster = useCallback(() => {
-    if (subscriptionStatus !== 'pro') {
-      toast({
-        title: "Pro Feature",
-        description: "Please subscribe to download the full raster map.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (rasterMapRef.current === null || !rasterMapConfig) {
-      toast({
-        title: "Download Failed",
-        description: "Raster map preview is not ready.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const node = rasterMapRef.current;
-    const { totalWidth, totalHeight } = rasterMapConfig;
-    const screenNameForFile = (currentScreen.name || 'Screen').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const sizeLabel = `${rasterMapConfig.outputWidth}x${rasterMapConfig.outputHeight}`;
-    const downloadFilename = `RASTER_MAP_${screenNameForFile}_${sizeLabel}.png`;
-
-    preloadRasterLogos().then(() => import("html-to-image")).then(({ toPng }) => toPng(node, {
-      cacheBust: true,
-      backgroundColor: '#ffffff',
-      pixelRatio: 1,
-      width: totalWidth,
-      height: totalHeight,
-    }))
-      .then((finalDataUrl) => {
-        const link = document.createElement("a");
-        link.download = downloadFilename;
-        link.href = finalDataUrl;
-        link.click();
-        showFeedbackPrompt('raster_map');
-        
-        toast({
-          title: "Download Started",
-          description: "Your full raster map is being downloaded.",
-        });
-        trackEvent('download', { type: 'full-raster-map', filename: downloadFilename, thumbnail: finalDataUrl });
-      })
-      .catch((err) => {
-        console.error("Failed to generate full raster map image", err);
-        toast({
-          title: "Download Failed",
-          description: "Could not generate the full raster map image.",
-          variant: "destructive",
-        });
-      })
-      .finally(() => {
-      });
-  }, [rasterMapRef, rasterMapConfig, preloadRasterLogos, toast, subscriptionStatus]);
-
   const handleDownloadWallLayout = useCallback(() => {
     if (!activeBounds) {
       toast({ title: "Download Failed", description: "Grid is empty.", variant: "destructive" });
@@ -3822,7 +3766,6 @@ const handleRightHalfTileChange = (add: boolean) => {
     setIncludeTextOverlaysInDownload,
     handleDownloadWiringDiagram,
     handleDownloadCompositeWiringDiagram,
-    handleDownloadFullRaster,
     generateRasterMap,
     downloadRasterSlices,
     downloadSingleSlice,

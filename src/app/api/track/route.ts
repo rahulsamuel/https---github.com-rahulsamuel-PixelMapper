@@ -11,7 +11,6 @@ const supabase = createClient(
 
 const TRACKED_TYPES = new Set([
   'wiring-diagram',
-  'full-raster-map',
   'raster-slice',
   'composite-wiring-diagram',
   'project-file',

@@ -13,13 +13,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Loader2, Download, Users, Monitor, Search, RefreshCw,
   Shield, User, Calendar, Package, Activity,
-  Pencil, Trash2, Plus, X, Workflow, MapIcon, Layers,
+  Pencil, Trash2, Plus, X, Workflow, Layers,
   Mail, MailOpen, Trash,
 } from 'lucide-react';
 
 const DOWNLOAD_TYPE_ICON: Record<string, React.ElementType> = {
   'wiring-diagram': Workflow,
-  'full-raster-map': MapIcon,
   'raster-slice': Layers,
   'composite-wiring-diagram': Workflow,
   'project-file': Package,
@@ -27,7 +26,6 @@ const DOWNLOAD_TYPE_ICON: Record<string, React.ElementType> = {
 
 const DOWNLOAD_TYPE_LABEL: Record<string, string> = {
   'wiring-diagram': 'Wiring Diagram',
-  'full-raster-map': 'Raster Map',
   'raster-slice': 'Raster Slice',
   'composite-wiring-diagram': 'Composite Wiring',
   'project-file': 'Project File',
