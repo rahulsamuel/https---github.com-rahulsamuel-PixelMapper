@@ -68,6 +68,22 @@ export function GlobalHeader() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1 flex-1">
+          {user && (
+            <Link href="/projects">
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn(
+                  'h-8 px-3 text-sm rounded-lg transition-colors',
+                  isActive('/projects')
+                    ? 'bg-primary/12 text-primary font-medium'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                )}
+              >
+                Projects
+              </Button>
+            </Link>
+          )}
           {navItems.map((item) => (
             <Link key={item.href} href={item.href}>
               <Button

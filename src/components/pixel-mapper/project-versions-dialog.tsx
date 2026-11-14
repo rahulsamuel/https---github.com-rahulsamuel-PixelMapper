@@ -26,7 +26,7 @@ interface ProjectVersionsDialogProps {
   onRestored: (projectId: string, projectName: string, data: ProjectData) => void;
 }
 
-const formatDateTime = (iso: string) =>
+export const formatDateTime = (iso: string) =>
   new Date(iso).toLocaleString(undefined, {
     month: "short",
     day: "numeric",

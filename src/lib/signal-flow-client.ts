@@ -80,6 +80,57 @@ export async function saveSignalFlowDiagram(
   return { success: true, id: data.id, error: null };
 }
 
+export interface SignalFlowVersionSummary {
+  id: string;
+  diagramName: string;
+  createdAt: string;
+}
+
+export async function listSignalFlowVersions(
+  projectId: string
+): Promise<{ data: SignalFlowVersionSummary[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from("signal_flow_diagram_versions")
+    .select("id, diagram_name, created_at")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    console.error('src/lib/signal-flow-client.ts:', error.message);
+    return { data: [], error: 'Something went wrong. Please try again.' };
+  }
+
+  return {
+    data: data.map((v) => ({
+      id: v.id,
+      diagramName: v.diagram_name,
+      createdAt: v.created_at,
+    })),
+    error: null,
+  };
+}
+
+export async function getSignalFlowVersionData(
+  versionId: string
+): Promise<{ data: { diagramName: string; diagramData: SignalFlowData } | null; error: string | null }> {
+  const { data, error } = await supabase
+    .from("signal_flow_diagram_versions")
+    .select("diagram_name, diagram_data")
+    .eq("id", versionId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('src/lib/signal-flow-client.ts:', error.message);
+    return { data: null, error: 'Something went wrong. Please try again.' };
+  }
+  if (!data) return { data: null, error: 'This version could not be found.' };
+  return {
+    data: { diagramName: data.diagram_name, diagramData: data.diagram_data as SignalFlowData },
+    error: null,
+  };
+}
+
 export async function deleteSignalFlowDiagram(
   diagramId: string
 ): Promise<{ success: boolean; error: string | null }> {
