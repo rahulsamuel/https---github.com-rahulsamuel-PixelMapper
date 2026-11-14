@@ -425,7 +425,7 @@ export function DeliverablesView() {
                         title={`Jump to ${sd.screen.name} pixel map`}
                       >
                         {sd.previewImage ? (
-                          <img src={sd.previewImage} alt={`Pixel map ${sd.screen.name}`} className="max-h-full max-w-full object-contain" />
+                          <img src={sd.previewImage} alt={`Pixel map ${sd.screen.name}`} className="h-full w-full object-contain" />
                         ) : (
                           <Layers className="size-5 text-slate-500" />
                         )}
