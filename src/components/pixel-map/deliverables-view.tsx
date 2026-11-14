@@ -88,7 +88,6 @@ export function DeliverablesView() {
     audioBitRate,
     imageFormat,
     products,
-    rasterMapConfigs,
     createScreenContentCanvas,
     includeTextOverlaysInDownload,
     deliverablesScreenIds,
@@ -128,17 +127,18 @@ export function DeliverablesView() {
   }, [projectName, currentScreen.name, projectNumber, versionNumber]);
 
   const debouncedSelectedScreens = useDebouncedValue(selectedScreens, 150);
-  const debouncedRasterMapConfigs = useDebouncedValue(rasterMapConfigs, 150);
 
   // Generate per-screen pixel map previews using the canvas renderer
   useEffect(() => {
     const generatePreviews = () => {
       const images: Record<string, string> = {};
       for (const screen of debouncedSelectedScreens) {
-        const rasterConfig = debouncedRasterMapConfigs?.[screen.rasterGroupId ?? 'raster-1'];
-        const arrangement = rasterConfig?.screenArrangement?.find(a => a.screenId === screen.id);
-        const bounds = arrangement?.activeBounds ?? null;
-        const canvas = createScreenContentCanvas?.(screen, bounds, includeTextOverlaysInDownload);
+        const effectiveWidth = screen.sections.length > 0
+          ? screen.sections.reduce((total, section) => total + section.columnCount, 0)
+          : screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+        const effectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+        const fullBounds = { minX: 0, minY: 0, maxX: effectiveWidth - 1, maxY: effectiveHeight - 1 };
+        const canvas = createScreenContentCanvas?.(screen, fullBounds, includeTextOverlaysInDownload);
         if (canvas) {
           images[screen.id] = canvas.toDataURL('image/png');
         }
@@ -146,7 +146,7 @@ export function DeliverablesView() {
       setPixelMapImages(images);
     };
     generatePreviews();
-  }, [debouncedSelectedScreens, debouncedRasterMapConfigs, createScreenContentCanvas, includeTextOverlaysInDownload]);
+  }, [debouncedSelectedScreens, createScreenContentCanvas, includeTextOverlaysInDownload]);
 
   const screenData = useMemo(() => {
     return selectedScreens.map((screen, idx) => {
