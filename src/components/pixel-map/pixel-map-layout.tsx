@@ -25,6 +25,7 @@ const ManualPowerWiringModal = lazy(() => import("../pixel-mapper/manual-power-w
 const ManualDataWiringModal = lazy(() => import("../pixel-mapper/manual-data-wiring-modal").then(m => ({ default: m.ManualDataWiringModal })));
 const DeliverablesView = lazy(() => import("./deliverables-view").then(m => ({ default: m.DeliverablesView })));
 const EquipmentView = lazy(() => import("./equipment-view").then(m => ({ default: m.EquipmentView })));
+const TestVideoView = lazy(() => import("./test-video-view").then(m => ({ default: m.TestVideoView })));
 const ProjectDetailsControls = lazy(() => import("../pixel-mapper/project-details-controls").then(m => ({ default: m.ProjectDetailsControls })));
 import {
   Accordion,
@@ -159,6 +160,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
         break;
       case 'deliverables':
       case 'equipment':
+      case 'test-video':
         return;
     }
 
@@ -616,7 +618,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                      <Label htmlFor="mirror-switch" className="flex items-center gap-2 whitespace-nowrap"><RefreshCw className="size-4" /> Mirror</Label>
                    </div>
                  )}
-                 {activeTab !== 'deliverables' && (
+                 {activeTab !== 'deliverables' && activeTab !== 'test-video' && (
                    <>
                      <Separator orientation="vertical" className="h-6 mx-1" />
                      <div className="flex items-center gap-1">
@@ -655,7 +657,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
             const sameScreenTab = onlineUsers.filter((u) => !u.isLocal && u.currentScreenId === currentScreenId && u.activeTab === activeTab);
             if (sameScreenTab.length === 0) return null;
             const screenName = screens.find((s) => s.id === currentScreenId)?.name ?? "this screen";
-            const tabLabel = activeTab === 'grid' ? 'LED Grid' : activeTab === 'wiring' ? 'Wiring Diagram' : activeTab === 'raster' ? 'Raster Map' : activeTab === 'equipment' ? 'Equipment' : 'Deliverables';
+            const tabLabel = activeTab === 'grid' ? 'LED Grid' : activeTab === 'wiring' ? 'Wiring Diagram' : activeTab === 'raster' ? 'Raster Map' : activeTab === 'equipment' ? 'Equipment' : activeTab === 'test-video' ? 'Test Video' : 'Deliverables';
             return (
               <div className="flex items-center gap-2 bg-amber-500/10 border-b border-amber-500/30 px-4 py-1.5 text-xs text-amber-700 dark:text-amber-400">
                 <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
@@ -687,6 +689,9 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               </TabsContent>
               <TabsContent value="deliverables" className="mt-0 p-8 flex justify-center items-start">
                 <Suspense fallback={null}><DeliverablesView /></Suspense>
+              </TabsContent>
+              <TabsContent value="test-video" className="mt-0 p-8 flex justify-center items-start">
+                <Suspense fallback={null}><TestVideoView /></Suspense>
               </TabsContent>
           </div>
           </div>

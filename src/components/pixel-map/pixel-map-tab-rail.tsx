@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LayoutGrid, Cable, Map as MapIcon, Server, Package, ChevronsLeft, ChevronsRight, type LucideIcon } from "lucide-react";
+import { LayoutGrid, Cable, Map as MapIcon, Server, Package, MonitorPlay, ChevronsLeft, ChevronsRight, type LucideIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ const VIEW_TABS: { value: string; label: string; icon: LucideIcon }[] = [
   { value: "raster", label: "Raster Map", icon: MapIcon },
   { value: "equipment", label: "Equipment", icon: Server },
   { value: "deliverables", label: "Deliverables", icon: Package },
+  { value: "test-video", label: "Test Video", icon: MonitorPlay },
 ];
 
 interface TabRailProps {
