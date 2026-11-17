@@ -46,8 +46,20 @@ function getResolutionFor(choice: ResolutionChoice, screenW: number, screenH: nu
 }
 
 function getBitrate(width: number, height: number, fps: number) {
-  // ~0.36 bits per pixel per frame: 1080p30 ≈ 22 Mbps, 4K60 ≈ 179 Mbps.
   return Math.min(200_000_000, Math.round(width * height * fps * 0.36));
+}
+
+function getEstimatedFileSize(
+  width: number,
+  height: number,
+  fps: number,
+  duration: number,
+  settings: Pick<TestVideoPresetSettings, "audioEnabled" | "videoCodec">,
+) {
+  const bitsPerPixelPerFrame = settings.videoCodec === "av1" ? 0.15 : settings.videoCodec === "vp9" || settings.videoCodec === "hevc-main" ? 0.18 : 0.22;
+  const videoBitrate = Math.max(500_000, Math.min(200_000_000, Math.round(width * height * fps * bitsPerPixelPerFrame)));
+  const audioBitrate = settings.audioEnabled ? 192_000 : 0;
+  return Math.round(((videoBitrate + audioBitrate) / 8) * duration * 1.08);
 }
 
 function formatBytes(bytes: number) {
@@ -182,10 +194,9 @@ export function drawPattern(
 type MuxerVideoCodec = "avc" | "hevc" | "vp9" | "av1";
 
 function videoCodecCandidates(codec: TestVideoCodec, width: number, height: number): string[] {
-  const level = width > 2560 || height > 1440 ? "34" : "33";
-  if (codec === "h264-main") return [`avc1.4d00${level}`];
-  if (codec === "h264-baseline") return ["avc1.42003e"];
-  if (codec === "h264-high") return [`avc1.6400${level}`];
+  if (codec === "h264-main") return ["avc1.4d401f", "avc1.4d401e", "avc1.4d4028", "avc1.4d4033"];
+  if (codec === "h264-baseline") return ["avc1.42e01f", "avc1.42001f", "avc1.42001e"];
+  if (codec === "h264-high") return ["avc1.640028", "avc1.64001f", "avc1.64002a", "avc1.640033"];
   if (codec === "hevc-main") return ["hvc1.1.6.L93.B0", "hev1.1.6.L93.B0"];
   if (codec === "vp9") return ["vp09.00.10.08"];
   return ["av01.0.08M.08"];
@@ -295,7 +306,7 @@ async function generateTestVideo(opts: GenerateOptions): Promise<Blob> {
 
   const bitrate = getBitrate(width, height, fps);
   const videoConfig = await pickVideoCodec(settings.videoCodec, width, height, fps, bitrate);
-  if (!videoConfig) throw new Error("The selected H.264 codec is not supported by this browser.");
+  if (!videoConfig) throw new Error("The selected video codec is not supported by this browser.");
   const audioConfig = settings.audioEnabled ? await pickAudioCodec(settings.sampleRate) : null;
   if (settings.audioEnabled && !audioConfig) throw new Error("The selected audio sample rate is not supported by this browser.");
 
@@ -317,7 +328,7 @@ async function generateTestVideo(opts: GenerateOptions): Promise<Blob> {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  const ctx = canvas.getContext("2d", { alpha: false })!;
+  const ctx = canvas.getContext("2d", { alpha: false, willReadFrequently: true })!;
 
   const keyframeInterval = fps * 2;
   for (let i = 0; i < totalFrames; i++) {
@@ -434,8 +445,8 @@ export function TestVideoView() {
   const effective = getResolutionFor(resolution, screenRes.width, screenRes.height);
 
   const estimatedSize = useMemo(
-    () => Math.round((getBitrate(effective.width, effective.height, frameRate) / 8) * durationSeconds),
-    [effective.width, effective.height, frameRate, durationSeconds]
+    () => getEstimatedFileSize(effective.width, effective.height, frameRate, durationSeconds, settings),
+    [effective.width, effective.height, frameRate, durationSeconds, settings]
   );
 
   useEffect(() => {
@@ -446,6 +457,11 @@ export function TestVideoView() {
     if (!resultUrl) return;
     return () => URL.revokeObjectURL(resultUrl);
   }, [resultUrl]);
+
+  useEffect(() => {
+    setResultUrl(null);
+    setResultSize(0);
+  }, [settings, effective.width, effective.height, frameRate, durationSeconds]);
 
   useEffect(() => {
     const canvas = previewRef.current;
@@ -618,7 +634,7 @@ export function TestVideoView() {
               <div className="text-muted-foreground">Audio: <span className="font-mono text-foreground">{settings.audioEnabled ? `1 kHz sine · ${settings.sampleRate / 1000} kHz` : "Off"}</span></div>
               <div className="text-muted-foreground">Background: <span className="font-mono text-foreground">{settings.backgroundBrightness}% brightness</span></div>
               <div className="text-muted-foreground">Codec: <span className="font-mono text-foreground">{settings.videoCodec === "hevc-main" ? "H.265 / HEVC Main" : settings.videoCodec === "vp9" ? "VP9" : settings.videoCodec === "av1" ? "AV1" : settings.videoCodec.replace("h264-", "H.264 ")}</span></div>
-              <div className="text-muted-foreground">Estimated size: <span className="font-mono text-foreground">{formatBytes(estimatedSize)}</span></div>
+              <div className="text-muted-foreground">{resultSize ? "File size" : "Estimated size"}: <span className="font-mono text-foreground">{formatBytes(resultSize || estimatedSize)}</span></div>
             </div>
           </div>
 
