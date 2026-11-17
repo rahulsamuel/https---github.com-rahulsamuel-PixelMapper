@@ -32,8 +32,7 @@ export type HardwareItemId =
   | "cornerBlocks"
   | "stackingBars"
   | "verticalTruss"
-  | "sandbags"
-  | "safetyCables";
+  | "sandbags";
 
 export interface HardwareItem {
   id: HardwareItemId;
@@ -50,7 +49,7 @@ export interface ScreenMetrics {
   screenWidth: number;
   screenHeight: number;
   totalTiles: number;
-  screenWeightKg: number | null;
+  screenWeightLb: number | null;
   widthM: number | null;
   heightM: number | null;
 }
@@ -64,8 +63,9 @@ export const HARDWARE_ITEM_LABELS: Record<HardwareItemId, string> = {
   stackingBars: "Stacking bars",
   verticalTruss: "Vertical truss",
   sandbags: "Sandbags",
-  safetyCables: "Safety cables",
 };
+
+const KG_TO_LB = 2.20462;
 
 export function getScreenMetrics(screen: Screen, tileWeightKg: number | null | undefined): ScreenMetrics {
   const totalTiles = Math.max(0, screen.dimensions.screenWidth) * Math.max(0, screen.dimensions.screenHeight);
@@ -74,8 +74,10 @@ export function getScreenMetrics(screen: Screen, tileWeightKg: number | null | u
     screenWidth: screen.dimensions.screenWidth,
     screenHeight: screen.dimensions.screenHeight,
     totalTiles,
-    screenWeightKg:
-      tileWeightKg && tileWeightKg > 0 && totalTiles > 0 ? Math.round(tileWeightKg * totalTiles * 10) / 10 : null,
+    screenWeightLb:
+      tileWeightKg && tileWeightKg > 0 && totalTiles > 0
+        ? Math.round(tileWeightKg * totalTiles * KG_TO_LB)
+        : null,
     widthM: hasSize && tileWidthMm(screen) > 0 ? (tileWidthMm(screen) * screen.dimensions.screenWidth) / 1000 : null,
     heightM: hasSize && tileHeightMm(screen) > 0 ? (tileHeightMm(screen) * screen.dimensions.screenHeight) / 1000 : null,
   };
@@ -128,9 +130,6 @@ export function calculateHardware(config: ScreenHardwareConfig, metrics: ScreenM
 
     // Clamps: two per rigging bar to attach to the truss.
     push("clamps", barCount * 2);
-
-    // Safety cables: one per rigging bar.
-    push("safetyCables", barCount);
   } else {
     // Ground stack / floor: stacking bars between rows, one set per row joint.
     const rowJoints = Math.max(0, screenHeight - 1);
@@ -150,10 +149,10 @@ export function calculateHardware(config: ScreenHardwareConfig, metrics: ScreenM
     push("cornerBlocks", 4);
   }
 
-  // Sandbags: ballast for ground builds, or stabilising for flown builds on the deck.
-  const sandbagBase =
-    config.mountingType === "flown" ? Math.max(2, Math.ceil(screenWidth / 4)) : Math.max(2, screenWidth);
-  push("sandbags", sandbagBase);
+  // Sandbags: ballast for ground builds only — flown screens hang from the rigging.
+  if (config.mountingType !== "flown") {
+    push("sandbags", Math.max(2, screenWidth));
+  }
 
   return items;
 }

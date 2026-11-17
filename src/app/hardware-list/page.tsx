@@ -42,9 +42,7 @@ interface ScreenRow {
   name: string;
   config: ScreenHardwareConfig;
   totalTiles: number;
-  screenWidth: number;
-  screenHeight: number;
-  screenWeightKg: number | null;
+  screenWeightLb: number | null;
   widthM: number | null;
   heightM: number | null;
   productId: string | null;
@@ -121,9 +119,7 @@ export default function HardwareListPage() {
         name: screen.name,
         config,
         totalTiles: metrics.totalTiles,
-        screenWidth: metrics.screenWidth,
-        screenHeight: metrics.screenHeight,
-        screenWeightKg: metrics.screenWeightKg,
+        screenWeightLb: metrics.screenWeightLb,
         widthM: metrics.widthM,
         heightM: metrics.heightM,
         productId,
@@ -205,11 +201,11 @@ export default function HardwareListPage() {
   });
 
   const aggregate = useMemo(() => aggregateHardware(screens.map(s => ({ config: s.config, items: s.items }))), [screens]);
-  const totalWeightKg = useMemo(
-    () => screens.reduce((sum, s) => s.screenWeightKg !== null ? sum + s.screenWeightKg : sum, 0),
+  const totalWeightLb = useMemo(
+    () => screens.reduce((sum, s) => s.screenWeightLb !== null ? sum + s.screenWeightLb : sum, 0),
     [screens]
   );
-  const weightUnknown = screens.some(s => s.hasSize && s.screenWeightKg === null);
+  const weightUnknown = screens.some(s => s.hasSize && s.screenWeightLb === null);
 
   const perScreenForExport = screens.map(s => ({ name: s.name, items: s.items }));
   const projectName = activeProject?.projectName?.trim() || 'Untitled Project';
@@ -431,7 +427,7 @@ export default function HardwareListPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-foreground tabular-nums">
-                        {weightUnknown ? '~' : ''}{totalWeightKg > 0 ? `${Math.round(totalWeightKg)} kg` : '—'}
+                        {weightUnknown ? '~' : ''}{totalWeightLb > 0 ? `${totalWeightLb.toLocaleString()} lb` : '—'}
                       </p>
                       <p>Total screen weight</p>
                     </div>
@@ -445,21 +441,26 @@ export default function HardwareListPage() {
                 </CardContent>
               </Card>
 
+              {/* Export actions */}
+              <Card>
+                <CardContent className="py-3 flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground mr-auto">Export the hardware list:</span>
+                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5" onClick={handleCopy} disabled={!canExport}>
+                    <Copy className="h-3.5 w-3.5" /> Copy
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5" onClick={handleExportCsv} disabled={!canExport}>
+                    <FileSpreadsheet className="h-3.5 w-3.5" /> Export CSV
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5" onClick={handleExportPdf} disabled={!canExport || exportingPdf}>
+                    {exportingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Download PDF
+                  </Button>
+                </CardContent>
+              </Card>
+
               {/* Cumulative manifest */}
               <Card>
-                <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                <CardHeader className="pb-2">
                   <CardTitle className="text-base text-muted-foreground">Total Hardware Required</CardTitle>
-                  <div className="flex items-center gap-1.5">
-                    <Button variant="ghost" size="sm" className="h-8 px-2 text-xs gap-1.5" onClick={handleCopy} disabled={!canExport}>
-                      <Copy className="h-3.5 w-3.5" /> Copy
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8 px-2 text-xs gap-1.5" onClick={handleExportCsv} disabled={!canExport}>
-                      <FileSpreadsheet className="h-3.5 w-3.5" /> CSV
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8 px-2 text-xs gap-1.5" onClick={handleExportPdf} disabled={!canExport || exportingPdf}>
-                      {exportingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />} PDF
-                    </Button>
-                  </div>
                 </CardHeader>
                 <CardContent>
                   {aggregate.length === 0 ? (
@@ -496,8 +497,8 @@ export default function HardwareListPage() {
                               : 'Screen size not set — finish setup in the Pixel Map'}
                           </p>
                         </div>
-                        {screen.screenWeightKg !== null && (
-                          <span className="text-xs text-muted-foreground tabular-nums shrink-0 ml-2">{screen.screenWeightKg} kg</span>
+                        {screen.screenWeightLb !== null && (
+                          <span className="text-xs text-muted-foreground tabular-nums shrink-0 ml-2">{screen.screenWeightLb} lb</span>
                         )}
                       </div>
                       {screen.items.length === 0 ? (
