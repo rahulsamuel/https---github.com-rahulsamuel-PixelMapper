@@ -2,7 +2,13 @@
 
 import { supabase } from "@/lib/supabase/client";
 
-export type TestVideoPattern = "smpte-bars" | "moving-grid" | "frame-counter";
+export type TestVideoPattern =
+  | "smpte-bars"
+  | "full-color-bars"
+  | "moving-grid"
+  | "bouncing-vertical-bar"
+  | "bouncing-horizontal-bar"
+  | "frame-counter";
 
 export interface TestVideoPresetSettings {
   resolution: "720p" | "1080p" | "4k" | "screen";
@@ -29,7 +35,7 @@ export function parsePresetSettings(raw: unknown): TestVideoPresetSettings | nul
   if (!["720p", "1080p", "4k", "screen"].includes(s.resolution as string)) return null;
   if (![30, 60].includes(s.frameRate as number)) return null;
   if (![10, 20, 30].includes(s.durationSeconds as number)) return null;
-  if (!["smpte-bars", "moving-grid", "frame-counter"].includes(s.pattern as string)) return null;
+  if (!["smpte-bars", "full-color-bars", "moving-grid", "bouncing-vertical-bar", "bouncing-horizontal-bar", "frame-counter"].includes(s.pattern as string)) return null;
   return {
     resolution: s.resolution as TestVideoPresetSettings["resolution"],
     frameRate: s.frameRate as TestVideoPresetSettings["frameRate"],

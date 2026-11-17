@@ -32,7 +32,10 @@ const RESOLUTIONS: { value: ResolutionChoice; label: string; width: number; heig
 
 const PATTERNS: { value: TestVideoPattern; label: string }[] = [
   { value: "smpte-bars", label: "SMPTE Color Bars" },
+  { value: "full-color-bars", label: "100% Color Bars" },
   { value: "moving-grid", label: "Moving Grid" },
+  { value: "bouncing-vertical-bar", label: "Bouncing Vertical Bar" },
+  { value: "bouncing-horizontal-bar", label: "Bouncing Horizontal Bar" },
   { value: "frame-counter", label: "Frame Counter" },
 ];
 
@@ -80,6 +83,15 @@ const SMPTE_MID = [
   [0, 0, 191], [19, 19, 19], [191, 0, 191], [19, 19, 19],
   [0, 191, 191], [19, 19, 19],
 ];
+const FULL_COLOR_BARS = [
+  [255, 255, 255], [255, 255, 0], [0, 255, 255], [0, 255, 0],
+  [255, 0, 255], [255, 0, 0], [0, 0, 255], [0, 0, 0],
+];
+
+function bounceProgress(frame: number, fps: number) {
+  const phase = (frame / fps) % 4;
+  return phase <= 2 ? phase / 2 : 1 - (phase - 2) / 2;
+}
 
 export function drawPattern(
   pattern: TestVideoPattern,
@@ -111,6 +123,35 @@ export function drawPattern(
       ctx.fillRect(Math.round(start), topH + midH, Math.ceil(botW), botH);
       ctx.fillStyle = "rgb(255,255,255)";
       ctx.fillRect(Math.round(start + botW * 0.8), topH + midH, Math.ceil(botW * 0.2), botH);
+    }
+    return;
+  }
+
+  if (pattern === "full-color-bars") {
+    const barW = w / FULL_COLOR_BARS.length;
+    for (let i = 0; i < FULL_COLOR_BARS.length; i++) {
+      ctx.fillStyle = rgb(FULL_COLOR_BARS[i]);
+      ctx.fillRect(Math.round(i * barW), 0, Math.ceil(barW), h);
+    }
+    return;
+  }
+
+  if (pattern === "bouncing-vertical-bar" || pattern === "bouncing-horizontal-bar") {
+    ctx.fillStyle = "#050505";
+    ctx.fillRect(0, 0, w, h);
+    const progress = bounceProgress(frame, fps);
+    const barThickness = Math.max(4, Math.round(Math.min(w, h) * 0.025));
+    ctx.fillStyle = "#ffffff";
+    if (pattern === "bouncing-vertical-bar") {
+      const x = progress * (w - barThickness);
+      ctx.fillRect(Math.round(x), 0, barThickness, h);
+      ctx.fillStyle = "#00e5ff";
+      ctx.fillRect(Math.round(x + barThickness * 0.25), 0, Math.max(1, Math.round(barThickness * 0.5)), h);
+    } else {
+      const y = progress * (h - barThickness);
+      ctx.fillRect(0, Math.round(y), w, barThickness);
+      ctx.fillStyle = "#00e5ff";
+      ctx.fillRect(0, Math.round(y + barThickness * 0.25), w, Math.max(1, Math.round(barThickness * 0.5)));
     }
     return;
   }
@@ -421,9 +462,16 @@ export function TestVideoView() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const w = canvas.width;
-    const h = canvas.height;
-    drawPattern(pattern, ctx, w, h, Math.floor((Date.now() / 1000) * 30) % (30 * 10), 30);
+    let animationFrame = 0;
+    const startedAt = performance.now();
+    const previewFps = 30;
+    const animate = (now: number) => {
+      const frame = Math.floor(((now - startedAt) / 1000) * previewFps);
+      drawPattern(pattern, ctx, canvas.width, canvas.height, frame, previewFps);
+      animationFrame = requestAnimationFrame(animate);
+    };
+    animationFrame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationFrame);
   }, [pattern]);
 
   const refreshPresets = useCallback(async () => {
@@ -619,7 +667,7 @@ export function TestVideoView() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Preview is static; the generated video animates the selected pattern with a synchronized 1 kHz tone.
+                The preview animates the selected pattern. The generated video includes the same motion with a synchronized 1 kHz tone.
               </p>
             </div>
             <div className="space-y-1 rounded-lg border bg-muted/30 p-4 text-sm">
