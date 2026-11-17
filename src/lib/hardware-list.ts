@@ -231,22 +231,51 @@ export function aggregateHardware(
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
+export interface HardwareListExportScreen {
+  name: string;
+  mountingType: MountingType;
+  screenWeightKg: number | null;
+  items: HardwareItem[];
+}
+
+export function formatExportHardwareLabel(label: string): string {
+  return label
+    .replace(/^Header bars/, "Header Bar")
+    .replace(/^Base bars/, "Stacking Bar")
+    .replace(/^Vertical truss \(1000mm\)/, "Vertical Truss (1m)")
+    .replace(/^Vertical truss \(500mm\)/, "Vertical Truss (0.5m)")
+    .replace(/^Rear clamps/, "Rear Clamp Count")
+    .replace(/^Sandbags \((\d+) lb\)/, "Sandbags ($1 Lbs)");
+}
+
+function exportScreenLabel(screen: HardwareListExportScreen): string {
+  return `${screen.name} (${MOUNTING_TYPE_LABELS[screen.mountingType].toUpperCase()})`;
+}
+
+function totalQuantity(items: HardwareItem[]): number {
+  return items.reduce((sum, item) => sum + item.quantity, 0);
+}
+
 export function hardwareListText(
   projectName: string,
+  totalWeightKg: number,
   aggregate: { label: string; quantity: number }[],
-  perScreen: { name: string; items: HardwareItem[] }[]
+  perScreen: HardwareListExportScreen[]
 ): string {
   const lines: string[] = [];
-  lines.push(`Hardware List — ${projectName}`);
-  lines.push(`Date: ${new Date().toLocaleDateString()}`);
+  lines.push(`PROJECT HARDWARE MANIFEST: ${projectName}`);
+  lines.push(`Generated: ${new Date().toLocaleDateString()}`);
+  lines.push(`Total Project Screen Weight: ${formatWeightLbKg(totalWeightKg)}`);
   lines.push("");
-  lines.push("Total hardware (all screens):");
-  for (const item of aggregate) lines.push(`  ${item.label}: ${item.quantity}`);
+  lines.push("[ CUMULATIVE HARDWARE TOTALS ]");
+  for (const item of aggregate) lines.push(`${formatExportHardwareLabel(item.label)}: ${item.quantity}`);
   lines.push("");
+  lines.push("[ BREAKDOWN BY SCREEN ]");
   for (const screen of perScreen) {
-    lines.push(`${screen.name}:`);
-    if (screen.items.length === 0) lines.push("  (no hardware — configure the screen first)");
-    for (const item of screen.items) lines.push(`  ${item.label}: ${item.quantity}`);
+    lines.push(`- ${exportScreenLabel(screen)}: ${totalQuantity(screen.items)} items`);
+    if (screen.screenWeightKg !== null) lines.push(`  Weight: ${formatWeightLbKg(screen.screenWeightKg)}`);
+    if (screen.items.length === 0) lines.push("  • No hardware — configure the screen first");
+    for (const item of screen.items) lines.push(`  • ${formatExportHardwareLabel(item.label)}: ${item.quantity}`);
     lines.push("");
   }
   lines.push("Quantities are planning estimates only. Verify all support hardware with the manufacturer or a qualified engineer.");
@@ -255,20 +284,29 @@ export function hardwareListText(
 
 export function hardwareListCsv(
   projectName: string,
+  totalWeightKg: number,
   aggregate: { label: string; quantity: number }[],
-  perScreen: { name: string; items: HardwareItem[] }[]
+  perScreen: HardwareListExportScreen[]
 ): string {
-  const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const esc = (v: string): string => `"${v.replace(/"/g, '""')}"`;
   const rows: string[] = [];
-  rows.push(esc(`Hardware List — ${projectName}`));
-  rows.push(esc(`Date: ${new Date().toLocaleDateString()}`));
+  rows.push([esc("Category"), esc("Item Name"), esc("Quantity")].join(","));
+  rows.push([esc("PROJECT CUMULATIVE TOTALS"), "", ""].join(","));
+  rows.push([esc("Project"), esc("Project Screen Weight"), esc(formatWeightLbKg(totalWeightKg))].join(","));
+  for (const item of aggregate) {
+    rows.push([esc("Master Manifest"), esc(formatExportHardwareLabel(item.label)), String(item.quantity)].join(","));
+  }
   rows.push("");
-  rows.push([esc("Scope"), esc("Item"), esc("Quantity")].join(","));
-  for (const item of aggregate) rows.push([esc("All screens"), esc(item.label), String(item.quantity)].join(","));
+  rows.push([esc("DETAILED SCREEN INVENTORY"), "", ""].join(","));
   for (const screen of perScreen) {
-    for (const item of screen.items) {
-      rows.push([esc(screen.name), esc(item.label), String(item.quantity)].join(","));
+    const category = exportScreenLabel(screen);
+    if (screen.screenWeightKg !== null) {
+      rows.push([esc(category), esc("Screen Weight"), esc(formatWeightLbKg(screen.screenWeightKg))].join(","));
     }
+    for (const item of screen.items) {
+      rows.push([esc(category), esc(formatExportHardwareLabel(item.label)), String(item.quantity)].join(","));
+    }
+    rows.push("");
   }
   return rows.join("\n");
 }

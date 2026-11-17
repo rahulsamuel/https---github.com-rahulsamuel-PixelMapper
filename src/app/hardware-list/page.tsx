@@ -23,6 +23,7 @@ import {
   hardwareListText,
   hardwareListCsv,
   formatWeightLbKg,
+  formatExportHardwareLabel,
   getScreenMetrics,
   MOUNTING_TYPE_LABELS,
   HARDWARE_ITEM_LABELS,
@@ -206,12 +207,17 @@ export default function HardwareListPage() {
   );
   const weightUnknown = screens.some(s => s.hasSize && s.screenWeightKg === null);
 
-  const perScreenForExport = screens.map(s => ({ name: s.name, items: s.items }));
+  const perScreenForExport = screens.map(s => ({
+    name: s.name,
+    mountingType: s.config.mountingType,
+    screenWeightKg: s.screenWeightKg,
+    items: s.items,
+  }));
   const projectName = activeProject?.projectName?.trim() || 'Untitled Project';
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(hardwareListText(projectName, aggregate, perScreenForExport));
+      await navigator.clipboard.writeText(hardwareListText(projectName, totalWeightKg, aggregate, perScreenForExport));
       toast({ title: 'Copied', description: 'Hardware list copied to clipboard.' });
     } catch {
       toast({ title: 'Copy failed', description: 'Could not access the clipboard.', variant: 'destructive' });
@@ -219,7 +225,7 @@ export default function HardwareListPage() {
   };
 
   const handleExportCsv = () => {
-    const csv = hardwareListCsv(projectName, aggregate, perScreenForExport);
+    const csv = hardwareListCsv(projectName, totalWeightKg, aggregate, perScreenForExport);
     downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), `${toSlug(projectName)}-hardware-list.csv`);
   };
 
@@ -228,53 +234,135 @@ export default function HardwareListPage() {
     try {
       const { jsPDF } = await import('jspdf');
       const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
-      const M = 14;
-      const W = 210 - M * 2;
-      let y = 20;
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(18);
-      pdf.text(`Hardware List — ${projectName}`, M, y);
-      y += 8;
-      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9);
-      pdf.text(`Date: ${new Date().toLocaleDateString()}`, M, y);
-      y += 10;
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 16;
+      const contentWidth = pageWidth - margin * 2;
+      const navy: [number, number, number] = [15, 23, 42];
+      const blue: [number, number, number] = [37, 99, 235];
+      const muted: [number, number, number] = [100, 116, 139];
+      const line: [number, number, number] = [226, 232, 240];
+      let y = 18;
 
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12);
-      pdf.text('Total hardware (all screens)', M, y);
-      y += 6;
-      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10);
-      for (const item of aggregate) {
-        pdf.text(item.label, M + 4, y);
-        pdf.text(String(item.quantity), 210 - M - 4, y, { align: 'right' });
-        y += 5.5;
-      }
-      y += 4;
+      const drawCard = (x: number, top: number, width: number, height: number): void => {
+        pdf.setFillColor(255, 255, 255);
+        pdf.setDrawColor(...line);
+        pdf.setLineWidth(0.3);
+        pdf.roundedRect(x, top, width, height, 2.5, 2.5, 'FD');
+      };
 
-      for (const screen of perScreenForExport) {
-        if (y > 260) { pdf.addPage(); y = 20; }
-        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(11);
-        pdf.text(screen.name, M, y);
-        y += 5.5;
-        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10);
-        if (screen.items.length === 0) {
-          pdf.text('(no hardware — configure the screen first)', M + 4, y);
-          y += 5.5;
-        }
-        for (const item of screen.items) {
-          pdf.text(item.label, M + 4, y);
-          pdf.text(String(item.quantity), 210 - M - 4, y, { align: 'right' });
-          y += 5.5;
-        }
+      const drawTitle = (): void => {
+        pdf.setTextColor(...navy);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(20);
+        pdf.text('PROJECT HARDWARE MANIFEST', pageWidth / 2, y, { align: 'center' });
+        y += 8;
+        pdf.setTextColor(...muted);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10);
+        pdf.text(projectName, pageWidth / 2, y, { align: 'center' });
+        y += 5;
+        pdf.setFontSize(7.5);
+        pdf.text(`GENERATED ${new Date().toLocaleDateString().toUpperCase()}`, pageWidth / 2, y, { align: 'center' });
+        y += 9;
+      };
+
+      const drawSectionHeading = (label: string): void => {
+        pdf.setTextColor(...navy);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(10);
+        pdf.text(label, margin, y);
         y += 3;
+        pdf.setDrawColor(...navy);
+        pdf.setLineWidth(0.35);
+        pdf.line(margin, y, pageWidth - margin, y);
+        y += 8;
+      };
+
+      drawTitle();
+      const cumulativeHeight = 24 + Math.max(1, aggregate.length) * 9 + 18;
+      drawCard(margin, y, contentWidth, cumulativeHeight);
+      pdf.setTextColor(...navy);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.text('CUMULATIVE LOGISTICS LIST', margin + 7, y + 10);
+      pdf.setDrawColor(...line);
+      pdf.setLineWidth(0.25);
+      pdf.line(margin, y + 16, pageWidth - margin, y + 16);
+      pdf.setTextColor(...muted);
+      pdf.setFontSize(7);
+      pdf.text('ITEM DESCRIPTION', margin + 7, y + 23);
+      pdf.text('QTY', pageWidth - margin - 7, y + 23, { align: 'right' });
+      let rowY = y + 31;
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(8.5);
+      for (const item of aggregate) {
+        pdf.setTextColor(...navy);
+        pdf.text(formatExportHardwareLabel(item.label).toUpperCase(), margin + 7, rowY);
+        pdf.setTextColor(...blue);
+        pdf.text(String(item.quantity), pageWidth - margin - 7, rowY, { align: 'right' });
+        pdf.setDrawColor(...line);
+        pdf.line(margin + 7, rowY + 3.5, pageWidth - margin - 7, rowY + 3.5);
+        rowY += 9;
+      }
+      pdf.setTextColor(...navy);
+      pdf.setFontSize(8);
+      pdf.text('TOTAL PROJECT SCREEN WEIGHT', margin + 7, y + cumulativeHeight - 8);
+      pdf.setFontSize(11);
+      pdf.text(formatWeightLbKg(totalWeightKg), pageWidth - margin - 7, y + cumulativeHeight - 8, { align: 'right' });
+      y += cumulativeHeight + 14;
+
+      drawSectionHeading('TECHNICAL INVENTORY BREAKDOWN');
+      for (const screen of perScreenForExport) {
+        const rowCount = Math.max(1, screen.items.length);
+        const cardHeight = 24 + rowCount * 8.5 + (screen.screenWeightKg !== null ? 7 : 0);
+        if (y + cardHeight > pageHeight - 18) {
+          pdf.addPage();
+          y = 18;
+          drawTitle();
+        }
+        drawCard(margin, y, contentWidth, cardHeight);
+        pdf.setTextColor(...navy);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(9);
+        pdf.text(screen.name.toUpperCase(), margin + 7, y + 11);
+        pdf.setTextColor(...muted);
+        pdf.setFontSize(6.5);
+        pdf.text(MOUNTING_TYPE_LABELS[screen.mountingType].toUpperCase(), pageWidth - margin - 7, y + 11, { align: 'right' });
+        pdf.setDrawColor(...line);
+        pdf.line(margin + 7, y + 16, pageWidth - margin - 7, y + 16);
+        let screenRowY = y + 25;
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(7.5);
+        if (screen.items.length === 0) {
+          pdf.setTextColor(...muted);
+          pdf.text('NO HARDWARE CONFIGURED', margin + 7, screenRowY);
+        } else {
+          for (const item of screen.items) {
+            pdf.setTextColor(...navy);
+            pdf.text(formatExportHardwareLabel(item.label).toUpperCase(), margin + 7, screenRowY);
+            pdf.text(String(item.quantity), pageWidth - margin - 7, screenRowY, { align: 'right' });
+            screenRowY += 8.5;
+          }
+        }
+        if (screen.screenWeightKg !== null) {
+          pdf.setTextColor(...muted);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(7);
+          pdf.text(`SCREEN WEIGHT  ${formatWeightLbKg(screen.screenWeightKg)}`, margin + 7, y + cardHeight - 7);
+        }
+        y += cardHeight + 8;
       }
 
-      if (y > 250) { pdf.addPage(); y = 20; }
-      y += 4;
-      pdf.setFont('helvetica', 'italic'); pdf.setFontSize(8);
-      pdf.text(
-        'Quantities are planning estimates only. Verify all support hardware with the manufacturer or a qualified engineer.',
-        M, y, { maxWidth: W }
-      );
-      pdf.save(`${toSlug(projectName)}-hardware-list.pdf`);
+      if (y > pageHeight - 25) {
+        pdf.addPage();
+        y = 20;
+      }
+      pdf.setTextColor(...muted);
+      pdf.setFont('helvetica', 'italic');
+      pdf.setFontSize(7);
+      pdf.text('Quantities are planning estimates only. Verify all support hardware with the manufacturer or a qualified engineer.', margin, y, { maxWidth: contentWidth });
+      pdf.save(`${toSlug(projectName)}-hardware-manifest.pdf`);
     } catch {
       toast({ title: 'Export failed', description: 'Could not generate the PDF.', variant: 'destructive' });
     } finally {
@@ -450,18 +538,65 @@ export default function HardwareListPage() {
               </Card>
 
               {/* Export actions */}
-              <Card>
-                <CardContent className="py-3 flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-muted-foreground mr-auto">Export the hardware list:</span>
-                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5" onClick={handleCopy} disabled={!canExport}>
-                    <Copy className="h-3.5 w-3.5" /> Copy
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5" onClick={handleExportCsv} disabled={!canExport}>
-                    <FileSpreadsheet className="h-3.5 w-3.5" /> Export CSV
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5" onClick={handleExportPdf} disabled={!canExport || exportingPdf}>
-                    {exportingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />} Download PDF
-                  </Button>
+              <Card className="overflow-hidden border-primary/15 shadow-sm">
+                <CardHeader className="border-b bg-muted/20 pb-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <CardTitle className="text-base">Export hardware manifest</CardTitle>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Share a clean project summary or download a formatted deliverable.
+                      </p>
+                    </div>
+                    <Badge variant="secondary" className="shrink-0 text-[10px] font-medium">
+                      {canExport ? 'Ready' : 'Awaiting hardware'}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <Button
+                      variant="outline"
+                      disabled={!canExport}
+                      onClick={handleCopy}
+                      className="h-auto min-h-[88px] justify-start gap-3 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/[0.03]"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                        <Copy className="h-5 w-5" />
+                      </span>
+                      <span className="flex min-w-0 flex-col items-start gap-1">
+                        <span className="text-sm font-semibold">Copy manifest</span>
+                        <span className="text-[11px] font-normal leading-4 text-muted-foreground">Formatted text for email or notes</span>
+                      </span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={!canExport}
+                      onClick={handleExportCsv}
+                      className="h-auto min-h-[88px] justify-start gap-3 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/[0.03]"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                        <FileSpreadsheet className="h-5 w-5" />
+                      </span>
+                      <span className="flex min-w-0 flex-col items-start gap-1">
+                        <span className="text-sm font-semibold">Export spreadsheet</span>
+                        <span className="text-[11px] font-normal leading-4 text-muted-foreground">Organized totals and screen inventory</span>
+                      </span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={!canExport || exportingPdf}
+                      onClick={handleExportPdf}
+                      className="h-auto min-h-[88px] justify-start gap-3 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/[0.03]"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                        {exportingPdf ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
+                      </span>
+                      <span className="flex min-w-0 flex-col items-start gap-1">
+                        <span className="text-sm font-semibold">Download PDF</span>
+                        <span className="text-[11px] font-normal leading-4 text-muted-foreground">Client-ready hardware manifest</span>
+                      </span>
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
