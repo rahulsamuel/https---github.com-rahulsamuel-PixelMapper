@@ -558,42 +558,42 @@ export default function HardwareListPage() {
                       variant="outline"
                       disabled={!canExport}
                       onClick={handleCopy}
-                      className="h-auto min-h-[88px] justify-start gap-3 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/[0.03]"
+                      className="h-auto min-h-[88px] w-full min-w-0 justify-start gap-3 overflow-hidden p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/[0.03]"
                     >
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400">
                         <Copy className="h-5 w-5" />
                       </span>
                       <span className="flex min-w-0 flex-col items-start gap-1">
                         <span className="text-sm font-semibold">Copy manifest</span>
-                        <span className="text-[11px] font-normal leading-4 text-muted-foreground">Formatted text for email or notes</span>
+                        <span className="break-words text-[11px] font-normal leading-4 text-muted-foreground">Formatted text for email or notes</span>
                       </span>
                     </Button>
                     <Button
                       variant="outline"
                       disabled={!canExport}
                       onClick={handleExportCsv}
-                      className="h-auto min-h-[88px] justify-start gap-3 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/[0.03]"
+                      className="h-auto min-h-[88px] w-full min-w-0 justify-start gap-3 overflow-hidden p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/[0.03]"
                     >
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                         <FileSpreadsheet className="h-5 w-5" />
                       </span>
                       <span className="flex min-w-0 flex-col items-start gap-1">
                         <span className="text-sm font-semibold">Export spreadsheet</span>
-                        <span className="text-[11px] font-normal leading-4 text-muted-foreground">Organized totals and screen inventory</span>
+                        <span className="break-words text-[11px] font-normal leading-4 text-muted-foreground">Organized totals and screen inventory</span>
                       </span>
                     </Button>
                     <Button
                       variant="outline"
                       disabled={!canExport || exportingPdf}
                       onClick={handleExportPdf}
-                      className="h-auto min-h-[88px] justify-start gap-3 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/[0.03]"
+                      className="h-auto min-h-[88px] w-full min-w-0 justify-start gap-3 overflow-hidden p-4 text-left transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-primary/[0.03]"
                     >
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
                         {exportingPdf ? <Loader2 className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
                       </span>
                       <span className="flex min-w-0 flex-col items-start gap-1">
                         <span className="text-sm font-semibold">Download PDF</span>
-                        <span className="text-[11px] font-normal leading-4 text-muted-foreground">Client-ready hardware manifest</span>
+                        <span className="break-words text-[11px] font-normal leading-4 text-muted-foreground">Client-ready hardware manifest</span>
                       </span>
                     </Button>
                   </div>

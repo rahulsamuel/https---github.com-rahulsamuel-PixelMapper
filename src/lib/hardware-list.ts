@@ -109,16 +109,14 @@ export function formatWeightLbKg(kg: number | null): string {
 }
 
 export interface BarSpec {
-  label: string;
-  tilesPerBar: number;
+  bars: { label: string; count: number }[];
   count: number;
 }
 
 /**
  * Bars carry the tiles: header bars hang from the rigging (flown), base bars
- * sit on the deck (ground stack). A 1000mm-wide bar carries one 1000mm tile;
- * two 500mm tiles share one double-wide bar; a single-wide bar carries one
- * 500mm tile.
+ * sit on the deck (ground stack). Odd 500mm tile widths are filled with
+ * double-wide bars first and a single-wide bar for the remainder.
  */
 function resolveBar(
   config: ScreenHardwareConfig,
@@ -127,29 +125,24 @@ function resolveBar(
   baseLabel: string
 ): BarSpec {
   const tw = tileWidthMm ?? 0;
-  let tilesPerBar: number;
-  let label: string;
+  const bars: { label: string; count: number }[] = [];
+  const doubleLabel = `${baseLabel} (double wide)`;
+  const singleLabel = `${baseLabel} (single wide)`;
 
-  if (config.headerBarType === "double") {
-    tilesPerBar = 2;
-    label = `${baseLabel} (double wide)`;
-  } else if (config.headerBarType === "single") {
-    tilesPerBar = 1;
-    label = `${baseLabel} (single wide)`;
-  } else if (tw <= 0) {
-    tilesPerBar = 1;
-    label = baseLabel;
+  if (config.headerBarType === "single" || tw >= 1000) {
+    bars.push({
+      label: config.headerBarType === "single" ? singleLabel : `${baseLabel} (${tw}mm wide)`,
+      count: screenWidth,
+    });
   } else {
-    tilesPerBar = Math.max(1, Math.floor(1000 / tw));
-    label =
-      tilesPerBar === 1
-        ? `${baseLabel} (${tw}mm wide)`
-        : tilesPerBar === 2
-          ? `${baseLabel} (double wide)`
-          : `${baseLabel} (${tilesPerBar} tiles wide)`;
+    const doubleCount = Math.floor(screenWidth / 2);
+    const singleCount = screenWidth % 2;
+    if (doubleCount > 0) bars.push({ label: doubleLabel, count: doubleCount });
+    if (singleCount > 0) bars.push({ label: singleLabel, count: singleCount });
   }
 
-  return { label, tilesPerBar, count: Math.max(1, Math.ceil(screenWidth / tilesPerBar)) };
+  if (bars.length === 0) bars.push({ label: singleLabel, count: Math.max(1, screenWidth) });
+  return { bars, count: bars.reduce((sum, bar) => sum + bar.count, 0) };
 }
 
 /**
@@ -176,14 +169,14 @@ export function calculateHardware(config: ScreenHardwareConfig, metrics: ScreenM
   if (config.mountingType === "flown") {
     // Flown: tiles hang off header bars. No clamps, outriggers or rear clamps.
     const spec = resolveBar(config, metrics.tileWidthMm, screenWidth, "Header bars");
-    push("headerBars", spec.label, spec.count);
+    for (const bar of spec.bars) push("headerBars", bar.label, bar.count);
   } else if (config.mountingType === "ground-stack") {
     // Ground stack: base bars on the deck, one outrigger per base bar, a truss
     // tower behind each base bar column built from 1000mm sections first and
     // 500mm sections for the remainder, rear clamps matching the truss count,
     // and sandbags ballasting roughly the weight of the screen.
     const spec = resolveBar(config, metrics.tileWidthMm, screenWidth, "Base bars");
-    push("baseBars", spec.label, spec.count);
+    for (const bar of spec.bars) push("baseBars", bar.label, bar.count);
     push("outriggers", "Outriggers", spec.count);
 
     if (metrics.heightM && metrics.heightM > 0) {
