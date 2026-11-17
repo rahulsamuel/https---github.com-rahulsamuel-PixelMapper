@@ -205,6 +205,55 @@ interface GenerateOptions {
   onProgress?: (fraction: number, label: string) => boolean;
 }
 
+function clampByte(value: number) {
+  return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+function canvasToI420(ctx: CanvasRenderingContext2D, width: number, height: number): ArrayBuffer {
+  const rgba = ctx.getImageData(0, 0, width, height).data;
+  const chromaWidth = width / 2;
+  const chromaHeight = height / 2;
+  const ySize = width * height;
+  const chromaSize = chromaWidth * chromaHeight;
+  const output = new Uint8Array(ySize + chromaSize * 2);
+  const uOffset = ySize;
+  const vOffset = ySize + chromaSize;
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const source = (y * width + x) * 4;
+      const r = rgba[source];
+      const g = rgba[source + 1];
+      const b = rgba[source + 2];
+      output[y * width + x] = clampByte(0.257 * r + 0.504 * g + 0.098 * b + 16);
+    }
+  }
+
+  for (let y = 0; y < height; y += 2) {
+    for (let x = 0; x < width; x += 2) {
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      for (let row = 0; row < 2; row++) {
+        for (let column = 0; column < 2; column++) {
+          const source = ((y + row) * width + x + column) * 4;
+          r += rgba[source];
+          g += rgba[source + 1];
+          b += rgba[source + 2];
+        }
+      }
+      r /= 4;
+      g /= 4;
+      b /= 4;
+      const chromaIndex = (y / 2) * chromaWidth + x / 2;
+      output[uOffset + chromaIndex] = clampByte(-0.148 * r - 0.291 * g + 0.439 * b + 128);
+      output[vOffset + chromaIndex] = clampByte(0.439 * r - 0.368 * g - 0.071 * b + 128);
+    }
+  }
+
+  return output.buffer;
+}
+
 async function generateTestVideo(opts: GenerateOptions): Promise<Blob> {
   const { width, height, fps, duration, pattern, onProgress } = opts;
   const totalFrames = Math.round(duration * fps);
@@ -243,27 +292,18 @@ async function generateTestVideo(opts: GenerateOptions): Promise<Blob> {
     report((i / totalFrames) * 0.9, `Rendering frame ${i + 1} of ${totalFrames}`);
     drawPattern(pattern, ctx, width, height, i, fps);
     const timestamp = Math.round((i * 1e6) / fps);
-    const sourceFrame = new VideoFrame(canvas, {
+    const i420Buffer = canvasToI420(ctx, width, height);
+    const encodedFrame = new VideoFrame(i420Buffer, {
+      format: "I420",
+      codedWidth: width,
+      codedHeight: height,
       timestamp,
       duration: Math.round(1e6 / fps),
     });
     try {
-      const i420Buffer = new ArrayBuffer(sourceFrame.allocationSize({ format: "I420" }));
-      await sourceFrame.copyTo(i420Buffer, { format: "I420" });
-      const encodedFrame = new VideoFrame(i420Buffer, {
-        format: "I420",
-        codedWidth: width,
-        codedHeight: height,
-        timestamp,
-        duration: Math.round(1e6 / fps),
-      });
-      try {
-        videoEncoder.encode(encodedFrame, { keyFrame: i % keyframeInterval === 0 });
-      } finally {
-        encodedFrame.close();
-      }
+      videoEncoder.encode(encodedFrame, { keyFrame: i % keyframeInterval === 0 });
     } finally {
-      sourceFrame.close();
+      encodedFrame.close();
     }
     if (videoEncoder.encodeQueueSize > 8) {
       await new Promise<void>((resolve) => {
