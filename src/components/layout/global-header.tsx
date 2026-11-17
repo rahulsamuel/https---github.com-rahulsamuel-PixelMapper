@@ -44,6 +44,7 @@ const navItems = [
   { href: '/app',          label: 'Pixel Map' },
   { href: '/calculator',   label: 'LED Calculator' },
   { href: '/power-data',   label: 'Power & Data' },
+  { href: '/hardware-list', label: 'Hardware List' },
   { href: '/rack-drawing', label: 'Rack Drawing' },
   { href: '/signal-flow',   label: 'Signal Flow' },
   { href: '/pre-visual',   label: 'Pre-Visual' },
