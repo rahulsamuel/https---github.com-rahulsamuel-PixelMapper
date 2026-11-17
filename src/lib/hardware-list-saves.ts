@@ -55,7 +55,7 @@ export async function loadHardwareListSave(projectId: string): Promise<SaveResul
     console.error('src/lib/hardware-list-saves.ts:', error.message);
     return { data: null, error: 'Something went wrong. Please try again.' };
   }
-  return { data: data ? parseHardwareListSave(data.screens) : null, error: null };
+  return { data: data ? parseHardwareListSave({ screens: data.screens }) : null, error: null };
 }
 
 export async function saveHardwareListSave(
