@@ -113,7 +113,12 @@ export default function HardwareListPage() {
       const productId = getScreenProductId(screen);
       const product = products.find(p => p.id === productId);
       const config = loadedConfigs[screen.id] ?? DEFAULT_HARDWARE_CONFIG;
-      const metrics = getScreenMetrics(screen, product?.tileWeightKg ?? null);
+      const metrics = getScreenMetrics(
+        screen,
+        product?.tileWeightKg ?? null,
+        product?.tileWidthMm,
+        product?.tileHeightMm,
+      );
       return {
         screenId: screen.id,
         name: screen.name,

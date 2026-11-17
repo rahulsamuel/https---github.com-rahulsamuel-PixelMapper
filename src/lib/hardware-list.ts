@@ -71,33 +71,40 @@ export interface ScreenMetrics {
   heightM: number | null;
 }
 
-function screenTileWidthMm(screen: Screen): number {
+function screenTileWidthMm(screen: Screen, fallback: number | null | undefined): number {
   const withSize = screen.sections.find((s) => s.tileWidthMm > 0);
   if (withSize) return withSize.tileWidthMm;
-  return screen.customTileWidthMm > 0 ? screen.customTileWidthMm : 0;
+  if (screen.customTileWidthMm > 0) return screen.customTileWidthMm;
+  return fallback && fallback > 0 ? fallback : 0;
 }
 
-function screenTileHeightMm(screen: Screen): number {
+function screenTileHeightMm(screen: Screen, fallback: number | null | undefined): number {
   const withSize = screen.sections.find((s) => s.tileHeightMm > 0);
   if (withSize) return withSize.tileHeightMm;
-  return screen.customTileHeightMm > 0 ? screen.customTileHeightMm : 0;
+  if (screen.customTileHeightMm > 0) return screen.customTileHeightMm;
+  return fallback && fallback > 0 ? fallback : 0;
 }
 
-export function getScreenMetrics(screen: Screen, tileWeightKg: number | null | undefined): ScreenMetrics {
+export function getScreenMetrics(
+  screen: Screen,
+  tileWeightKg: number | null | undefined,
+  tileWidthMm: number | null | undefined = null,
+  tileHeightMm: number | null | undefined = null,
+): ScreenMetrics {
   const totalTiles = Math.max(0, screen.dimensions.screenWidth) * Math.max(0, screen.dimensions.screenHeight);
   const hasSize = screen.dimensions.screenWidth > 0 && screen.dimensions.screenHeight > 0;
-  const tileWidthMm = screenTileWidthMm(screen) || null;
+  const resolvedTileWidthMm = screenTileWidthMm(screen, tileWidthMm) || null;
   return {
     screenWidth: screen.dimensions.screenWidth,
     screenHeight: screen.dimensions.screenHeight,
     totalTiles,
-    tileWidthMm,
+    tileWidthMm: resolvedTileWidthMm,
     screenWeightKg:
       tileWeightKg && tileWeightKg > 0 && totalTiles > 0 ? Math.round(tileWeightKg * totalTiles) : null,
-    widthM: hasSize && tileWidthMm ? (tileWidthMm * screen.dimensions.screenWidth) / 1000 : null,
+    widthM: hasSize && resolvedTileWidthMm ? (resolvedTileWidthMm * screen.dimensions.screenWidth) / 1000 : null,
     heightM:
-      hasSize && screenTileHeightMm(screen) > 0
-        ? (screenTileHeightMm(screen) * screen.dimensions.screenHeight) / 1000
+      hasSize && screenTileHeightMm(screen, tileHeightMm) > 0
+        ? (screenTileHeightMm(screen, tileHeightMm) * screen.dimensions.screenHeight) / 1000
         : null,
   };
 }
