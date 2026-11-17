@@ -242,12 +242,29 @@ async function generateTestVideo(opts: GenerateOptions): Promise<Blob> {
     if (encodeError) throw encodeError;
     report((i / totalFrames) * 0.9, `Rendering frame ${i + 1} of ${totalFrames}`);
     drawPattern(pattern, ctx, width, height, i, fps);
-    const frame = new VideoFrame(canvas, {
-      timestamp: Math.round((i * 1e6) / fps),
+    const timestamp = Math.round((i * 1e6) / fps);
+    const sourceFrame = new VideoFrame(canvas, {
+      timestamp,
       duration: Math.round(1e6 / fps),
     });
-    videoEncoder.encode(frame, { keyFrame: i % keyframeInterval === 0 });
-    frame.close();
+    try {
+      const i420Buffer = new ArrayBuffer(sourceFrame.allocationSize({ format: "I420" }));
+      await sourceFrame.copyTo(i420Buffer, { format: "I420" });
+      const encodedFrame = new VideoFrame(i420Buffer, {
+        format: "I420",
+        codedWidth: width,
+        codedHeight: height,
+        timestamp,
+        duration: Math.round(1e6 / fps),
+      });
+      try {
+        videoEncoder.encode(encodedFrame, { keyFrame: i % keyframeInterval === 0 });
+      } finally {
+        encodedFrame.close();
+      }
+    } finally {
+      sourceFrame.close();
+    }
     if (videoEncoder.encodeQueueSize > 8) {
       await new Promise<void>((resolve) => {
         const check = () => {
@@ -423,7 +440,8 @@ export function TestVideoView() {
         setProgressLabel("Canceled");
       } else {
         console.error("src/components/pixel-map/test-video-view.tsx:", err);
-        setError("Something went wrong while creating the video. Please try again.");
+        setError("The browser could not encode this frame format. Please use the latest Google Chrome or Microsoft Edge and try again.");
+        setProgress(0);
         setProgressLabel("");
       }
     } finally {
