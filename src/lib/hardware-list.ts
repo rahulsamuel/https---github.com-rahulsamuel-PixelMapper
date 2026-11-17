@@ -32,7 +32,8 @@ export type HardwareItemId =
   | "outriggers"
   | "rearClamps"
   | "cornerBlocks"
-  | "verticalTruss"
+  | "verticalTruss1000"
+  | "verticalTruss500"
   | "sandbags";
 
 export interface HardwareItem {
@@ -47,7 +48,8 @@ export const HARDWARE_ITEM_LABELS: Record<HardwareItemId, string> = {
   outriggers: "Outriggers",
   rearClamps: "Rear clamps",
   cornerBlocks: "Corner blocks",
-  verticalTruss: "Vertical truss",
+  verticalTruss1000: "Vertical truss (1000mm)",
+  verticalTruss500: "Vertical truss (500mm)",
   sandbags: "Sandbags",
 };
 
@@ -106,43 +108,45 @@ export function formatWeightLbKg(kg: number | null): string {
   return `${lb.toLocaleString()} lb (${Math.round(kg).toLocaleString()} kg)`;
 }
 
-export interface HeaderBarSpec {
+export interface BarSpec {
   label: string;
   tilesPerBar: number;
   count: number;
 }
 
 /**
- * Header bars hang from the rigging and the tiles hang off them. A 1000mm-wide
- * header carries one 1000mm tile; two 500mm tiles share one double-wide header;
- * a single-wide header carries one 500mm tile.
+ * Bars carry the tiles: header bars hang from the rigging (flown), base bars
+ * sit on the deck (ground stack). A 1000mm-wide bar carries one 1000mm tile;
+ * two 500mm tiles share one double-wide bar; a single-wide bar carries one
+ * 500mm tile.
  */
-export function resolveHeaderBar(
+function resolveBar(
   config: ScreenHardwareConfig,
   tileWidthMm: number | null,
-  screenWidth: number
-): HeaderBarSpec {
+  screenWidth: number,
+  baseLabel: string
+): BarSpec {
   const tw = tileWidthMm ?? 0;
   let tilesPerBar: number;
   let label: string;
 
   if (config.headerBarType === "double") {
     tilesPerBar = 2;
-    label = "Header bars (double wide)";
+    label = `${baseLabel} (double wide)`;
   } else if (config.headerBarType === "single") {
     tilesPerBar = 1;
-    label = "Header bars (single wide)";
+    label = `${baseLabel} (single wide)`;
   } else if (tw <= 0) {
     tilesPerBar = 1;
-    label = "Header bars";
+    label = baseLabel;
   } else {
     tilesPerBar = Math.max(1, Math.floor(1000 / tw));
     label =
       tilesPerBar === 1
-        ? `Header bars (${tw}mm wide)`
+        ? `${baseLabel} (${tw}mm wide)`
         : tilesPerBar === 2
-          ? "Header bars (double wide)"
-          : `Header bars (${tilesPerBar} tiles wide)`;
+          ? `${baseLabel} (double wide)`
+          : `${baseLabel} (${tilesPerBar} tiles wide)`;
   }
 
   return { label, tilesPerBar, count: Math.max(1, Math.ceil(screenWidth / tilesPerBar)) };
@@ -171,18 +175,36 @@ export function calculateHardware(config: ScreenHardwareConfig, metrics: ScreenM
 
   if (config.mountingType === "flown") {
     // Flown: tiles hang off header bars. No clamps, outriggers or rear clamps.
-    const spec = resolveHeaderBar(config, metrics.tileWidthMm, screenWidth);
+    const spec = resolveBar(config, metrics.tileWidthMm, screenWidth, "Header bars");
     push("headerBars", spec.label, spec.count);
   } else if (config.mountingType === "ground-stack") {
-    // Ground stack: base bars on the deck (same count as header bars), towers
-    // braced with outriggers, rear clamps restraining the top row, vertical
-    // truss sections and sandbag ballast.
-    const spec = resolveHeaderBar(config, metrics.tileWidthMm, screenWidth);
-    push("baseBars", "Base bars", spec.count);
-    push("outriggers", "Outriggers", Math.max(2, Math.ceil(screenWidth / 2)));
-    push("rearClamps", "Rear clamps", screenWidth * 2);
-    if (metrics.heightM) push("verticalTruss", "Vertical truss", Math.ceil(metrics.heightM / 2) * 2);
-    push("sandbags", "Sandbags", Math.max(2, screenWidth));
+    // Ground stack: base bars on the deck, one outrigger per base bar, a truss
+    // tower behind each base bar column built from 1000mm sections first and
+    // 500mm sections for the remainder, rear clamps matching the truss count,
+    // and sandbags ballasting roughly the weight of the screen.
+    const spec = resolveBar(config, metrics.tileWidthMm, screenWidth, "Base bars");
+    push("baseBars", spec.label, spec.count);
+    push("outriggers", "Outriggers", spec.count);
+
+    if (metrics.heightM && metrics.heightM > 0) {
+      const heightMm = metrics.heightM * 1000;
+      const towers = spec.count;
+      const n1000 = Math.floor(heightMm / 1000);
+      const remainderMm = heightMm - n1000 * 1000;
+      const n500 = remainderMm > 0 ? Math.ceil(remainderMm / 500) : 0;
+      push("verticalTruss1000", "Vertical truss (1000mm)", n1000 * towers);
+      if (n500 > 0) push("verticalTruss500", "Vertical truss (500mm)", n500 * towers);
+      const trussTotal = (n1000 + n500) * towers;
+      if (trussTotal > 0) push("rearClamps", "Rear clamps", trussTotal);
+    }
+
+    if (metrics.screenWeightKg && metrics.screenWeightKg > 0) {
+      const bagLb = Number(config.sandbagWeight);
+      const screenLb = metrics.screenWeightKg * KG_TO_LB;
+      push("sandbags", `Sandbags (${bagLb} lb)`, Math.ceil(screenLb / bagLb));
+    } else {
+      push("sandbags", `Sandbags (${Number(config.sandbagWeight)} lb)`, Math.max(2, screenWidth));
+    }
   }
   // Floor: the screen sits directly on the ground — no support hardware.
 

@@ -351,7 +351,9 @@ export default function HardwareListPage() {
 
                 {screen.config.mountingType !== 'floor' && (
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Header Bar Type</Label>
+                    <Label className="text-xs">
+                      {screen.config.mountingType === 'ground-stack' ? 'Base Bar Type' : 'Header Bar Type'}
+                    </Label>
                     <Select
                       value={screen.config.headerBarType}
                       onValueChange={v => updateConfig(screen.screenId, { headerBarType: v as ScreenHardwareConfig['headerBarType'] })}
