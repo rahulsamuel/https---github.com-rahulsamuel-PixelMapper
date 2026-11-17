@@ -12,7 +12,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { EditTools } from "../pixel-mapper/edit-tools";
 import { Button } from "@/components/ui/button";
-import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home, ScreenShare, Plus, MoreHorizontal, Pencil, Trash, Copy, CaseSensitive, FileText, Info, PanelLeftClose, PanelLeftOpen, ChevronUp, ChevronDown, Server } from "lucide-react";
+import { ZoomIn, ZoomOut, LayoutGrid, Wand2, FileOutput, Package, RotateCcw, Trash2, GitBranch, Eraser, Expand, Palette, RefreshCw, Cpu, User, LogOut, Settings, Home, ScreenShare, Plus, MoreHorizontal, Pencil, Trash, Copy, CaseSensitive, FileText, Info, PanelLeftClose, PanelLeftOpen, ChevronUp, ChevronDown, Server, MonitorPlay } from "lucide-react";
 import { LabelControls } from "../pixel-mapper/label-controls";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -61,6 +61,8 @@ import { RemoteCursors } from "./remote-cursors";
 import type { PresenceUser } from "@/hooks/use-presence";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { TabRail } from "./pixel-map-tab-rail";
+import { TestVideoControls } from "./test-video-controls";
+import { TestVideoSettingsProvider } from "./test-video-settings";
 
 
 export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher }: { onlineUsers?: PresenceUser[]; onShareClick?: () => void; projectSwitcher?: React.ReactNode }) {
@@ -243,6 +245,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
   }, [currentScreenId, dimensions.screenWidth, dimensions.screenHeight]);
 
   return (
+    <TestVideoSettingsProvider>
     <div className="flex h-full w-full overflow-hidden">
       {isManualPowerModalOpen && (
         <Suspense fallback={null}>
@@ -432,6 +435,15 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                   </Button>
                 </AccordionContent>
               </AccordionItem>
+
+              {activeTab === 'test-video' && (
+                <AccordionItem value="test-video-settings" className="w-full border-none">
+                  <AccordionSectionTrigger icon={<MonitorPlay className="size-5" />} title="Test Video Settings" colorClass="border-l-4 border-l-cyan-500" />
+                  <AccordionContent className="bg-background border rounded-b-lg -mt-2 p-4">
+                    <TestVideoControls />
+                  </AccordionContent>
+                </AccordionItem>
+              )}
 
               {activeTab === 'equipment' && (
                 <AccordionItem value="devices" className="w-full border-none">
@@ -700,5 +712,6 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
         </Tabs>
       </div>
     </div>
+    </TestVideoSettingsProvider>
   );
 }

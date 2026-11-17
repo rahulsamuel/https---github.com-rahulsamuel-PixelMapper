@@ -428,6 +428,8 @@ export interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'
   selectionRect: { startX: number; startY: number; endX: number; endY: number } | null;
   setDragOverlayRef: (el: HTMLDivElement | null) => void;
   selectedTileIds: number[];
+  rasterHighlightBounds: ActiveBounds | null;
+  setRasterHighlightBounds: Dispatch<SetStateAction<ActiveBounds | null>>;
   handleGridMouseDown: (e: React.MouseEvent<HTMLElement>) => void;
   handleGridMouseMove: (e: React.MouseEvent<HTMLElement>) => void;
   handleGridMouseUp: () => void;

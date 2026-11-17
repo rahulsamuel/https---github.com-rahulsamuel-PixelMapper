@@ -3705,6 +3705,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     wiringData,
     handleTileClick,
     selectionRect: null,
+    wiringGroups: currentScreen.wiringGroups,
     setDragOverlayRef,
     selectedTileIds,
     rasterHighlightBounds,

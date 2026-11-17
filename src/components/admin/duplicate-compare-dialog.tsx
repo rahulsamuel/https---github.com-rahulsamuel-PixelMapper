@@ -12,15 +12,15 @@ export type ProductSpec = {
   manufacturer: string;
   productName: string;
   ownerLabel: string;
-  pixelPitchMm: number | string | null;
-  tileWidthMm: number | string | null;
-  tileHeightMm: number | string | null;
-  tileWidthPx: number | string | null;
-  tileHeightPx: number | string | null;
-  wattsPerTile: number | string | null;
-  maxBrightnessNit: number | string | null;
-  refreshRateHz: number | string | null;
-  tileWeightKg: number | string | null;
+  pixelPitchMm: number | string | null | undefined;
+  tileWidthMm: number | string | null | undefined;
+  tileHeightMm: number | string | null | undefined;
+  tileWidthPx: number | string | null | undefined;
+  tileHeightPx: number | string | null | undefined;
+  wattsPerTile: number | string | null | undefined;
+  maxBrightnessNit: number | string | null | undefined;
+  refreshRateHz: number | string | null | undefined;
+  tileWeightKg: number | string | null | undefined;
 };
 
 export function specFromProduct(p: LedProduct): ProductSpec {
@@ -55,7 +55,7 @@ const ROWS: { label: string; key: keyof ProductSpec }[] = [
   { label: 'Panel weight (kg)', key: 'tileWeightKg' },
 ];
 
-function display(value: number | string | null): string {
+function display(value: number | string | null | undefined): string {
   return value === null || value === '' || value === undefined ? '-' : String(value);
 }
 

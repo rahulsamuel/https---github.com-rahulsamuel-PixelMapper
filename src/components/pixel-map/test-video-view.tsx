@@ -7,38 +7,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MonitorPlay, Play, Square, Download, Save, Trash2, Pencil, Check, X, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import {
   type TestVideoPreset,
   type TestVideoPresetSettings,
-  type TestVideoPattern,
+  type TestVideoCodec,
   loadTestVideoPresets,
   saveTestVideoPreset,
   renameTestVideoPreset,
   deleteTestVideoPreset,
 } from "@/lib/test-video-presets";
 import { Muxer, ArrayBufferTarget } from "mp4-muxer";
+import { useTestVideoSettings } from "./test-video-settings";
 
-type ResolutionChoice = "720p" | "1080p" | "4k" | "screen";
-
-const RESOLUTIONS: { value: ResolutionChoice; label: string; width: number; height: number }[] = [
-  { value: "720p", label: "720p (1280 x 720)", width: 1280, height: 720 },
-  { value: "1080p", label: "1080p (1920 x 1080)", width: 1920, height: 1080 },
-  { value: "4k", label: "4K (3840 x 2160)", width: 3840, height: 2160 },
-  { value: "screen", label: "Use current screen resolution", width: 0, height: 0 },
+type ResolutionChoice = TestVideoPresetSettings["resolution"];
+const RESOLUTIONS: { value: ResolutionChoice; width: number; height: number }[] = [
+  { value: "720p", width: 1280, height: 720 },
+  { value: "1080p", width: 1920, height: 1080 },
+  { value: "4k", width: 3840, height: 2160 },
+  { value: "screen", width: 0, height: 0 },
 ];
-
-const PATTERNS: { value: TestVideoPattern; label: string }[] = [
-  { value: "smpte-bars", label: "SMPTE Color Bars" },
-  { value: "full-color-bars", label: "100% Color Bars" },
-  { value: "color-bars-crosshair", label: "100% Color Bars + Bouncing Crosshair" },
-  { value: "moving-grid", label: "Moving Grid" },
-  { value: "frame-counter", label: "Frame Counter" },
-];
-
-const SAMPLE_RATE = 48000;
 const AUDIO_CHANNELS = 2;
 const SINE_FREQUENCY = 1000;
 
@@ -46,9 +35,7 @@ function isWebCodecsSupported() {
   return (
     typeof window !== "undefined" &&
     typeof (window as any).VideoEncoder !== "undefined" &&
-    typeof (window as any).AudioEncoder !== "undefined" &&
-    typeof (window as any).VideoFrame !== "undefined" &&
-    typeof (window as any).AudioData !== "undefined"
+    typeof (window as any).VideoFrame !== "undefined"
   );
 }
 
@@ -100,60 +87,41 @@ function drawFullColorBars(ctx: CanvasRenderingContext2D, w: number, h: number) 
   }
 }
 
+function drawSmpteBars(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const topH = Math.floor(h * 0.625);
+  const barW = w / 7;
+  for (let i = 0; i < 7; i++) {
+    ctx.fillStyle = rgb(SMPTE_TOP[i]);
+    ctx.fillRect(Math.round(i * barW), 0, Math.ceil(barW), topH);
+  }
+  const midH = Math.floor(h * 0.125);
+  const midW = w / SMPTE_MID.length;
+  for (let i = 0; i < SMPTE_MID.length; i++) {
+    ctx.fillStyle = rgb(SMPTE_MID[i]);
+    ctx.fillRect(Math.round(i * midW), topH, Math.ceil(midW), midH);
+  }
+  const botH = h - topH - midH;
+  const botW = w / 6;
+  for (let i = 0; i < 6; i++) {
+    const start = i * botW - botW * 0.25;
+    ctx.fillStyle = "rgb(19,19,19)";
+    ctx.fillRect(Math.round(start), topH + midH, Math.ceil(botW), botH);
+    ctx.fillStyle = "rgb(255,255,255)";
+    ctx.fillRect(Math.round(start + botW * 0.8), topH + midH, Math.ceil(botW * 0.2), botH);
+  }
+}
+
 export function drawPattern(
-  pattern: TestVideoPattern,
+  settings: Pick<TestVideoPresetSettings, "background" | "bars" | "barWidth">,
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
   frame: number,
   fps: number
 ) {
-  if (pattern === "smpte-bars") {
-    const topH = Math.floor(h * 0.625);
-    const barW = w / 7;
-    for (let i = 0; i < 7; i++) {
-      ctx.fillStyle = rgb(SMPTE_TOP[i]);
-      ctx.fillRect(Math.round(i * barW), 0, Math.ceil(barW), topH);
-    }
-    const midH = Math.floor(h * 0.125);
-    const midW = w / SMPTE_MID.length;
-    for (let i = 0; i < SMPTE_MID.length; i++) {
-      ctx.fillStyle = rgb(SMPTE_MID[i]);
-      ctx.fillRect(Math.round(i * midW), topH, Math.ceil(midW), midH);
-    }
-    const botH = h - topH - midH;
-    const botW = w / 6;
-    // Standard SMPTE lower field: alternating dark/white slanted castellations.
-    for (let i = 0; i < 6; i++) {
-      const start = i * botW - botW * 0.25;
-      ctx.fillStyle = "rgb(19,19,19)";
-      ctx.fillRect(Math.round(start), topH + midH, Math.ceil(botW), botH);
-      ctx.fillStyle = "rgb(255,255,255)";
-      ctx.fillRect(Math.round(start + botW * 0.8), topH + midH, Math.ceil(botW * 0.2), botH);
-    }
-    return;
-  }
-
-  if (pattern === "full-color-bars" || pattern === "color-bars-crosshair") {
-    drawFullColorBars(ctx, w, h);
-    if (pattern === "full-color-bars") return;
-
-    const progress = bounceProgress(frame, fps);
-    const verticalThickness = Math.max(4, Math.round(Math.min(w, h) * 0.025));
-    const horizontalThickness = verticalThickness;
-    const x = progress * (w - verticalThickness);
-    const y = progress * (h - horizontalThickness);
-
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(Math.round(x), 0, verticalThickness, h);
-    ctx.fillRect(0, Math.round(y), w, horizontalThickness);
-    ctx.fillStyle = "#00e5ff";
-    ctx.fillRect(Math.round(x + verticalThickness * 0.25), 0, Math.max(1, Math.round(verticalThickness * 0.5)), h);
-    ctx.fillRect(0, Math.round(y + horizontalThickness * 0.25), w, Math.max(1, Math.round(horizontalThickness * 0.5)));
-    return;
-  }
-
-  if (pattern === "moving-grid") {
+  if (settings.background === "smpte-bars") drawSmpteBars(ctx, w, h);
+  else if (settings.background === "full-color-bars") drawFullColorBars(ctx, w, h);
+  else if (settings.background === "moving-grid") {
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, w, h);
     const cell = Math.max(40, Math.round(w / 16));
@@ -161,51 +129,58 @@ export function drawPattern(
     ctx.strokeStyle = "#00c896";
     ctx.lineWidth = Math.max(2, Math.round(w / 960));
     ctx.beginPath();
-    for (let x = -cell + offset; x < w + cell; x += cell) {
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, h);
-    }
-    for (let y = -cell + offset; y < h + cell; y += cell) {
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
-    }
+    for (let x = -cell + offset; x < w + cell; x += cell) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+    for (let y = -cell + offset; y < h + cell; y += cell) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
     ctx.stroke();
     const cx = w / 2 + Math.cos(frame / (fps * 2)) * (w * 0.35);
     const cy = h / 2 + Math.sin(frame / (fps * 2)) * (h * 0.35);
-    const r = Math.round(h * 0.08);
     ctx.fillStyle = "#ff3b30";
     ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.arc(cx, cy, Math.round(h * 0.08), 0, Math.PI * 2);
     ctx.fill();
-    return;
+  } else if (settings.background === "frame-counter") {
+    ctx.fillStyle = "#0b0f14";
+    ctx.fillRect(0, 0, w, h);
+    const totalSec = frame / fps;
+    const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
+    const ss = String(Math.floor(totalSec % 60)).padStart(2, "0");
+    const ff = String(frame % fps).padStart(2, "0");
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `bold ${Math.round(h * 0.28)}px monospace`;
+    ctx.fillText(String(frame), w / 2, h * 0.42);
+    ctx.font = `600 ${Math.round(h * 0.07)}px monospace`;
+    ctx.fillText(`TC ${mm}:${ss}:${ff}  |  ${w}x${h}  |  ${fps}fps`, w / 2, h * 0.68);
+  } else {
+    ctx.fillStyle = "#050505";
+    ctx.fillRect(0, 0, w, h);
   }
 
-  ctx.fillStyle = "#0b0f14";
-  ctx.fillRect(0, 0, w, h);
-  const big = Math.round(h * 0.28);
-  const small = Math.round(h * 0.07);
-  ctx.fillStyle = "#ffffff";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.font = `bold ${big}px monospace`;
-  ctx.fillText(String(frame), w / 2, h * 0.42);
-  const totalSec = frame / fps;
-  const mm = String(Math.floor(totalSec / 60)).padStart(2, "0");
-  const ss = String(Math.floor(totalSec % 60)).padStart(2, "0");
-  const ff = String(frame % fps).padStart(2, "0");
-  ctx.font = `600 ${small}px monospace`;
-  ctx.fillText(`TC ${mm}:${ss}:${ff}  |  ${w}x${h}  |  ${fps}fps`, w / 2, h * 0.68);
-}
-
-function videoCodecCandidates(width: number, height: number): string[] {
-  if (width > 2560 || height > 1440) {
-    return ["avc1.640034", "avc1.640033", "avc1.4d0034", "avc1.42003e"];
+  if (settings.bars === "bouncing-crosshair") {
+    const thickness = Math.max(1, Math.round(settings.barWidth));
+    const progress = bounceProgress(frame, fps);
+    const x = progress * (w - thickness);
+    const y = progress * (h - thickness);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(Math.round(x), 0, thickness, h);
+    ctx.fillRect(0, Math.round(y), w, thickness);
+    ctx.fillStyle = "#00e5ff";
+    const inner = Math.max(1, Math.round(thickness * 0.5));
+    ctx.fillRect(Math.round(x + thickness * 0.25), 0, inner, h);
+    ctx.fillRect(0, Math.round(y + thickness * 0.25), w, inner);
   }
-  return ["avc1.640033", "avc1.640032", "avc1.4d0034", "avc1.42003e"];
 }
 
-async function pickVideoCodec(width: number, height: number, fps: number, bitrate: number): Promise<VideoEncoderConfig | null> {
-  for (const codec of videoCodecCandidates(width, height)) {
+function videoCodecCandidates(codec: TestVideoCodec, width: number, height: number): string[] {
+  const level = width > 2560 || height > 1440 ? "34" : "33";
+  if (codec === "h264-main") return [`avc1.4d00${level}`];
+  if (codec === "h264-baseline") return ["avc1.42003e"];
+  return [`avc1.6400${level}`];
+}
+
+async function pickVideoCodec(codecChoice: TestVideoCodec, width: number, height: number, fps: number, bitrate: number): Promise<VideoEncoderConfig | null> {
+  for (const codec of videoCodecCandidates(codecChoice, width, height)) {
     const config: VideoEncoderConfig = {
       codec,
       width,
@@ -220,11 +195,11 @@ async function pickVideoCodec(width: number, height: number, fps: number, bitrat
   return null;
 }
 
-async function pickAudioCodec(): Promise<AudioEncoderConfig | null> {
-  for (const [codec, muxerCodec] of [["mp4a.40.2", "aac"], ["opus", "opus"]] as const) {
+async function pickAudioCodec(sampleRate: TestVideoPresetSettings["sampleRate"]): Promise<AudioEncoderConfig | null> {
+  for (const codec of ["mp4a.40.2", "opus"] as const) {
     const config: AudioEncoderConfig = {
       codec,
-      sampleRate: SAMPLE_RATE,
+      sampleRate,
       numberOfChannels: AUDIO_CHANNELS,
       bitrate: 192_000,
     };
@@ -239,7 +214,7 @@ interface GenerateOptions {
   height: number;
   fps: number;
   duration: number;
-  pattern: TestVideoPattern;
+  settings: Pick<TestVideoPresetSettings, "background" | "bars" | "barWidth" | "audioEnabled" | "sampleRate" | "videoCodec">;
   onProgress?: (fraction: number, label: string) => boolean;
 }
 
@@ -293,23 +268,24 @@ function canvasToI420(ctx: CanvasRenderingContext2D, width: number, height: numb
 }
 
 async function generateTestVideo(opts: GenerateOptions): Promise<Blob> {
-  const { width, height, fps, duration, pattern, onProgress } = opts;
+  const { width, height, fps, duration, settings, onProgress } = opts;
   const totalFrames = Math.round(duration * fps);
   const report = (f: number, label: string) => {
     if (onProgress?.(f, label)) throw new DOMException("Aborted", "AbortError");
   };
 
   const bitrate = getBitrate(width, height, fps);
-  const videoConfig = await pickVideoCodec(width, height, fps, bitrate);
-  if (!videoConfig) throw new Error("No supported video encoder configuration was found.");
-  const audioConfig = await pickAudioCodec();
+  const videoConfig = await pickVideoCodec(settings.videoCodec, width, height, fps, bitrate);
+  if (!videoConfig) throw new Error("The selected H.264 codec is not supported by this browser.");
+  const audioConfig = settings.audioEnabled ? await pickAudioCodec(settings.sampleRate) : null;
+  if (settings.audioEnabled && !audioConfig) throw new Error("The selected audio sample rate is not supported by this browser.");
 
   const target = new ArrayBufferTarget();
   const muxer = new Muxer<ArrayBufferTarget>({
     target,
     fastStart: "in-memory",
     video: { codec: "avc", width, height, frameRate: fps },
-    ...(audioConfig ? { audio: { codec: (audioConfig.codec === "mp4a.40.2" ? "aac" : "opus") as "aac" | "opus", numberOfChannels: AUDIO_CHANNELS, sampleRate: SAMPLE_RATE } } : {}),
+    ...(audioConfig ? { audio: { codec: (audioConfig.codec === "mp4a.40.2" ? "aac" : "opus") as "aac" | "opus", numberOfChannels: AUDIO_CHANNELS, sampleRate: settings.sampleRate } } : {}),
   });
 
   let encodeError: Error | null = null;
@@ -328,7 +304,7 @@ async function generateTestVideo(opts: GenerateOptions): Promise<Blob> {
   for (let i = 0; i < totalFrames; i++) {
     if (encodeError) throw encodeError;
     report((i / totalFrames) * 0.9, `Rendering frame ${i + 1} of ${totalFrames}`);
-    drawPattern(pattern, ctx, width, height, i, fps);
+    drawPattern(settings, ctx, width, height, i, fps);
     const timestamp = Math.round((i * 1e6) / fps);
     const i420Buffer = canvasToI420(ctx, width, height);
     const encodedFrame = new VideoFrame(i420Buffer, {
@@ -363,11 +339,11 @@ async function generateTestVideo(opts: GenerateOptions): Promise<Blob> {
       error: (e) => { encodeError = e; },
     });
     audioEncoder.configure(audioConfig);
-    const totalSamples = SAMPLE_RATE * duration;
-    const chunkSamples = SAMPLE_RATE;
+    const totalSamples = settings.sampleRate * duration;
+    const chunkSamples = settings.sampleRate;
     const buffer = new Float32Array(totalSamples);
     for (let i = 0; i < totalSamples; i++) {
-      buffer[i] = Math.sin((2 * Math.PI * SINE_FREQUENCY * i) / SAMPLE_RATE) * 0.8;
+      buffer[i] = Math.sin((2 * Math.PI * SINE_FREQUENCY * i) / settings.sampleRate) * 0.8;
     }
     for (let start = 0; start < totalSamples; start += chunkSamples) {
       if (encodeError) throw encodeError;
@@ -378,10 +354,10 @@ async function generateTestVideo(opts: GenerateOptions): Promise<Blob> {
       for (let ch = 0; ch < AUDIO_CHANNELS; ch++) planar.set(slice, ch * count);
       const data = new AudioData({
         format: "f32-planar",
-        sampleRate: SAMPLE_RATE,
+        sampleRate: settings.sampleRate,
         numberOfFrames: count,
         numberOfChannels: AUDIO_CHANNELS,
-        timestamp: Math.round((start / SAMPLE_RATE) * 1e6),
+        timestamp: Math.round((start / settings.sampleRate) * 1e6),
         data: planar,
       });
       try {
@@ -403,10 +379,8 @@ async function generateTestVideo(opts: GenerateOptions): Promise<Blob> {
 
 export function TestVideoView() {
   const { activeProjectId, currentScreen } = usePixelMap();
-  const [resolution, setResolution] = useState<ResolutionChoice>("1080p");
-  const [frameRate, setFrameRate] = useState<30 | 60>(30);
-  const [durationSeconds, setDurationSeconds] = useState<10 | 20 | 30>(10);
-  const [pattern, setPattern] = useState<TestVideoPattern>("smpte-bars");
+  const { settings, setSettings } = useTestVideoSettings();
+  const { resolution, frameRate, durationSeconds } = settings;
 
   const [isRendering, setIsRendering] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -464,12 +438,12 @@ export function TestVideoView() {
     const previewFps = 30;
     const animate = (now: number) => {
       const frame = Math.floor(((now - startedAt) / 1000) * previewFps);
-      drawPattern(pattern, ctx, canvas.width, canvas.height, frame, previewFps);
+      drawPattern(settings, ctx, canvas.width, canvas.height, frame, previewFps);
       animationFrame = requestAnimationFrame(animate);
     };
     animationFrame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrame);
-  }, [pattern]);
+  }, [settings]);
 
   const refreshPresets = useCallback(async () => {
     if (!activeProjectId) {
@@ -509,7 +483,7 @@ export function TestVideoView() {
         height: effective.height,
         fps: frameRate,
         duration: durationSeconds,
-        pattern,
+        settings,
         onProgress: (f, label) => {
           setProgress(Math.round(f * 100));
           setProgressLabel(label);
@@ -539,12 +513,7 @@ export function TestVideoView() {
     if (!activeProjectId || savingPreset) return;
     setPresetsError(null);
     setSavingPreset(true);
-    const { success, error: saveError } = await saveTestVideoPreset(activeProjectId, presetName, {
-      resolution,
-      frameRate,
-      durationSeconds,
-      pattern,
-    });
+    const { success, error: saveError } = await saveTestVideoPreset(activeProjectId, presetName, settings);
     setSavingPreset(false);
     if (!success) {
       setPresetsError(saveError);
@@ -577,7 +546,7 @@ export function TestVideoView() {
 
   const handleDownload = () => {
     if (!resultUrl) return;
-    const patternSlug = pattern.replace(/[^a-z0-9]+/g, "-");
+    const patternSlug = `${settings.background}-${settings.bars}`.replace(/[^a-z0-9]+/g, "-");
     const a = document.createElement("a");
     a.href = resultUrl;
     a.download = `${patternSlug}-${effective.width}x${effective.height}-${frameRate}fps-${durationSeconds}s.mp4`;
@@ -603,53 +572,6 @@ export function TestVideoView() {
             </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-2">
-              <Label>Resolution</Label>
-              <Select value={resolution} onValueChange={(v) => setResolution(v as ResolutionChoice)} disabled={isRendering}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {RESOLUTIONS.map(r => (
-                    <SelectItem key={r.value} value={r.value}>
-                      {r.value === "screen" && screenRes.width > 0
-                        ? `Screen (${screenRes.width} x ${screenRes.height})`
-                        : r.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Frame Rate</Label>
-              <Select value={String(frameRate)} onValueChange={(v) => setFrameRate(Number(v) as 30 | 60)} disabled={isRendering}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="30">30 fps</SelectItem>
-                  <SelectItem value="60">60 fps</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Duration</Label>
-              <Select value={String(durationSeconds)} onValueChange={(v) => setDurationSeconds(Number(v) as 10 | 20 | 30)} disabled={isRendering}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10 seconds</SelectItem>
-                  <SelectItem value="20">20 seconds</SelectItem>
-                  <SelectItem value="30">30 seconds</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Pattern</Label>
-              <Select value={pattern} onValueChange={(v) => setPattern(v as TestVideoPattern)} disabled={isRendering}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PATTERNS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_260px]">
             <div className="space-y-2">
@@ -664,7 +586,7 @@ export function TestVideoView() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                The preview animates the selected pattern. The generated video includes the same motion with a synchronized 1 kHz tone.
+                The preview uses the selected background and moving bars. The generated video includes the same motion.
               </p>
             </div>
             <div className="space-y-1 rounded-lg border bg-muted/30 p-4 text-sm">
@@ -672,7 +594,8 @@ export function TestVideoView() {
               <div className="text-muted-foreground">Resolution: <span className="font-mono text-foreground">{effective.width} x {effective.height}</span></div>
               <div className="text-muted-foreground">Frame rate: <span className="font-mono text-foreground">{frameRate} fps</span></div>
               <div className="text-muted-foreground">Duration: <span className="font-mono text-foreground">{durationSeconds}s</span></div>
-              <div className="text-muted-foreground">Tone: <span className="font-mono text-foreground">1 kHz sine</span></div>
+              <div className="text-muted-foreground">Audio: <span className="font-mono text-foreground">{settings.audioEnabled ? `1 kHz sine · ${settings.sampleRate / 1000} kHz` : "Off"}</span></div>
+              <div className="text-muted-foreground">Codec: <span className="font-mono text-foreground">{settings.videoCodec.replace("h264-", "H.264 ")}</span></div>
               <div className="text-muted-foreground">Estimated size: <span className="font-mono text-foreground">{formatBytes(estimatedSize)}</span></div>
             </div>
           </div>
@@ -789,17 +712,14 @@ export function TestVideoView() {
                               {p.settings.resolution === "screen"
                                 ? `Screen (${screenRes.width} x ${screenRes.height})`
                                 : `${getResolutionFor(p.settings.resolution, screenRes.width, screenRes.height).width} x ${getResolutionFor(p.settings.resolution, screenRes.width, screenRes.height).height}`}
-                              {" · "}{p.settings.frameRate}fps · {p.settings.durationSeconds}s · {PATTERNS.find(x => x.value === p.settings.pattern)?.label}
+                              {" · "}{p.settings.frameRate}fps · {p.settings.durationSeconds}s · {p.settings.background} · {p.settings.bars}
                             </div>
                           </div>
                           <Button
                             size="sm"
                             variant="secondary"
                             onClick={() => {
-                              setResolution(p.settings.resolution);
-                              setFrameRate(p.settings.frameRate);
-                              setDurationSeconds(p.settings.durationSeconds);
-                              setPattern(p.settings.pattern);
+                              setSettings(p.settings);
                             }}
                             disabled={isRendering}
                           >

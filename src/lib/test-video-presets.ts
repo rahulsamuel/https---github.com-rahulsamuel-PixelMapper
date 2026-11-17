@@ -2,18 +2,21 @@
 
 import { supabase } from "@/lib/supabase/client";
 
-export type TestVideoPattern =
-  | "smpte-bars"
-  | "full-color-bars"
-  | "color-bars-crosshair"
-  | "moving-grid"
-  | "frame-counter";
+export type TestVideoBackground = "black" | "smpte-bars" | "full-color-bars" | "moving-grid" | "frame-counter";
+export type TestVideoBarMode = "none" | "bouncing-crosshair";
+export type TestVideoAudioSampleRate = 8000 | 16000 | 24000 | 44100 | 48000 | 96000;
+export type TestVideoCodec = "h264-high" | "h264-main" | "h264-baseline";
 
 export interface TestVideoPresetSettings {
   resolution: "720p" | "1080p" | "4k" | "screen";
   frameRate: 30 | 60;
   durationSeconds: 10 | 20 | 30;
-  pattern: TestVideoPattern;
+  background: TestVideoBackground;
+  bars: TestVideoBarMode;
+  barWidth: number;
+  audioEnabled: boolean;
+  sampleRate: TestVideoAudioSampleRate;
+  videoCodec: TestVideoCodec;
 }
 
 export interface TestVideoPreset {
@@ -34,16 +37,31 @@ export function parsePresetSettings(raw: unknown): TestVideoPresetSettings | nul
   if (!["720p", "1080p", "4k", "screen"].includes(s.resolution as string)) return null;
   if (![30, 60].includes(s.frameRate as number)) return null;
   if (![10, 20, 30].includes(s.durationSeconds as number)) return null;
-  const rawPattern = s.pattern as string;
-  const pattern = rawPattern === "bouncing-vertical-bar" || rawPattern === "bouncing-horizontal-bar"
-    ? "color-bars-crosshair"
-    : rawPattern;
-  if (!["smpte-bars", "full-color-bars", "color-bars-crosshair", "moving-grid", "frame-counter"].includes(pattern)) return null;
+  const legacyPattern = s.pattern as string | undefined;
+  const background = s.background as string ?? (
+    legacyPattern === "smpte-bars" ? "smpte-bars"
+      : legacyPattern === "full-color-bars" || legacyPattern === "color-bars-crosshair" ? "full-color-bars"
+      : legacyPattern === "moving-grid" ? "moving-grid"
+      : legacyPattern === "frame-counter" ? "frame-counter"
+      : "black"
+  );
+  const bars = s.bars as string ?? (legacyPattern === "color-bars-crosshair" || legacyPattern === "bouncing-vertical-bar" || legacyPattern === "bouncing-horizontal-bar" ? "bouncing-crosshair" : "none");
+  if (!["black", "smpte-bars", "full-color-bars", "moving-grid", "frame-counter"].includes(background)) return null;
+  if (!["none", "bouncing-crosshair"].includes(bars)) return null;
+  const sampleRate = s.sampleRate as number ?? 48000;
+  if (![8000, 16000, 24000, 44100, 48000, 96000].includes(sampleRate)) return null;
+  const videoCodec = s.videoCodec as string ?? "h264-high";
+  if (!["h264-high", "h264-main", "h264-baseline"].includes(videoCodec)) return null;
   return {
     resolution: s.resolution as TestVideoPresetSettings["resolution"],
     frameRate: s.frameRate as TestVideoPresetSettings["frameRate"],
     durationSeconds: s.durationSeconds as TestVideoPresetSettings["durationSeconds"],
-    pattern: pattern as TestVideoPresetSettings["pattern"],
+    background: background as TestVideoPresetSettings["background"],
+    bars: bars as TestVideoPresetSettings["bars"],
+    barWidth: typeof s.barWidth === "number" ? Math.max(1, Math.min(200, Math.round(s.barWidth))) : 8,
+    audioEnabled: typeof s.audioEnabled === "boolean" ? s.audioEnabled : true,
+    sampleRate: sampleRate as TestVideoPresetSettings["sampleRate"],
+    videoCodec: videoCodec as TestVideoPresetSettings["videoCodec"],
   };
 }
 

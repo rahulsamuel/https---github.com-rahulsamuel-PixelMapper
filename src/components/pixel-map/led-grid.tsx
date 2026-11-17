@@ -366,13 +366,13 @@ function DraggableTextOverlay({
   onUpdate: (id: string, updates: Partial<TextOverlay>) => void;
   onRemove: (id: string) => void;
 }) {
-  const dragRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<HTMLDivElement | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const dragState = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const pendingPosRef = useRef<{ x: number; y: number } | null>(null);
   const rafRef = useRef<number | null>(null);
-  const elRef = useRef<HTMLDivElement>(null);
+  const elRef = useRef<HTMLDivElement | null>(null);
 
   const currentColor =
     overlay.colorMode === 'auto'
@@ -581,7 +581,7 @@ function DraggableLogoOverlay({
   const dragStateRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const pendingPosRef = useRef<{ x: number; y: number } | null>(null);
   const rafRef = useRef<number | null>(null);
-  const elRef = useRef<HTMLDivElement>(null);
+  const elRef = useRef<HTMLDivElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const handleMouseDown = (e: React.MouseEvent) => {
