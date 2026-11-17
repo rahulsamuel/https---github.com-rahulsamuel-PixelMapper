@@ -33,7 +33,7 @@ import {
   saveHardwareListSave,
 } from '@/lib/hardware-list-saves';
 import {
-  Copy, FileSpreadsheet, FileDown, AlertTriangle, Loader2,
+  Copy, FileSpreadsheet, FileDown, AlertTriangle, Loader2, Download,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -42,6 +42,8 @@ interface ScreenRow {
   name: string;
   config: ScreenHardwareConfig;
   totalTiles: number;
+  screenWidth: number;
+  screenHeight: number;
   screenWeightLb: number | null;
   widthM: number | null;
   heightM: number | null;
@@ -119,6 +121,8 @@ export default function HardwareListPage() {
         name: screen.name,
         config,
         totalTiles: metrics.totalTiles,
+        screenWidth: metrics.screenWidth,
+        screenHeight: metrics.screenHeight,
         screenWeightLb: metrics.screenWeightLb,
         widthM: metrics.widthM,
         heightM: metrics.heightM,
