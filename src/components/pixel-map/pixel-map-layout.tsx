@@ -690,7 +690,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               <TabsContent value="deliverables" className="mt-0 p-8 flex justify-center items-start">
                 <Suspense fallback={null}><DeliverablesView /></Suspense>
               </TabsContent>
-              <TabsContent value="test-video" className="mt-0 p-8 flex justify-center items-start">
+              <TabsContent value="test-video" className="mt-0 px-8 pb-8 pt-0 flex justify-center items-start data-[state=inactive]:hidden">
                 <Suspense fallback={null}><TestVideoView /></Suspense>
               </TabsContent>
           </div>

@@ -33,9 +33,8 @@ const RESOLUTIONS: { value: ResolutionChoice; label: string; width: number; heig
 const PATTERNS: { value: TestVideoPattern; label: string }[] = [
   { value: "smpte-bars", label: "SMPTE Color Bars" },
   { value: "full-color-bars", label: "100% Color Bars" },
+  { value: "color-bars-crosshair", label: "100% Color Bars + Bouncing Crosshair" },
   { value: "moving-grid", label: "Moving Grid" },
-  { value: "bouncing-vertical-bar", label: "Bouncing Vertical Bar" },
-  { value: "bouncing-horizontal-bar", label: "Bouncing Horizontal Bar" },
   { value: "frame-counter", label: "Frame Counter" },
 ];
 
@@ -93,6 +92,14 @@ function bounceProgress(frame: number, fps: number) {
   return phase <= 2 ? phase / 2 : 1 - (phase - 2) / 2;
 }
 
+function drawFullColorBars(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const barW = w / FULL_COLOR_BARS.length;
+  for (let i = 0; i < FULL_COLOR_BARS.length; i++) {
+    ctx.fillStyle = rgb(FULL_COLOR_BARS[i]);
+    ctx.fillRect(Math.round(i * barW), 0, Math.ceil(barW), h);
+  }
+}
+
 export function drawPattern(
   pattern: TestVideoPattern,
   ctx: CanvasRenderingContext2D,
@@ -127,32 +134,22 @@ export function drawPattern(
     return;
   }
 
-  if (pattern === "full-color-bars") {
-    const barW = w / FULL_COLOR_BARS.length;
-    for (let i = 0; i < FULL_COLOR_BARS.length; i++) {
-      ctx.fillStyle = rgb(FULL_COLOR_BARS[i]);
-      ctx.fillRect(Math.round(i * barW), 0, Math.ceil(barW), h);
-    }
-    return;
-  }
+  if (pattern === "full-color-bars" || pattern === "color-bars-crosshair") {
+    drawFullColorBars(ctx, w, h);
+    if (pattern === "full-color-bars") return;
 
-  if (pattern === "bouncing-vertical-bar" || pattern === "bouncing-horizontal-bar") {
-    ctx.fillStyle = "#050505";
-    ctx.fillRect(0, 0, w, h);
     const progress = bounceProgress(frame, fps);
-    const barThickness = Math.max(4, Math.round(Math.min(w, h) * 0.025));
+    const verticalThickness = Math.max(4, Math.round(Math.min(w, h) * 0.025));
+    const horizontalThickness = verticalThickness;
+    const x = progress * (w - verticalThickness);
+    const y = progress * (h - horizontalThickness);
+
     ctx.fillStyle = "#ffffff";
-    if (pattern === "bouncing-vertical-bar") {
-      const x = progress * (w - barThickness);
-      ctx.fillRect(Math.round(x), 0, barThickness, h);
-      ctx.fillStyle = "#00e5ff";
-      ctx.fillRect(Math.round(x + barThickness * 0.25), 0, Math.max(1, Math.round(barThickness * 0.5)), h);
-    } else {
-      const y = progress * (h - barThickness);
-      ctx.fillRect(0, Math.round(y), w, barThickness);
-      ctx.fillStyle = "#00e5ff";
-      ctx.fillRect(0, Math.round(y + barThickness * 0.25), w, Math.max(1, Math.round(barThickness * 0.5)));
-    }
+    ctx.fillRect(Math.round(x), 0, verticalThickness, h);
+    ctx.fillRect(0, Math.round(y), w, horizontalThickness);
+    ctx.fillStyle = "#00e5ff";
+    ctx.fillRect(Math.round(x + verticalThickness * 0.25), 0, Math.max(1, Math.round(verticalThickness * 0.5)), h);
+    ctx.fillRect(0, Math.round(y + horizontalThickness * 0.25), w, Math.max(1, Math.round(horizontalThickness * 0.5)));
     return;
   }
 
