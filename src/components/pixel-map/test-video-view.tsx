@@ -112,7 +112,7 @@ function drawSmpteBars(ctx: CanvasRenderingContext2D, w: number, h: number) {
 }
 
 export function drawPattern(
-  settings: Pick<TestVideoPresetSettings, "background" | "bars" | "barWidth">,
+  settings: Pick<TestVideoPresetSettings, "background" | "bars" | "barWidth" | "backgroundBrightness">,
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
@@ -157,6 +157,13 @@ export function drawPattern(
     ctx.fillRect(0, 0, w, h);
   }
 
+  if (settings.backgroundBrightness < 100) {
+    ctx.fillStyle = "#000000";
+    ctx.globalAlpha = 1 - settings.backgroundBrightness / 100;
+    ctx.fillRect(0, 0, w, h);
+    ctx.globalAlpha = 1;
+  }
+
   if (settings.bars === "bouncing-crosshair") {
     const thickness = Math.max(1, Math.round(settings.barWidth));
     const progress = bounceProgress(frame, fps);
@@ -172,11 +179,23 @@ export function drawPattern(
   }
 }
 
+type MuxerVideoCodec = "avc" | "hevc" | "vp9" | "av1";
+
 function videoCodecCandidates(codec: TestVideoCodec, width: number, height: number): string[] {
   const level = width > 2560 || height > 1440 ? "34" : "33";
   if (codec === "h264-main") return [`avc1.4d00${level}`];
   if (codec === "h264-baseline") return ["avc1.42003e"];
-  return [`avc1.6400${level}`];
+  if (codec === "h264-high") return [`avc1.6400${level}`];
+  if (codec === "hevc-main") return ["hvc1.1.6.L93.B0", "hev1.1.6.L93.B0"];
+  if (codec === "vp9") return ["vp09.00.10.08"];
+  return ["av01.0.08M.08"];
+}
+
+function muxerVideoCodec(codec: TestVideoCodec): MuxerVideoCodec {
+  if (codec === "hevc-main") return "hevc";
+  if (codec === "vp9") return "vp9";
+  if (codec === "av1") return "av1";
+  return "avc";
 }
 
 async function pickVideoCodec(codecChoice: TestVideoCodec, width: number, height: number, fps: number, bitrate: number): Promise<VideoEncoderConfig | null> {
@@ -187,7 +206,7 @@ async function pickVideoCodec(codecChoice: TestVideoCodec, width: number, height
       height,
       bitrate,
       framerate: fps,
-      avc: { format: "avc" as AvcBitstreamFormat },
+      ...(codec.startsWith("avc1.") ? { avc: { format: "avc" as AvcBitstreamFormat } } : {}),
     };
     const support = await (window as any).VideoEncoder.isConfigSupported(config);
     if (support?.supported) return config;
@@ -214,7 +233,7 @@ interface GenerateOptions {
   height: number;
   fps: number;
   duration: number;
-  settings: Pick<TestVideoPresetSettings, "background" | "bars" | "barWidth" | "audioEnabled" | "sampleRate" | "videoCodec">;
+  settings: Pick<TestVideoPresetSettings, "background" | "bars" | "barWidth" | "backgroundBrightness" | "audioEnabled" | "sampleRate" | "videoCodec">;
   onProgress?: (fraction: number, label: string) => boolean;
 }
 
@@ -284,7 +303,7 @@ async function generateTestVideo(opts: GenerateOptions): Promise<Blob> {
   const muxer = new Muxer<ArrayBufferTarget>({
     target,
     fastStart: "in-memory",
-    video: { codec: "avc", width, height, frameRate: fps },
+    video: { codec: muxerVideoCodec(settings.videoCodec), width, height, frameRate: fps },
     ...(audioConfig ? { audio: { codec: (audioConfig.codec === "mp4a.40.2" ? "aac" : "opus") as "aac" | "opus", numberOfChannels: AUDIO_CHANNELS, sampleRate: settings.sampleRate } } : {}),
   });
 
@@ -499,7 +518,9 @@ export function TestVideoView() {
         setProgressLabel("Canceled");
       } else {
         console.error("src/components/pixel-map/test-video-view.tsx:", err);
-        setError("The browser could not encode this frame format. Please use the latest Google Chrome or Microsoft Edge and try again.");
+        setError(err instanceof Error && err.message.includes("codec")
+          ? err.message
+          : "The browser could not encode this format. Please use the latest Google Chrome or Microsoft Edge and try again.");
         setProgress(0);
         setProgressLabel("");
       }
@@ -595,7 +616,8 @@ export function TestVideoView() {
               <div className="text-muted-foreground">Frame rate: <span className="font-mono text-foreground">{frameRate} fps</span></div>
               <div className="text-muted-foreground">Duration: <span className="font-mono text-foreground">{durationSeconds}s</span></div>
               <div className="text-muted-foreground">Audio: <span className="font-mono text-foreground">{settings.audioEnabled ? `1 kHz sine · ${settings.sampleRate / 1000} kHz` : "Off"}</span></div>
-              <div className="text-muted-foreground">Codec: <span className="font-mono text-foreground">{settings.videoCodec.replace("h264-", "H.264 ")}</span></div>
+              <div className="text-muted-foreground">Background: <span className="font-mono text-foreground">{settings.backgroundBrightness}% brightness</span></div>
+              <div className="text-muted-foreground">Codec: <span className="font-mono text-foreground">{settings.videoCodec === "hevc-main" ? "H.265 / HEVC Main" : settings.videoCodec === "vp9" ? "VP9" : settings.videoCodec === "av1" ? "AV1" : settings.videoCodec.replace("h264-", "H.264 ")}</span></div>
               <div className="text-muted-foreground">Estimated size: <span className="font-mono text-foreground">{formatBytes(estimatedSize)}</span></div>
             </div>
           </div>

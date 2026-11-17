@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { useTestVideoSettings } from "./test-video-settings";
 import type { TestVideoBackground, TestVideoBarMode, TestVideoCodec, TestVideoAudioSampleRate } from "@/lib/test-video-presets";
 
@@ -27,9 +28,12 @@ const SAMPLE_RATES: { value: TestVideoAudioSampleRate; label: string }[] = [
 ];
 
 const CODECS: { value: TestVideoCodec; label: string }[] = [
-  { value: "h264-high", label: "H.264 High" },
-  { value: "h264-main", label: "H.264 Main" },
-  { value: "h264-baseline", label: "H.264 Baseline" },
+  { value: "h264-high", label: "H.264 High (MP4)" },
+  { value: "h264-main", label: "H.264 Main (MP4)" },
+  { value: "h264-baseline", label: "H.264 Baseline (MP4)" },
+  { value: "hevc-main", label: "H.265 / HEVC Main (MP4)" },
+  { value: "vp9", label: "VP9 (MP4)" },
+  { value: "av1", label: "AV1 (MP4)" },
 ];
 
 const BACKGROUNDS: { value: TestVideoBackground; label: string }[] = [
@@ -108,6 +112,22 @@ export function TestVideoControls() {
         </Select>
       </div>
 
+      <div className="space-y-3 rounded-md border p-3">
+        <div className="flex items-center justify-between gap-3">
+          <Label>Background Brightness</Label>
+          <span className="font-mono text-xs text-muted-foreground">{settings.backgroundBrightness}%</span>
+        </div>
+        <Slider
+          value={[settings.backgroundBrightness]}
+          min={0}
+          max={100}
+          step={1}
+          onValueChange={([value]) => update("backgroundBrightness", value)}
+          aria-label="Background brightness"
+        />
+        <p className="text-xs text-muted-foreground">Adjusts only the background. Bouncing bars stay at full brightness.</p>
+      </div>
+
       <div className="space-y-2">
         <Label>Moving Bars</Label>
         <Select value={settings.bars} onValueChange={(value) => update("bars", value as TestVideoBarMode)}>
@@ -149,6 +169,7 @@ export function TestVideoControls() {
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>{CODECS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
         </Select>
+        <p className="text-xs text-muted-foreground">HAP, NotchLC, DXV3, ProRes, and image sequences require desktop transcoding after download.</p>
       </div>
     </div>
   );

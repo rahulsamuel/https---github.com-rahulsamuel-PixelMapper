@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 export type TestVideoBackground = "black" | "smpte-bars" | "full-color-bars" | "moving-grid" | "frame-counter";
 export type TestVideoBarMode = "none" | "bouncing-crosshair";
 export type TestVideoAudioSampleRate = 8000 | 16000 | 24000 | 44100 | 48000 | 96000;
-export type TestVideoCodec = "h264-high" | "h264-main" | "h264-baseline";
+export type TestVideoCodec = "h264-high" | "h264-main" | "h264-baseline" | "hevc-main" | "vp9" | "av1";
 
 export interface TestVideoPresetSettings {
   resolution: "720p" | "1080p" | "4k" | "screen";
@@ -17,6 +17,7 @@ export interface TestVideoPresetSettings {
   audioEnabled: boolean;
   sampleRate: TestVideoAudioSampleRate;
   videoCodec: TestVideoCodec;
+  backgroundBrightness: number;
 }
 
 export interface TestVideoPreset {
@@ -51,7 +52,7 @@ export function parsePresetSettings(raw: unknown): TestVideoPresetSettings | nul
   const sampleRate = s.sampleRate as number ?? 48000;
   if (![8000, 16000, 24000, 44100, 48000, 96000].includes(sampleRate)) return null;
   const videoCodec = s.videoCodec as string ?? "h264-high";
-  if (!["h264-high", "h264-main", "h264-baseline"].includes(videoCodec)) return null;
+  if (!["h264-high", "h264-main", "h264-baseline", "hevc-main", "vp9", "av1"].includes(videoCodec)) return null;
   return {
     resolution: s.resolution as TestVideoPresetSettings["resolution"],
     frameRate: s.frameRate as TestVideoPresetSettings["frameRate"],
@@ -62,6 +63,7 @@ export function parsePresetSettings(raw: unknown): TestVideoPresetSettings | nul
     audioEnabled: typeof s.audioEnabled === "boolean" ? s.audioEnabled : true,
     sampleRate: sampleRate as TestVideoPresetSettings["sampleRate"],
     videoCodec: videoCodec as TestVideoPresetSettings["videoCodec"],
+    backgroundBrightness: typeof s.backgroundBrightness === "number" ? Math.max(0, Math.min(100, Math.round(s.backgroundBrightness))) : 100,
   };
 }
 

@@ -13,6 +13,7 @@ export const DEFAULT_TEST_VIDEO_SETTINGS: TestVideoPresetSettings = {
   audioEnabled: true,
   sampleRate: 48000,
   videoCodec: "h264-high",
+  backgroundBrightness: 100,
 };
 
 interface TestVideoSettingsContextValue {
