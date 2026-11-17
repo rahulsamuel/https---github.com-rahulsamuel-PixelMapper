@@ -2,7 +2,7 @@
 
 import { supabase } from "@/lib/supabase/client";
 import { ensureTabIdentifier } from "@/lib/project-tab-identifiers";
-import { DEFAULT_HARDWARE_CONFIG, type ScreenHardwareConfig, type MountingType, type RiggingBarType, type SandbagWeight } from "@/lib/hardware-list";
+import { DEFAULT_HARDWARE_CONFIG, type ScreenHardwareConfig, type MountingType, type HeaderBarType, type SandbagWeight } from "@/lib/hardware-list";
 
 export interface HardwareListSave {
   screens: { screenId: string; config: ScreenHardwareConfig }[];
@@ -19,10 +19,10 @@ export function parseHardwareListSave(raw: unknown): HardwareListSave | null {
     if (typeof e.screenId !== "string") continue;
     const c = (e.config ?? {}) as Record<string, unknown>;
     const mountingType = c.mountingType as MountingType;
-    const riggingBarType = c.riggingBarType as RiggingBarType;
+    const headerBarType = (c.headerBarType ?? c.riggingBarType) as HeaderBarType;
     const sandbagWeight = c.sandbagWeight as SandbagWeight;
     if (!["flown", "ground-stack", "floor"].includes(mountingType)) continue;
-    if (!["mixed", "double", "single"].includes(riggingBarType)) continue;
+    if (!["auto", "double", "single"].includes(headerBarType)) continue;
     if (!["25", "35"].includes(sandbagWeight)) continue;
     const adjustments: Partial<Record<string, number>> = {};
     if (c.adjustments && typeof c.adjustments === "object") {
@@ -34,7 +34,7 @@ export function parseHardwareListSave(raw: unknown): HardwareListSave | null {
       screenId: e.screenId,
       config: {
         mountingType,
-        riggingBarType,
+        headerBarType,
         cornerBlocks: c.cornerBlocks === true,
         sandbagWeight,
         adjustments,

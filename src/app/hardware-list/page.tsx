@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
 import { useSavedPixelMapSelection } from '@/hooks/use-saved-pixel-map-selection';
 import { loadLedProducts } from '@/lib/led-products-client';
@@ -21,7 +22,9 @@ import {
   aggregateHardware,
   hardwareListText,
   hardwareListCsv,
+  formatWeightLbKg,
   getScreenMetrics,
+  MOUNTING_TYPE_LABELS,
   HARDWARE_ITEM_LABELS,
   DEFAULT_HARDWARE_CONFIG,
   type ScreenHardwareConfig,
@@ -33,7 +36,7 @@ import {
   saveHardwareListSave,
 } from '@/lib/hardware-list-saves';
 import {
-  Copy, FileSpreadsheet, FileDown, AlertTriangle, Loader2, Download,
+  Copy, FileSpreadsheet, Download, AlertTriangle, Loader2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -44,7 +47,7 @@ interface ScreenRow {
   totalTiles: number;
   screenWidth: number;
   screenHeight: number;
-  screenWeightLb: number | null;
+  screenWeightKg: number | null;
   widthM: number | null;
   heightM: number | null;
   productId: string | null;
@@ -52,20 +55,11 @@ interface ScreenRow {
   items: HardwareItem[];
 }
 
-const MOUNTING_LABELS: Record<ScreenHardwareConfig['mountingType'], string> = {
-  flown: 'Flown',
-  'ground-stack': 'Ground Stack',
-  floor: 'Floor',
+const MOUNTING_BADGE_STYLES: Record<ScreenHardwareConfig['mountingType'], string> = {
+  flown: 'bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30',
+  'ground-stack': 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+  floor: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
 };
-const RIGGING_LABELS: Record<ScreenHardwareConfig['riggingBarType'], string> = {
-  mixed: 'Mixed',
-  double: 'Double Only',
-  single: 'Single Only',
-};
-
-function configSnapshot(config: ScreenHardwareConfig): string {
-  return JSON.stringify([config.mountingType, config.riggingBarType, config.cornerBlocks, config.sandbagWeight, config.adjustments]);
-}
 
 function toSlug(name: string): string {
   return name.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase() || 'hardware-list';
@@ -78,6 +72,10 @@ function downloadBlob(blob: Blob, filename: string): void {
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function configSnapshot(config: ScreenHardwareConfig): string {
+  return JSON.stringify([config.mountingType, config.headerBarType, config.cornerBlocks, config.sandbagWeight, config.adjustments]);
 }
 
 export default function HardwareListPage() {
@@ -95,7 +93,6 @@ export default function HardwareListPage() {
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [loadedConfigs, setLoadedConfigs] = useState<Record<string, ScreenHardwareConfig>>({});
   const configsLoadedRef = useRef<string | null>(null);
-
   const [exportingPdf, setExportingPdf] = useState(false);
 
   useEffect(() => {
@@ -123,7 +120,7 @@ export default function HardwareListPage() {
         totalTiles: metrics.totalTiles,
         screenWidth: metrics.screenWidth,
         screenHeight: metrics.screenHeight,
-        screenWeightLb: metrics.screenWeightLb,
+        screenWeightKg: metrics.screenWeightKg,
         widthM: metrics.widthM,
         heightM: metrics.heightM,
         productId,
@@ -134,9 +131,7 @@ export default function HardwareListPage() {
   }, [activeProject, loadedConfigs, products]);
 
   const activeScreenRow = screens.find(s => s.screenId === activeScreenId) ?? screens[0] ?? null;
-
   const currentKey = activeScreenRow ? configSnapshot(activeScreenRow.config) : null;
-
   const hasUnsavedChanges = activeScreenRow !== null && savedKey !== currentKey;
 
   const handleSelectProject = async (projectId: string | null) => {
@@ -205,11 +200,11 @@ export default function HardwareListPage() {
   });
 
   const aggregate = useMemo(() => aggregateHardware(screens.map(s => ({ config: s.config, items: s.items }))), [screens]);
-  const totalWeightLb = useMemo(
-    () => screens.reduce((sum, s) => s.screenWeightLb !== null ? sum + s.screenWeightLb : sum, 0),
+  const totalWeightKg = useMemo(
+    () => screens.reduce((sum, s) => s.screenWeightKg !== null ? sum + s.screenWeightKg : sum, 0),
     [screens]
   );
-  const weightUnknown = screens.some(s => s.hasSize && s.screenWeightLb === null);
+  const weightUnknown = screens.some(s => s.hasSize && s.screenWeightKg === null);
 
   const perScreenForExport = screens.map(s => ({ name: s.name, items: s.items }));
   const projectName = activeProject?.projectName?.trim() || 'Untitled Project';
@@ -354,42 +349,48 @@ export default function HardwareListPage() {
                   </Select>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Rigging Bar Type</Label>
-                  <Select
-                    value={screen.config.riggingBarType}
-                    onValueChange={v => updateConfig(screen.screenId, { riggingBarType: v as ScreenHardwareConfig['riggingBarType'] })}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="mixed">Mixed</SelectItem>
-                      <SelectItem value="double">Double Only</SelectItem>
-                      <SelectItem value="single">Single Only</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {screen.config.mountingType !== 'floor' && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Header Bar Type</Label>
+                    <Select
+                      value={screen.config.headerBarType}
+                      onValueChange={v => updateConfig(screen.screenId, { headerBarType: v as ScreenHardwareConfig['headerBarType'] })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">Auto (from tile width)</SelectItem>
+                        <SelectItem value="double">Double Wide</SelectItem>
+                        <SelectItem value="single">Single Wide</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Corner Blocks</Label>
-                  <Switch
-                    checked={screen.config.cornerBlocks}
-                    onCheckedChange={v => updateConfig(screen.screenId, { cornerBlocks: v })}
-                  />
-                </div>
+                {screen.config.mountingType === 'ground-stack' && (
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Corner Blocks</Label>
+                    <Switch
+                      checked={screen.config.cornerBlocks}
+                      onCheckedChange={v => updateConfig(screen.screenId, { cornerBlocks: v })}
+                    />
+                  </div>
+                )}
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Sandbag Weight</Label>
-                  <Select
-                    value={screen.config.sandbagWeight}
-                    onValueChange={v => updateConfig(screen.screenId, { sandbagWeight: v as ScreenHardwareConfig['sandbagWeight'] })}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="25">25 lb</SelectItem>
-                      <SelectItem value="35">35 lb</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {screen.config.mountingType === 'ground-stack' && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Sandbag Weight</Label>
+                    <Select
+                      value={screen.config.sandbagWeight}
+                      onValueChange={v => updateConfig(screen.screenId, { sandbagWeight: v as ScreenHardwareConfig['sandbagWeight'] })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="25">25 lb</SelectItem>
+                        <SelectItem value="35">35 lb</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -431,7 +432,8 @@ export default function HardwareListPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-foreground tabular-nums">
-                        {weightUnknown ? '~' : ''}{totalWeightLb > 0 ? `${totalWeightLb.toLocaleString()} lb` : '—'}
+                        {totalWeightKg > 0 ? formatWeightLbKg(totalWeightKg) : '—'}
+                        {weightUnknown ? ' ~' : ''}
                       </p>
                       <p>Total screen weight</p>
                     </div>
@@ -447,7 +449,7 @@ export default function HardwareListPage() {
 
               {/* Export actions */}
               <Card>
-                <CardContent className="py-3 flex items-center gap-2">
+                <CardContent className="py-3 flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-muted-foreground mr-auto">Export the hardware list:</span>
                   <Button variant="outline" size="sm" className="h-8 px-3 text-xs gap-1.5" onClick={handleCopy} disabled={!canExport}>
                     <Copy className="h-3.5 w-3.5" /> Copy
@@ -474,7 +476,7 @@ export default function HardwareListPage() {
                   ) : (
                     <div className="rounded-md border bg-muted/30 overflow-hidden">
                       {aggregate.map(item => (
-                        <div key={item.id} className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 last:border-0">
+                        <div key={item.label} className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 last:border-0">
                           <span className="text-xs text-muted-foreground">{item.label}</span>
                           <span className="text-xs font-semibold tabular-nums">{item.quantity}</span>
                         </div>
@@ -492,30 +494,41 @@ export default function HardwareListPage() {
                 <CardContent className="space-y-3">
                   {screens.map((screen, i) => (
                     <div key={screen.screenId} className="rounded-md border overflow-hidden">
-                      <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b border-border/30">
+                      <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b border-border/30 gap-2">
                         <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{i + 1}. {screen.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium truncate">{i + 1}. {screen.name}</p>
+                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${MOUNTING_BADGE_STYLES[screen.config.mountingType]}`}>
+                              {MOUNTING_TYPE_LABELS[screen.config.mountingType]}
+                            </Badge>
+                          </div>
                           <p className="text-[10px] text-muted-foreground">
                             {screen.hasSize
-                              ? `${screen.screenWidth} × ${screen.screenHeight} tiles · ${MOUNTING_LABELS[screen.config.mountingType]} · ${RIGGING_LABELS[screen.config.riggingBarType]} bars${screen.widthM ? ` · ${screen.widthM.toFixed(1)} × ${screen.heightM?.toFixed(1)} m` : ''}`
+                              ? `${screen.screenWidth} × ${screen.screenHeight} tiles${screen.widthM ? ` · ${screen.widthM.toFixed(1)} × ${screen.heightM?.toFixed(1)} m` : ''}`
                               : 'Screen size not set — finish setup in the Pixel Map'}
                           </p>
                         </div>
-                        {screen.screenWeightLb !== null && (
-                          <span className="text-xs text-muted-foreground tabular-nums shrink-0 ml-2">{screen.screenWeightLb} lb</span>
+                        {screen.screenWeightKg !== null && (
+                          <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                            {formatWeightLbKg(screen.screenWeightKg)}
+                          </span>
                         )}
                       </div>
                       {screen.items.length === 0 ? (
-                        <p className="px-3 py-2 text-xs text-muted-foreground">No hardware quantities for this screen.</p>
+                        <p className="px-3 py-2 text-xs text-muted-foreground">
+                          {screen.config.mountingType === 'floor'
+                            ? 'Floor screens sit directly on the ground — no support hardware required.'
+                            : 'No hardware quantities for this screen.'}
+                        </p>
                       ) : (
                         <div>
                           {screen.items.map(item => (
-                            <div key={item.id} className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 last:border-0">
+                            <div key={item.label} className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 last:border-0">
                               <span className="text-xs text-muted-foreground">{item.label}</span>
                               <span className="text-xs font-semibold tabular-nums">{item.quantity}</span>
                             </div>
                           ))}
-                          <div className="px-3 py-2 flex items-center justify-end gap-2">
+                          <div className="px-3 py-2 flex items-center justify-end gap-2 flex-wrap">
                             <span className="text-[10px] text-muted-foreground">Adjust:</span>
                             {(Object.keys(HARDWARE_ITEM_LABELS) as HardwareItemId[])
                               .filter(id => screen.items.some(it => it.id === id))

@@ -4,12 +4,14 @@ import type { Screen } from "@/contexts/pixel-map-types";
 import { getScreenProductId } from "@/lib/calculator-screens";
 
 export type MountingType = "flown" | "ground-stack" | "floor";
-export type RiggingBarType = "mixed" | "double" | "single";
+export type HeaderBarType = "auto" | "double" | "single";
 export type SandbagWeight = "25" | "35";
 
 export interface ScreenHardwareConfig {
   mountingType: MountingType;
-  riggingBarType: RiggingBarType;
+  // "auto" picks the bar width from the tile width (500mm tiles -> double wide,
+  // 1000mm tiles -> single 1000mm header). "double"/"single" force it.
+  headerBarType: HeaderBarType;
   cornerBlocks: boolean;
   sandbagWeight: SandbagWeight;
   // Manual additive adjustments per item, applied on top of the calculated estimate.
@@ -18,19 +20,18 @@ export interface ScreenHardwareConfig {
 
 export const DEFAULT_HARDWARE_CONFIG: ScreenHardwareConfig = {
   mountingType: "flown",
-  riggingBarType: "mixed",
+  headerBarType: "auto",
   cornerBlocks: false,
   sandbagWeight: "25",
   adjustments: {},
 };
 
 export type HardwareItemId =
-  | "riggingBars"
+  | "headerBars"
+  | "baseBars"
   | "outriggers"
   | "rearClamps"
-  | "clamps"
   | "cornerBlocks"
-  | "stackingBars"
   | "verticalTruss"
   | "sandbags";
 
@@ -40,59 +41,111 @@ export interface HardwareItem {
   quantity: number;
 }
 
-export interface ScreenWeightInput {
-  tileWeightKg: number | null;
-  totalTiles: number;
-}
+export const HARDWARE_ITEM_LABELS: Record<HardwareItemId, string> = {
+  headerBars: "Header bars",
+  baseBars: "Base bars",
+  outriggers: "Outriggers",
+  rearClamps: "Rear clamps",
+  cornerBlocks: "Corner blocks",
+  verticalTruss: "Vertical truss",
+  sandbags: "Sandbags",
+};
+
+export const MOUNTING_TYPE_LABELS: Record<MountingType, string> = {
+  flown: "Flown",
+  "ground-stack": "Ground Stack",
+  floor: "Floor",
+};
+
+const KG_TO_LB = 2.20462;
 
 export interface ScreenMetrics {
   screenWidth: number;
   screenHeight: number;
   totalTiles: number;
-  screenWeightLb: number | null;
+  tileWidthMm: number | null;
+  screenWeightKg: number | null;
   widthM: number | null;
   heightM: number | null;
 }
 
-export const HARDWARE_ITEM_LABELS: Record<HardwareItemId, string> = {
-  riggingBars: "Rigging bars",
-  outriggers: "Outriggers",
-  rearClamps: "Rear clamps",
-  clamps: "Clamps",
-  cornerBlocks: "Corner blocks",
-  stackingBars: "Stacking bars",
-  verticalTruss: "Vertical truss",
-  sandbags: "Sandbags",
-};
-
-const KG_TO_LB = 2.20462;
-
-export function getScreenMetrics(screen: Screen, tileWeightKg: number | null | undefined): ScreenMetrics {
-  const totalTiles = Math.max(0, screen.dimensions.screenWidth) * Math.max(0, screen.dimensions.screenHeight);
-  const hasSize = screen.dimensions.screenWidth > 0 && screen.dimensions.screenHeight > 0;
-  return {
-    screenWidth: screen.dimensions.screenWidth,
-    screenHeight: screen.dimensions.screenHeight,
-    totalTiles,
-    screenWeightLb:
-      tileWeightKg && tileWeightKg > 0 && totalTiles > 0
-        ? Math.round(tileWeightKg * totalTiles * KG_TO_LB)
-        : null,
-    widthM: hasSize && tileWidthMm(screen) > 0 ? (tileWidthMm(screen) * screen.dimensions.screenWidth) / 1000 : null,
-    heightM: hasSize && tileHeightMm(screen) > 0 ? (tileHeightMm(screen) * screen.dimensions.screenHeight) / 1000 : null,
-  };
-}
-
-function tileWidthMm(screen: Screen): number {
+function screenTileWidthMm(screen: Screen): number {
   const withSize = screen.sections.find((s) => s.tileWidthMm > 0);
   if (withSize) return withSize.tileWidthMm;
   return screen.customTileWidthMm > 0 ? screen.customTileWidthMm : 0;
 }
 
-function tileHeightMm(screen: Screen): number {
+function screenTileHeightMm(screen: Screen): number {
   const withSize = screen.sections.find((s) => s.tileHeightMm > 0);
   if (withSize) return withSize.tileHeightMm;
   return screen.customTileHeightMm > 0 ? screen.customTileHeightMm : 0;
+}
+
+export function getScreenMetrics(screen: Screen, tileWeightKg: number | null | undefined): ScreenMetrics {
+  const totalTiles = Math.max(0, screen.dimensions.screenWidth) * Math.max(0, screen.dimensions.screenHeight);
+  const hasSize = screen.dimensions.screenWidth > 0 && screen.dimensions.screenHeight > 0;
+  const tileWidthMm = screenTileWidthMm(screen) || null;
+  return {
+    screenWidth: screen.dimensions.screenWidth,
+    screenHeight: screen.dimensions.screenHeight,
+    totalTiles,
+    tileWidthMm,
+    screenWeightKg:
+      tileWeightKg && tileWeightKg > 0 && totalTiles > 0 ? Math.round(tileWeightKg * totalTiles) : null,
+    widthM: hasSize && tileWidthMm ? (tileWidthMm * screen.dimensions.screenWidth) / 1000 : null,
+    heightM:
+      hasSize && screenTileHeightMm(screen) > 0
+        ? (screenTileHeightMm(screen) * screen.dimensions.screenHeight) / 1000
+        : null,
+  };
+}
+
+export function formatWeightLbKg(kg: number | null): string {
+  if (kg === null || kg <= 0) return "—";
+  const lb = Math.round(kg * KG_TO_LB);
+  return `${lb.toLocaleString()} lb (${Math.round(kg).toLocaleString()} kg)`;
+}
+
+export interface HeaderBarSpec {
+  label: string;
+  tilesPerBar: number;
+  count: number;
+}
+
+/**
+ * Header bars hang from the rigging and the tiles hang off them. A 1000mm-wide
+ * header carries one 1000mm tile; two 500mm tiles share one double-wide header;
+ * a single-wide header carries one 500mm tile.
+ */
+export function resolveHeaderBar(
+  config: ScreenHardwareConfig,
+  tileWidthMm: number | null,
+  screenWidth: number
+): HeaderBarSpec {
+  const tw = tileWidthMm ?? 0;
+  let tilesPerBar: number;
+  let label: string;
+
+  if (config.headerBarType === "double") {
+    tilesPerBar = 2;
+    label = "Header bars (double wide)";
+  } else if (config.headerBarType === "single") {
+    tilesPerBar = 1;
+    label = "Header bars (single wide)";
+  } else if (tw <= 0) {
+    tilesPerBar = 1;
+    label = "Header bars";
+  } else {
+    tilesPerBar = Math.max(1, Math.floor(1000 / tw));
+    label =
+      tilesPerBar === 1
+        ? `Header bars (${tw}mm wide)`
+        : tilesPerBar === 2
+          ? "Header bars (double wide)"
+          : `Header bars (${tilesPerBar} tiles wide)`;
+  }
+
+  return { label, tilesPerBar, count: Math.max(1, Math.ceil(screenWidth / tilesPerBar)) };
 }
 
 /**
@@ -103,55 +156,38 @@ function tileHeightMm(screen: Screen): number {
  */
 export function calculateHardware(config: ScreenHardwareConfig, metrics: ScreenMetrics): HardwareItem[] {
   const items: HardwareItem[] = [];
-  const { totalTiles, screenWidth, screenHeight } = metrics;
+  const { screenWidth, screenHeight } = metrics;
   const hasSize = screenWidth > 0 && screenHeight > 0;
-  const push = (id: HardwareItemId, quantity: number) => {
+  const push = (id: HardwareItemId, label: string, quantity: number) => {
     const adjusted = quantity + (config.adjustments[id] ?? 0);
-    if (adjusted > 0) items.push({ id, label: HARDWARE_ITEM_LABELS[id], quantity: adjusted });
+    if (adjusted > 0) items.push({ id, label, quantity: adjusted });
   };
 
-  if (!hasSize || totalTiles === 0) {
+  if (!hasSize || screenWidth === 0) {
     return Object.entries(config.adjustments)
       .filter(([, v]) => (v ?? 0) > 0)
       .map(([id, v]) => ({ id: id as HardwareItemId, label: HARDWARE_ITEM_LABELS[id as HardwareItemId], quantity: v ?? 0 }));
   }
 
   if (config.mountingType === "flown") {
-    // Rigging bars: one per tile column (bars run vertically down each column),
-    // chosen per the selected bar type. Mixed = alternating single/double.
-    const barCount = screenWidth;
-    push("riggingBars", barCount);
-
-    // Outriggers: one per rigging point pair, roughly every 2 columns, min 2.
-    push("outriggers", Math.max(2, Math.ceil(screenWidth / 2)));
-
-    // Rear clamps: two per column of tiles for rear support, top and bottom rows.
-    push("rearClamps", screenWidth * 2);
-
-    // Clamps: two per rigging bar to attach to the truss.
-    push("clamps", barCount * 2);
-  } else {
-    // Ground stack / floor: stacking bars between rows, one set per row joint.
-    const rowJoints = Math.max(0, screenHeight - 1);
-    if (config.mountingType === "ground-stack") push("stackingBars", rowJoints * Math.ceil(screenWidth / 2) || screenWidth);
-    else push("stackingBars", rowJoints);
-
-    // Vertical truss: two towers (sides) for ground support frames, per 2m section.
-    if (config.mountingType === "ground-stack" && metrics.heightM) {
-      push("verticalTruss", Math.ceil(metrics.heightM / 2) * 2);
-    }
-
-    // Rear clamps on ground builds: top-row restraint, two per column.
-    push("rearClamps", screenWidth * 2);
+    // Flown: tiles hang off header bars. No clamps, outriggers or rear clamps.
+    const spec = resolveHeaderBar(config, metrics.tileWidthMm, screenWidth);
+    push("headerBars", spec.label, spec.count);
+  } else if (config.mountingType === "ground-stack") {
+    // Ground stack: base bars on the deck (same count as header bars), towers
+    // braced with outriggers, rear clamps restraining the top row, vertical
+    // truss sections and sandbag ballast.
+    const spec = resolveHeaderBar(config, metrics.tileWidthMm, screenWidth);
+    push("baseBars", "Base bars", spec.count);
+    push("outriggers", "Outriggers", Math.max(2, Math.ceil(screenWidth / 2)));
+    push("rearClamps", "Rear clamps", screenWidth * 2);
+    if (metrics.heightM) push("verticalTruss", "Vertical truss", Math.ceil(metrics.heightM / 2) * 2);
+    push("sandbags", "Sandbags", Math.max(2, screenWidth));
   }
+  // Floor: the screen sits directly on the ground — no support hardware.
 
-  if (config.cornerBlocks) {
-    push("cornerBlocks", 4);
-  }
-
-  // Sandbags: ballast for ground builds only — flown screens hang from the rigging.
-  if (config.mountingType !== "flown") {
-    push("sandbags", Math.max(2, screenWidth));
+  if (config.cornerBlocks && config.mountingType !== "floor") {
+    push("cornerBlocks", "Corner blocks", 4);
   }
 
   return items;
@@ -159,15 +195,17 @@ export function calculateHardware(config: ScreenHardwareConfig, metrics: ScreenM
 
 export function aggregateHardware(
   screens: { config: ScreenHardwareConfig; items: HardwareItem[] }[]
-): { id: HardwareItemId; label: string; quantity: number }[] {
-  const totals = new Map<HardwareItemId, number>();
+): { label: string; quantity: number }[] {
+  // Keyed by label, not id, so "double wide" and "1000mm" header bars from
+  // different screens are listed separately instead of being summed blindly.
+  const totals = new Map<string, number>();
   for (const s of screens) {
     for (const item of s.items) {
-      totals.set(item.id, (totals.get(item.id) ?? 0) + item.quantity);
+      totals.set(item.label, (totals.get(item.label) ?? 0) + item.quantity);
     }
   }
   return [...totals.entries()]
-    .map(([id, quantity]) => ({ id, label: HARDWARE_ITEM_LABELS[id], quantity }))
+    .map(([label, quantity]) => ({ label, quantity }))
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
@@ -211,10 +249,6 @@ export function hardwareListCsv(
     }
   }
   return rows.join("\n");
-}
-
-export function screenHardwareKey(screen: Screen, config: ScreenHardwareConfig): string {
-  return JSON.stringify([screen.id, config.mountingType, config.riggingBarType, config.cornerBlocks, config.sandbagWeight, config.adjustments]);
 }
 
 export { getScreenProductId };
