@@ -9,6 +9,8 @@ const RACK_INNER_W = RU_NUM_W + RAIL_W + EQUIP_W + RAIL_W; // 252
 const CAP_H = 20;
 const BOTTOM_CAP_H = 12;
 
+export type RackExportMode = "color" | "mono";
+
 const CFG = {
   front: {
     borderColor: '#52525b',
@@ -36,6 +38,37 @@ const CFG = {
   },
 };
 
+const MONO_CFG = {
+  front: {
+    borderColor: '#111827',
+    railBg: '#f3f4f6',
+    bodyBg: '#ffffff',
+    enclosureBg: '#f9fafb',
+    label: 'FRONT VIEW',
+    labelColor: '#111827',
+    indicatorColor: '#111827',
+    screwBorder: '#6b7280',
+    screwBg: '#ffffff',
+    screwDot: '#111827',
+  },
+  rear: {
+    borderColor: '#111827',
+    railBg: '#f3f4f6',
+    bodyBg: '#ffffff',
+    enclosureBg: '#f9fafb',
+    label: 'REAR VIEW',
+    labelColor: '#111827',
+    indicatorColor: '#111827',
+    screwBorder: '#6b7280',
+    screwBg: '#ffffff',
+    screwDot: '#111827',
+  },
+};
+
+function getRackColors(side: RackSide, mode: RackExportMode) {
+  return mode === 'mono' ? MONO_CFG[side] : CFG[side];
+}
+
 // Parse 6-digit or 8-digit hex to rgba (last 2 digits = alpha if present)
 function rgba(hex: string, forceAlpha?: number): string {
   let h = hex.startsWith('#') ? hex.slice(1) : hex;
@@ -50,8 +83,8 @@ function rgba(hex: string, forceAlpha?: number): string {
   return `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
 }
 
-function drawScrew(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: RackSide) {
-  const c = CFG[side];
+function drawScrew(ctx: CanvasRenderingContext2D, cx: number, cy: number, side: RackSide, mode: RackExportMode) {
+  const c = getRackColors(side, mode);
   ctx.beginPath();
   ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
   ctx.fillStyle = c.screwBg;
@@ -99,8 +132,8 @@ async function preloadItemImages(items: RackItem[]): Promise<Map<string, HTMLIma
   return map;
 }
 
-async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, side: RackSide, ru: number, items: RackItem[], imageCache: Map<string, HTMLImageElement>, showImages: boolean) {
-  const c = CFG[side];
+async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, side: RackSide, ru: number, items: RackItem[], imageCache: Map<string, HTMLImageElement>, showImages: boolean, mode: RackExportMode) {
+  const c = getRackColors(side, mode);
   const totalH = CAP_H + ru * RU_H + BOTTOM_CAP_H;
   const equipX = x + RU_NUM_W + RAIL_W;
   const rightRailX = equipX + EQUIP_W;
@@ -172,8 +205,8 @@ async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, sid
     ctx.moveTo(leftRailX, rowY + RU_H);
     ctx.lineTo(leftRailX + RAIL_W, rowY + RU_H);
     ctx.stroke();
-    drawScrew(ctx, leftRailX + RAIL_W / 2, rowY + RU_H * 0.33, side);
-    drawScrew(ctx, leftRailX + RAIL_W / 2, rowY + RU_H * 0.67, side);
+    drawScrew(ctx, leftRailX + RAIL_W / 2, rowY + RU_H * 0.33, side, mode);
+    drawScrew(ctx, leftRailX + RAIL_W / 2, rowY + RU_H * 0.67, side, mode);
   }
 
   // ─── EQUIPMENT AREA BACKGROUND ───
@@ -200,8 +233,8 @@ async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, sid
     ctx.moveTo(rightRailX, rowY + RU_H);
     ctx.lineTo(rightRailX + RAIL_W, rowY + RU_H);
     ctx.stroke();
-    drawScrew(ctx, rightRailX + RAIL_W / 2, rowY + RU_H * 0.33, side);
-    drawScrew(ctx, rightRailX + RAIL_W / 2, rowY + RU_H * 0.67, side);
+    drawScrew(ctx, rightRailX + RAIL_W / 2, rowY + RU_H * 0.33, side, mode);
+    drawScrew(ctx, rightRailX + RAIL_W / 2, rowY + RU_H * 0.67, side, mode);
   }
 
   // ─── EQUIPMENT ITEMS ───
@@ -215,10 +248,11 @@ async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, sid
     const ih = item.equipment.ru * RU_H;
 
     // Ghost: faded color block, dashed border
-    ctx.fillStyle = rgba(item.equipment.color, 0.12);
+    const ghostColor = mode === 'mono' ? '#6b7280' : item.equipment.color;
+    ctx.fillStyle = rgba(ghostColor, 0.12);
     ctx.fillRect(equipX, iy, EQUIP_W, ih);
     ctx.setLineDash([4, 4]);
-    ctx.strokeStyle = rgba(item.equipment.color, 0.35);
+    ctx.strokeStyle = rgba(ghostColor, 0.35);
     ctx.lineWidth = 1;
     ctx.strokeRect(equipX + 0.5, iy + 0.5, EQUIP_W - 1, ih - 1);
     ctx.setLineDash([]);
@@ -240,8 +274,12 @@ async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, sid
     // Gradient fill (or image if available)
     const sideImageUrl = showImages ? (side === 'front' ? item.equipment.frontImageUrl : item.equipment.rearImageUrl) : null;
     const cachedImg = sideImageUrl ? imageCache.get(sideImageUrl) : null;
+    const itemColor = mode === 'mono' ? '#e5e7eb' : item.equipment.color;
     if (cachedImg) {
+      ctx.save();
+      if (mode === 'mono') ctx.filter = 'grayscale(1)';
       ctx.drawImage(cachedImg, equipX, iy, EQUIP_W, ih);
+      ctx.restore();
       const overlay = ctx.createLinearGradient(equipX, iy, equipX + EQUIP_W, iy);
       overlay.addColorStop(0, 'rgba(0,0,0,0.55)');
       overlay.addColorStop(0.4, 'rgba(0,0,0,0.25)');
@@ -250,8 +288,8 @@ async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, sid
       ctx.fillRect(equipX, iy, EQUIP_W, ih);
     } else {
       const grad = ctx.createLinearGradient(equipX, iy, equipX + EQUIP_W, iy + ih);
-      grad.addColorStop(0, rgba(item.equipment.color, 0.93));
-      grad.addColorStop(1, rgba(item.equipment.color, 0.6));
+      grad.addColorStop(0, rgba(itemColor, 0.93));
+      grad.addColorStop(1, rgba(itemColor, 0.6));
       ctx.fillStyle = grad;
       ctx.fillRect(equipX, iy, EQUIP_W, ih);
     }
@@ -279,7 +317,7 @@ async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, sid
 
     // Name text (custom name takes precedence)
     const displayName = item.customName ?? item.equipment.name;
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = mode === 'mono' ? '#111827' : '#ffffff';
     ctx.font = 'bold 10px ui-monospace, monospace';
     ctx.textAlign = 'left';
     const nameY = ih > RU_H ? iy + RU_H / 2 - 2 : iy + RU_H / 2 + 3;
@@ -289,7 +327,7 @@ async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, sid
     if (item.equipment.ru >= 2) {
       const subLabel = item.customName ? item.equipment.name : item.equipment.model;
       if (subLabel) {
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.fillStyle = mode === 'mono' ? '#4b5563' : 'rgba(255,255,255,0.4)';
         ctx.font = '9px ui-monospace, monospace';
         ctx.fillText(clipText(ctx, subLabel, textMaxW), equipX + 20, iy + RU_H / 2 + 11);
       }
@@ -308,7 +346,7 @@ async function drawRack(ctx: CanvasRenderingContext2D, x: number, y: number, sid
   ctx.stroke();
 }
 
-export async function downloadRackPng(rackName: string, ru: number, items: RackItem[], showImages = true): Promise<void> {
+export async function downloadRackPng(rackName: string, ru: number, items: RackItem[], showImages = true, mode: RackExportMode = 'color'): Promise<void> {
   const SCALE = 2; // retina
   const PAD = 32;
   const TITLE_H = 44;
@@ -327,17 +365,19 @@ export async function downloadRackPng(rackName: string, ru: number, items: RackI
 
   ctx.scale(SCALE, SCALE);
 
+  const isMono = mode === 'mono';
+
   // Background
-  ctx.fillStyle = '#0f0f0f';
+  ctx.fillStyle = isMono ? '#ffffff' : '#0f0f0f';
   ctx.fillRect(0, 0, W, H);
 
   // Title
-  ctx.fillStyle = '#e4e4e7';
+  ctx.fillStyle = isMono ? '#111827' : '#e4e4e7';
   ctx.font = 'bold 14px ui-monospace, monospace';
   ctx.textAlign = 'center';
   ctx.fillText(rackName.toUpperCase(), W / 2, PAD + 18);
 
-  ctx.fillStyle = '#52525b';
+  ctx.fillStyle = isMono ? '#6b7280' : '#52525b';
   ctx.font = '10px ui-monospace, monospace';
   ctx.fillText(`${ru}U RACK  ·  ${items.filter(i => i.side === 'front').length} FRONT  ·  ${items.filter(i => i.side === 'rear').length} REAR`, W / 2, PAD + 32);
 
@@ -348,16 +388,16 @@ export async function downloadRackPng(rackName: string, ru: number, items: RackI
 
   // Side labels
   ctx.font = 'bold 9px ui-monospace, monospace';
-  ctx.fillStyle = '#6ee7b7';
+  ctx.fillStyle = isMono ? '#111827' : '#6ee7b7';
   ctx.textAlign = 'center';
   ctx.fillText('◀  FRONT VIEW', frontX + RACK_INNER_W / 2, PAD + TITLE_H + 14);
 
-  ctx.fillStyle = '#fcd34d';
+  ctx.fillStyle = isMono ? '#111827' : '#fcd34d';
   ctx.fillText('REAR VIEW  ▶', rearX + RACK_INNER_W / 2, PAD + TITLE_H + 14);
 
   // Vertical divider
   const divX = PAD + RACK_INNER_W + DIVIDER_GAP / 2;
-  ctx.strokeStyle = '#27272a';
+  ctx.strokeStyle = isMono ? '#d1d5db' : '#27272a';
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(divX, PAD + TITLE_H);
@@ -366,15 +406,16 @@ export async function downloadRackPng(rackName: string, ru: number, items: RackI
 
   // Draw both rack sides
   const imageCache = showImages ? await preloadItemImages(items) : new Map<string, HTMLImageElement>();
-  drawRack(ctx, frontX, bodyY, 'front', ru, items, imageCache, showImages);
-  drawRack(ctx, rearX, bodyY, 'rear', ru, items, imageCache, showImages);
+  drawRack(ctx, frontX, bodyY, 'front', ru, items, imageCache, showImages, mode);
+  drawRack(ctx, rearX, bodyY, 'rear', ru, items, imageCache, showImages, mode);
 
   // Trigger download via blob
   canvas.toBlob(blob => {
     if (!blob) return;
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.download = `${rackName.replace(/\s+/g, '-').toLowerCase()}-rack.png`;
+    const suffix = mode === 'mono' ? '-no-color' : '';
+    a.download = `${rackName.replace(/\s+/g, '-').toLowerCase()}-rack${suffix}.png`;
     a.href = url;
     a.click();
     showFeedbackPrompt('rack_png');

@@ -21,7 +21,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-import { downloadRackPng } from '@/lib/rack-download';
+import { downloadRackPng, type RackExportMode } from '@/lib/rack-download';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 import { SavedProjectPicker } from '@/components/calculator/saved-project-picker';
 import { useSavedPixelMapSelection } from '@/hooks/use-saved-pixel-map-selection';
@@ -252,8 +252,8 @@ export function RackBuilder() {
     ));
   };
 
-  const downloadAll = () => {
-    racks.forEach(r => downloadRackPng(r.name, r.ru, r.items, showImages));
+  const downloadAll = (mode: RackExportMode = 'color') => {
+    racks.forEach(r => downloadRackPng(r.name, r.ru, r.items, showImages, mode));
   };
 
   const totalItems = racks.reduce((sum, r) => sum + r.items.filter(i => i.side === activeSide).length, 0);
@@ -382,9 +382,13 @@ export function RackBuilder() {
                   Blocks
                 </button>
               </div>
-              <Button variant="outline" size="sm" onClick={downloadAll} title="Download all racks as PNG">
+              <Button variant="outline" size="sm" onClick={() => downloadAll('color')} title="Download all racks as a color PNG">
                 <Download className="mr-1.5 h-3.5 w-3.5" />
                 Download PNG
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => downloadAll('mono')} title="Download all racks in black and white">
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                Download B&amp;W
               </Button>
 
               <AlertDialog>
