@@ -80,7 +80,7 @@ export function TechnicalDocumentControls() {
                   />
                   {section.storagePath ? (
                     <div className="flex w-full min-w-0 max-w-full items-center justify-between gap-2 text-xs text-muted-foreground">
-                      <span className="min-w-0 flex-1 truncate">{section.storagePath.split("/").pop()}</span>
+                      <span className="min-w-0 max-w-[160px] flex-1 truncate">{section.storagePath.split("/").pop()}</span>
                       <div className="flex shrink-0 items-center gap-1">
                         <Button variant="outline" size="sm" className="h-7" disabled={uploadingKey === inputKey} onClick={() => fileInputs.current[inputKey]?.click()}>
                           {uploadingKey === inputKey ? <Loader2 className="mr-1 h-3 w-3 shrink-0 animate-spin" /> : <Upload className="mr-1 h-3 w-3 shrink-0" />} <span className="min-w-0 truncate">Replace</span>
