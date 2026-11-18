@@ -8,7 +8,7 @@ import { useTechnicalDocument } from "./technical-document-context";
 const PAGE_ASPECT = 17 / 11;
 
 export function TechnicalDocumentView() {
-  const { doc, imageUrls, rasterMapImageUrl, projectName, screens, loading, loadError } = useTechnicalDocument();
+  const { doc, imageUrls, rasterMapImageUrl, logoUrl, projectName, screens, loading, loadError } = useTechnicalDocument();
 
   if (loading) {
     return <div className="flex h-full items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -54,25 +54,32 @@ export function TechnicalDocumentView() {
                       <span className="text-xs text-gray-400">No image uploaded for this section.</span>
                     )}
                   </div>
-                  <div className="grid grid-cols-4 border-t border-black/70">
+                  <div className="grid grid-cols-4 border-t border-black/70" style={{ backgroundColor: doc.footerColor, color: doc.footerTextColor, borderColor: doc.footerTextColor }}>
                     {[
                       { label: "PROJECT", value: projectName },
                       { label: "SCREEN", value: screenName },
                       { label: "REVISION", value: doc.revision || "-" },
                       { label: "DATE", value: doc.date || "-" },
                     ].map((cell) => (
-                      <div key={cell.label} className="min-w-0 border-r border-black/70 px-2 py-1 last:border-r-0">
-                        <div className="text-gray-500" style={{ fontSize: "clamp(4px, 0.55vw, 8px)" }}>{cell.label}</div>
-                        <div className="truncate font-semibold" style={{ fontSize: "clamp(6px, 0.85vw, 12px)" }}>{cell.value}</div>
+                      <div key={cell.label} className="min-w-0 border-r border-black/70 px-2 py-1 last:border-r-0" style={{ borderColor: doc.footerTextColor }}>
+                        <div style={{ color: doc.footerTextColor, opacity: 0.7, fontSize: "clamp(4px, 0.55vw, 8px)" }}>{cell.label}</div>
+                        <div className="truncate font-semibold" style={{ color: doc.footerTextColor, fontSize: "clamp(6px, 0.85vw, 12px)" }}>{cell.value}</div>
                       </div>
                     ))}
                   </div>
-                  <div className="flex items-center justify-between text-gray-500" style={{ fontSize: "clamp(4px, 0.55vw, 8px)" }}>
+                  <div className="flex items-center justify-between" style={{ color: doc.footerTextColor, opacity: 0.7, fontSize: "clamp(4px, 0.55vw, 8px)" }}>
                     <span>{section.title}</span>
                     <span>Page {index + 1} of {doc.sections.length}</span>
                   </div>
                 </div>
-                <div className="absolute right-1 top-1"><Logo className="h-4 opacity-80" /></div>
+                <div className="absolute right-1 top-1">
+                  {logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={logoUrl} alt="Document logo" className="h-4 max-w-24 object-contain" />
+                  ) : (
+                    <Logo className="h-4 opacity-80" />
+                  )}
+                </div>
               </div>
               <p className="text-center text-xs text-muted-foreground">{section.title} — page {index + 1}</p>
             </div>

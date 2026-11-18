@@ -21,8 +21,11 @@ export function TechnicalDocumentControls() {
     handleRemoveImage,
     moveSection,
     downloadPdf,
+    handleLogoPicked,
+    handleRemoveLogo,
   } = useTechnicalDocument();
   const fileInputs = useRef<Record<string, HTMLInputElement | null>>({});
+  const logoInputKey = "__tech-doc-logo__";
 
   if (loading) return <div className="flex justify-center p-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
@@ -47,6 +50,53 @@ export function TechnicalDocumentControls() {
               <div className="space-y-2">
                 <Label htmlFor="tech-doc-date">Date</Label>
                 <Input id="tech-doc-date" type="date" className="min-w-0 max-w-full truncate" value={doc.date} onChange={(event) => updateDoc((current) => ({ ...current, date: event.target.value }))} />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <h3 className="font-semibold">Branding & Footer</h3>
+              <p className="text-xs text-muted-foreground">Customize the logo and colors used on every document page.</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Document Logo</Label>
+              <input
+                ref={(element) => { fileInputs.current[logoInputKey] = element; }}
+                type="file"
+                accept={TECH_DOC_ACCEPTED_TYPES.join(",")}
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void handleLogoPicked(file);
+                  event.target.value = "";
+                }}
+              />
+              {doc.logoStoragePath ? (
+                <div className="flex w-full min-w-0 items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span className="min-w-0 flex-1 truncate">{doc.logoStoragePath.split("/").pop()}</span>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button variant="outline" size="icon" className="h-7 w-7" disabled={uploadingKey === logoInputKey} onClick={() => fileInputs.current[logoInputKey]?.click()} aria-label="Replace logo">
+                      {uploadingKey === logoInputKey ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={handleRemoveLogo} aria-label="Remove logo"><X className="h-3.5 w-3.5" /></Button>
+                  </div>
+                </div>
+              ) : (
+                <Button variant="outline" className="h-9 w-full justify-start" disabled={uploadingKey === logoInputKey} onClick={() => fileInputs.current[logoInputKey]?.click()}>
+                  {uploadingKey === logoInputKey ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-2 h-3.5 w-3.5" />}
+                  Upload logo
+                </Button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-2">
+                <Label htmlFor="tech-doc-footer-color">Footer color</Label>
+                <Input id="tech-doc-footer-color" type="color" className="h-9 w-full cursor-pointer p-1" value={doc.footerColor} onChange={(event) => updateDoc((current) => ({ ...current, footerColor: event.target.value }))} aria-label="Footer color" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tech-doc-footer-text-color">Footer text</Label>
+                <Input id="tech-doc-footer-text-color" type="color" className="h-9 w-full cursor-pointer p-1" value={doc.footerTextColor} onChange={(event) => updateDoc((current) => ({ ...current, footerTextColor: event.target.value }))} aria-label="Footer text color" />
               </div>
             </div>
           </div>

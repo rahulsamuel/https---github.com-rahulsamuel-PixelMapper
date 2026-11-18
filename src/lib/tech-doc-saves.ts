@@ -4,6 +4,8 @@ import { supabase } from "@/lib/supabase/client";
 import { ensureTabIdentifier } from "@/lib/project-tab-identifiers";
 
 export const TECH_DOC_IMAGE_BUCKET = "tech-doc-images";
+export const DEFAULT_TECH_DOC_FOOTER_COLOR = "#0f1319";
+export const DEFAULT_TECH_DOC_FOOTER_TEXT_COLOR = "#ffffff";
 
 export type TechDocSectionType =
   | "pixel_map"
@@ -33,6 +35,9 @@ export interface TechDocData {
   title: string;
   revision: string;
   date: string;
+  logoStoragePath: string | null;
+  footerColor: string;
+  footerTextColor: string;
   sections: TechDocSection[];
 }
 
@@ -92,8 +97,15 @@ export function emptyTechDoc(projectName: string, screens: TechDocScreenReferenc
     title: `${projectName} Technical Document`,
     revision: "1.0",
     date: new Date().toISOString().slice(0, 10),
+    logoStoragePath: null,
+    footerColor: DEFAULT_TECH_DOC_FOOTER_COLOR,
+    footerTextColor: DEFAULT_TECH_DOC_FOOTER_TEXT_COLOR,
     sections: buildDefaultSections(screens),
   };
+}
+
+function isHexColor(value: unknown): value is string {
+  return typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
 }
 
 function typeFromLegacyKey(key: string): TechDocSectionType | null {
@@ -150,6 +162,9 @@ export function parseTechDoc(
     title: typeof r.title === "string" && r.title.trim() ? r.title : fallback.title,
     revision: typeof r.revision === "string" ? r.revision : fallback.revision,
     date: typeof r.date === "string" && r.date ? r.date : fallback.date,
+    logoStoragePath: typeof r.logoStoragePath === "string" && r.logoStoragePath ? r.logoStoragePath : null,
+    footerColor: isHexColor(r.footerColor) ? r.footerColor : fallback.footerColor,
+    footerTextColor: isHexColor(r.footerTextColor) ? r.footerTextColor : fallback.footerTextColor,
     sections,
   };
 }

@@ -24,6 +24,7 @@ export interface TechDocPdfPage {
 export interface TechDocPdfMeta {
   doc: TechDocData;
   projectName: string;
+  logoUrl: string | null;
   pageNumber: number;
   totalPages: number;
 }
@@ -39,9 +40,9 @@ async function loadImageElement(url: string): Promise<HTMLImageElement | null> {
   });
 }
 
-async function loadLogoDataUrl(pdf: JsPDFType): Promise<string | null> {
+async function loadLogoDataUrl(url: string): Promise<string | null> {
   try {
-    const res = await fetch(LOGO_PATH);
+    const res = await fetch(url);
     if (!res.ok) return null;
     const blob = await res.blob();
     return await new Promise<string | null>((resolve) => {
@@ -53,6 +54,16 @@ async function loadLogoDataUrl(pdf: JsPDFType): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+function hexToRgb(value: string, fallback: [number, number, number]): [number, number, number] {
+  const match = /^#([0-9a-f]{6})$/i.exec(value);
+  if (!match) return fallback;
+  return [
+    Number.parseInt(match[1].slice(0, 2), 16),
+    Number.parseInt(match[1].slice(2, 4), 16),
+    Number.parseInt(match[1].slice(4, 6), 16),
+  ];
 }
 
 export async function buildTechDocPdf(
@@ -68,7 +79,10 @@ export async function buildTechDocPdf(
     compress: true,
   });
 
-  const logo = await loadLogoDataUrl(pdf);
+  const logo = await loadLogoDataUrl(meta.logoUrl ?? LOGO_PATH);
+  const logoFormat = logo?.startsWith("data:image/jpeg") ? "JPEG" : "PNG";
+  const footerColor = hexToRgb(meta.doc.footerColor, HEADER_BACKGROUND);
+  const footerTextColor = hexToRgb(meta.doc.footerTextColor, WHITE);
 
   for (let i = 0; i < pages.length; i++) {
     const page = pages[i];
@@ -142,9 +156,9 @@ export async function buildTechDocPdf(
     // Title block at bottom
     const blockTop = frameBottom;
     const footerHeight = PAGE_H - MARGIN - blockTop;
-    pdf.setFillColor(...HEADER_BACKGROUND);
+    pdf.setFillColor(...footerColor);
     pdf.rect(MARGIN + BORDER / 2, blockTop, PAGE_W - MARGIN * 2 - BORDER, footerHeight - BORDER / 2, "F");
-    pdf.setDrawColor(...WHITE);
+    pdf.setDrawColor(...footerTextColor);
     pdf.setLineWidth(0.4);
     pdf.line(MARGIN, blockTop, PAGE_W - MARGIN, blockTop);
 
@@ -164,11 +178,11 @@ export async function buildTechDocPdf(
       pdf.line(x, blockTop, x, blockTop + rowH);
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(7.5);
-      pdf.setTextColor(...WHITE);
+      pdf.setTextColor(...footerTextColor);
       pdf.text(cell.label, x + 4, blockTop + 7);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(10.5);
-      pdf.setTextColor(...WHITE);
+      pdf.setTextColor(...footerTextColor);
       pdf.text(cell.value.normalize("NFKC"), x + 4, blockTop + 14);
     });
 
@@ -181,7 +195,7 @@ export async function buildTechDocPdf(
         const logoSize = Math.min(24, rowH - 2);
         pdf.addImage(
           logo,
-          "PNG",
+          logoFormat,
           logoX + (logoColW - logoSize) / 2,
           blockTop + (rowH - logoSize) / 2,
           logoSize,
@@ -197,7 +211,7 @@ export async function buildTechDocPdf(
     // Footer stays inside the page border, below the title block
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(8);
-    pdf.setTextColor(...WHITE);
+    pdf.setTextColor(...footerTextColor);
     pdf.text(page.label, MARGIN + 2, PAGE_H - MARGIN - 3);
     pdf.text(
       `Page ${i + 1} of ${pages.length}`,

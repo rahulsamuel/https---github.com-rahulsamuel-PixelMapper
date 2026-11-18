@@ -42,6 +42,9 @@ interface TechnicalDocumentContextValue {
   moveSection: (index: number, direction: -1 | 1) => void;
   downloadPdf: () => Promise<void>;
   rasterMapImageUrl: string | null;
+  logoUrl: string | null;
+  handleLogoPicked: (file: File) => Promise<void>;
+  handleRemoveLogo: () => void;
 }
 
 const TechnicalDocumentContext = createContext<TechnicalDocumentContextValue | null>(null);
@@ -74,6 +77,7 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const rasterMapImageUrl = rasterOutputConfigs[activeRasterGroupId]?.previewImage ?? rasterMapConfigs[activeRasterGroupId]?.previewImage ?? null;
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const docRef = useRef(doc);
@@ -86,6 +90,7 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     if (!projectId || !isAdmin) {
       setDoc(emptyTechDoc(projectName, screens));
       setImageUrls({});
+      setLogoUrl(null);
       setLoading(false);
       return;
     }
@@ -109,6 +114,19 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     if (!loadedProjectRef.current) return;
     setDoc((current) => parseTechDoc(current, projectName, screens));
   }, [projectName, screens]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!doc.logoStoragePath) {
+      setLogoUrl(null);
+    } else {
+      setLogoUrl(null);
+      getTechDocImageUrl(doc.logoStoragePath).then((url) => {
+        if (!cancelled) setLogoUrl(url);
+      });
+    }
+    return () => { cancelled = true; };
+  }, [doc.logoStoragePath]);
 
   useEffect(() => {
     let cancelled = false;
@@ -192,6 +210,38 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     }));
   }, [updateDoc]);
 
+  const handleLogoPicked = useCallback(async (file: File) => {
+    const invalid = validateTechDocImage(file);
+    if (invalid) {
+      toast({ title: "Unsupported logo", description: invalid, variant: "destructive" });
+      return;
+    }
+    if (!projectId) {
+      toast({ title: "Save your project first", description: "Save the project to the cloud before uploading a document logo.", variant: "destructive" });
+      return;
+    }
+    const previousPath = docRef.current.logoStoragePath;
+    const uploadKey = "__tech-doc-logo__";
+    setUploadingKey(uploadKey);
+    const result = await uploadTechDocImage(projectId, "logo", file);
+    setUploadingKey(null);
+    if (result.error || !result.path) {
+      toast({ title: "Logo upload failed", description: result.error ?? "Please try again.", variant: "destructive" });
+      return;
+    }
+    const url = await getTechDocImageUrl(result.path);
+    setLogoUrl(url);
+    updateDoc((current) => ({ ...current, logoStoragePath: result.path }));
+    if (previousPath && previousPath !== result.path) void deleteTechDocImage(previousPath);
+  }, [projectId, toast, updateDoc]);
+
+  const handleRemoveLogo = useCallback(() => {
+    const previousPath = docRef.current.logoStoragePath;
+    if (previousPath) void deleteTechDocImage(previousPath);
+    setLogoUrl(null);
+    updateDoc((current) => ({ ...current, logoStoragePath: null }));
+  }, [updateDoc]);
+
   const moveSection = useCallback((index: number, direction: -1 | 1) => {
     const nextIndex = index + direction;
     if (nextIndex < 0 || nextIndex >= docRef.current.sections.length) return;
@@ -221,6 +271,7 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
       const pdf = await buildTechDocPdf(JsPdfCtor as unknown as typeof jsPDF, pages, {
         doc: docRef.current,
         projectName,
+        logoUrl,
       });
       if (!pdf) return;
       const safeName = (projectName || "project").replace(/[^a-z0-9]+/gi, "_").toLowerCase();
@@ -233,7 +284,7 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     } finally {
       setDownloading(false);
     }
-  }, [downloading, imageUrls, projectName, rasterMapImageUrl, screens, toast]);
+  }, [downloading, imageUrls, logoUrl, projectName, rasterMapImageUrl, screens, toast]);
 
   const value: TechnicalDocumentContextValue = {
     doc,
@@ -251,6 +302,9 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     moveSection,
     downloadPdf,
     rasterMapImageUrl,
+    logoUrl,
+    handleLogoPicked,
+    handleRemoveLogo,
   };
 
   return <TechnicalDocumentContext.Provider value={value}>{children}</TechnicalDocumentContext.Provider>;
