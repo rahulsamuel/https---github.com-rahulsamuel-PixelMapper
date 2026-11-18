@@ -8,7 +8,7 @@ import { useTechnicalDocument } from "./technical-document-context";
 const PAGE_ASPECT = 17 / 11;
 
 export function TechnicalDocumentView() {
-  const { doc, imageUrls, projectName, screens, loading, loadError } = useTechnicalDocument();
+  const { doc, imageUrls, rasterMapImageUrl, projectName, screens, loading, loadError } = useTechnicalDocument();
 
   if (loading) {
     return <div className="flex h-full items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -31,7 +31,9 @@ export function TechnicalDocumentView() {
     <div className="h-full w-full overflow-auto p-4">
       <div className="mx-auto max-w-5xl space-y-6">
         {doc.sections.map((section, index) => {
-          const image = imageUrls[section.key];
+          const image = section.type === "raster_map"
+            ? { url: rasterMapImageUrl, loading: false }
+            : imageUrls[section.key];
           const sectionScreen = screens.find((screen) => screen.id === section.screenId);
           const screenName = sectionScreen?.name ?? "All Screens";
           return (

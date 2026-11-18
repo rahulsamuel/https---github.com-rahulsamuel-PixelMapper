@@ -41,6 +41,7 @@ interface TechnicalDocumentContextValue {
   handleRemoveImage: (sectionKey: string) => void;
   moveSection: (index: number, direction: -1 | 1) => void;
   downloadPdf: () => Promise<void>;
+  rasterMapImageUrl: string | null;
 }
 
 const TechnicalDocumentContext = createContext<TechnicalDocumentContextValue | null>(null);
@@ -54,7 +55,14 @@ export function useTechnicalDocument(): TechnicalDocumentContextValue {
 export function TechnicalDocumentProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const { isAdmin } = useAuth();
-  const { screens: pixelMapScreens, activeProjectId: projectId, projectName } = usePixelMap();
+  const {
+    screens: pixelMapScreens,
+    activeProjectId: projectId,
+    projectName,
+    rasterMapConfigs,
+    rasterOutputConfigs,
+    activeRasterGroupId,
+  } = usePixelMap();
   const screens = useMemo<TechDocScreenReference[]>(
     () => pixelMapScreens.map((screen) => ({ id: screen.id, name: screen.name })),
     [pixelMapScreens]
@@ -66,6 +74,7 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const rasterMapImageUrl = rasterOutputConfigs[activeRasterGroupId]?.previewImage ?? rasterMapConfigs[activeRasterGroupId]?.previewImage ?? null;
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const docRef = useRef(doc);
   const loadedProjectRef = useRef<string | null>(null);
@@ -207,7 +216,7 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
         label: section.title,
         title: section.title,
         screenName: section.screenId ? screens.find((screen) => screen.id === section.screenId)?.name ?? "-" : "All Screens",
-        imageUrl: imageUrls[section.key]?.url ?? null,
+        imageUrl: section.type === "raster_map" ? rasterMapImageUrl : imageUrls[section.key]?.url ?? null,
       }));
       const pdf = await buildTechDocPdf(JsPdfCtor as unknown as typeof jsPDF, pages, {
         doc: docRef.current,
@@ -224,7 +233,7 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     } finally {
       setDownloading(false);
     }
-  }, [downloading, imageUrls, projectName, screens, toast]);
+  }, [downloading, imageUrls, projectName, rasterMapImageUrl, screens, toast]);
 
   const value: TechnicalDocumentContextValue = {
     doc,
@@ -241,6 +250,7 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     handleRemoveImage,
     moveSection,
     downloadPdf,
+    rasterMapImageUrl,
   };
 
   return <TechnicalDocumentContext.Provider value={value}>{children}</TechnicalDocumentContext.Provider>;

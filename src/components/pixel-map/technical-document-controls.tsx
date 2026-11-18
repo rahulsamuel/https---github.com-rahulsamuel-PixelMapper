@@ -72,18 +72,23 @@ export function TechnicalDocumentControls() {
                     <Label className="text-xs text-muted-foreground">Include in PDF</Label>
                     <Switch checked={section.includeInPdf} onCheckedChange={(checked) => updateDoc((current) => ({ ...current, sections: current.sections.map((candidate) => candidate.key === section.key ? { ...candidate, includeInPdf: checked } : candidate) }))} aria-label={`Include ${section.title} in PDF`} />
                   </div>
-                  <input
-                    ref={(element) => { fileInputs.current[inputKey] = element; }}
-                    type="file"
-                    accept={TECH_DOC_ACCEPTED_TYPES.join(",")}
-                    className="hidden"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) void handleFilePicked(inputKey, file);
-                      event.target.value = "";
-                    }}
-                  />
-                  {section.storagePath ? (
+                  {section.type === "raster_map" ? (
+                    <p className="text-xs text-muted-foreground">Generated from the current raster map.</p>
+                  ) : (
+                    <>
+                      <input
+                        ref={(element) => { fileInputs.current[inputKey] = element; }}
+                        type="file"
+                        accept={TECH_DOC_ACCEPTED_TYPES.join(",")}
+                        className="hidden"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) void handleFilePicked(inputKey, file);
+                          event.target.value = "";
+                        }}
+                      />
+                      {section.storagePath ? (
+
                     <div className="flex w-full min-w-0 max-w-full items-center justify-between gap-2 text-xs text-muted-foreground">
                       <span className="min-w-0 max-w-[160px] flex-1 truncate">{section.storagePath.split("/").pop()}</span>
                       <div className="flex shrink-0 items-center gap-1">
@@ -93,10 +98,12 @@ export function TechnicalDocumentControls() {
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemoveImage(inputKey)} aria-label="Remove image"><X className="h-3.5 w-3.5" /></Button>
                       </div>
                     </div>
-                  ) : (
-                    <Button variant="outline" size="icon" className="h-9 w-9" disabled={uploadingKey === inputKey} onClick={() => fileInputs.current[inputKey]?.click()} aria-label="Upload image">
-                      {uploadingKey === inputKey ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                    </Button>
+                      ) : (
+                        <Button variant="outline" size="icon" className="h-9 w-9" disabled={uploadingKey === inputKey} onClick={() => fileInputs.current[inputKey]?.click()} aria-label="Upload image">
+                          {uploadingKey === inputKey ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
               );

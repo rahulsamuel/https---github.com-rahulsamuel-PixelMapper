@@ -11,6 +11,7 @@ export type TechDocSectionType =
   | "data_wiring_rear"
   | "power_wiring_front"
   | "power_wiring_rear"
+  | "raster_map"
   | "rack_drawing"
   | "signal_flow";
 
@@ -43,7 +44,7 @@ export const SCREEN_SECTION_TYPES: TechDocSectionType[] = [
   "power_wiring_rear",
 ];
 
-export const PROJECT_SECTION_TYPES: TechDocSectionType[] = ["rack_drawing", "signal_flow"];
+export const PROJECT_SECTION_TYPES: TechDocSectionType[] = ["raster_map", "rack_drawing", "signal_flow"];
 
 export const SECTION_LABELS: Record<TechDocSectionType, string> = {
   pixel_map: "Pixel Map",
@@ -51,6 +52,7 @@ export const SECTION_LABELS: Record<TechDocSectionType, string> = {
   data_wiring_rear: "Data Wiring — Rear View",
   power_wiring_front: "Power Wiring — Front View",
   power_wiring_rear: "Power Wiring — Rear View",
+  raster_map: "Raster Map",
   rack_drawing: "Rack Drawing",
   signal_flow: "Signal Flow Diagram",
 };
