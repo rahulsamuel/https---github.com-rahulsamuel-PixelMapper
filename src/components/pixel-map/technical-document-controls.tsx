@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Download, Loader2, MoveDown, MoveUp, Save, Upload, X } from "lucide-react";
+import { Loader2, MoveDown, MoveUp, Save, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,13 +14,11 @@ export function TechnicalDocumentControls() {
     doc,
     loading,
     saving,
-    downloading,
     uploadingKey,
     updateDoc,
     handleFilePicked,
     handleRemoveImage,
     moveSection,
-    downloadPdf,
     handleLogoPicked,
     handleRemoveLogo,
   } = useTechnicalDocument();
@@ -157,11 +155,7 @@ export function TechnicalDocumentControls() {
           </div>
         </div>
       </div>
-      <div className="w-full min-w-0 space-y-2 border-t pt-3">
-        <Button className="h-auto min-h-10 w-full min-w-0 max-w-full whitespace-normal break-words px-3 py-2 text-center leading-tight" onClick={() => void downloadPdf()} disabled={downloading}>
-          {downloading ? <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" /> : <Download className="mr-2 h-4 w-4 shrink-0" />}
-          <span className="min-w-0 flex-1 whitespace-normal break-words">Download Technical Document PDF</span>
-        </Button>
+      <div className="w-full min-w-0 border-t pt-3">
         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
           <Save className="h-3 w-3" /> {saving ? "Saving..." : "All changes saved"}
         </div>

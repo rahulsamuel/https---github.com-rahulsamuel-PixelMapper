@@ -4,9 +4,11 @@
 import { usePixelMap } from "@/contexts/pixel-map-context";
 import type { RasterMapConfig, Screen, ActiveBounds } from "@/contexts/pixel-map-context";
 import { Button } from "@/components/ui/button";
-import { FileDown, FileCode, Printer, Monitor, Video, Music, Image, Layers, Cpu, Download, List, LayoutGrid } from "lucide-react";
+import { FileDown, FileCode, FileText, Printer, Monitor, Video, Music, Image, Layers, Cpu, Download, List, LayoutGrid } from "lucide-react";
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/auth-context";
+import { useTechnicalDocument } from "./technical-document-context";
 import { showFeedbackPrompt } from "@/components/feedback/feedback-prompt";
 import { usePersistentState } from "@/hooks/use-persistent-state";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -95,6 +97,8 @@ export function DeliverablesView() {
   } = usePixelMap();
 
   const { toast } = useToast();
+  const { isAdmin } = useAuth();
+  const { downloading: downloadingTechnicalDocument, downloadPdf: downloadTechnicalDocumentPdf } = useTechnicalDocument();
   const contentRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [pixelMapImages, setPixelMapImages] = useState<Record<string, string>>({});
@@ -346,6 +350,11 @@ export function DeliverablesView() {
         <Button variant="outline" size="sm" onClick={handleDownloadPdf} disabled={isExporting}>
           <FileDown className="size-4 mr-2" /> {isExporting ? 'Generating...' : 'Download PDF'}
         </Button>
+        {isAdmin && (
+          <Button variant="outline" size="sm" onClick={() => void downloadTechnicalDocumentPdf()} disabled={downloadingTechnicalDocument}>
+            <FileText className="size-4 mr-2" /> {downloadingTechnicalDocument ? 'Generating...' : 'Technical Document PDF'}
+          </Button>
+        )}
         <Button variant="default" size="sm" onClick={() => window.print()}>
           <Printer className="size-4 mr-2" /> Print
         </Button>
