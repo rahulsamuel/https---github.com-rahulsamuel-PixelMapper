@@ -13,6 +13,18 @@ const MUTED: [number, number, number] = [75, 85, 99];
 const LINE: [number, number, number] = [30, 41, 59];
 const HEADER_BACKGROUND: [number, number, number] = [15, 19, 25];
 const WHITE: [number, number, number] = [255, 255, 255];
+const NODE_BACKGROUND: [number, number, number] = [41, 76, 122];
+const NODE_HEADER: [number, number, number] = [49, 89, 140];
+const NODE_BORDER: [number, number, number] = [14, 165, 233];
+const PORT_COLORS: Record<string, [number, number, number]> = {
+  hdmi: [239, 68, 68],
+  sdi: [59, 130, 246],
+  rj45: [16, 185, 129],
+  dvi: [245, 158, 11],
+  fiber: [6, 182, 212],
+  power: [249, 115, 22],
+  custom: [148, 163, 184],
+};
 
 export interface TechDocPdfPage {
   label: string;
@@ -35,10 +47,29 @@ const LOGO_PATH = "/Untitled_design_(4)-modified.png";
 async function loadImageElement(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image();
+    if (/^https?:\/\//i.test(url)) img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
     img.src = url;
   });
+}
+
+function imageToPngDataUrl(image: HTMLImageElement): string | null {
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const context = canvas.getContext("2d");
+    if (!context) return null;
+    context.drawImage(image, 0, 0);
+    return canvas.toDataURL("image/png");
+  } catch {
+    return null;
+  }
+}
+
+function imageFormatFromUrl(url: string): "JPEG" | "PNG" {
+  return /\.jpe?g(?:[?#]|$)/i.test(url) ? "JPEG" : "PNG";
 }
 
 async function loadLogoDataUrl(url: string): Promise<string | null> {
@@ -78,56 +109,66 @@ function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number,
   const rows = Math.ceil(devices.length / columns);
   const cardWidth = (width - gap) / columns;
   const cardHeight = (height - gap * Math.max(0, rows - 1)) / rows;
-  const maxPortsPerSide = Math.max(1, Math.floor((cardHeight - 15) / 4));
+  const maxPortsPerSide = Math.max(1, Math.floor((cardHeight - 20) / 4.2));
 
   devices.forEach((device, index) => {
     const column = index % columns;
     const row = Math.floor(index / columns);
     const x = left + column * (cardWidth + gap);
     const y = top + row * (cardHeight + gap);
-    const deviceColor = hexToRgb(device.color, MUTED);
     const inputs = device.ports.filter((port) => port.direction === "input");
     const outputs = device.ports.filter((port) => port.direction === "output");
+    const visibleRows = Math.min(maxPortsPerSide, Math.max(inputs.length, outputs.length));
 
-    pdf.setDrawColor(...LINE);
-    pdf.setLineWidth(0.25);
-    pdf.rect(x, y, cardWidth, cardHeight);
-    pdf.setFillColor(241, 245, 249);
-    pdf.rect(x, y, cardWidth, 9, "F");
-    pdf.setFillColor(...deviceColor);
-    pdf.rect(x, y, 2, cardHeight, "F");
+    pdf.setFillColor(...NODE_BACKGROUND);
+    pdf.setDrawColor(...NODE_BORDER);
+    pdf.setLineWidth(0.8);
+    pdf.roundedRect(x, y, cardWidth, cardHeight, 3, 3, "FD");
+    pdf.setFillColor(...NODE_HEADER);
+    pdf.roundedRect(x + 0.5, y + 0.5, cardWidth - 1, 10, 2.5, 2.5, "F");
+    pdf.rect(x + 0.5, y + 6, cardWidth - 1, 4.5, "F");
+
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(8);
-    pdf.setTextColor(...INK);
-    pdf.text(truncateText(device.name, 42), x + 5, y + 6);
+    pdf.setTextColor(...WHITE);
+    pdf.text(truncateText(device.name, 36), x + 5, y + 6.5);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(5.5);
+    pdf.setTextColor(220, 235, 255);
+    pdf.text(truncateText(device.type.replaceAll("-", " ").toUpperCase(), 16), x + cardWidth - 5, y + 6.5, { align: "right" });
 
-    const groups = [
-      { label: "INPUTS", ports: inputs },
-      { label: "OUTPUTS", ports: outputs },
-    ];
-    const columnWidth = (cardWidth - 10) / 2;
-    groups.forEach((group, groupIndex) => {
-      const groupX = x + 5 + groupIndex * (columnWidth + 2);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(5.5);
-      pdf.setTextColor(...MUTED);
-      pdf.text(group.label, groupX, y + 14);
-      group.ports.slice(0, maxPortsPerSide).forEach((port, portIndex) => {
-        const portY = y + 19 + portIndex * 4;
+    for (let portIndex = 0; portIndex < visibleRows; portIndex++) {
+      const portY = y + 17 + portIndex * 4.2;
+      const input = inputs[portIndex];
+      const output = outputs[portIndex];
+      if (input) {
+        const color = PORT_COLORS[input.portType] ?? PORT_COLORS.custom;
+        pdf.setFillColor(...color);
+        pdf.setDrawColor(7, 15, 28);
+        pdf.circle(x + 5, portY - 1.3, 1.8, "FD");
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(6.5);
-        pdf.setTextColor(...INK);
-        pdf.text(truncateText(port.label, 22), groupX, portY);
-        pdf.setDrawColor(...LINE);
-        pdf.setLineWidth(0.2);
-        pdf.line(groupX + columnWidth - 7, portY - 1.2, groupX + columnWidth, portY - 1.2);
-      });
-      if (group.ports.length > maxPortsPerSide) {
-        pdf.setFontSize(5.5);
-        pdf.setTextColor(...MUTED);
-        pdf.text(`+${group.ports.length - maxPortsPerSide} more`, groupX, y + cardHeight - 3);
+        pdf.setTextColor(...WHITE);
+        pdf.text(truncateText(input.label, 20), x + 9, portY);
       }
-    });
+      if (output) {
+        const color = PORT_COLORS[output.portType] ?? PORT_COLORS.custom;
+        pdf.setFillColor(...color);
+        pdf.setDrawColor(7, 15, 28);
+        pdf.circle(x + cardWidth - 5, portY - 1.3, 1.8, "FD");
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(6.5);
+        pdf.setTextColor(...WHITE);
+        pdf.text(truncateText(output.label, 20), x + cardWidth - 9, portY, { align: "right" });
+      }
+    }
+
+    if (Math.max(inputs.length, outputs.length) > visibleRows) {
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(5.5);
+      pdf.setTextColor(220, 235, 255);
+      pdf.text(`+${Math.max(inputs.length, outputs.length) - visibleRows} more ports`, x + cardWidth / 2, y + cardHeight - 4, { align: "center" });
+    }
   });
 }
 
@@ -175,8 +216,8 @@ export async function buildTechDocPdf(
     const hasDevices = page.devices.length > 0;
     const deviceRows = Math.ceil(page.devices.length / 2);
     const maxDevicePorts = Math.max(1, ...page.devices.map((device) => device.ports.length));
-    const estimatedCardHeight = Math.min(30, Math.max(18, 8 + maxDevicePorts * 2.2));
-    const deviceAreaHeight = hasDevices ? Math.min(84, Math.max(42, 10 + deviceRows * estimatedCardHeight + Math.max(0, deviceRows - 1) * 4)) : 0;
+    const estimatedCardHeight = Math.min(112, Math.max(42, 24 + maxDevicePorts * 4.8));
+    const deviceAreaHeight = hasDevices ? Math.min(130, Math.max(52, 16 + deviceRows * estimatedCardHeight + Math.max(0, deviceRows - 1) * 4)) : 0;
     const deviceGap = hasDevices ? 3 : 0;
     const imageFrameBottom = frameBottom - deviceAreaHeight - deviceGap;
     const imageFrameH = imageFrameBottom - frameTop;
@@ -195,9 +236,10 @@ export async function buildTechDocPdf(
         const drawW = img.naturalWidth * scale;
         const drawH = img.naturalHeight * scale;
         try {
+          const imageDataUrl = imageToPngDataUrl(img);
           pdf.addImage(
-            img,
-            "PNG",
+            imageDataUrl ?? img,
+            imageDataUrl ? "PNG" : imageFormatFromUrl(page.imageUrl),
             frameLeft + (frameW - drawW) / 2,
             frameTop + (imageFrameH - drawH) / 2,
             drawW,

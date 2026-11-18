@@ -8,39 +8,61 @@ import type { TechDocDevice } from "@/lib/tech-doc-saves";
 
 const PAGE_ASPECT = 17 / 11;
 
+const PORT_COLORS: Record<string, string> = {
+  hdmi: "#ef4444",
+  sdi: "#3b82f6",
+  rj45: "#10b981",
+  dvi: "#f59e0b",
+  fiber: "#06b6d4",
+  power: "#f97316",
+  custom: "#94a3b8",
+};
+
+function DeviceNode({ device }: { device: TechDocDevice }) {
+  const inputs = device.ports.filter((port) => port.direction === "input");
+  const outputs = device.ports.filter((port) => port.direction === "output");
+  const rows = Math.max(inputs.length, outputs.length);
+
+  return (
+    <div className="min-h-0 overflow-hidden rounded-xl border-2 border-sky-400 bg-[#294c7a] text-white shadow-[0_0_8px_rgba(14,165,233,0.6)]">
+      <div className="flex min-w-0 items-center justify-between gap-2 border-b border-white/25 bg-[#31598c] px-[3%] py-[2%]">
+        <span className="min-w-0 truncate text-[clamp(6px,0.8vw,12px)] font-bold">{device.name}</span>
+        <span className="shrink-0 text-[clamp(4px,0.5vw,7px)] uppercase text-white/70">{device.type.replaceAll("-", " ")}</span>
+      </div>
+      <div className="grid min-h-0 grid-cols-2 gap-[5%] px-[3%] py-[3%]">
+        <div className="min-w-0 space-y-[2%]">
+          {Array.from({ length: rows }, (_, index) => {
+            const port = inputs[index];
+            return (
+              <div key={port?.id ?? `input-${index}`} className="flex min-w-0 items-center gap-1 text-[clamp(5px,0.62vw,9px)] leading-tight">
+                <span className="h-[clamp(5px,0.65vw,9px)] w-[clamp(5px,0.65vw,9px)] shrink-0 rounded-full border-2 border-slate-950" style={{ backgroundColor: port ? PORT_COLORS[port.portType] ?? PORT_COLORS.custom : "transparent" }} />
+                <span className="min-w-0 truncate">{port?.label ?? ""}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="min-w-0 space-y-[2%]">
+          {Array.from({ length: rows }, (_, index) => {
+            const port = outputs[index];
+            return (
+              <div key={port?.id ?? `output-${index}`} className="flex min-w-0 items-center justify-end gap-1 text-[clamp(5px,0.62vw,9px)] leading-tight">
+                <span className="min-w-0 truncate text-right">{port?.label ?? ""}</span>
+                <span className="h-[clamp(5px,0.65vw,9px)] w-[clamp(5px,0.65vw,9px)] shrink-0 rounded-full border-2 border-slate-950" style={{ backgroundColor: port ? PORT_COLORS[port.portType] ?? PORT_COLORS.custom : "transparent" }} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DeviceCards({ devices }: { devices: TechDocDevice[] }) {
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden border border-black/70 bg-white p-[0.6%] text-black">
-      <div className="mb-[0.5%] shrink-0 text-[clamp(5px,0.65vw,9px)] font-bold uppercase tracking-wide">Signal Flow Devices</div>
-      <div className="grid min-h-0 flex-1 grid-cols-2 gap-[0.6%] overflow-hidden">
-        {devices.map((device) => {
-          const inputs = device.ports.filter((port) => port.direction === "input");
-          const outputs = device.ports.filter((port) => port.direction === "output");
-          return (
-            <div key={device.id} className="min-h-0 overflow-hidden rounded border border-slate-300 bg-white">
-              <div className="flex min-w-0 items-center gap-1 border-b border-slate-200 bg-slate-100 px-[1.5%] py-[1%]">
-                <span className="h-[clamp(4px,0.55vw,8px)] w-[clamp(4px,0.55vw,8px)] shrink-0 rounded-full" style={{ backgroundColor: device.color }} />
-                <span className="min-w-0 truncate text-[clamp(5px,0.7vw,10px)] font-bold">{device.name}</span>
-              </div>
-              <div className="grid min-h-0 grid-cols-2 gap-[2%] px-[1.5%] py-[1%]">
-                {[{ label: "Inputs", ports: inputs }, { label: "Outputs", ports: outputs }].map((group) => (
-                  <div key={group.label} className="min-w-0">
-                    <div className="mb-[2%] text-[clamp(4px,0.5vw,7px)] font-semibold uppercase text-slate-500">{group.label}</div>
-                    <div className="space-y-[2%]">
-                      {group.ports.slice(0, 8).map((port) => (
-                        <div key={port.id} className="flex min-w-0 items-center gap-1 text-[clamp(4px,0.5vw,7px)] leading-tight">
-                          <span className="min-w-0 truncate">{port.label}</span>
-                          <span className="h-px min-w-1 flex-1 bg-slate-300" />
-                        </div>
-                      ))}
-                      {group.ports.length > 8 && <div className="text-[clamp(4px,0.45vw,6px)] text-slate-400">+{group.ports.length - 8} more</div>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+    <div className="flex h-full min-h-0 flex-col overflow-hidden border border-slate-700 bg-[#0b1220] p-[0.6%] text-white">
+      <div className="mb-[0.5%] shrink-0 text-[clamp(5px,0.65vw,9px)] font-bold uppercase tracking-wide text-slate-200">Signal Flow Devices</div>
+      <div className="grid min-h-0 flex-1 grid-cols-2 gap-[1%] overflow-hidden">
+        {devices.map((device) => <DeviceNode key={device.id} device={device} />)}
       </div>
     </div>
   );
