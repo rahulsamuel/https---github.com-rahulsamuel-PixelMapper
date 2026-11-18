@@ -77,7 +77,6 @@ function DeviceNode({ device }: { device: TechDocDevice }) {
 function DeviceCards({ devices }: { devices: TechDocDevice[] }) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden border border-slate-700 bg-[#0b1220] p-[0.6%] text-white">
-      <div className="mb-[0.5%] shrink-0 text-[clamp(5px,0.65vw,9px)] font-bold uppercase tracking-wide text-slate-200">Signal Flow Devices</div>
       <div className="grid min-h-0 flex-1 grid-cols-2 items-start justify-items-start gap-[1%] overflow-hidden">
         {devices.map((device) => <DeviceNode key={device.id} device={device} />)}
       </div>
