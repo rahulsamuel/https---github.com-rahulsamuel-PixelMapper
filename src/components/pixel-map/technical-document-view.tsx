@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { FileText, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
@@ -7,6 +8,21 @@ import { useTechnicalDocument } from "./technical-document-context";
 import type { TechDocDevice } from "@/lib/tech-doc-saves";
 
 const PAGE_ASPECT = 17 / 11;
+const TECH_DOC_IMAGE_PATH = "/storage/v1/object/sign/tech-doc-images/";
+
+function getPreviewImageUrl(url: string | null): string | null {
+  if (!url || !/^https?:\/\//i.test(url) || !url.includes(TECH_DOC_IMAGE_PATH)) return url;
+  return `/api/tech-doc-image?url=${encodeURIComponent(url)}`;
+}
+
+function DocumentImage({ url, alt }: { url: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <span className="text-xs text-gray-400">Image could not be loaded.</span>;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={getPreviewImageUrl(url) ?? url} alt={alt} className="max-h-full max-w-full object-contain" onError={() => setFailed(true)} />
+  );
+}
 
 const PORT_COLORS: Record<string, string> = {
   hdmi: "#ef4444",
@@ -114,8 +130,7 @@ export function TechnicalDocumentView() {
                   </div>
                   <div className="my-[1%] flex min-h-0 items-center justify-center overflow-hidden border border-black/70" style={{ flex: hasDevices ? 3 : 1 }}>
                     {image?.url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={image.url} alt={section.title} className="max-h-full max-w-full object-contain" />
+                      <DocumentImage url={image.url} alt={section.title} />
                     ) : image?.loading ? (
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     ) : (
