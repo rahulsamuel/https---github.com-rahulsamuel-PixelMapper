@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, RefreshCw } from "lucide-react";
+import { FileText, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { useTechnicalDocument } from "./technical-document-context";
@@ -8,7 +8,7 @@ import { useTechnicalDocument } from "./technical-document-context";
 const PAGE_ASPECT = 17 / 11;
 
 export function TechnicalDocumentView() {
-  const { doc, imageUrls, rasterMapImageUrl, logoUrl, projectName, screens, loading, loadError } = useTechnicalDocument();
+  const { doc, imageUrls, rasterMapImageUrl, logoUrl, projectName, screens, loading, loadError, downloadPdf, downloading } = useTechnicalDocument();
 
   if (loading) {
     return <div className="flex h-full items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -30,6 +30,11 @@ export function TechnicalDocumentView() {
   return (
     <div className="h-full w-full overflow-auto p-4">
       <div className="mx-auto max-w-5xl space-y-6">
+        <div className="no-print flex justify-end">
+          <Button variant="outline" size="sm" onClick={() => void downloadPdf()} disabled={downloading}>
+            <FileText className="mr-2 h-4 w-4" /> {downloading ? "Generating..." : "Technical Document PDF"}
+          </Button>
+        </div>
         {doc.sections.map((section, index) => {
           const uploadedImage = imageUrls[section.key];
           const image = section.type === "raster_map"
