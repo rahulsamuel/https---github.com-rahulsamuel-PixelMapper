@@ -36,16 +36,16 @@ export function TechnicalDocumentControls() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="tech-doc-title">Document Title</Label>
-              <Input id="tech-doc-title" value={doc.title} onChange={(event) => updateDoc((current) => ({ ...current, title: event.target.value }))} />
+              <Input id="tech-doc-title" className="min-w-0 max-w-full truncate" value={doc.title} onChange={(event) => updateDoc((current) => ({ ...current, title: event.target.value }))} />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-2">
                 <Label htmlFor="tech-doc-revision">Revision</Label>
-                <Input id="tech-doc-revision" value={doc.revision} onChange={(event) => updateDoc((current) => ({ ...current, revision: event.target.value }))} />
+                <Input id="tech-doc-revision" className="min-w-0 max-w-full truncate" value={doc.revision} onChange={(event) => updateDoc((current) => ({ ...current, revision: event.target.value }))} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="tech-doc-date">Date</Label>
-                <Input id="tech-doc-date" type="date" value={doc.date} onChange={(event) => updateDoc((current) => ({ ...current, date: event.target.value }))} />
+                <Input id="tech-doc-date" type="date" className="min-w-0 max-w-full truncate" value={doc.date} onChange={(event) => updateDoc((current) => ({ ...current, date: event.target.value }))} />
               </div>
             </div>
           </div>
@@ -66,7 +66,7 @@ export function TechnicalDocumentControls() {
                       <Button variant="ghost" size="icon" className="h-7 w-7" disabled={index === doc.sections.length - 1} onClick={() => moveSection(index, 1)} aria-label="Move page down"><MoveDown className="h-3.5 w-3.5" /></Button>
                     </div>
                   </div>
-                  <Input className="w-full min-w-0 max-w-full" value={section.title} onChange={(event) => updateDoc((current) => ({ ...current, sections: current.sections.map((candidate) => candidate.key === section.key ? { ...candidate, title: event.target.value } : candidate) }))} placeholder="Page title" />
+                  <Input className="w-full min-w-0 max-w-full truncate" value={section.title} onChange={(event) => updateDoc((current) => ({ ...current, sections: current.sections.map((candidate) => candidate.key === section.key ? { ...candidate, title: event.target.value } : candidate) }))} placeholder="Page title" />
                   <input
                     ref={(element) => { fileInputs.current[inputKey] = element; }}
                     type="file"
@@ -83,14 +83,14 @@ export function TechnicalDocumentControls() {
                       <span className="min-w-0 flex-1 truncate">{section.storagePath.split("/").pop()}</span>
                       <div className="flex shrink-0 items-center gap-1">
                         <Button variant="outline" size="sm" className="h-7" disabled={uploadingKey === inputKey} onClick={() => fileInputs.current[inputKey]?.click()}>
-                          {uploadingKey === inputKey ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />} Replace
+                          {uploadingKey === inputKey ? <Loader2 className="mr-1 h-3 w-3 shrink-0 animate-spin" /> : <Upload className="mr-1 h-3 w-3 shrink-0" />} <span className="min-w-0 truncate">Replace</span>
                         </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemoveImage(inputKey)} aria-label="Remove image"><X className="h-3.5 w-3.5" /></Button>
                       </div>
                     </div>
                   ) : (
                     <Button variant="outline" size="sm" className="h-auto min-h-9 w-full min-w-0 max-w-full whitespace-normal break-words px-3 py-2 text-center leading-tight" disabled={uploadingKey === inputKey} onClick={() => fileInputs.current[inputKey]?.click()}>
-                      {uploadingKey === inputKey ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-2 h-3.5 w-3.5" />} Upload Image
+                      {uploadingKey === inputKey ? <Loader2 className="mr-2 h-3.5 w-3.5 shrink-0 animate-spin" /> : <Upload className="mr-2 h-3.5 w-3.5 shrink-0" />} <span className="min-w-0 flex-1 whitespace-normal break-words">Upload Image</span>
                     </Button>
                   )}
                 </div>
@@ -101,8 +101,8 @@ export function TechnicalDocumentControls() {
       </div>
       <div className="w-full min-w-0 space-y-2 border-t pt-3">
         <Button className="h-auto min-h-10 w-full min-w-0 max-w-full whitespace-normal break-words px-3 py-2 text-center leading-tight" onClick={() => void downloadPdf()} disabled={downloading}>
-          {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-          Download Technical Document PDF
+          {downloading ? <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" /> : <Download className="mr-2 h-4 w-4 shrink-0" />}
+          <span className="min-w-0 flex-1 whitespace-normal break-words">Download Technical Document PDF</span>
         </Button>
         <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
           <Save className="h-3 w-3" /> {saving ? "Saving..." : "All changes saved"}
