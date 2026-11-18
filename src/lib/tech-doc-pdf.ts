@@ -72,6 +72,17 @@ function imageFormatFromUrl(url: string): "JPEG" | "PNG" {
   return /\.jpe?g(?:[?#]|$)/i.test(url) ? "JPEG" : "PNG";
 }
 
+function getPdfImageUrl(url: string): string {
+  if (!/^https?:\/\//i.test(url)) return url;
+  try {
+    const target = new URL(url);
+    if (typeof window !== "undefined" && target.origin === window.location.origin) return url;
+    return `/api/tech-doc-image?url=${encodeURIComponent(target.toString())}`;
+  } catch {
+    return url;
+  }
+}
+
 async function loadLogoDataUrl(url: string): Promise<string | null> {
   try {
     const res = await fetch(url);
@@ -107,26 +118,30 @@ function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number,
   const gap = 4;
   const columns = 2;
   const rows = Math.ceil(devices.length / columns);
-  const cardWidth = (width - gap) / columns;
-  const cardHeight = (height - gap * Math.max(0, rows - 1)) / rows;
-  const maxPortsPerSide = Math.max(1, Math.floor((cardHeight - 20) / 4.2));
+  const slotWidth = (width - gap) / columns;
+  const rowHeight = (height - gap * Math.max(0, rows - 1)) / rows;
 
   devices.forEach((device, index) => {
     const column = index % columns;
     const row = Math.floor(index / columns);
-    const x = left + column * (cardWidth + gap);
-    const y = top + row * (cardHeight + gap);
+    const xSlot = left + column * (slotWidth + gap);
+    const y = top + row * (rowHeight + gap);
     const inputs = device.ports.filter((port) => port.direction === "input");
     const outputs = device.ports.filter((port) => port.direction === "output");
-    const visibleRows = Math.min(maxPortsPerSide, Math.max(inputs.length, outputs.length));
+    const portRows = Math.max(inputs.length, outputs.length);
+    const nodeHeight = rowHeight;
+    const nodeRatio = device.width / Math.max(device.height, 70 + portRows * 22);
+    const nodeWidth = Math.min(slotWidth, Math.max(42, nodeHeight * nodeRatio));
+    const x = xSlot + (slotWidth - nodeWidth) / 2;
+    const visibleRows = Math.min(Math.max(1, Math.floor((nodeHeight - 20) / 4.2)), portRows);
 
     pdf.setFillColor(...NODE_BACKGROUND);
     pdf.setDrawColor(...NODE_BORDER);
     pdf.setLineWidth(0.8);
-    pdf.roundedRect(x, y, cardWidth, cardHeight, 3, 3, "FD");
+    pdf.roundedRect(x, y, nodeWidth, nodeHeight, 3, 3, "FD");
     pdf.setFillColor(...NODE_HEADER);
-    pdf.roundedRect(x + 0.5, y + 0.5, cardWidth - 1, 10, 2.5, 2.5, "F");
-    pdf.rect(x + 0.5, y + 6, cardWidth - 1, 4.5, "F");
+    pdf.roundedRect(x + 0.5, y + 0.5, nodeWidth - 1, 10, 2.5, 2.5, "F");
+    pdf.rect(x + 0.5, y + 6, nodeWidth - 1, 4.5, "F");
 
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(8);
@@ -135,7 +150,7 @@ function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number,
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(5.5);
     pdf.setTextColor(220, 235, 255);
-    pdf.text(truncateText(device.type.replaceAll("-", " ").toUpperCase(), 16), x + cardWidth - 5, y + 6.5, { align: "right" });
+    pdf.text(truncateText(device.type.replaceAll("-", " ").toUpperCase(), 16), x + nodeWidth - 5, y + 6.5, { align: "right" });
 
     for (let portIndex = 0; portIndex < visibleRows; portIndex++) {
       const portY = y + 17 + portIndex * 4.2;
@@ -155,11 +170,11 @@ function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number,
         const color = PORT_COLORS[output.portType] ?? PORT_COLORS.custom;
         pdf.setFillColor(...color);
         pdf.setDrawColor(7, 15, 28);
-        pdf.circle(x + cardWidth - 5, portY - 1.3, 1.8, "FD");
+        pdf.circle(x + nodeWidth - 5, portY - 1.3, 1.8, "FD");
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(6.5);
         pdf.setTextColor(...WHITE);
-        pdf.text(truncateText(output.label, 20), x + cardWidth - 9, portY, { align: "right" });
+        pdf.text(truncateText(output.label, 20), x + nodeWidth - 9, portY, { align: "right" });
       }
     }
 
@@ -167,7 +182,7 @@ function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number,
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(5.5);
       pdf.setTextColor(220, 235, 255);
-      pdf.text(`+${Math.max(inputs.length, outputs.length) - visibleRows} more ports`, x + cardWidth / 2, y + cardHeight - 4, { align: "center" });
+      pdf.text(`+${Math.max(inputs.length, outputs.length) - visibleRows} more ports`, x + nodeWidth / 2, y + nodeHeight - 4, { align: "center" });
     }
   });
 }
@@ -227,7 +242,7 @@ export async function buildTechDocPdf(
     pdf.rect(frameLeft, frameTop, frameW, imageFrameH);
 
     if (page.imageUrl) {
-      const img = await loadImageElement(page.imageUrl);
+      const img = await loadImageElement(getPdfImageUrl(page.imageUrl));
       if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
         const pad = 4;
         const availW = frameW - pad * 2;

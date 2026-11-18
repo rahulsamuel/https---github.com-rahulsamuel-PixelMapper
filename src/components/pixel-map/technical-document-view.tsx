@@ -22,9 +22,10 @@ function DeviceNode({ device }: { device: TechDocDevice }) {
   const inputs = device.ports.filter((port) => port.direction === "input");
   const outputs = device.ports.filter((port) => port.direction === "output");
   const rows = Math.max(inputs.length, outputs.length);
+  const nodeHeight = Math.max(device.height, 70 + rows * 22);
 
   return (
-    <div className="h-max max-h-full min-h-0 overflow-y-auto rounded-xl border-2 border-sky-400 bg-[#294c7a] text-white shadow-[0_0_8px_rgba(14,165,233,0.6)]" style={{ scrollbarColor: "#38bdf8 #0f172a", scrollbarWidth: "thin" }}>
+    <div className="h-full max-h-full min-h-0 w-auto max-w-full min-w-0 self-start overflow-y-auto rounded-xl border-2 border-sky-400 bg-[#294c7a] text-white shadow-[0_0_8px_rgba(14,165,233,0.6)]" style={{ aspectRatio: `${device.width} / ${nodeHeight}`, scrollbarColor: "#38bdf8 #0f172a", scrollbarWidth: "thin" }}>
       <div className="flex min-w-0 items-center justify-between gap-2 border-b border-white/25 bg-[#31598c] px-[3%] py-[2%]">
         <span className="min-w-0 truncate text-[clamp(6px,0.8vw,12px)] font-bold">{device.name}</span>
         <span className="shrink-0 text-[clamp(4px,0.5vw,7px)] uppercase text-white/70">{device.type.replaceAll("-", " ")}</span>
@@ -61,7 +62,7 @@ function DeviceCards({ devices }: { devices: TechDocDevice[] }) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden border border-slate-700 bg-[#0b1220] p-[0.6%] text-white">
       <div className="mb-[0.5%] shrink-0 text-[clamp(5px,0.65vw,9px)] font-bold uppercase tracking-wide text-slate-200">Signal Flow Devices</div>
-      <div className="grid min-h-0 flex-1 grid-cols-2 gap-[1%] overflow-hidden">
+      <div className="grid min-h-0 flex-1 grid-cols-2 items-start justify-items-start gap-[1%] overflow-hidden">
         {devices.map((device) => <DeviceNode key={device.id} device={device} />)}
       </div>
     </div>
