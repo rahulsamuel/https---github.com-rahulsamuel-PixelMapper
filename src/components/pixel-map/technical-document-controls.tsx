@@ -66,7 +66,7 @@ export function TechnicalDocumentControls() {
                       <Button variant="ghost" size="icon" className="h-7 w-7" disabled={index === doc.sections.length - 1} onClick={() => moveSection(index, 1)} aria-label="Move page down"><MoveDown className="h-3.5 w-3.5" /></Button>
                     </div>
                   </div>
-                  <Input className="w-full min-w-0 max-w-full truncate" value={section.title} onChange={(event) => updateDoc((current) => ({ ...current, sections: current.sections.map((candidate) => candidate.key === section.key ? { ...candidate, title: event.target.value } : candidate) }))} placeholder="Page title" />
+                  <Input className="w-full min-w-0 max-w-[220px] truncate" value={section.title} onChange={(event) => updateDoc((current) => ({ ...current, sections: current.sections.map((candidate) => candidate.key === section.key ? { ...candidate, title: event.target.value } : candidate) }))} placeholder="Page title" />
                   <input
                     ref={(element) => { fileInputs.current[inputKey] = element; }}
                     type="file"
