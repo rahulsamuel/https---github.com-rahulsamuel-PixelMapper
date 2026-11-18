@@ -27,7 +27,7 @@ export function TechnicalDocumentControls() {
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-3">
-      <div className="h-[calc(100vh-230px)] min-h-0 w-full max-w-full overflow-y-auto overflow-x-hidden pr-2">
+      <div className="w-full min-w-0 max-w-full pr-2">
         <div className="w-full min-w-0 max-w-full space-y-5 overflow-x-hidden break-words [overflow-wrap:anywhere]">
           <div className="space-y-3">
             <div>
