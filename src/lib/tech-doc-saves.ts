@@ -76,11 +76,15 @@ function makeSection(type: TechDocSectionType, screen: TechDocScreenReference | 
 }
 
 export function buildDefaultSections(screens: TechDocScreenReference[]): TechDocSection[] {
-  const screenSections = screens.flatMap((screen) =>
-    SCREEN_SECTION_TYPES.map((type) => makeSection(type, screen))
+  const pixelMapSections = screens.map((screen) => makeSection("pixel_map", screen));
+  const otherScreenSections = screens.flatMap((screen) =>
+    SCREEN_SECTION_TYPES.filter((type) => type !== "pixel_map").map((type) => makeSection(type, screen))
   );
-  const projectSections = PROJECT_SECTION_TYPES.map((type) => makeSection(type, null));
-  return [...screenSections, ...projectSections];
+  const rasterMapSection = makeSection("raster_map", null);
+  const otherProjectSections = PROJECT_SECTION_TYPES
+    .filter((type) => type !== "raster_map")
+    .map((type) => makeSection(type, null));
+  return [...pixelMapSections, rasterMapSection, ...otherScreenSections, ...otherProjectSections];
 }
 
 export function emptyTechDoc(projectName: string, screens: TechDocScreenReference[] = []): TechDocData {
@@ -134,6 +138,13 @@ export function parseTechDoc(
     if (!savedKeys.has(section.key)) sections.push(section);
   }
   if (sections.length === 0) sections.push(...buildDefaultSections(screens));
+
+  const legacyRasterPosition = screens.length * SCREEN_SECTION_TYPES.length;
+  const rasterIndex = sections.findIndex((section) => section.type === "raster_map");
+  if (screens.length > 0 && rasterIndex === legacyRasterPosition) {
+    const [rasterSection] = sections.splice(rasterIndex, 1);
+    sections.splice(screens.length, 0, rasterSection);
+  }
 
   return {
     title: typeof r.title === "string" && r.title.trim() ? r.title : fallback.title,

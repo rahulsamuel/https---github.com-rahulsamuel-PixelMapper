@@ -31,9 +31,10 @@ export function TechnicalDocumentView() {
     <div className="h-full w-full overflow-auto p-4">
       <div className="mx-auto max-w-5xl space-y-6">
         {doc.sections.map((section, index) => {
+          const uploadedImage = imageUrls[section.key];
           const image = section.type === "raster_map"
-            ? { url: rasterMapImageUrl, loading: false }
-            : imageUrls[section.key];
+            ? { url: uploadedImage?.url ?? rasterMapImageUrl, loading: uploadedImage?.loading ?? false }
+            : uploadedImage;
           const sectionScreen = screens.find((screen) => screen.id === section.screenId);
           const screenName = sectionScreen?.name ?? "All Screens";
           return (
