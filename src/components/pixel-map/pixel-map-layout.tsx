@@ -64,6 +64,8 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { TabRail } from "./pixel-map-tab-rail";
 import { TestVideoControls } from "./test-video-controls";
 import { TestVideoSettingsProvider } from "./test-video-settings";
+import { TechnicalDocumentProvider } from "./technical-document-context";
+import { TechnicalDocumentControls } from "./technical-document-controls";
 
 
 export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher }: { onlineUsers?: PresenceUser[]; onShareClick?: () => void; projectSwitcher?: React.ReactNode }) {
@@ -247,6 +249,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
 
   return (
     <TestVideoSettingsProvider>
+    <TechnicalDocumentProvider>
     <div className="flex h-full w-full overflow-hidden">
       {isManualPowerModalOpen && (
         <Suspense fallback={null}>
@@ -436,6 +439,15 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                   </Button>
                 </AccordionContent>
               </AccordionItem>
+
+              {activeTab === 'tech-doc' && isAdmin && (
+                <AccordionItem value="technical-document" className="w-full border-none">
+                  <AccordionSectionTrigger icon={<FileText className="size-5" />} title="Technical Document" colorClass="border-l-4 border-l-blue-500" />
+                  <AccordionContent className="bg-background border rounded-b-lg -mt-2 p-4">
+                    <TechnicalDocumentControls />
+                  </AccordionContent>
+                </AccordionItem>
+              )}
 
               {activeTab === 'test-video' && (
                 <AccordionItem value="test-video-settings" className="w-full border-none">
@@ -718,6 +730,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
         </Tabs>
       </div>
     </div>
+    </TechnicalDocumentProvider>
     </TestVideoSettingsProvider>
   );
 }

@@ -15,13 +15,13 @@ const LINE: [number, number, number] = [30, 41, 59];
 export interface TechDocPdfPage {
   label: string;
   title: string;
+  screenName: string;
   imageUrl: string | null;
 }
 
 export interface TechDocPdfMeta {
   doc: TechDocData;
   projectName: string;
-  screenName: string;
   pageNumber: number;
   totalPages: number;
 }
@@ -61,17 +61,16 @@ export async function buildTechDocPdf(
   if (pages.length === 0) return null;
   const pdf = new jsPdfCtor({
     unit: "mm",
-    format: [PAGE_W, PAGE_H],
+    format: "tabloid",
     orientation: "landscape",
     compress: true,
   });
 
   const logo = await loadLogoDataUrl(pdf);
-  let drewLogo = false;
 
   for (let i = 0; i < pages.length; i++) {
     const page = pages[i];
-    if (i > 0) pdf.addPage([PAGE_W, PAGE_H], "landscape");
+    if (i > 0) pdf.addPage("tabloid", "landscape");
 
     // Outer border
     pdf.setDrawColor(...LINE);
@@ -88,7 +87,7 @@ export async function buildTechDocPdf(
 
     // Image area — bordered frame between title and title block
     const frameTop = MARGIN + 22;
-    const frameBottom = PAGE_H - MARGIN - 26;
+    const frameBottom = PAGE_H - MARGIN - 32;
     const frameLeft = MARGIN + 8;
     const frameRight = PAGE_W - MARGIN - 8;
     const frameW = frameRight - frameLeft;
@@ -147,7 +146,7 @@ export async function buildTechDocPdf(
     const colW = (PAGE_W - MARGIN * 2) / 4;
     const cells: { label: string; value: string }[] = [
       { label: "PROJECT", value: meta.projectName },
-      { label: "SCREEN", value: meta.screenName },
+      { label: "SCREEN", value: page.screenName },
       { label: "REVISION", value: meta.doc.revision || "-" },
       { label: "DATE", value: meta.doc.date || "-" },
     ];
@@ -167,25 +166,24 @@ export async function buildTechDocPdf(
     pdf.line(MARGIN, blockTop + rowH, PAGE_W - MARGIN, blockTop + rowH);
     pdf.line(MARGIN, blockTop + rowH * 2, PAGE_W - MARGIN, blockTop + rowH * 2);
 
-    // Logo in the block, to the right of the DOC cell
-    if (logo && !drewLogo) {
+    // Logo in the block, to the right of the title block
+    if (logo) {
       try {
         pdf.addImage(logo, "PNG", PAGE_W - MARGIN - 40, blockTop + rowH + 1.5, 36, 0, undefined, "FAST");
       } catch {
         // Logo embedding is optional.
       }
-      drewLogo = true;
     }
 
-    // Footer: section label + page number
+    // Footer stays inside the page border, below the title block
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(8);
     pdf.setTextColor(...MUTED);
-    pdf.text(page.label, MARGIN + 2, PAGE_H - MARGIN / 2 + 1);
+    pdf.text(page.label, MARGIN + 2, PAGE_H - MARGIN - 3);
     pdf.text(
       `Page ${i + 1} of ${pages.length}`,
       PAGE_W - MARGIN - 2,
-      PAGE_H - MARGIN / 2 + 1,
+      PAGE_H - MARGIN - 3,
       { align: "right" }
     );
   }
