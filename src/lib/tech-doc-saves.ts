@@ -217,11 +217,14 @@ export function parseTechDoc(
   }
   if (sections.length === 0) sections.push(...buildDefaultSections(screens));
 
-  const legacyRasterPosition = screens.length * SCREEN_SECTION_TYPES.length;
   const rasterIndex = sections.findIndex((section) => section.type === "raster_map");
-  if (screens.length > 0 && rasterIndex === legacyRasterPosition) {
+  if (rasterIndex >= 0) {
     const [rasterSection] = sections.splice(rasterIndex, 1);
-    sections.splice(screens.length, 0, rasterSection);
+    const lastPixelMapIndex = sections.reduce(
+      (lastIndex, section, index) => section.type === "pixel_map" ? index : lastIndex,
+      -1
+    );
+    sections.splice(lastPixelMapIndex + 1, 0, rasterSection);
   }
 
   return {
