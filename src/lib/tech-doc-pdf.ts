@@ -28,7 +28,7 @@ export interface TechDocPdfMeta {
   totalPages: number;
 }
 
-const LOGO_PATH = "/MapMyLED_wordmark_transparent.png";
+const LOGO_PATH = "/Untitled_design_(4)-modified.png";
 
 async function loadImageElement(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
@@ -148,8 +148,10 @@ export async function buildTechDocPdf(
     pdf.setLineWidth(0.4);
     pdf.line(MARGIN, blockTop, PAGE_W - MARGIN, blockTop);
 
-    const rowH = 13;
-    const colW = (PAGE_W - MARGIN * 2) / 4;
+    const rowH = footerHeight - 7;
+    const footerW = PAGE_W - MARGIN * 2;
+    const logoColW = 44;
+    const fieldColW = (footerW - logoColW) / 4;
     const cells: { label: string; value: string }[] = [
       { label: "PROJECT", value: meta.projectName },
       { label: "SCREEN", value: page.screenName },
@@ -157,25 +159,36 @@ export async function buildTechDocPdf(
       { label: "DATE", value: meta.doc.date || "-" },
     ];
     cells.forEach((cell, idx) => {
-      const x = MARGIN + idx * colW;
+      const x = MARGIN + idx * fieldColW;
       pdf.setLineWidth(0.25);
-      pdf.line(x, blockTop, x, blockTop + rowH * 2);
+      pdf.line(x, blockTop, x, blockTop + rowH);
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(7.5);
       pdf.setTextColor(...WHITE);
-      pdf.text(cell.label, x + 4, blockTop + 5);
+      pdf.text(cell.label, x + 4, blockTop + 7);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(10.5);
       pdf.setTextColor(...WHITE);
-      pdf.text(cell.value.normalize("NFKC"), x + 4, blockTop + 11);
+      pdf.text(cell.value.normalize("NFKC"), x + 4, blockTop + 14);
     });
-    pdf.line(MARGIN, blockTop + rowH, PAGE_W - MARGIN, blockTop + rowH);
-    pdf.line(MARGIN, blockTop + rowH * 2, PAGE_W - MARGIN, blockTop + rowH * 2);
 
-    // Logo in the block, to the right of the title block
+    const logoX = MARGIN + fieldColW * 4;
+    pdf.line(logoX, blockTop, logoX, blockTop + rowH);
+    pdf.line(MARGIN, blockTop + rowH, PAGE_W - MARGIN, blockTop + rowH);
+
     if (logo) {
       try {
-        pdf.addImage(logo, "PNG", PAGE_W - MARGIN - 40, blockTop + rowH + 1.5, 36, 0, undefined, "FAST");
+        const logoSize = Math.min(24, rowH - 2);
+        pdf.addImage(
+          logo,
+          "PNG",
+          logoX + (logoColW - logoSize) / 2,
+          blockTop + (rowH - logoSize) / 2,
+          logoSize,
+          logoSize,
+          undefined,
+          "FAST"
+        );
       } catch {
         // Logo embedding is optional.
       }
