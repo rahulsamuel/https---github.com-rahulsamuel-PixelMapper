@@ -27,8 +27,8 @@ export function TechnicalDocumentControls() {
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-3">
-      <div className="h-[calc(100vh-230px)] min-h-0 overflow-y-auto overflow-x-hidden pr-2">
-        <div className="w-full min-w-0 max-w-full space-y-5 overflow-x-hidden break-words [overflow-wrap:anywhere] [&_*]:min-w-0 [&_*]:max-w-full [&_.truncate]:flex-1 [&_.truncate]:overflow-hidden [&_.truncate]:text-ellipsis [&_.text-destructive]:shrink-0">
+      <div className="h-[calc(100vh-230px)] min-h-0 w-full max-w-full overflow-y-auto overflow-x-hidden pr-2">
+        <div className="w-full min-w-0 max-w-full space-y-5 overflow-x-hidden break-words [overflow-wrap:anywhere]">
           <div className="space-y-3">
             <div>
               <h3 className="font-semibold">Document Details</h3>
@@ -58,15 +58,15 @@ export function TechnicalDocumentControls() {
             {doc.sections.map((section, index) => {
               const inputKey = section.key;
               return (
-                <div key={section.key} className="space-y-2 rounded-lg border bg-card p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="min-w-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{section.title}</span>
+                <div key={section.key} className="w-full min-w-0 max-w-full space-y-2 overflow-hidden rounded-lg border bg-card p-3">
+                  <div className="flex w-full min-w-0 items-start justify-between gap-2">
+                    <span className="min-w-0 flex-1 break-words text-xs font-semibold uppercase leading-snug tracking-wide text-muted-foreground">{section.title}</span>
                     <div className="flex shrink-0 items-center gap-0.5">
                       <Button variant="ghost" size="icon" className="h-7 w-7" disabled={index === 0} onClick={() => moveSection(index, -1)} aria-label="Move page up"><MoveUp className="h-3.5 w-3.5" /></Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7" disabled={index === doc.sections.length - 1} onClick={() => moveSection(index, 1)} aria-label="Move page down"><MoveDown className="h-3.5 w-3.5" /></Button>
                     </div>
                   </div>
-                  <Input value={section.title} onChange={(event) => updateDoc((current) => ({ ...current, sections: current.sections.map((candidate) => candidate.key === section.key ? { ...candidate, title: event.target.value } : candidate) }))} placeholder="Page title" />
+                  <Input className="w-full min-w-0 max-w-full" value={section.title} onChange={(event) => updateDoc((current) => ({ ...current, sections: current.sections.map((candidate) => candidate.key === section.key ? { ...candidate, title: event.target.value } : candidate) }))} placeholder="Page title" />
                   <input
                     ref={(element) => { fileInputs.current[inputKey] = element; }}
                     type="file"
@@ -79,8 +79,8 @@ export function TechnicalDocumentControls() {
                     }}
                   />
                   {section.storagePath ? (
-                    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                      <span className="truncate">{section.storagePath.split("/").pop()}</span>
+                    <div className="flex w-full min-w-0 max-w-full items-center justify-between gap-2 text-xs text-muted-foreground">
+                      <span className="min-w-0 flex-1 truncate">{section.storagePath.split("/").pop()}</span>
                       <div className="flex shrink-0 items-center gap-1">
                         <Button variant="outline" size="sm" className="h-7" disabled={uploadingKey === inputKey} onClick={() => fileInputs.current[inputKey]?.click()}>
                           {uploadingKey === inputKey ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Upload className="mr-1 h-3 w-3" />} Replace
@@ -89,7 +89,7 @@ export function TechnicalDocumentControls() {
                       </div>
                     </div>
                   ) : (
-                    <Button variant="outline" size="sm" className="w-full" disabled={uploadingKey === inputKey} onClick={() => fileInputs.current[inputKey]?.click()}>
+                    <Button variant="outline" size="sm" className="h-auto min-h-9 w-full min-w-0 max-w-full whitespace-normal break-words px-3 py-2 text-center leading-tight" disabled={uploadingKey === inputKey} onClick={() => fileInputs.current[inputKey]?.click()}>
                       {uploadingKey === inputKey ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-2 h-3.5 w-3.5" />} Upload Image
                     </Button>
                   )}
@@ -100,7 +100,7 @@ export function TechnicalDocumentControls() {
         </div>
       </div>
       <div className="w-full min-w-0 space-y-2 border-t pt-3">
-        <Button className="h-auto min-h-10 w-full whitespace-normal break-words px-3 py-2 text-center leading-tight" onClick={() => void downloadPdf()} disabled={downloading}>
+        <Button className="h-auto min-h-10 w-full min-w-0 max-w-full whitespace-normal break-words px-3 py-2 text-center leading-tight" onClick={() => void downloadPdf()} disabled={downloading}>
           {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
           Download Technical Document PDF
         </Button>
