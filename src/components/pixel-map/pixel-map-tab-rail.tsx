@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LayoutGrid, Cable, Map as MapIcon, Server, Package, MonitorPlay, ChevronsLeft, ChevronsRight, type LucideIcon } from "lucide-react";
+import { LayoutGrid, Cable, Map as MapIcon, Server, Package, MonitorPlay, FileText, ChevronsLeft, ChevronsRight, type LucideIcon } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -14,12 +14,18 @@ const VIEW_TABS: { value: string; label: string; icon: LucideIcon }[] = [
   { value: "test-video", label: "Test Video", icon: MonitorPlay },
 ];
 
+const ADMIN_TABS: { value: string; label: string; icon: LucideIcon }[] = [
+  { value: "tech-doc", label: "Technical Document", icon: FileText },
+];
+
 interface TabRailProps {
   activeTab: string | null;
   onSelect: (tab: string) => void;
+  adminTabs?: boolean;
 }
 
-export function TabRail({ activeTab, onSelect }: TabRailProps) {
+export function TabRail({ activeTab, onSelect, adminTabs = false }: TabRailProps) {
+  const tabs = adminTabs ? [...VIEW_TABS, ...ADMIN_TABS] : VIEW_TABS;
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -45,7 +51,7 @@ export function TabRail({ activeTab, onSelect }: TabRailProps) {
           {expanded && <span className="text-sm font-medium">Collapse</span>}
         </button>
 
-        {VIEW_TABS.map((tab) => {
+        {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.value;
           const button = (

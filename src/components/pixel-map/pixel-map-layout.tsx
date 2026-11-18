@@ -27,6 +27,7 @@ const DeliverablesView = lazy(() => import("./deliverables-view").then(m => ({ d
 const EquipmentView = lazy(() => import("./equipment-view").then(m => ({ default: m.EquipmentView })));
 const TestVideoView = lazy(() => import("./test-video-view").then(m => ({ default: m.TestVideoView })));
 const ProjectDetailsControls = lazy(() => import("../pixel-mapper/project-details-controls").then(m => ({ default: m.ProjectDetailsControls })));
+const TechnicalDocumentView = lazy(() => import("./technical-document-view").then(m => ({ default: m.TechnicalDocumentView })));
 import {
   Accordion,
   AccordionContent,
@@ -86,8 +87,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
     canUseAdvancedMode,
    } = usePixelMap();
   const viewportRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
-  const [renameValue, setRenameValue] = useState("");
+  const { user, isAdmin } = useAuth();
   const [isRenaming, setIsRenaming] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [screenToDelete, setScreenToDelete] = useState<string | null>(null);
@@ -705,9 +705,14 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               <TabsContent value="test-video" className="mt-0 px-8 pb-8 pt-0 flex justify-center items-start data-[state=inactive]:hidden">
                 <Suspense fallback={null}><TestVideoView /></Suspense>
               </TabsContent>
+              {isAdmin && (
+                <TabsContent value="tech-doc" className="mt-0 p-4 flex justify-center items-start">
+                  <Suspense fallback={null}><TechnicalDocumentView /></Suspense>
+                </TabsContent>
+              )}
           </div>
           </div>
-          <TabRail activeTab={activeTab} onSelect={handleTabChange} />
+          <TabRail activeTab={activeTab} onSelect={handleTabChange} adminTabs={isAdmin} />
           </div>
         </Tabs>
       </div>

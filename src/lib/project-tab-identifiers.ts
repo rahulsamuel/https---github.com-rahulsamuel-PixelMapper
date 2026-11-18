@@ -2,7 +2,7 @@
 
 import { supabase } from "@/lib/supabase/client";
 
-export type TabKey = "power_data" | "rack_drawing" | "pre_visual" | "signal_flow" | "hardware_list";
+export type TabKey = "power_data" | "rack_drawing" | "pre_visual" | "signal_flow" | "hardware_list" | "tech_doc";
 
 export const TAB_IDENTIFIER_LABELS: Record<TabKey, string> = {
   power_data: "Power & Data",
@@ -10,6 +10,7 @@ export const TAB_IDENTIFIER_LABELS: Record<TabKey, string> = {
   pre_visual: "Pre-Visual",
   signal_flow: "Signal Flow",
   hardware_list: "Hardware List",
+  tech_doc: "Technical Document",
 };
 
 export type TabIdentifiers = Partial<Record<TabKey, string>>;
