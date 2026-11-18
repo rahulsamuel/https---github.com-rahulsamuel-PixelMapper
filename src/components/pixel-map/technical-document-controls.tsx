@@ -58,7 +58,7 @@ export function TechnicalDocumentControls() {
             {doc.sections.map((section, index) => {
               const inputKey = section.key;
               return (
-                <div key={section.key} className="w-full min-w-0 max-w-full space-y-2 overflow-hidden rounded-lg border bg-card p-3">
+                <div key={section.key} className="w-full min-w-0 max-w-[280px] space-y-2 overflow-hidden rounded-lg border bg-card p-3">
                   <div className="flex w-full min-w-0 items-start justify-between gap-2">
                     <span className="min-w-0 flex-1 break-words text-xs font-semibold uppercase leading-snug tracking-wide text-muted-foreground">{section.title}</span>
                     <div className="flex shrink-0 items-center gap-0.5">
@@ -82,15 +82,15 @@ export function TechnicalDocumentControls() {
                     <div className="flex w-full min-w-0 max-w-full items-center justify-between gap-2 text-xs text-muted-foreground">
                       <span className="min-w-0 max-w-[160px] flex-1 truncate">{section.storagePath.split("/").pop()}</span>
                       <div className="flex shrink-0 items-center gap-1">
-                        <Button variant="outline" size="sm" className="h-7" disabled={uploadingKey === inputKey} onClick={() => fileInputs.current[inputKey]?.click()}>
-                          {uploadingKey === inputKey ? <Loader2 className="mr-1 h-3 w-3 shrink-0 animate-spin" /> : <Upload className="mr-1 h-3 w-3 shrink-0" />} <span className="min-w-0 truncate">Replace</span>
+                        <Button variant="outline" size="icon" className="h-7 w-7" disabled={uploadingKey === inputKey} onClick={() => fileInputs.current[inputKey]?.click()} aria-label="Replace image">
+                          {uploadingKey === inputKey ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
                         </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemoveImage(inputKey)} aria-label="Remove image"><X className="h-3.5 w-3.5" /></Button>
                       </div>
                     </div>
                   ) : (
-                    <Button variant="outline" size="sm" className="h-auto min-h-9 w-full min-w-0 max-w-full whitespace-normal break-words px-3 py-2 text-center leading-tight" disabled={uploadingKey === inputKey} onClick={() => fileInputs.current[inputKey]?.click()}>
-                      {uploadingKey === inputKey ? <Loader2 className="mr-2 h-3.5 w-3.5 shrink-0 animate-spin" /> : <Upload className="mr-2 h-3.5 w-3.5 shrink-0" />} <span className="min-w-0 flex-1 whitespace-normal break-words">Upload Image</span>
+                    <Button variant="outline" size="icon" className="h-9 w-9" disabled={uploadingKey === inputKey} onClick={() => fileInputs.current[inputKey]?.click()} aria-label="Upload image">
+                      {uploadingKey === inputKey ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                     </Button>
                   )}
                 </div>
