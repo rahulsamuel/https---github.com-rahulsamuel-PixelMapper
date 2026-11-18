@@ -88,6 +88,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
    } = usePixelMap();
   const viewportRef = useRef<HTMLDivElement>(null);
   const { user, isAdmin } = useAuth();
+  const [renameValue, setRenameValue] = useState("");
   const [isRenaming, setIsRenaming] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [screenToDelete, setScreenToDelete] = useState<string | null>(null);
