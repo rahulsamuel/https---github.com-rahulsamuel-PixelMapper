@@ -1,5 +1,5 @@
 import type { jsPDF as JsPDFType } from "jspdf";
-import type { TechDocData } from "./tech-doc-saves";
+import type { TechDocData, TechDocDevice } from "./tech-doc-saves";
 
 // 11 x 17 landscape in millimeters (jspdf "tabloid" format is portrait 279x432; we
 // rotate explicitly for clarity).
@@ -19,6 +19,7 @@ export interface TechDocPdfPage {
   title: string;
   screenName: string;
   imageUrl: string | null;
+  devices: TechDocDevice[];
 }
 
 export interface TechDocPdfMeta {
@@ -66,6 +67,70 @@ function hexToRgb(value: string, fallback: [number, number, number]): [number, n
   ];
 }
 
+function truncateText(value: string, maxLength: number): string {
+  return value.length <= maxLength ? value : `${value.slice(0, Math.max(1, maxLength - 1))}…`;
+}
+
+function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number, top: number, width: number, height: number): void {
+  if (devices.length === 0) return;
+  const gap = 4;
+  const columns = 2;
+  const rows = Math.ceil(devices.length / columns);
+  const cardWidth = (width - gap) / columns;
+  const cardHeight = (height - gap * Math.max(0, rows - 1)) / rows;
+  const maxPortsPerSide = Math.max(1, Math.floor((cardHeight - 15) / 4));
+
+  devices.forEach((device, index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const x = left + column * (cardWidth + gap);
+    const y = top + row * (cardHeight + gap);
+    const deviceColor = hexToRgb(device.color, MUTED);
+    const inputs = device.ports.filter((port) => port.direction === "input");
+    const outputs = device.ports.filter((port) => port.direction === "output");
+
+    pdf.setDrawColor(...LINE);
+    pdf.setLineWidth(0.25);
+    pdf.rect(x, y, cardWidth, cardHeight);
+    pdf.setFillColor(241, 245, 249);
+    pdf.rect(x, y, cardWidth, 9, "F");
+    pdf.setFillColor(...deviceColor);
+    pdf.rect(x, y, 2, cardHeight, "F");
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(8);
+    pdf.setTextColor(...INK);
+    pdf.text(truncateText(device.name, 42), x + 5, y + 6);
+
+    const groups = [
+      { label: "INPUTS", ports: inputs },
+      { label: "OUTPUTS", ports: outputs },
+    ];
+    const columnWidth = (cardWidth - 10) / 2;
+    groups.forEach((group, groupIndex) => {
+      const groupX = x + 5 + groupIndex * (columnWidth + 2);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(5.5);
+      pdf.setTextColor(...MUTED);
+      pdf.text(group.label, groupX, y + 14);
+      group.ports.slice(0, maxPortsPerSide).forEach((port, portIndex) => {
+        const portY = y + 19 + portIndex * 4;
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(6.5);
+        pdf.setTextColor(...INK);
+        pdf.text(truncateText(port.label, 22), groupX, portY);
+        pdf.setDrawColor(...LINE);
+        pdf.setLineWidth(0.2);
+        pdf.line(groupX + columnWidth - 7, portY - 1.2, groupX + columnWidth, portY - 1.2);
+      });
+      if (group.ports.length > maxPortsPerSide) {
+        pdf.setFontSize(5.5);
+        pdf.setTextColor(...MUTED);
+        pdf.text(`+${group.ports.length - maxPortsPerSide} more`, groupX, y + cardHeight - 3);
+      }
+    });
+  });
+}
+
 export async function buildTechDocPdf(
   jsPdfCtor: typeof JsPDFType,
   pages: TechDocPdfPage[],
@@ -107,18 +172,25 @@ export async function buildTechDocPdf(
     const frameLeft = MARGIN + 8;
     const frameRight = PAGE_W - MARGIN - 8;
     const frameW = frameRight - frameLeft;
-    const frameH = frameBottom - frameTop;
+    const hasDevices = page.devices.length > 0;
+    const deviceRows = Math.ceil(page.devices.length / 2);
+    const maxDevicePorts = Math.max(1, ...page.devices.map((device) => device.ports.length));
+    const estimatedCardHeight = Math.min(30, Math.max(18, 8 + maxDevicePorts * 2.2));
+    const deviceAreaHeight = hasDevices ? Math.min(84, Math.max(42, 10 + deviceRows * estimatedCardHeight + Math.max(0, deviceRows - 1) * 4)) : 0;
+    const deviceGap = hasDevices ? 3 : 0;
+    const imageFrameBottom = frameBottom - deviceAreaHeight - deviceGap;
+    const imageFrameH = imageFrameBottom - frameTop;
 
     pdf.setDrawColor(...LINE);
     pdf.setLineWidth(0.25);
-    pdf.rect(frameLeft, frameTop, frameW, frameH);
+    pdf.rect(frameLeft, frameTop, frameW, imageFrameH);
 
     if (page.imageUrl) {
       const img = await loadImageElement(page.imageUrl);
       if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
         const pad = 4;
         const availW = frameW - pad * 2;
-        const availH = frameH - pad * 2;
+        const availH = imageFrameH - pad * 2;
         const scale = Math.min(availW / img.naturalWidth, availH / img.naturalHeight);
         const drawW = img.naturalWidth * scale;
         const drawH = img.naturalHeight * scale;
@@ -127,7 +199,7 @@ export async function buildTechDocPdf(
             img,
             "PNG",
             frameLeft + (frameW - drawW) / 2,
-            frameTop + (frameH - drawH) / 2,
+            frameTop + (imageFrameH - drawH) / 2,
             drawW,
             drawH,
             undefined,
@@ -140,7 +212,7 @@ export async function buildTechDocPdf(
         pdf.setFont("helvetica", "normal");
         pdf.setFontSize(11);
         pdf.setTextColor(...MUTED);
-        pdf.text("Image could not be loaded.", PAGE_W / 2, (frameTop + frameBottom) / 2, {
+        pdf.text("Image could not be loaded.", PAGE_W / 2, (frameTop + imageFrameBottom) / 2, {
           align: "center",
         });
       }
@@ -148,9 +220,21 @@ export async function buildTechDocPdf(
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(11);
       pdf.setTextColor(...MUTED);
-      pdf.text("No image uploaded for this section.", PAGE_W / 2, (frameTop + frameBottom) / 2, {
+      pdf.text("No image uploaded for this section.", PAGE_W / 2, (frameTop + imageFrameBottom) / 2, {
         align: "center",
       });
+    }
+
+    if (hasDevices) {
+      const deviceTop = imageFrameBottom + deviceGap;
+      pdf.setDrawColor(...LINE);
+      pdf.setLineWidth(0.25);
+      pdf.rect(frameLeft, deviceTop, frameW, deviceAreaHeight);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      pdf.setTextColor(...INK);
+      pdf.text("SIGNAL FLOW DEVICES", frameLeft + 4, deviceTop + 7);
+      drawDeviceCards(pdf, page.devices, frameLeft + 4, deviceTop + 11, frameW - 8, deviceAreaHeight - 14);
     }
 
     // Title block at bottom

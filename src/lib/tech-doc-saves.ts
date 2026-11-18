@@ -2,6 +2,7 @@
 
 import { supabase } from "@/lib/supabase/client";
 import { ensureTabIdentifier } from "@/lib/project-tab-identifiers";
+import type { DeviceType, SignalFlowPort } from "@/lib/signal-flow-types";
 
 export const TECH_DOC_IMAGE_BUCKET = "tech-doc-images";
 export const DEFAULT_TECH_DOC_FOOTER_COLOR = "#0f1319";
@@ -22,6 +23,16 @@ export interface TechDocScreenReference {
   name: string;
 }
 
+export interface TechDocDevice {
+  id: string;
+  type: DeviceType;
+  name: string;
+  width: number;
+  height: number;
+  color: string;
+  ports: SignalFlowPort[];
+}
+
 export interface TechDocSection {
   key: string;
   type: TechDocSectionType;
@@ -29,6 +40,7 @@ export interface TechDocSection {
   title: string;
   storagePath: string | null;
   includeInPdf: boolean;
+  devices: TechDocDevice[];
 }
 
 export interface TechDocData {
@@ -77,6 +89,7 @@ function makeSection(type: TechDocSectionType, screen: TechDocScreenReference | 
     title: screen ? `${SECTION_LABELS[type]} — ${screen.name}` : SECTION_LABELS[type],
     storagePath: null,
     includeInPdf: true,
+    devices: [],
   };
 }
 
@@ -112,6 +125,58 @@ function typeFromLegacyKey(key: string): TechDocSectionType | null {
   return key in SECTION_LABELS ? key as TechDocSectionType : null;
 }
 
+const DEVICE_TYPES: DeviceType[] = [
+  "processor",
+  "led-screen",
+  "media-server",
+  "power-supply",
+  "network-switch",
+  "matrix",
+  "distribution",
+  "converter",
+  "custom",
+];
+
+function parseTechDocDevices(value: unknown): TechDocDevice[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item, index) => {
+    if (!item || typeof item !== "object") return [];
+    const device = item as Record<string, unknown>;
+    const name = typeof device.name === "string" && device.name.trim() ? device.name.trim() : null;
+    const ports = Array.isArray(device.ports)
+      ? device.ports.flatMap((port) => {
+          if (!port || typeof port !== "object") return [];
+          const parsed = port as Record<string, unknown>;
+          if (
+            typeof parsed.id !== "string" ||
+            typeof parsed.label !== "string" ||
+            (parsed.direction !== "input" && parsed.direction !== "output") ||
+            typeof parsed.portType !== "string"
+          ) return [];
+          return [{
+            id: parsed.id,
+            label: parsed.label,
+            direction: parsed.direction,
+            portType: parsed.portType,
+          } satisfies SignalFlowPort];
+        })
+      : [];
+    if (!name || ports.length === 0) return [];
+    const type = DEVICE_TYPES.includes(device.type as DeviceType) ? device.type as DeviceType : "custom";
+    const width = typeof device.width === "number" && Number.isFinite(device.width) ? Math.max(80, device.width) : 180;
+    const height = typeof device.height === "number" && Number.isFinite(device.height) ? Math.max(60, device.height) : 120;
+    return [{
+      id: typeof device.id === "string" && device.id ? device.id : `tech-doc-device-${index}`,
+      type,
+      name,
+      width,
+      height,
+      color: isHexColor(device.color) ? device.color : "#475569",
+      ports,
+    }];
+  });
+}
+
 export function parseTechDoc(
   raw: unknown,
   projectName: string,
@@ -142,6 +207,7 @@ export function parseTechDoc(
         : screen ? `${SECTION_LABELS[type]} — ${screen.name}` : SECTION_LABELS[type],
       storagePath: typeof s.storagePath === "string" && s.storagePath ? s.storagePath : null,
       includeInPdf: s.includeInPdf !== false,
+      devices: parseTechDocDevices(s.devices),
     });
   }
 

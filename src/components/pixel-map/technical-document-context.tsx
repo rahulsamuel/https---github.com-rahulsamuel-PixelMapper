@@ -267,6 +267,7 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
         title: section.title,
         screenName: section.screenId ? screens.find((screen) => screen.id === section.screenId)?.name ?? "-" : "All Screens",
         imageUrl: imageUrls[section.key]?.url ?? (section.type === "raster_map" ? rasterMapImageUrl : null),
+        devices: section.devices,
       }));
       const pdf = await buildTechDocPdf(JsPdfCtor as unknown as typeof jsPDF, pages, {
         doc: docRef.current,

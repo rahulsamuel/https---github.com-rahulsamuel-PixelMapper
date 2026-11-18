@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { TECH_DOC_ACCEPTED_TYPES } from "@/lib/tech-doc-saves";
 import { useTechnicalDocument } from "./technical-document-context";
+import { TechnicalDocumentDevicePicker } from "./technical-document-device-picker";
 
 export function TechnicalDocumentControls() {
   const {
@@ -122,6 +123,15 @@ export function TechnicalDocumentControls() {
                   </div>
                   {section.type === "raster_map" && !section.storagePath && (
                     <p className="text-xs text-muted-foreground">Generated from the current raster map unless you upload a custom image.</p>
+                  )}
+                  {(section.type === "data_wiring_front" || section.type === "data_wiring_rear") && (
+                    <TechnicalDocumentDevicePicker
+                      devices={section.devices}
+                      onChange={(devices) => updateDoc((current) => ({
+                        ...current,
+                        sections: current.sections.map((candidate) => candidate.key === section.key ? { ...candidate, devices } : candidate),
+                      }))}
+                    />
                   )}
                   <input
                     ref={(element) => { fileInputs.current[inputKey] = element; }}
