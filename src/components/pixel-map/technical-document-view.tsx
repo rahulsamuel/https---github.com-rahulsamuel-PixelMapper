@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FocusEvent, type KeyboardEvent } from "react";
 import { FileText, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
@@ -35,7 +35,31 @@ const PORT_COLORS: Record<string, string> = {
 };
 
 function DeviceNode({ device }: { device: TechDocDevice }) {
+  const { updateDoc } = useTechnicalDocument();
   const inputs = device.ports.filter((port) => port.direction === "input");
+
+  const saveName = (event: FocusEvent<HTMLSpanElement>) => {
+    const name = event.currentTarget.textContent?.trim() ?? "";
+    if (!name) {
+      event.currentTarget.textContent = device.name;
+      return;
+    }
+    if (name === device.name) return;
+    updateDoc((current) => ({
+      ...current,
+      sections: current.sections.map((section) => ({
+        ...section,
+        devices: section.devices.map((candidate) => candidate.id === device.id ? { ...candidate, name } : candidate),
+      })),
+    }));
+  };
+
+  const handleNameKeyDown = (event: KeyboardEvent<HTMLSpanElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      event.currentTarget.blur();
+    }
+  };
   const outputs = device.ports.filter((port) => port.direction === "output");
   const rows = Math.max(inputs.length, outputs.length);
   const nodeHeight = Math.max(device.height, 70 + rows * 22);
@@ -43,7 +67,17 @@ function DeviceNode({ device }: { device: TechDocDevice }) {
   return (
     <div className="h-full max-h-full min-h-0 w-auto max-w-full min-w-0 self-start overflow-y-auto rounded-xl border-2 border-sky-400 bg-[#294c7a] text-white shadow-[0_0_8px_rgba(14,165,233,0.6)]" style={{ aspectRatio: `${device.width} / ${nodeHeight}`, scrollbarColor: "#38bdf8 #0f172a", scrollbarWidth: "thin" }}>
       <div className="flex min-w-0 items-center justify-between gap-2 border-b border-white/25 bg-[#31598c] px-[3%] py-[2%]">
-        <span className="min-w-0 break-words text-[clamp(6px,0.8vw,12px)] font-bold leading-tight">{device.name}</span>
+        <span
+          className="min-w-0 cursor-text break-words rounded-sm text-[clamp(6px,0.8vw,12px)] font-bold leading-tight outline-none focus:bg-white/10 focus:ring-1 focus:ring-white/70"
+          contentEditable
+          suppressContentEditableWarning
+          role="textbox"
+          aria-label={`Device name: ${device.name}`}
+          onBlur={saveName}
+          onKeyDown={handleNameKeyDown}
+        >
+          {device.name}
+        </span>
         <span className="shrink-0 text-[clamp(4px,0.5vw,7px)] uppercase text-white/70">{device.type.replaceAll("-", " ")}</span>
       </div>
       <div className="grid min-h-0 grid-cols-2 gap-[5%] px-[3%] py-[3%]">
