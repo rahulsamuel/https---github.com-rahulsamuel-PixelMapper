@@ -28,7 +28,7 @@ export function TechnicalDocumentControls() {
   return (
     <div className="flex w-full min-w-0 flex-col gap-3">
       <div className="h-[calc(100vh-230px)] min-h-0 overflow-y-auto overflow-x-hidden pr-2">
-        <div className="w-full min-w-0 max-w-full space-y-5 overflow-x-hidden break-words [overflow-wrap:anywhere] [&_*]:min-w-0 [&_*]:max-w-full">
+        <div className="w-full min-w-0 max-w-full space-y-5 overflow-x-hidden break-words [overflow-wrap:anywhere] [&_*]:min-w-0 [&_*]:max-w-full [&_.truncate]:flex-1 [&_.truncate]:overflow-hidden [&_.truncate]:text-ellipsis [&_.text-destructive]:shrink-0">
           <div className="space-y-3">
             <div>
               <h3 className="font-semibold">Document Details</h3>
