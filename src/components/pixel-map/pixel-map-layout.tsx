@@ -317,13 +317,13 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
       </AlertDialog>
       {/* Tool panel */}
       <div
-        className={`flex-shrink-0 border-r bg-sidebar flex flex-col overflow-hidden transition-[width] duration-200 ease-linear ${toolPanelOpen ? 'w-80' : 'w-0'}`}
+        className={`flex-shrink-0 min-w-0 border-r bg-sidebar flex flex-col overflow-hidden transition-[width] duration-200 ease-linear ${toolPanelOpen ? 'w-80' : 'w-0'}`}
       >
-        <div className="flex w-full flex-col h-full min-w-0 overflow-hidden">
-          <ScrollArea className="flex-1 w-full">
+        <div className="flex h-full min-w-0 w-full flex-col overflow-hidden">
+          <ScrollArea className="min-w-0 w-full flex-1">
             <Accordion
               type="multiple"
-              className="w-full p-4 flex flex-col gap-2"
+              className="flex min-w-0 w-full flex-col gap-2 p-4"
             >
               <AccordionItem value="project" className="w-full border-none">
                 <AccordionSectionTrigger icon={<Package className="size-5" />} title="Project" colorClass="border-l-4 border-l-blue-500" />
@@ -443,7 +443,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               {activeTab === 'tech-doc' && isAdmin && (
                 <AccordionItem value="technical-document" className="w-full border-none">
                   <AccordionSectionTrigger icon={<FileText className="size-5" />} title="Technical Document" colorClass="border-l-4 border-l-blue-500" />
-                  <AccordionContent className="bg-background border rounded-b-lg -mt-2 p-4">
+                  <AccordionContent className="min-w-0 max-w-full overflow-hidden rounded-b-lg border bg-background -mt-2 p-4">
                     <TechnicalDocumentControls />
                   </AccordionContent>
                 </AccordionItem>

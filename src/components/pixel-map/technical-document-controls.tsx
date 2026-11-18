@@ -5,7 +5,6 @@ import { Download, Loader2, MoveDown, MoveUp, Save, Upload, X } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { TECH_DOC_ACCEPTED_TYPES } from "@/lib/tech-doc-saves";
 import { useTechnicalDocument } from "./technical-document-context";
 
@@ -27,9 +26,9 @@ export function TechnicalDocumentControls() {
   if (loading) return <div className="flex justify-center p-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
 
   return (
-    <div className="flex min-h-0 flex-col gap-3">
-      <ScrollArea className="max-h-[calc(100vh-190px)] pr-2">
-        <div className="space-y-5">
+    <div className="flex w-full min-w-0 flex-col gap-3">
+      <div className="h-[calc(100vh-230px)] min-h-0 overflow-y-auto overflow-x-hidden pr-2">
+        <div className="min-w-0 space-y-5">
           <div className="space-y-3">
             <div>
               <h3 className="font-semibold">Document Details</h3>
@@ -99,9 +98,9 @@ export function TechnicalDocumentControls() {
             })}
           </div>
         </div>
-      </ScrollArea>
-      <div className="space-y-2 border-t pt-3">
-        <Button className="w-full" onClick={() => void downloadPdf()} disabled={downloading}>
+      </div>
+      <div className="w-full min-w-0 space-y-2 border-t pt-3">
+        <Button className="h-auto min-h-10 w-full whitespace-normal break-words px-3 py-2 text-center leading-tight" onClick={() => void downloadPdf()} disabled={downloading}>
           {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
           Download Technical Document PDF
         </Button>
