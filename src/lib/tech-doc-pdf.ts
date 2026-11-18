@@ -11,6 +11,8 @@ const BORDER = 0.5;
 const INK: [number, number, number] = [17, 24, 39];
 const MUTED: [number, number, number] = [75, 85, 99];
 const LINE: [number, number, number] = [30, 41, 59];
+const HEADER_BACKGROUND: [number, number, number] = [15, 19, 25];
+const WHITE: [number, number, number] = [255, 255, 255];
 
 export interface TechDocPdfPage {
   label: string;
@@ -139,6 +141,10 @@ export async function buildTechDocPdf(
 
     // Title block at bottom
     const blockTop = frameBottom;
+    const footerHeight = PAGE_H - MARGIN - blockTop;
+    pdf.setFillColor(...HEADER_BACKGROUND);
+    pdf.rect(MARGIN + BORDER / 2, blockTop, PAGE_W - MARGIN * 2 - BORDER, footerHeight - BORDER / 2, "F");
+    pdf.setDrawColor(...WHITE);
     pdf.setLineWidth(0.4);
     pdf.line(MARGIN, blockTop, PAGE_W - MARGIN, blockTop);
 
@@ -156,11 +162,11 @@ export async function buildTechDocPdf(
       pdf.line(x, blockTop, x, blockTop + rowH * 2);
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(7.5);
-      pdf.setTextColor(...MUTED);
+      pdf.setTextColor(...WHITE);
       pdf.text(cell.label, x + 4, blockTop + 5);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(10.5);
-      pdf.setTextColor(...INK);
+      pdf.setTextColor(...WHITE);
       pdf.text(cell.value.normalize("NFKC"), x + 4, blockTop + 11);
     });
     pdf.line(MARGIN, blockTop + rowH, PAGE_W - MARGIN, blockTop + rowH);
@@ -178,7 +184,7 @@ export async function buildTechDocPdf(
     // Footer stays inside the page border, below the title block
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(8);
-    pdf.setTextColor(...MUTED);
+    pdf.setTextColor(...WHITE);
     pdf.text(page.label, MARGIN + 2, PAGE_H - MARGIN - 3);
     pdf.text(
       `Page ${i + 1} of ${pages.length}`,
