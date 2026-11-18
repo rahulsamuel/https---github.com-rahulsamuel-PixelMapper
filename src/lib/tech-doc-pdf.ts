@@ -129,7 +129,7 @@ function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number,
     const inputs = device.ports.filter((port) => port.direction === "input");
     const outputs = device.ports.filter((port) => port.direction === "output");
     const portRows = Math.max(inputs.length, outputs.length);
-    const nodeHeight = rowHeight;
+    const nodeHeight = Math.min(rowHeight, Math.max(42, 24 + portRows * 4.2));
     const nodeRatio = device.width / Math.max(device.height, 70 + portRows * 22);
     const nodeWidth = Math.min(slotWidth, Math.max(42, nodeHeight * nodeRatio));
     const x = xSlot + (slotWidth - nodeWidth) / 2;
@@ -231,8 +231,8 @@ export async function buildTechDocPdf(
     const hasDevices = page.devices.length > 0;
     const deviceRows = Math.ceil(page.devices.length / 2);
     const maxDevicePorts = Math.max(1, ...page.devices.map((device) => device.ports.length));
-    const estimatedCardHeight = Math.min(112, Math.max(42, 24 + maxDevicePorts * 4.8));
-    const deviceAreaHeight = hasDevices ? Math.min(130, Math.max(52, 16 + deviceRows * estimatedCardHeight + Math.max(0, deviceRows - 1) * 4)) : 0;
+    const estimatedCardHeight = Math.max(42, 24 + maxDevicePorts * 4.2);
+    const deviceAreaHeight = hasDevices ? 8 + deviceRows * estimatedCardHeight + Math.max(0, deviceRows - 1) * 4 : 0;
     const deviceGap = hasDevices ? 3 : 0;
     const imageFrameBottom = frameBottom - deviceAreaHeight - deviceGap;
     const imageFrameH = imageFrameBottom - frameTop;
@@ -287,11 +287,7 @@ export async function buildTechDocPdf(
       pdf.setDrawColor(...LINE);
       pdf.setLineWidth(0.25);
       pdf.rect(frameLeft, deviceTop, frameW, deviceAreaHeight);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(8);
-      pdf.setTextColor(...INK);
-      pdf.text("SIGNAL FLOW DEVICES", frameLeft + 4, deviceTop + 7);
-      drawDeviceCards(pdf, page.devices, frameLeft + 4, deviceTop + 11, frameW - 8, deviceAreaHeight - 14);
+      drawDeviceCards(pdf, page.devices, frameLeft + 4, deviceTop + 4, frameW - 8, deviceAreaHeight - 8);
     }
 
     // Title block at bottom
