@@ -197,8 +197,13 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     if (downloading) return;
     setDownloading(true);
     try {
+      const selectedSections = docRef.current.sections.filter((section) => section.includeInPdf);
+      if (selectedSections.length === 0) {
+        toast({ title: "No pages selected", description: "Select at least one page before downloading the PDF.", variant: "destructive" });
+        return;
+      }
       const { default: JsPdfCtor } = await import("jspdf");
-      const pages: TechDocPdfPage[] = docRef.current.sections.map((section) => ({
+      const pages: TechDocPdfPage[] = selectedSections.map((section) => ({
         label: section.title,
         title: section.title,
         screenName: section.screenId ? screens.find((screen) => screen.id === section.screenId)?.name ?? "-" : "All Screens",

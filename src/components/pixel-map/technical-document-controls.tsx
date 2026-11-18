@@ -5,6 +5,7 @@ import { Download, Loader2, MoveDown, MoveUp, Save, Upload, X } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { TECH_DOC_ACCEPTED_TYPES } from "@/lib/tech-doc-saves";
 import { useTechnicalDocument } from "./technical-document-context";
 
@@ -67,6 +68,10 @@ export function TechnicalDocumentControls() {
                     </div>
                   </div>
                   <Input className="w-full min-w-0 max-w-[220px] truncate" value={section.title} onChange={(event) => updateDoc((current) => ({ ...current, sections: current.sections.map((candidate) => candidate.key === section.key ? { ...candidate, title: event.target.value } : candidate) }))} placeholder="Page title" />
+                  <div className="flex items-center justify-between gap-2">
+                    <Label className="text-xs text-muted-foreground">Include in PDF</Label>
+                    <Switch checked={section.includeInPdf} onCheckedChange={(checked) => updateDoc((current) => ({ ...current, sections: current.sections.map((candidate) => candidate.key === section.key ? { ...candidate, includeInPdf: checked } : candidate) }))} aria-label={`Include ${section.title} in PDF`} />
+                  </div>
                   <input
                     ref={(element) => { fileInputs.current[inputKey] = element; }}
                     type="file"

@@ -25,6 +25,7 @@ export interface TechDocSection {
   screenId: string | null;
   title: string;
   storagePath: string | null;
+  includeInPdf: boolean;
 }
 
 export interface TechDocData {
@@ -68,6 +69,7 @@ function makeSection(type: TechDocSectionType, screen: TechDocScreenReference | 
     screenId: screen?.id ?? null,
     title: screen ? `${SECTION_LABELS[type]} — ${screen.name}` : SECTION_LABELS[type],
     storagePath: null,
+    includeInPdf: true,
   };
 }
 
@@ -121,6 +123,7 @@ export function parseTechDoc(
         ? s.title
         : screen ? `${SECTION_LABELS[type]} — ${screen.name}` : SECTION_LABELS[type],
       storagePath: typeof s.storagePath === "string" && s.storagePath ? s.storagePath : null,
+      includeInPdf: s.includeInPdf !== false,
     });
   }
 
