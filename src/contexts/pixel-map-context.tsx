@@ -2392,43 +2392,40 @@ const handleRightHalfTileChange = (add: boolean) => {
     masterCtx.fillStyle = rasterBgColor;
     masterCtx.fillRect(0, 0, masterCanvas.width, masterCanvas.height);
 
-    const processedBlackAreaOverlays = new Set<string>();
+    const drawnTextOverlayIds = new Set<string>();
 
     for (const arrangement of screenArrangement) {
         const screen = screens.find(s => s.id === arrangement.screenId);
         if (!screen) continue;
 
-        const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds, true, screen.showTextOverlaysInRaster ?? true, screen.showLogoOverlayInRaster ?? true);
+        const screenCanvas = createScreenContentCanvas(screen, arrangement.activeBounds, true, false, screen.showLogoOverlayInRaster ?? true);
         if (screenCanvas) {
             masterCtx.drawImage(screenCanvas, arrangement.x, arrangement.y);
         }
 
-        if (!processedBlackAreaOverlays.has(screen.id) && screen.showTextOverlaysInRaster !== false && screen.textOverlays?.length) {
+        if (screen.showTextOverlaysInRaster !== false && screen.textOverlays?.length) {
             const screenArrangements = screenArrangement.filter(candidate => candidate.screenId === screen.id);
-            const outsideOverlays = screen.textOverlays.filter(overlay => !screenArrangements.some(candidate => {
-                const cropOffset = getRasterCropOffset(screen, candidate.activeBounds);
-                const x = overlay.x - cropOffset.x;
-                const y = overlay.y - cropOffset.y;
-                return x <= candidate.width
-                    && y <= candidate.height
-                    && x + overlay.fontSize * (overlay.text?.length ?? 4) >= 0
-                    && y + overlay.fontSize >= 0;
-            }));
+            for (const overlay of screen.textOverlays) {
+                const targetArrangement = screenArrangements.find(candidate => {
+                    const cropOffset = getRasterCropOffset(screen, candidate.activeBounds);
+                    const x = overlay.x - cropOffset.x;
+                    const y = overlay.y - cropOffset.y;
+                    return x <= candidate.width
+                        && y <= candidate.height
+                        && x + overlay.fontSize * (overlay.text?.length ?? 4) >= 0
+                        && y + overlay.fontSize >= 0;
+                }) ?? screenArrangements[0];
+                const overlayKey = `${screen.id}:${overlay.id}`;
+                if (!targetArrangement || targetArrangement !== arrangement || drawnTextOverlayIds.has(overlayKey)) continue;
 
-            if (outsideOverlays.length && screenArrangements[0]?.segmentId === arrangement.segmentId) {
-                const cropOffset = getRasterCropOffset(screen, arrangement.activeBounds);
-                drawTextOverlaysOnCtx(
-                    masterCtx,
-                    outsideOverlays.map(overlay => ({
-                        ...overlay,
-                        x: arrangement.x + overlay.x - cropOffset.x,
-                        y: arrangement.y + overlay.y - cropOffset.y,
-                    })),
-                    contentWidth,
-                    contentHeight,
-                );
+                const cropOffset = getRasterCropOffset(screen, targetArrangement.activeBounds);
+                drawTextOverlaysOnCtx(masterCtx, [{
+                    ...overlay,
+                    x: targetArrangement.x + overlay.x - cropOffset.x,
+                    y: targetArrangement.y + overlay.y - cropOffset.y,
+                }], contentWidth, contentHeight);
+                drawnTextOverlayIds.add(overlayKey);
             }
-            processedBlackAreaOverlays.add(screen.id);
         }
 
         // Draw tile offset labels if enabled for this screen
