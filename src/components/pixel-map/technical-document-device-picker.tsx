@@ -148,6 +148,9 @@ export function TechnicalDocumentDevicePicker({ devices, dataPortLabels, onChang
       };
     }));
   };
+  const assignedDataLabels = new Set(
+    devices.flatMap((device) => Object.values(device.dataPortLabels ?? {}))
+  );
 
   return (
     <div className="space-y-2 border-t pt-2">
@@ -198,7 +201,10 @@ export function TechnicalDocumentDevicePicker({ devices, dataPortLabels, onChang
                     const availableLabels = isBackup ? dataPortLabels.backup : dataPortLabels.primary;
                     const currentLabel = device.dataPortLabels?.[port.id] ?? "";
                     const automaticLabel = availableLabels[outputIndex] ?? "not assigned";
-                    const options = [...new Set([...(currentLabel ? [currentLabel] : []), ...availableLabels])];
+                    const options = [...new Set([
+                      ...(currentLabel ? [currentLabel] : []),
+                      ...availableLabels.filter((label) => !assignedDataLabels.has(label) || label === currentLabel),
+                    ])];
                     return (
                       <label key={port.id} className="flex min-w-0 items-center gap-1.5">
                         <span className="w-12 shrink-0 truncate text-[10px] text-muted-foreground">{port.label}</span>
