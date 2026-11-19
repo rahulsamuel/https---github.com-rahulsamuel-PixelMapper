@@ -125,11 +125,11 @@ function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number,
     const column = index % columns;
     const row = Math.floor(index / columns);
     const xSlot = left + column * (slotWidth + gap);
-    const y = top + row * (rowHeight + gap);
     const inputs = device.ports.filter((port) => port.direction === "input");
     const outputs = device.ports.filter((port) => port.direction === "output");
     const portRows = Math.max(inputs.length, outputs.length);
     const nodeHeight = Math.min(rowHeight, Math.max(42, 24 + portRows * 4.2));
+    const y = top + row * (rowHeight + gap) + (rowHeight - nodeHeight) / 2;
     const nodeRatio = device.width / Math.max(device.height, 70 + portRows * 22);
     const nodeWidth = Math.min(slotWidth, Math.max(42, nodeHeight * nodeRatio));
     const x = xSlot + (slotWidth - nodeWidth) / 2;
@@ -229,10 +229,13 @@ export async function buildTechDocPdf(
     const frameRight = PAGE_W - MARGIN - 8;
     const frameW = frameRight - frameLeft;
     const hasDevices = page.devices.length > 0;
-    const deviceRows = hasDevices ? 1 : 0;
-    const maxDevicePorts = Math.max(1, ...page.devices.map((device) => device.ports.length));
-    const estimatedCardHeight = Math.max(42, 24 + maxDevicePorts * 4.2);
-    const deviceAreaHeight = hasDevices ? 8 + deviceRows * estimatedCardHeight : 0;
+    const maxDevicePortRows = Math.max(1, ...page.devices.map((device) => {
+      const inputCount = device.ports.filter((port) => port.direction === "input").length;
+      const outputCount = device.ports.filter((port) => port.direction === "output").length;
+      return Math.max(inputCount, outputCount);
+    }));
+    const estimatedCardHeight = Math.max(42, 24 + maxDevicePortRows * 4.2);
+    const deviceAreaHeight = hasDevices ? 8 + estimatedCardHeight : 0;
     const deviceGap = hasDevices ? 3 : 0;
     const imageFrameBottom = frameBottom - deviceAreaHeight - deviceGap;
     const imageFrameH = imageFrameBottom - frameTop;
