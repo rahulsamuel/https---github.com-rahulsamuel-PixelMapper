@@ -35,6 +35,23 @@ import type {
 import { formatFractionalInch, trackEvent, repositionDefaultLogo, createNewScreen } from "./pixel-map-helpers";
 import { rebuildWiringGroups, removeWiringGroup, replaceScreenWiring, getTileCoordsFromStart, formatGroupLabel } from "@/lib/wiring-groups";
 
+function getRasterCropOffset(screen: Screen, activeBounds: ActiveBounds): { x: number; y: number } {
+  const { tileWidth, tileHeight } = screen.dimensions;
+  const effectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+  const effectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+  let x = 0;
+  let y = 0;
+  for (let index = 0; index < activeBounds.minX; index++) {
+    const isHalf = (screen.leftHalfTile && index === 0) || (screen.rightHalfTile && index === effectiveWidth - 1);
+    x += isHalf ? tileWidth / 2 : tileWidth;
+  }
+  for (let index = 0; index < activeBounds.minY; index++) {
+    const isHalf = (screen.topHalfTile && index === 0) || (screen.bottomHalfTile && index === effectiveHeight - 1);
+    y += isHalf ? tileHeight / 2 : tileHeight;
+  }
+  return { x, y };
+}
+
 const PixelMapContext = createContext<PixelMapState | undefined>(undefined);
 
 export const usePixelMap = () => {
