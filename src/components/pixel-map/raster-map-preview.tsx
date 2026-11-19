@@ -365,7 +365,7 @@ export function RasterMapPreview() {
                   width: sa.width,
                   height: sa.height,
                   boxSizing: 'border-box',
-                  overflow: 'hidden',
+                  overflow: 'visible',
                 }}
               >
                 {/* Tile offset labels (HTML overlay only — screen names are drawn in canvas) */}
@@ -436,10 +436,6 @@ export function RasterMapPreview() {
                         <div
                           className="whitespace-nowrap"
                           style={{
-                            position: 'fixed',
-                            left: sa.x + shiftedX,
-                            top: sa.y + shiftedY,
-                            zIndex: 30,
                             fontSize: `${overlay.fontSize}px`,
                             color: overlay.colorMode === 'auto' ? '#FFFFFF' : overlay.color,
                             fontWeight: overlay.fontWeight,
