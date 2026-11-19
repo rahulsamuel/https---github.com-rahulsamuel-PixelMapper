@@ -30,7 +30,7 @@ export interface TechDocPdfPage {
   label: string;
   title: string;
   screenName: string;
-  imageUrl: string | null;
+  imageUrls: string[];
   devices: TechDocDevice[];
 }
 
@@ -241,22 +241,35 @@ export async function buildTechDocPdf(
     pdf.setLineWidth(0.25);
     pdf.rect(frameLeft, frameTop, frameW, imageFrameH);
 
-    if (page.imageUrl) {
-      const img = await loadImageElement(getPdfImageUrl(page.imageUrl));
-      if (img && img.naturalWidth > 0 && img.naturalHeight > 0) {
-        const pad = 4;
-        const availW = frameW - pad * 2;
-        const availH = imageFrameH - pad * 2;
-        const scale = Math.min(availW / img.naturalWidth, availH / img.naturalHeight);
-        const drawW = img.naturalWidth * scale;
-        const drawH = img.naturalHeight * scale;
+    const loadedImages = (await Promise.all(page.imageUrls.map(async (url) => {
+      const image = await loadImageElement(getPdfImageUrl(url));
+      return image && image.naturalWidth > 0 && image.naturalHeight > 0 ? { image, url } : null;
+    }))).filter((entry): entry is { image: HTMLImageElement; url: string } => entry !== null);
+
+    if (loadedImages.length > 0) {
+      const gap = 4;
+      const pad = 4;
+      const columns = loadedImages.length === 1 ? 1 : 2;
+      const rows = Math.ceil(loadedImages.length / columns);
+      const cellW = (frameW - gap * (columns - 1)) / columns;
+      const cellH = (imageFrameH - gap * (rows - 1)) / rows;
+      loadedImages.forEach(({ image, url }, index) => {
+        const column = index % columns;
+        const row = Math.floor(index / columns);
+        const cellLeft = frameLeft + column * (cellW + gap);
+        const cellTop = frameTop + row * (cellH + gap);
+        const availW = cellW - pad * 2;
+        const availH = cellH - pad * 2;
+        const scale = Math.min(availW / image.naturalWidth, availH / image.naturalHeight);
+        const drawW = image.naturalWidth * scale;
+        const drawH = image.naturalHeight * scale;
         try {
-          const imageDataUrl = imageToPngDataUrl(img);
+          const imageDataUrl = imageToPngDataUrl(image);
           pdf.addImage(
-            imageDataUrl ?? img,
-            imageDataUrl ? "PNG" : imageFormatFromUrl(page.imageUrl),
-            frameLeft + (frameW - drawW) / 2,
-            frameTop + (imageFrameH - drawH) / 2,
+            imageDataUrl ?? image,
+            imageDataUrl ? "PNG" : imageFormatFromUrl(url),
+            cellLeft + (cellW - drawW) / 2,
+            cellTop + (cellH - drawH) / 2,
             drawW,
             drawH,
             undefined,
@@ -265,19 +278,12 @@ export async function buildTechDocPdf(
         } catch {
           // Skip images jsPDF cannot embed; the frame stays empty rather than failing the document.
         }
-      } else {
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(11);
-        pdf.setTextColor(...MUTED);
-        pdf.text("Image could not be loaded.", PAGE_W / 2, (frameTop + imageFrameBottom) / 2, {
-          align: "center",
-        });
-      }
+      });
     } else {
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(11);
       pdf.setTextColor(...MUTED);
-      pdf.text("No image uploaded for this section.", PAGE_W / 2, (frameTop + imageFrameBottom) / 2, {
+      pdf.text(page.imageUrls.length > 0 ? "Image could not be loaded." : "No image uploaded for this section.", PAGE_W / 2, (frameTop + imageFrameBottom) / 2, {
         align: "center",
       });
     }

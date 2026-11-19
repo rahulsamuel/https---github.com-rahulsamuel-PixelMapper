@@ -15,7 +15,8 @@ import {
   saveTechDoc,
   uploadTechDocImage,
   validateTechDocImage,
-  createRasterMapSection,
+  getTechDocImageKey,
+  getTechDocSectionImagePaths,
   type TechDocData,
   type TechDocScreenReference,
   type TechDocSection,
@@ -38,10 +39,8 @@ interface TechnicalDocumentContextValue {
   downloading: boolean;
   uploadingKey: string | null;
   updateDoc: (updater: (doc: TechDocData) => TechDocData) => void;
-  handleFilePicked: (sectionKey: string, file: File) => Promise<void>;
-  handleRemoveImage: (sectionKey: string) => void;
-  addRasterMapSection: () => void;
-  removeRasterMapSection: (sectionKey: string) => void;
+  handleFilePicked: (sectionKey: string, imageIndex: number, file: File) => Promise<void>;
+  handleRemoveImage: (sectionKey: string, imageIndex: number) => void;
   moveSection: (index: number, direction: -1 | 1) => void;
   downloadPdf: () => Promise<void>;
   rasterMapImageUrl: string | null;
@@ -135,23 +134,26 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     let cancelled = false;
     (async () => {
       for (const section of doc.sections) {
-        if (!section.storagePath) continue;
-        const existing = imageUrls[section.key];
-        if (existing?.url || existing?.loading) continue;
-        setImageUrls((previous) => ({
-          ...previous,
-          [section.key]: { url: null, fileName: section.storagePath, loading: true },
-        }));
-        const url = await getTechDocImageUrl(section.storagePath);
-        if (cancelled) return;
-        setImageUrls((previous) => ({
-          ...previous,
-          [section.key]: {
-            url,
-            fileName: section.storagePath?.split("/").pop() ?? null,
-            loading: false,
-          },
-        }));
+        const imagePaths = getTechDocSectionImagePaths(section);
+        for (const [imageIndex, storagePath] of imagePaths.entries()) {
+          const imageKey = getTechDocImageKey(section.key, imageIndex);
+          const existing = imageUrls[imageKey];
+          if (existing?.url || existing?.loading) continue;
+          setImageUrls((previous) => ({
+            ...previous,
+            [imageKey]: { url: null, fileName: storagePath, loading: true },
+          }));
+          const url = await getTechDocImageUrl(storagePath);
+          if (cancelled) return;
+          setImageUrls((previous) => ({
+            ...previous,
+            [imageKey]: {
+              url,
+              fileName: storagePath.split("/").pop() ?? null,
+              loading: false,
+            },
+          }));
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -175,7 +177,7 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     scheduleSave();
   }, [scheduleSave]);
 
-  const handleFilePicked = useCallback(async (sectionKey: string, file: File) => {
+  const handleFilePicked = useCallback(async (sectionKey: string, imageIndex: number, file: File) => {
     const invalid = validateTechDocImage(file);
     if (invalid) {
       toast({ title: "Unsupported image", description: invalid, variant: "destructive" });
@@ -186,30 +188,46 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
       return;
     }
     const section = docRef.current.sections.find((candidate) => candidate.key === sectionKey);
-    const previousPath = section?.storagePath ?? null;
-    setUploadingKey(sectionKey);
-    const result = await uploadTechDocImage(projectId, sectionKey, file);
+    const imagePaths = section ? getTechDocSectionImagePaths(section) : [];
+    const previousPath = imagePaths[imageIndex] ?? null;
+    const imageKey = getTechDocImageKey(sectionKey, imageIndex);
+    setUploadingKey(imageKey);
+    const result = await uploadTechDocImage(projectId, `${sectionKey}-${imageIndex + 1}`, file);
     setUploadingKey(null);
     if (result.error || !result.path) {
       toast({ title: "Upload failed", description: result.error ?? "Please try again.", variant: "destructive" });
       return;
     }
     const url = await getTechDocImageUrl(result.path);
-    setImageUrls((previous) => ({ ...previous, [sectionKey]: { url, fileName: file.name, loading: false } }));
+    setImageUrls((previous) => ({ ...previous, [imageKey]: { url, fileName: file.name, loading: false } }));
     updateDoc((current) => ({
       ...current,
-      sections: current.sections.map((candidate) => candidate.key === sectionKey ? { ...candidate, storagePath: result.path } : candidate),
+      sections: current.sections.map((candidate) => {
+        if (candidate.key !== sectionKey) return candidate;
+        const nextPaths = [...getTechDocSectionImagePaths(candidate)];
+        nextPaths[imageIndex] = result.path!;
+        return { ...candidate, storagePath: nextPaths[0] ?? null, storagePaths: nextPaths };
+      }),
     }));
     if (previousPath && previousPath !== result.path) void deleteTechDocImage(previousPath);
   }, [projectId, toast, updateDoc]);
 
-  const handleRemoveImage = useCallback((sectionKey: string) => {
+  const handleRemoveImage = useCallback((sectionKey: string, imageIndex: number) => {
     const section = docRef.current.sections.find((candidate) => candidate.key === sectionKey);
-    if (section?.storagePath) void deleteTechDocImage(section.storagePath);
-    setImageUrls((previous) => ({ ...previous, [sectionKey]: { url: null, fileName: null, loading: false } }));
+    const imagePaths = section ? getTechDocSectionImagePaths(section) : [];
+    const previousPath = imagePaths[imageIndex];
+    if (previousPath) void deleteTechDocImage(previousPath);
+    const imageKey = getTechDocImageKey(sectionKey, imageIndex);
+    setImageUrls((previous) => Object.fromEntries(
+      Object.entries(previous).filter(([key]) => !key.startsWith(`${sectionKey}:`))
+    ));
     updateDoc((current) => ({
       ...current,
-      sections: current.sections.map((candidate) => candidate.key === sectionKey ? { ...candidate, storagePath: null } : candidate),
+      sections: current.sections.map((candidate) => {
+        if (candidate.key !== sectionKey) return candidate;
+        const nextPaths = getTechDocSectionImagePaths(candidate).filter((_, index) => index !== imageIndex);
+        return { ...candidate, storagePath: nextPaths[0] ?? null, storagePaths: nextPaths };
+      }),
     }));
   }, [updateDoc]);
 
@@ -245,36 +263,6 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     updateDoc((current) => ({ ...current, logoStoragePath: null }));
   }, [updateDoc]);
 
-  const addRasterMapSection = useCallback(() => {
-    updateDoc((current) => {
-      const rasterCount = current.sections.filter((section) => section.type === "raster_map").length;
-      const section = createRasterMapSection(`raster_map_${crypto.randomUUID()}`, `Raster Map ${rasterCount + 1}`);
-      const insertAt = current.sections.reduce(
-        (lastIndex, candidate, index) => candidate.type === "raster_map" ? index + 1 : lastIndex,
-        -1
-      );
-      const sections = [...current.sections];
-      sections.splice(insertAt >= 0 ? insertAt : sections.length, 0, section);
-      return { ...current, sections };
-    });
-  }, [updateDoc]);
-
-  const removeRasterMapSection = useCallback((sectionKey: string) => {
-    const section = docRef.current.sections.find((candidate) => candidate.key === sectionKey);
-    if (!section || section.type !== "raster_map") return;
-    if (section.storagePath) void deleteTechDocImage(section.storagePath);
-    setImageUrls((previous) => {
-      const next = { ...previous };
-      delete next[sectionKey];
-      return next;
-    });
-    updateDoc((current) => {
-      const rasterSections = current.sections.filter((candidate) => candidate.type === "raster_map");
-      if (rasterSections.length <= 1) return current;
-      return { ...current, sections: current.sections.filter((candidate) => candidate.key !== sectionKey) };
-    });
-  }, [updateDoc]);
-
   const moveSection = useCallback((index: number, direction: -1 | 1) => {
     const nextIndex = index + direction;
     if (nextIndex < 0 || nextIndex >= docRef.current.sections.length) return;
@@ -299,7 +287,11 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
         label: section.title,
         title: section.title,
         screenName: section.screenId ? screens.find((screen) => screen.id === section.screenId)?.name ?? "-" : "All Screens",
-        imageUrl: imageUrls[section.key]?.url ?? (section.type === "raster_map" ? rasterMapImageUrl : null),
+        imageUrls: section.type === "raster_map"
+          ? (getTechDocSectionImagePaths(section).length > 0
+            ? getTechDocSectionImagePaths(section).map((_, imageIndex) => imageUrls[getTechDocImageKey(section.key, imageIndex)]?.url).filter((url): url is string => Boolean(url))
+            : rasterMapImageUrl ? [rasterMapImageUrl] : [])
+          : [imageUrls[getTechDocImageKey(section.key, 0)]?.url].filter((url): url is string => Boolean(url)),
         devices: section.devices,
       }));
       const pdf = await buildTechDocPdf(JsPdfCtor as unknown as typeof jsPDF, pages, {
@@ -333,8 +325,6 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     updateDoc,
     handleFilePicked,
     handleRemoveImage,
-    addRasterMapSection,
-    removeRasterMapSection,
     moveSection,
     downloadPdf,
     rasterMapImageUrl,

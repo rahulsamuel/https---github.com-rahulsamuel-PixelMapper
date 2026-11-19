@@ -1,12 +1,12 @@
 "use client";
 
 import { useRef } from "react";
-import { Loader2, MoveDown, MoveUp, Plus, Save, Trash2, Upload, X } from "lucide-react";
+import { Loader2, MoveDown, MoveUp, Save, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { TECH_DOC_ACCEPTED_TYPES } from "@/lib/tech-doc-saves";
+import { getTechDocImageKey, getTechDocSectionImagePaths, TECH_DOC_ACCEPTED_TYPES } from "@/lib/tech-doc-saves";
 import { useTechnicalDocument } from "./technical-document-context";
 import { TechnicalDocumentDevicePicker } from "./technical-document-device-picker";
 
@@ -19,8 +19,6 @@ export function TechnicalDocumentControls() {
     updateDoc,
     handleFilePicked,
     handleRemoveImage,
-    addRasterMapSection,
-    removeRasterMapSection,
     moveSection,
     handleLogoPicked,
     handleRemoveLogo,
@@ -105,13 +103,11 @@ export function TechnicalDocumentControls() {
           <div className="space-y-3">
             <div>
               <h3 className="font-semibold">Pages</h3>
-              <p className="text-xs text-muted-foreground">Each screen gets its own pixel map and wiring pages. Add a Raster Map page for each raster image your project needs.</p>
+              <p className="text-xs text-muted-foreground">Each screen gets its own pixel map and wiring pages. Add multiple raster images to the Raster Map page for large screens.</p>
             </div>
-            <Button variant="outline" className="w-full justify-start" onClick={addRasterMapSection}>
-              <Plus className="mr-2 h-3.5 w-3.5" /> Add Raster Map
-            </Button>
             {doc.sections.map((section, index) => {
-              const inputKey = section.key;
+              const imagePaths = getTechDocSectionImagePaths(section);
+              const imageCount = section.type === "raster_map" ? Math.max(1, imagePaths.length + 1) : 1;
               return (
                 <div key={section.key} className="w-full min-w-0 max-w-[280px] space-y-2 overflow-hidden rounded-lg border bg-card p-3">
                   <div className="flex w-full min-w-0 items-start justify-between gap-2">
@@ -126,13 +122,8 @@ export function TechnicalDocumentControls() {
                     <Label className="text-xs text-muted-foreground">Include in PDF</Label>
                     <Switch checked={section.includeInPdf} onCheckedChange={(checked) => updateDoc((current) => ({ ...current, sections: current.sections.map((candidate) => candidate.key === section.key ? { ...candidate, includeInPdf: checked } : candidate) }))} aria-label={`Include ${section.title} in PDF`} />
                   </div>
-                  {section.type === "raster_map" && !section.storagePath && (
-                    <p className="text-xs text-muted-foreground">Generated from the current raster map unless you upload a custom image.</p>
-                  )}
-                  {section.type === "raster_map" && doc.sections.filter((candidate) => candidate.type === "raster_map").length > 1 && (
-                    <Button variant="ghost" size="sm" className="h-7 w-full justify-start text-destructive hover:text-destructive" onClick={() => removeRasterMapSection(section.key)}>
-                      <Trash2 className="mr-2 h-3.5 w-3.5" /> Remove raster page
-                    </Button>
+                  {section.type === "raster_map" && imagePaths.length === 0 && (
+                    <p className="text-xs text-muted-foreground">The current raster map is shown unless you upload custom raster images.</p>
                   )}
                   {(section.type === "data_wiring_front" || section.type === "data_wiring_rear") && (
                     <TechnicalDocumentDevicePicker
@@ -143,32 +134,42 @@ export function TechnicalDocumentControls() {
                       }))}
                     />
                   )}
-                  <input
-                    ref={(element) => { fileInputs.current[inputKey] = element; }}
-                    type="file"
-                    accept={TECH_DOC_ACCEPTED_TYPES.join(",")}
-                    className="hidden"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) void handleFilePicked(inputKey, file);
-                      event.target.value = "";
-                    }}
-                  />
-                  {section.storagePath ? (
-                    <div className="flex w-full min-w-0 max-w-full items-center justify-between gap-2 text-xs text-muted-foreground">
-                      <span className="min-w-0 max-w-[160px] flex-1 truncate">{section.storagePath.split("/").pop()}</span>
-                      <div className="flex shrink-0 items-center gap-1">
-                        <Button variant="outline" size="icon" className="h-7 w-7" disabled={uploadingKey === inputKey} onClick={() => fileInputs.current[inputKey]?.click()} aria-label="Replace image">
-                          {uploadingKey === inputKey ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemoveImage(inputKey)} aria-label="Remove image"><X className="h-3.5 w-3.5" /></Button>
+                  {Array.from({ length: imageCount }, (_, imageIndex) => {
+                    const inputKey = getTechDocImageKey(section.key, imageIndex);
+                    const storagePath = imagePaths[imageIndex] ?? null;
+                    return (
+                      <div key={inputKey} className="space-y-1.5">
+                        <input
+                          ref={(element) => { fileInputs.current[inputKey] = element; }}
+                          type="file"
+                          accept={TECH_DOC_ACCEPTED_TYPES.join(",")}
+                          className="hidden"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (file) void handleFilePicked(section.key, imageIndex, file);
+                            event.target.value = "";
+                          }}
+                        />
+                        {section.type === "raster_map" && <Label className="text-[11px] text-muted-foreground">Raster image {imageIndex + 1}</Label>}
+                        {storagePath ? (
+                          <div className="flex w-full min-w-0 max-w-full items-center justify-between gap-2 text-xs text-muted-foreground">
+                            <span className="min-w-0 max-w-[160px] flex-1 truncate">{storagePath.split("/").pop()}</span>
+                            <div className="flex shrink-0 items-center gap-1">
+                              <Button variant="outline" size="icon" className="h-7 w-7" disabled={uploadingKey === inputKey} onClick={() => fileInputs.current[inputKey]?.click()} aria-label={`Replace image ${imageIndex + 1}`}>
+                                {uploadingKey === inputKey ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleRemoveImage(section.key, imageIndex)} aria-label={`Remove image ${imageIndex + 1}`}><X className="h-3.5 w-3.5" /></Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button variant="outline" className="h-9 w-full justify-start" disabled={uploadingKey === inputKey} onClick={() => fileInputs.current[inputKey]?.click()}>
+                            {uploadingKey === inputKey ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-2 h-3.5 w-3.5" />}
+                            Upload {section.type === "raster_map" ? `raster image ${imageIndex + 1}` : "image"}
+                          </Button>
+                        )}
                       </div>
-                    </div>
-                  ) : (
-                    <Button variant="outline" size="icon" className="h-9 w-9" disabled={uploadingKey === inputKey} onClick={() => fileInputs.current[inputKey]?.click()} aria-label="Upload image">
-                      {uploadingKey === inputKey ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                    </Button>
-                  )}
+                    );
+                  })}
                 </div>
               );
             })}

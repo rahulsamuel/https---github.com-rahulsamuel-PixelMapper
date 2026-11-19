@@ -39,6 +39,7 @@ export interface TechDocSection {
   screenId: string | null;
   title: string;
   storagePath: string | null;
+  storagePaths: string[];
   includeInPdf: boolean;
   devices: TechDocDevice[];
 }
@@ -76,6 +77,14 @@ export const SECTION_LABELS: Record<TechDocSectionType, string> = {
 
 export const DEFAULT_SECTION_ORDER = SCREEN_SECTION_TYPES;
 
+export function getTechDocSectionImagePaths(section: TechDocSection): string[] {
+  return section.storagePaths.length > 0 ? section.storagePaths : section.storagePath ? [section.storagePath] : [];
+}
+
+export function getTechDocImageKey(sectionKey: string, imageIndex: number): string {
+  return `${sectionKey}:${imageIndex}`;
+}
+
 export function getSectionLabel(section: TechDocSection): string {
   return section.screenId ? `${SECTION_LABELS[section.type]} — ${section.title.split(" — ").pop()}` : SECTION_LABELS[section.type];
 }
@@ -88,6 +97,7 @@ function makeSection(type: TechDocSectionType, screen: TechDocScreenReference | 
     screenId: screen?.id ?? null,
     title: screen ? `${SECTION_LABELS[type]} — ${screen.name}` : SECTION_LABELS[type],
     storagePath: null,
+    storagePaths: [],
     includeInPdf: true,
     devices: [],
   };
@@ -100,6 +110,7 @@ export function createRasterMapSection(key: string, title: string): TechDocSecti
     screenId: null,
     title,
     storagePath: null,
+    storagePaths: [],
     includeInPdf: true,
     devices: [],
   };
@@ -218,6 +229,14 @@ export function parseTechDoc(
         ? s.title
         : screen ? `${SECTION_LABELS[type]} — ${screen.name}` : SECTION_LABELS[type],
       storagePath: typeof s.storagePath === "string" && s.storagePath ? s.storagePath : null,
+      storagePaths: (() => {
+        const parsedPaths = Array.isArray(s.storagePaths)
+          ? s.storagePaths.filter((path): path is string => typeof path === "string" && path.length > 0)
+          : [];
+        return parsedPaths.length > 0
+          ? parsedPaths
+          : typeof s.storagePath === "string" && s.storagePath ? [s.storagePath] : [];
+      })(),
       includeInPdf: s.includeInPdf !== false,
       devices: parseTechDocDevices(s.devices),
     });
@@ -231,12 +250,18 @@ export function parseTechDoc(
 
   const rasterSections = sections.filter((section) => section.type === "raster_map");
   if (rasterSections.length > 0) {
+    const rasterImages = [...new Set(rasterSections.flatMap(getTechDocSectionImagePaths))];
+    const mergedRasterSection: TechDocSection = {
+      ...rasterSections[0],
+      storagePath: rasterImages[0] ?? null,
+      storagePaths: rasterImages,
+    };
     const nonRasterSections = sections.filter((section) => section.type !== "raster_map");
     const lastPixelMapIndex = nonRasterSections.reduce(
       (lastIndex, section, index) => section.type === "pixel_map" ? index : lastIndex,
       -1
     );
-    nonRasterSections.splice(lastPixelMapIndex + 1, 0, ...rasterSections);
+    nonRasterSections.splice(lastPixelMapIndex + 1, 0, mergedRasterSection);
     sections.splice(0, sections.length, ...nonRasterSections);
   }
 

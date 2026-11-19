@@ -5,7 +5,7 @@ import { FileText, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { useTechnicalDocument } from "./technical-document-context";
-import type { TechDocDevice } from "@/lib/tech-doc-saves";
+import { getTechDocImageKey, getTechDocSectionImagePaths, type TechDocDevice } from "@/lib/tech-doc-saves";
 
 const PAGE_ASPECT = 17 / 11;
 const TECH_DOC_IMAGE_PATH = "/storage/v1/object/sign/tech-doc-images/";
@@ -147,10 +147,12 @@ export function TechnicalDocumentView() {
           </Button>
         </div>
         {doc.sections.map((section, index) => {
-          const uploadedImage = imageUrls[section.key];
-          const image = section.type === "raster_map"
-            ? { url: uploadedImage?.url ?? rasterMapImageUrl, loading: uploadedImage?.loading ?? false }
-            : uploadedImage;
+          const imagePaths = getTechDocSectionImagePaths(section);
+          const images = section.type === "raster_map"
+            ? (imagePaths.length > 0
+              ? imagePaths.map((_, imageIndex) => imageUrls[getTechDocImageKey(section.key, imageIndex)] ?? { url: null, loading: true })
+              : [{ url: rasterMapImageUrl, loading: false }])
+            : [imageUrls[getTechDocImageKey(section.key, 0)]];
           const sectionScreen = screens.find((screen) => screen.id === section.screenId);
           const screenName = sectionScreen?.name ?? "All Screens";
           const hasDevices = (section.type === "data_wiring_front" || section.type === "data_wiring_rear") && section.devices.length > 0;
@@ -162,9 +164,23 @@ export function TechnicalDocumentView() {
                     {section.title.toUpperCase()}
                   </div>
                   <div className="my-[1%] flex min-h-0 items-center justify-center overflow-hidden border border-black/70" style={{ flex: hasDevices ? 3 : 1 }}>
-                    {image?.url ? (
-                      <DocumentImage url={image.url} alt={section.title} />
-                    ) : image?.loading ? (
+                    {section.type === "raster_map" ? (
+                      <div className={`grid h-full w-full min-h-0 gap-2 p-2 ${images.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+                        {images.map((image, imageIndex) => (
+                          <div key={imageIndex} className="flex min-h-0 min-w-0 items-center justify-center overflow-hidden border border-black/20">
+                            {image?.url ? (
+                              <DocumentImage url={image.url} alt={`${section.title} ${imageIndex + 1}`} />
+                            ) : image?.loading ? (
+                              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                            ) : (
+                              <span className="text-xs text-gray-400">No image uploaded for this section.</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : images[0]?.url ? (
+                      <DocumentImage url={images[0].url} alt={section.title} />
+                    ) : images[0]?.loading ? (
                       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     ) : (
                       <span className="text-xs text-gray-400">No image uploaded for this section.</span>
