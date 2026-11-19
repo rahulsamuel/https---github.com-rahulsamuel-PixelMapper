@@ -5,7 +5,7 @@ import { FileText, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { useTechnicalDocument } from "./technical-document-context";
-import { getTechDocImageKey, getTechDocSectionImagePaths, type TechDocDevice } from "@/lib/tech-doc-saves";
+import { getTechDocDataPortLabel, getTechDocImageKey, getTechDocSectionImagePaths, type TechDocDevice } from "@/lib/tech-doc-saves";
 
 const PAGE_ASPECT = 17 / 11;
 const TECH_DOC_IMAGE_PATH = "/storage/v1/object/sign/tech-doc-images/";
@@ -102,11 +102,11 @@ function DeviceNode({ device, deviceIndex, deviceCount, dataPortLabels }: { devi
                 <span className="h-[clamp(5px,0.65vw,9px)] w-[clamp(5px,0.65vw,9px)] shrink-0 rounded-full border-2 border-slate-950" style={{ backgroundColor: port ? PORT_COLORS[port.portType] ?? PORT_COLORS.custom : "transparent" }} />
                 {port && (
                   <>
-                    {(isBackup ? dataPortLabels.backup : dataPortLabels.primary)[index] && (
+                    {getTechDocDataPortLabel(device, port.id, index, deviceIndex, deviceCount, dataPortLabels) && (
                       <>
                         <span className="shrink-0 font-bold" style={{ color: isBackup ? "#ef4444" : "#22c55e" }}>→</span>
                         <span className="inline-flex h-[clamp(8px,0.9vw,13px)] min-w-[clamp(12px,1.25vw,17px)] shrink-0 items-center justify-center rounded px-1 text-[clamp(4px,0.48vw,6px)] font-bold leading-none text-white" style={{ backgroundColor: isBackup ? "#ef4444" : "#22c55e" }}>
-                          {(isBackup ? dataPortLabels.backup : dataPortLabels.primary)[index]}
+                          {getTechDocDataPortLabel(device, port.id, index, deviceIndex, deviceCount, dataPortLabels)}
                         </span>
                       </>
                     )}

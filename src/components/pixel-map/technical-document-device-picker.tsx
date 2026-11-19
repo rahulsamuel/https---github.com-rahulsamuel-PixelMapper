@@ -15,6 +15,7 @@ import type { TechDocDevice } from "@/lib/tech-doc-saves";
 
 interface TechnicalDocumentDevicePickerProps {
   devices: TechDocDevice[];
+  dataPortLabels: { primary: string[]; backup: string[] };
   onChange: (devices: TechDocDevice[]) => void;
 }
 
@@ -85,7 +86,7 @@ function toTechDocDevice(preset: DevicePreset): TechDocDevice {
   };
 }
 
-export function TechnicalDocumentDevicePicker({ devices, onChange }: TechnicalDocumentDevicePickerProps) {
+export function TechnicalDocumentDevicePicker({ devices, dataPortLabels, onChange }: TechnicalDocumentDevicePickerProps) {
   const [databasePresets, setDatabasePresets] = useState<DevicePreset[]>([]);
   const [selectedKey, setSelectedKey] = useState("");
   const [loading, setLoading] = useState(true);
@@ -135,6 +136,19 @@ export function TechnicalDocumentDevicePicker({ devices, onChange }: TechnicalDo
     setSelectedKey("");
   };
 
+  const updatePortLabel = (deviceId: string, portId: string, label: string) => {
+    onChange(devices.map((device) => {
+      if (device.id !== deviceId) return device;
+      const dataPortLabelsForDevice = { ...device.dataPortLabels };
+      if (label) dataPortLabelsForDevice[portId] = label;
+      else delete dataPortLabelsForDevice[portId];
+      return {
+        ...device,
+        ...(Object.keys(dataPortLabelsForDevice).length > 0 ? { dataPortLabels: dataPortLabelsForDevice } : { dataPortLabels: undefined }),
+      };
+    }));
+  };
+
   return (
     <div className="space-y-2 border-t pt-2">
       <div className="flex items-center justify-between gap-2">
@@ -167,13 +181,41 @@ export function TechnicalDocumentDevicePicker({ devices, onChange }: TechnicalDo
       {devices.length > 0 && (
         <div className="space-y-1">
           {devices.map((device) => (
-            <div key={device.id} className="flex min-w-0 items-center gap-2 rounded border bg-background px-2 py-1.5">
-              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: device.color }} />
-              <span className="min-w-0 flex-1 truncate text-xs">{device.name}</span>
-              <span className="shrink-0 text-[10px] text-muted-foreground">{device.ports.length} ports</span>
-              <Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => onChange(devices.filter((candidate) => candidate.id !== device.id))} aria-label={`Remove ${device.name}`}>
-                <X className="h-3 w-3" />
-              </Button>
+            <div key={device.id} className="min-w-0 rounded border bg-background px-2 py-1.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: device.color }} />
+                <span className="min-w-0 flex-1 truncate text-xs">{device.name}</span>
+                <span className="shrink-0 text-[10px] text-muted-foreground">{device.ports.length} ports</span>
+                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => onChange(devices.filter((candidate) => candidate.id !== device.id))} aria-label={`Remove ${device.name}`}>
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+              {device.ports.some((port) => port.direction === "output") && (
+                <div className="mt-1 space-y-1 border-t pt-1.5">
+                  <p className="text-[10px] font-medium text-muted-foreground">Manual data connections</p>
+                  {device.ports.filter((port) => port.direction === "output").map((port, outputIndex) => {
+                    const isBackup = devices.indexOf(device) >= Math.ceil(devices.length / 2);
+                    const availableLabels = isBackup ? dataPortLabels.backup : dataPortLabels.primary;
+                    const currentLabel = device.dataPortLabels?.[port.id] ?? "";
+                    const automaticLabel = availableLabels[outputIndex] ?? "not assigned";
+                    const options = [...new Set([...(currentLabel ? [currentLabel] : []), ...availableLabels])];
+                    return (
+                      <label key={port.id} className="flex min-w-0 items-center gap-1.5">
+                        <span className="w-12 shrink-0 truncate text-[10px] text-muted-foreground">{port.label}</span>
+                        <select
+                          value={currentLabel}
+                          onChange={(event) => updatePortLabel(device.id, port.id, event.target.value)}
+                          className="h-7 min-w-0 flex-1 rounded border border-input bg-background px-1.5 text-[10px] text-foreground outline-none focus:ring-1 focus:ring-ring"
+                          aria-label={`Data connection for ${device.name} ${port.label}`}
+                        >
+                          <option value="">Automatic: {automaticLabel}</option>
+                          {options.map((label) => <option key={label} value={label}>{label}</option>)}
+                        </select>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           ))}
         </div>

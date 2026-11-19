@@ -1,5 +1,5 @@
 import type { jsPDF as JsPDFType } from "jspdf";
-import type { TechDocData, TechDocDevice } from "./tech-doc-saves";
+import { getTechDocDataPortLabel, type TechDocData, type TechDocDevice } from "./tech-doc-saves";
 
 // 11 x 17 landscape in millimeters (jspdf "tabloid" format is portrait 279x432; we
 // rotate explicitly for clarity).
@@ -189,7 +189,7 @@ function drawDeviceCards(
         if (dataWiring) {
           const connectionColor: [number, number, number] = isBackup ? [239, 68, 68] : [34, 197, 94];
           const destinationX = x + nodeWidth + 15;
-          const destinationLabel = (isBackup ? dataPortLabels.backup : dataPortLabels.primary)[outputs.indexOf(output)];
+          const destinationLabel = getTechDocDataPortLabel(device, output.id, outputs.indexOf(output), deviceIndex, cardMetrics.length, dataPortLabels);
           if (!destinationLabel) continue;
           pdf.setDrawColor(...connectionColor);
           pdf.setFillColor(...connectionColor);

@@ -17,6 +17,7 @@ export function TechnicalDocumentControls() {
     saving,
     uploadingKey,
     updateDoc,
+    dataPortLabelsByScreen,
     handleFilePicked,
     handleRemoveImage,
     moveSection,
@@ -128,6 +129,7 @@ export function TechnicalDocumentControls() {
                   {(section.type === "data_wiring_front" || section.type === "data_wiring_rear") && (
                     <TechnicalDocumentDevicePicker
                       devices={section.devices}
+                      dataPortLabels={section.screenId ? dataPortLabelsByScreen[section.screenId] ?? { primary: [], backup: [] } : { primary: [], backup: [] }}
                       onChange={(devices) => updateDoc((current) => ({
                         ...current,
                         sections: current.sections.map((candidate) => candidate.key === section.key ? { ...candidate, devices } : candidate),

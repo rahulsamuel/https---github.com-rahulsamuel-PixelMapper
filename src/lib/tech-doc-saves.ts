@@ -31,6 +31,7 @@ export interface TechDocDevice {
   height: number;
   color: string;
   ports: SignalFlowPort[];
+  dataPortLabels?: Record<string, string>;
 }
 
 export interface TechDocSection {
@@ -177,6 +178,11 @@ function parseTechDocDevices(value: unknown): TechDocDevice[] {
     const type = DEVICE_TYPES.includes(device.type as DeviceType) ? device.type as DeviceType : "custom";
     const width = typeof device.width === "number" && Number.isFinite(device.width) ? Math.max(80, device.width) : 180;
     const height = typeof device.height === "number" && Number.isFinite(device.height) ? Math.max(60, device.height) : 120;
+    const dataPortLabels = device.dataPortLabels && typeof device.dataPortLabels === "object"
+      ? Object.fromEntries(Object.entries(device.dataPortLabels).flatMap(([portId, label]) => (
+          typeof label === "string" && label.trim() ? [[portId, label.trim()]] : []
+        )))
+      : undefined;
     return [{
       id: typeof device.id === "string" && device.id ? device.id : `tech-doc-device-${index}`,
       type,
@@ -185,8 +191,23 @@ function parseTechDocDevices(value: unknown): TechDocDevice[] {
       height,
       color: isHexColor(device.color) ? device.color : "#475569",
       ports,
+      ...(dataPortLabels && Object.keys(dataPortLabels).length > 0 ? { dataPortLabels } : {}),
     }];
   });
+}
+
+export function getTechDocDataPortLabel(
+  device: TechDocDevice,
+  portId: string,
+  outputIndex: number,
+  deviceIndex: number,
+  deviceCount: number,
+  dataPortLabels: { primary: string[]; backup: string[] },
+): string {
+  const manualLabel = device.dataPortLabels?.[portId]?.trim();
+  if (manualLabel) return manualLabel;
+  const labels = deviceIndex >= Math.ceil(deviceCount / 2) ? dataPortLabels.backup : dataPortLabels.primary;
+  return labels[outputIndex] ?? "";
 }
 
 export function parseTechDoc(
