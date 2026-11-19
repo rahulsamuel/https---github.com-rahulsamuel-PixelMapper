@@ -103,7 +103,7 @@ export function TechnicalDocumentControls() {
           <div className="space-y-3">
             <div>
               <h3 className="font-semibold">Pages</h3>
-              <p className="text-xs text-muted-foreground">Each screen gets its own pixel map and wiring pages. Add multiple raster images to the Raster Map page for large screens.</p>
+              <p className="text-xs text-muted-foreground">Each screen gets its own pixel map, raster map, and wiring pages. Add multiple raster images to a Raster Map page for large screens.</p>
             </div>
             {doc.sections.map((section, index) => {
               const imagePaths = getTechDocSectionImagePaths(section);

@@ -103,29 +103,18 @@ function makeSection(type: TechDocSectionType, screen: TechDocScreenReference | 
   };
 }
 
-export function createRasterMapSection(key: string, title: string): TechDocSection {
-  return {
-    key,
-    type: "raster_map",
-    screenId: null,
-    title,
-    storagePath: null,
-    storagePaths: [],
-    includeInPdf: true,
-    devices: [],
-  };
-}
-
 export function buildDefaultSections(screens: TechDocScreenReference[]): TechDocSection[] {
-  const pixelMapSections = screens.map((screen) => makeSection("pixel_map", screen));
-  const otherScreenSections = screens.flatMap((screen) =>
-    SCREEN_SECTION_TYPES.filter((type) => type !== "pixel_map").map((type) => makeSection(type, screen))
-  );
-  const rasterMapSection = createRasterMapSection("raster_map", SECTION_LABELS.raster_map);
-  const otherProjectSections = PROJECT_SECTION_TYPES
+  const screenSections = screens.flatMap((screen) => [
+    makeSection("pixel_map", screen),
+    makeSection("raster_map", screen),
+    ...SCREEN_SECTION_TYPES
+      .filter((type) => type !== "pixel_map")
+      .map((type) => makeSection(type, screen)),
+  ]);
+  const projectSections = PROJECT_SECTION_TYPES
     .filter((type) => type !== "raster_map")
     .map((type) => makeSection(type, null));
-  return [...pixelMapSections, rasterMapSection, ...otherScreenSections, ...otherProjectSections];
+  return [...screenSections, ...projectSections];
 }
 
 export function emptyTechDoc(projectName: string, screens: TechDocScreenReference[] = []): TechDocData {
@@ -248,22 +237,40 @@ export function parseTechDoc(
   }
   if (sections.length === 0) sections.push(...buildDefaultSections(screens));
 
-  const rasterSections = sections.filter((section) => section.type === "raster_map");
-  if (rasterSections.length > 0) {
-    const rasterImages = [...new Set(rasterSections.flatMap(getTechDocSectionImagePaths))];
-    const mergedRasterSection: TechDocSection = {
-      ...rasterSections[0],
-      storagePath: rasterImages[0] ?? null,
-      storagePaths: rasterImages,
-    };
-    const nonRasterSections = sections.filter((section) => section.type !== "raster_map");
-    const lastPixelMapIndex = nonRasterSections.reduce(
-      (lastIndex, section, index) => section.type === "pixel_map" ? index : lastIndex,
-      -1
-    );
-    nonRasterSections.splice(lastPixelMapIndex + 1, 0, mergedRasterSection);
-    sections.splice(0, sections.length, ...nonRasterSections);
+  const legacyRaster = sections.find((section) => section.type === "raster_map" && !section.screenId);
+  if (legacyRaster) {
+    const legacyImages = getTechDocSectionImagePaths(legacyRaster);
+    const firstScreenRaster = sections.find((section) => section.type === "raster_map" && section.screenId);
+    if (firstScreenRaster && legacyImages.length > 0) {
+      const mergedPaths = [...legacyImages, ...getTechDocSectionImagePaths(firstScreenRaster)];
+      firstScreenRaster.storagePath = mergedPaths[0] ?? null;
+      firstScreenRaster.storagePaths = mergedPaths;
+    }
+    sections.splice(sections.indexOf(legacyRaster), 1);
   }
+
+  const rasterByScreen = new Map(
+    sections
+      .filter((section) => section.type === "raster_map" && section.screenId)
+      .map((section) => [section.screenId, section])
+  );
+  const ordered: TechDocSection[] = [];
+  const paired = new Set<TechDocSection>();
+  for (const section of sections) {
+    if (section.type === "raster_map" && section.screenId) continue;
+    ordered.push(section);
+    if (section.type === "pixel_map") {
+      const raster = rasterByScreen.get(section.screenId);
+      if (raster) {
+        ordered.push(raster);
+        paired.add(raster);
+      }
+    }
+  }
+  for (const section of sections) {
+    if (section.type === "raster_map" && section.screenId && !paired.has(section)) ordered.push(section);
+  }
+  sections.splice(0, sections.length, ...ordered);
 
   return {
     title: typeof r.title === "string" && r.title.trim() ? r.title : fallback.title,
