@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { jsPDF } from "jspdf";
 import { useAuth } from "@/contexts/auth-context";
 import { usePixelMap } from "@/contexts/pixel-map-context";
-import { dataLabelFor, portLabelOffsets } from "@/lib/device-wiring-layout";
+import { getWiringData } from "@/lib/wiring";
 import { useToast } from "@/hooks/use-toast";
 import { buildTechDocPdf, type TechDocPdfPage } from "@/lib/tech-doc-pdf";
 import {
@@ -75,12 +75,31 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     [pixelMapScreens]
   );
   const dataPortLabelsByScreen = useMemo(() => Object.fromEntries(pixelMapScreens.map((screen) => {
-    const offsets = portLabelOffsets(screen.devices);
-    const labelsForRole = (isBackup: boolean) => screen.devices
-      .filter((device) => (device.role === "backup") === isBackup)
-      .flatMap((device) => Array.from({ length: device.portCount }, (_, index) => dataLabelFor(device, index + 1, offsets[device.id])));
-    return [screen.id, { primary: labelsForRole(false), backup: labelsForRole(true) }];
-  })), [pixelMapScreens]);
+    const screenHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+    const screenWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+    const wiringData = getWiringData({
+      dimensions: { ...screen.dimensions, screenHeight, screenWidth },
+      tiles: screen.tiles,
+      wiringPortConfig: screen.wiringPortConfig,
+      dataPortStartNumber: screen.dataPortStartNumber,
+      wiringPattern: screen.wiringPattern,
+      powerWiringPattern: screen.powerWiringPattern,
+      rasterMapConfig: rasterMapConfigs[screen.rasterGroupId ?? activeRasterGroupId] ?? null,
+      tilesPerPowerString: screen.tilesPerPowerString,
+      topHalfTile: screen.topHalfTile,
+      bottomHalfTile: screen.bottomHalfTile,
+      leftHalfTile: screen.leftHalfTile,
+      rightHalfTile: screen.rightHalfTile,
+      processorType: screen.processorType,
+      screenId: screen.id,
+      sections: screen.sections,
+    });
+    const uniqueLabels = (labels: string[]) => [...new Set(labels.filter(Boolean))];
+    return [screen.id, {
+      primary: uniqueLabels(wiringData.map((tile) => tile.dataLabel)),
+      backup: uniqueLabels(wiringData.map((tile) => tile.backupLabel)),
+    }];
+  })), [activeRasterGroupId, pixelMapScreens, rasterMapConfigs]);
   const [doc, setDoc] = useState<TechDocData>(() => emptyTechDoc(projectName, screens));
   const [imageUrls, setImageUrls] = useState<Record<string, SectionImageState>>({});
   const [loading, setLoading] = useState(true);
