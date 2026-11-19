@@ -116,23 +116,21 @@ function truncateText(value: string, maxLength: number): string {
 function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number, top: number, width: number, height: number): void {
   if (devices.length === 0) return;
   const gap = 4;
-  const columns = devices.length;
-  const rows = 1;
-  const slotWidth = (width - gap) / columns;
-  const rowHeight = (height - gap * Math.max(0, rows - 1)) / rows;
-
-  devices.forEach((device, index) => {
-    const column = index % columns;
-    const row = Math.floor(index / columns);
-    const xSlot = left + column * (slotWidth + gap);
+  const maxCardWidth = (width - gap * (devices.length - 1)) / devices.length;
+  const cardMetrics = devices.map((device) => {
     const inputs = device.ports.filter((port) => port.direction === "input");
     const outputs = device.ports.filter((port) => port.direction === "output");
     const portRows = Math.max(inputs.length, outputs.length);
-    const nodeHeight = Math.min(rowHeight, Math.max(42, 24 + portRows * 4.2));
-    const y = top + row * (rowHeight + gap) + (rowHeight - nodeHeight) / 2;
+    const nodeHeight = Math.min(height, Math.max(42, 24 + portRows * 4.2));
     const nodeRatio = device.width / Math.max(device.height, 70 + portRows * 22);
-    const nodeWidth = Math.min(slotWidth, Math.max(42, nodeHeight * nodeRatio));
-    const x = xSlot + (slotWidth - nodeWidth) / 2;
+    const nodeWidth = Math.min(maxCardWidth, Math.max(42, nodeHeight * nodeRatio));
+    return { device, inputs, outputs, nodeHeight, nodeWidth, portRows };
+  });
+  const groupWidth = cardMetrics.reduce((total, { nodeWidth }) => total + nodeWidth, 0) + gap * (cardMetrics.length - 1);
+  let x = left + Math.max(0, (width - groupWidth) / 2);
+
+  cardMetrics.forEach(({ device, inputs, outputs, nodeHeight, nodeWidth, portRows }) => {
+    const y = top + (height - nodeHeight) / 2;
     const visibleRows = Math.min(Math.max(1, Math.floor((nodeHeight - 20) / 4.2)), portRows);
 
     pdf.setFillColor(...NODE_BACKGROUND);
@@ -178,12 +176,13 @@ function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number,
       }
     }
 
-    if (Math.max(inputs.length, outputs.length) > visibleRows) {
+    if (portRows > visibleRows) {
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(5.5);
       pdf.setTextColor(220, 235, 255);
-      pdf.text(`+${Math.max(inputs.length, outputs.length) - visibleRows} more ports`, x + nodeWidth / 2, y + nodeHeight - 4, { align: "center" });
+      pdf.text(`+${portRows - visibleRows} more ports`, x + nodeWidth / 2, y + nodeHeight - 4, { align: "center" });
     }
+    x += nodeWidth + gap;
   });
 }
 
