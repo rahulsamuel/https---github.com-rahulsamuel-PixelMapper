@@ -196,18 +196,8 @@ function parseTechDocDevices(value: unknown): TechDocDevice[] {
   });
 }
 
-export function getTechDocDataPortLabel(
-  device: TechDocDevice,
-  portId: string,
-  outputIndex: number,
-  deviceIndex: number,
-  deviceCount: number,
-  dataPortLabels: { primary: string[]; backup: string[] },
-): string {
-  const manualLabel = device.dataPortLabels?.[portId]?.trim();
-  if (manualLabel) return manualLabel;
-  const labels = deviceIndex >= Math.ceil(deviceCount / 2) ? dataPortLabels.backup : dataPortLabels.primary;
-  return labels[outputIndex] ?? "";
+export function getTechDocDataPortLabel(device: TechDocDevice, portId: string): string {
+  return device.dataPortLabels?.[portId]?.trim() ?? "";
 }
 
 export function parseTechDoc(

@@ -200,7 +200,6 @@ export function TechnicalDocumentDevicePicker({ devices, dataPortLabels, onChang
                     const isBackup = devices.indexOf(device) >= Math.ceil(devices.length / 2);
                     const availableLabels = isBackup ? dataPortLabels.backup : dataPortLabels.primary;
                     const currentLabel = device.dataPortLabels?.[port.id] ?? "";
-                    const automaticLabel = availableLabels[outputIndex] ?? "not assigned";
                     const options = [...new Set([
                       ...(currentLabel ? [currentLabel] : []),
                       ...availableLabels.filter((label) => !assignedDataLabels.has(label) || label === currentLabel),
@@ -214,7 +213,7 @@ export function TechnicalDocumentDevicePicker({ devices, dataPortLabels, onChang
                           className="h-7 min-w-0 flex-1 rounded border border-input bg-background px-1.5 text-[10px] text-foreground outline-none focus:ring-1 focus:ring-ring"
                           aria-label={`Data connection for ${device.name} ${port.label}`}
                         >
-                          <option value="">Automatic: {automaticLabel}</option>
+                          <option value="">Not assigned</option>
                           {options.map((label) => <option key={label} value={label}>{label}</option>)}
                         </select>
                       </label>

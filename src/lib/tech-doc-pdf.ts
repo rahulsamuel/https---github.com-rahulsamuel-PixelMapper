@@ -123,7 +123,6 @@ function drawDeviceCards(
   width: number,
   height: number,
   dataWiring: boolean,
-  dataPortLabels: { primary: string[]; backup: string[] },
 ): void {
   if (devices.length === 0) return;
   const gap = 4;
@@ -189,7 +188,7 @@ function drawDeviceCards(
         if (dataWiring) {
           const connectionColor: [number, number, number] = isBackup ? [239, 68, 68] : [34, 197, 94];
           const destinationX = x + nodeWidth + 15;
-          const destinationLabel = getTechDocDataPortLabel(device, output.id, outputs.indexOf(output), deviceIndex, cardMetrics.length, dataPortLabels);
+          const destinationLabel = getTechDocDataPortLabel(device, output.id);
           if (!destinationLabel) continue;
           pdf.setDrawColor(...connectionColor);
           pdf.setFillColor(...connectionColor);
@@ -324,7 +323,7 @@ export async function buildTechDocPdf(
       pdf.setDrawColor(...LINE);
       pdf.setLineWidth(0.25);
       pdf.rect(frameLeft, deviceTop, frameW, deviceAreaHeight);
-      drawDeviceCards(pdf, page.devices, frameLeft + 4, deviceTop + 4, frameW - 8, deviceAreaHeight - 8, page.dataWiring, page.dataPortLabels);
+      drawDeviceCards(pdf, page.devices, frameLeft + 4, deviceTop + 4, frameW - 8, deviceAreaHeight - 8, page.dataWiring);
     }
 
     // Title block at bottom
