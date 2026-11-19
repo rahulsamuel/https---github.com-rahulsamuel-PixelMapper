@@ -34,7 +34,7 @@ const PORT_COLORS: Record<string, string> = {
   custom: "#94a3b8",
 };
 
-function DeviceNode({ device }: { device: TechDocDevice }) {
+function DeviceNode({ device, deviceIndex, deviceCount }: { device: TechDocDevice; deviceIndex: number; deviceCount: number }) {
   const { updateDoc } = useTechnicalDocument();
   const inputs = device.ports.filter((port) => port.direction === "input");
 
@@ -63,6 +63,7 @@ function DeviceNode({ device }: { device: TechDocDevice }) {
   const outputs = device.ports.filter((port) => port.direction === "output");
   const rows = Math.max(inputs.length, outputs.length);
   const nodeHeight = Math.max(device.height, 70 + rows * 22);
+  const isBackup = deviceIndex >= Math.ceil(deviceCount / 2);
 
   return (
     <div className="h-full max-h-full min-h-0 w-auto max-w-full min-w-0 self-start overflow-y-auto rounded-xl border-2 border-sky-400 bg-[#294c7a] text-white shadow-[0_0_8px_rgba(14,165,233,0.6)]" style={{ aspectRatio: `${device.width} / ${nodeHeight}`, scrollbarColor: "#38bdf8 #0f172a", scrollbarWidth: "thin" }}>
@@ -99,6 +100,14 @@ function DeviceNode({ device }: { device: TechDocDevice }) {
               <div key={port?.id ?? `output-${index}`} className="flex min-w-0 items-center justify-end gap-1 text-[clamp(5px,0.62vw,9px)] leading-tight">
                 <span className="min-w-0 truncate text-right">{port?.label ?? ""}</span>
                 <span className="h-[clamp(5px,0.65vw,9px)] w-[clamp(5px,0.65vw,9px)] shrink-0 rounded-full border-2 border-slate-950" style={{ backgroundColor: port ? PORT_COLORS[port.portType] ?? PORT_COLORS.custom : "transparent" }} />
+                {port && (
+                  <>
+                    <span className="shrink-0 font-bold" style={{ color: isBackup ? "#ef4444" : "#22c55e" }}>→</span>
+                    <span className="inline-flex h-[clamp(10px,1.2vw,18px)] min-w-[clamp(10px,1.2vw,18px)] shrink-0 items-center justify-center rounded-full px-0.5 text-[clamp(5px,0.6vw,8px)] font-bold text-white" style={{ backgroundColor: isBackup ? "#ef4444" : "#22c55e" }}>
+                      {index + 1}{isBackup ? "B" : ""}
+                    </span>
+                  </>
+                )}
               </div>
             );
           })}
@@ -112,7 +121,7 @@ function DeviceCards({ devices }: { devices: TechDocDevice[] }) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden border border-slate-700 bg-[#0b1220] p-[0.6%] text-white">
       <div className="grid min-h-0 flex-1 items-start gap-[1%] overflow-hidden" style={{ gridTemplateColumns: `repeat(${devices.length}, minmax(0, 1fr))` }}>
-        {devices.map((device) => <DeviceNode key={device.id} device={device} />)}
+        {devices.map((device, deviceIndex) => <DeviceNode key={device.id} device={device} deviceIndex={deviceIndex} deviceCount={devices.length} />)}
       </div>
     </div>
   );

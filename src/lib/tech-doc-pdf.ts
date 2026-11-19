@@ -32,6 +32,7 @@ export interface TechDocPdfPage {
   screenName: string;
   imageUrls: string[];
   devices: TechDocDevice[];
+  dataWiring: boolean;
 }
 
 export interface TechDocPdfMeta {
@@ -113,10 +114,11 @@ function truncateText(value: string, maxLength: number): string {
   return value.length <= maxLength ? value : `${value.slice(0, Math.max(1, maxLength - 1))}…`;
 }
 
-function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number, top: number, width: number, height: number): void {
+function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number, top: number, width: number, height: number, dataWiring: boolean): void {
   if (devices.length === 0) return;
   const gap = 4;
-  const maxCardWidth = (width - gap * (devices.length - 1)) / devices.length;
+  const connectionWidth = dataWiring ? 18 : 0;
+  const maxCardWidth = (width - gap * (devices.length - 1) - connectionWidth * devices.length) / devices.length;
   const cardMetrics = devices.map((device) => {
     const inputs = device.ports.filter((port) => port.direction === "input");
     const outputs = device.ports.filter((port) => port.direction === "output");
@@ -126,11 +128,12 @@ function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number,
     const nodeWidth = Math.min(maxCardWidth, Math.max(42, nodeHeight * nodeRatio));
     return { device, inputs, outputs, nodeHeight, nodeWidth, portRows };
   });
-  const groupWidth = cardMetrics.reduce((total, { nodeWidth }) => total + nodeWidth, 0) + gap * (cardMetrics.length - 1);
+  const groupWidth = cardMetrics.reduce((total, { nodeWidth }) => total + nodeWidth + connectionWidth, 0) + gap * (cardMetrics.length - 1);
   let x = left + Math.max(0, (width - groupWidth) / 2);
 
-  cardMetrics.forEach(({ device, inputs, outputs, nodeHeight, nodeWidth, portRows }) => {
+  cardMetrics.forEach(({ device, inputs, outputs, nodeHeight, nodeWidth, portRows }, deviceIndex) => {
     const y = top + (height - nodeHeight) / 2;
+    const isBackup = deviceIndex >= Math.ceil(cardMetrics.length / 2);
     const visibleRows = Math.min(Math.max(1, Math.floor((nodeHeight - 20) / 4.2)), portRows);
 
     pdf.setFillColor(...NODE_BACKGROUND);
@@ -173,6 +176,21 @@ function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number,
         pdf.setFontSize(6.5);
         pdf.setTextColor(...WHITE);
         pdf.text(truncateText(output.label, 20), x + nodeWidth - 9, portY, { align: "right" });
+        if (dataWiring) {
+          const connectionColor: [number, number, number] = isBackup ? [239, 68, 68] : [34, 197, 94];
+          const destinationX = x + nodeWidth + 11;
+          const destinationLabel = `${outputs.indexOf(output) + 1}${isBackup ? "B" : ""}`;
+          pdf.setDrawColor(...connectionColor);
+          pdf.setFillColor(...connectionColor);
+          pdf.setLineWidth(0.7);
+          pdf.line(x + nodeWidth - 2, portY - 1.3, destinationX - 4, portY - 1.3);
+          pdf.triangle(destinationX - 5, portY - 2.7, destinationX - 5, portY + 0.1, destinationX - 2, portY - 1.3, "F");
+          pdf.circle(destinationX, portY - 1.3, 4, "F");
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(6.5);
+          pdf.setTextColor(...WHITE);
+          pdf.text(destinationLabel, destinationX, portY + 0.8, { align: "center" });
+        }
       }
     }
 
@@ -182,7 +200,7 @@ function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number,
       pdf.setTextColor(220, 235, 255);
       pdf.text(`+${portRows - visibleRows} more ports`, x + nodeWidth / 2, y + nodeHeight - 4, { align: "center" });
     }
-    x += nodeWidth + gap;
+    x += nodeWidth + connectionWidth + gap;
   });
 }
 
@@ -295,7 +313,7 @@ export async function buildTechDocPdf(
       pdf.setDrawColor(...LINE);
       pdf.setLineWidth(0.25);
       pdf.rect(frameLeft, deviceTop, frameW, deviceAreaHeight);
-      drawDeviceCards(pdf, page.devices, frameLeft + 4, deviceTop + 4, frameW - 8, deviceAreaHeight - 8);
+      drawDeviceCards(pdf, page.devices, frameLeft + 4, deviceTop + 4, frameW - 8, deviceAreaHeight - 8, page.dataWiring);
     }
 
     // Title block at bottom

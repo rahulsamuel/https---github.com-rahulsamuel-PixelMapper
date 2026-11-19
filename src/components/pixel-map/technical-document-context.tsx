@@ -293,6 +293,7 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
             : rasterMapImageUrl ? [rasterMapImageUrl] : [])
           : [imageUrls[getTechDocImageKey(section.key, 0)]?.url].filter((url): url is string => Boolean(url)),
         devices: section.devices,
+        dataWiring: section.type === "data_wiring_front" || section.type === "data_wiring_rear",
       }));
       const pdf = await buildTechDocPdf(JsPdfCtor as unknown as typeof jsPDF, pages, {
         doc: docRef.current,
