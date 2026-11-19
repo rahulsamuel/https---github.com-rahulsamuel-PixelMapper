@@ -2,13 +2,33 @@
 "use client";
 
 import { usePixelMap } from "@/contexts/pixel-map-context";
-import { useMemo } from 'react';
+import { type PointerEvent as ReactPointerEvent, useCallback, useMemo, useRef } from 'react';
+import type { Screen, TextOverlay } from "@/contexts/pixel-map-types";
 import { cn } from "@/lib/utils";
-import { Download, Layers } from "lucide-react";
+import { Download, Layers, Plus, Trash2, Type } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { RasterScreenToggles } from "./raster-screen-toggles";
+
+function getRasterCropOffset(screen: Screen, activeBounds: { minX: number; minY: number; maxX: number; maxY: number }): { x: number; y: number } {
+  const { tileWidth, tileHeight } = screen.dimensions;
+  const effectiveWidth = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
+  const effectiveHeight = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
+  let x = 0;
+  let y = 0;
+  for (let index = 0; index < activeBounds.minX; index++) {
+    const isHalf = (screen.leftHalfTile && index === 0) || (screen.rightHalfTile && index === effectiveWidth - 1);
+    x += isHalf ? tileWidth / 2 : tileWidth;
+  }
+  for (let index = 0; index < activeBounds.minY; index++) {
+    const isHalf = (screen.topHalfTile && index === 0) || (screen.bottomHalfTile && index === effectiveHeight - 1);
+    y += isHalf ? tileHeight / 2 : tileHeight;
+  }
+  return { x, y };
+}
 
 
 export function RasterMapPreview() {
@@ -25,6 +45,10 @@ export function RasterMapPreview() {
     screens,
     downloadRasterSlices,
     updateScreenById,
+    currentScreen,
+    addTextOverlay,
+    updateTextOverlay,
+    removeTextOverlay,
   } = usePixelMap();
 
   const groupsWithConfig = rasterGroups.filter(g => rasterMapConfigs[g.id]);
@@ -117,6 +141,52 @@ export function RasterMapPreview() {
     }
   };
 
+  const dragRef = useRef<{
+    screenId: string;
+    overlayId: string;
+    startClientX: number;
+    startClientY: number;
+    startX: number;
+    startY: number;
+    pointerId: number;
+  } | null>(null);
+
+  const handleOverlayPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>, screenId: string, overlay: TextOverlay) => {
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = {
+      screenId,
+      overlayId: overlay.id,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startX: overlay.x,
+      startY: overlay.y,
+      pointerId: event.pointerId,
+    };
+  }, []);
+
+  const handleOverlayPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    updateScreenById(drag.screenId, (screen) => ({
+      ...screen,
+      textOverlays: (screen.textOverlays ?? []).map((overlay) => overlay.id === drag.overlayId
+        ? {
+            ...overlay,
+            x: Math.max(0, drag.startX + (event.clientX - drag.startClientX) / zoom),
+            y: Math.max(0, drag.startY + (event.clientY - drag.startClientY) / zoom),
+          }
+        : overlay),
+    }));
+  }, [updateScreenById, zoom]);
+
+  const finishOverlayDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  }, []);
+
+  const currentOverlays = currentScreen.textOverlays ?? [];
+
   return (
     <div className="space-y-2">
       <RasterScreenToggles groupId={displayGroupId} />
@@ -152,6 +222,63 @@ export function RasterMapPreview() {
           <Label htmlFor="raster-text-overlays" className="text-xs text-muted-foreground">Text overlays</Label>
           <Switch id="raster-text-overlays" checked={overlaysVisible} onCheckedChange={setOverlaysVisible} />
         </div>
+      </div>
+
+      <div className="space-y-2 rounded-md border bg-muted/20 p-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Type className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-xs font-medium">Text overlays</span>
+            <span className="truncate text-[11px] text-muted-foreground">for {currentScreen.name}</span>
+          </div>
+          <Button type="button" size="sm" variant="outline" className="h-7 shrink-0 gap-1 text-xs" onClick={addTextOverlay}>
+            <Plus className="h-3.5 w-3.5" />
+            Add text
+          </Button>
+        </div>
+        {currentOverlays.length > 0 && (
+          <div className="space-y-2">
+            {currentOverlays.map((overlay) => (
+              <div key={overlay.id} className="grid grid-cols-[minmax(120px,1fr)_32px_minmax(90px,150px)_28px] items-center gap-2">
+                <Input
+                  value={overlay.text}
+                  onChange={(event) => updateTextOverlay(overlay.id, { text: event.target.value })}
+                  className="h-7 text-xs"
+                  aria-label="Overlay text"
+                />
+                <Input
+                  type="color"
+                  value={overlay.colorMode === 'auto' ? '#ffffff' : overlay.color}
+                  onChange={(event) => updateTextOverlay(overlay.id, { color: event.target.value, colorMode: 'single' })}
+                  className="h-7 w-8 cursor-pointer p-0.5"
+                  aria-label="Overlay color"
+                />
+                <div className="flex items-center gap-2">
+                  <Slider
+                    min={12}
+                    max={256}
+                    step={1}
+                    value={[overlay.fontSize]}
+                    onValueChange={([fontSize]) => updateTextOverlay(overlay.id, { fontSize })}
+                    aria-label={`Font size for ${overlay.text || 'text overlay'}`}
+                  />
+                  <span className="w-8 text-right text-[10px] text-muted-foreground">{overlay.fontSize}</span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive hover:text-destructive"
+                  onClick={() => removeTextOverlay(overlay.id)}
+                  aria-label={`Remove ${overlay.text || 'text overlay'}`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="text-[11px] text-muted-foreground">Drag text directly on the raster preview to reposition it.</p>
       </div>
 
       {hasMultipleSlices && (
@@ -270,39 +397,29 @@ export function RasterMapPreview() {
 
                 {/* Text overlays — positioned in full-screen coordinate space, clipped to this piece */}
                 {(() => {
-                  const { tileWidth: tw, tileHeight: th } = screen.dimensions;
-                  const effW = screen.dimensions.screenWidth + (screen.leftHalfTile ? 1 : 0) + (screen.rightHalfTile ? 1 : 0);
-                  const effH = screen.dimensions.screenHeight + (screen.topHalfTile ? 1 : 0) + (screen.bottomHalfTile ? 1 : 0);
-                  const ab = sa.activeBounds;
-                  let cropOffsetX = 0;
-                  for (let i = 0; i < ab.minX; i++) {
-                    const isL = screen.leftHalfTile && i === 0;
-                    const isR = screen.rightHalfTile && i === effW - 1;
-                    cropOffsetX += (isL || isR) ? tw / 2 : tw;
-                  }
-                  let cropOffsetY = 0;
-                  for (let i = 0; i < ab.minY; i++) {
-                    const isT = screen.topHalfTile && i === 0;
-                    const isB = screen.bottomHalfTile && i === effH - 1;
-                    cropOffsetY += (isT || isB) ? th / 2 : th;
-                  }
+                  const cropOffset = getRasterCropOffset(screen, sa.activeBounds);
                   return screenOverlays.map(overlay => {
-                    const shiftedX = overlay.x - cropOffsetX;
-                    const shiftedY = overlay.y - cropOffsetY;
+                    const shiftedX = overlay.x - cropOffset.x;
+                    const shiftedY = overlay.y - cropOffset.y;
                     if (shiftedX > sa.width || shiftedY > sa.height || shiftedX + overlay.fontSize * (overlay.text?.length ?? 4) < 0 || shiftedY + overlay.fontSize < 0) return null;
                     return (
                       <div
                         key={overlay.id}
-                        className="absolute z-20 pointer-events-none"
+                        className="absolute z-20 cursor-grab pointer-events-auto select-none active:cursor-grabbing"
                         style={{
                           left: shiftedX,
                           top: shiftedY,
                           transform: `rotate(${overlay.rotation}deg)`,
                           transformOrigin: 'center',
+                          touchAction: 'none',
                         }}
+                        onPointerDown={(event) => handleOverlayPointerDown(event, screen.id, overlay)}
+                        onPointerMove={handleOverlayPointerMove}
+                        onPointerUp={finishOverlayDrag}
+                        onPointerCancel={finishOverlayDrag}
                       >
                         <div
-                          className="font-bold whitespace-nowrap"
+                          className="whitespace-nowrap"
                           style={{
                             fontSize: `${overlay.fontSize}px`,
                             color: overlay.colorMode === 'auto' ? '#FFFFFF' : overlay.color,
