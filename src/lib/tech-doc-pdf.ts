@@ -116,8 +116,8 @@ function truncateText(value: string, maxLength: number): string {
 function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number, top: number, width: number, height: number): void {
   if (devices.length === 0) return;
   const gap = 4;
-  const columns = 2;
-  const rows = Math.ceil(devices.length / columns);
+  const columns = devices.length;
+  const rows = 1;
   const slotWidth = (width - gap) / columns;
   const rowHeight = (height - gap * Math.max(0, rows - 1)) / rows;
 
@@ -229,10 +229,10 @@ export async function buildTechDocPdf(
     const frameRight = PAGE_W - MARGIN - 8;
     const frameW = frameRight - frameLeft;
     const hasDevices = page.devices.length > 0;
-    const deviceRows = Math.ceil(page.devices.length / 2);
+    const deviceRows = hasDevices ? 1 : 0;
     const maxDevicePorts = Math.max(1, ...page.devices.map((device) => device.ports.length));
     const estimatedCardHeight = Math.max(42, 24 + maxDevicePorts * 4.2);
-    const deviceAreaHeight = hasDevices ? 8 + deviceRows * estimatedCardHeight + Math.max(0, deviceRows - 1) * 4 : 0;
+    const deviceAreaHeight = hasDevices ? 8 + deviceRows * estimatedCardHeight : 0;
     const deviceGap = hasDevices ? 3 : 0;
     const imageFrameBottom = frameBottom - deviceAreaHeight - deviceGap;
     const imageFrameH = imageFrameBottom - frameTop;
