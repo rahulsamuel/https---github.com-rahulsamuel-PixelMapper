@@ -127,7 +127,7 @@ function drawDeviceCards(
 ): void {
   if (devices.length === 0) return;
   const gap = 4;
-  const connectionWidth = dataWiring ? 18 : 0;
+  const connectionWidth = dataWiring ? 24 : 0;
   const maxCardWidth = (width - gap * (devices.length - 1) - connectionWidth * devices.length) / devices.length;
   const cardMetrics = devices.map((device) => {
     const inputs = device.ports.filter((port) => port.direction === "input");
@@ -188,7 +188,7 @@ function drawDeviceCards(
         pdf.text(truncateText(output.label, 20), x + nodeWidth - 9, portY, { align: "right" });
         if (dataWiring) {
           const connectionColor: [number, number, number] = isBackup ? [239, 68, 68] : [34, 197, 94];
-          const destinationX = x + nodeWidth + 11;
+          const destinationX = x + nodeWidth + 15;
           const destinationLabel = (isBackup ? dataPortLabels.backup : dataPortLabels.primary)[outputs.indexOf(output)];
           if (!destinationLabel) continue;
           pdf.setDrawColor(...connectionColor);
@@ -196,11 +196,11 @@ function drawDeviceCards(
           pdf.setLineWidth(0.7);
           pdf.line(x + nodeWidth - 2, portY - 1.3, destinationX - 4, portY - 1.3);
           pdf.triangle(destinationX - 5, portY - 2.7, destinationX - 5, portY + 0.1, destinationX - 2, portY - 1.3, "F");
-          pdf.circle(destinationX, portY - 1.3, 4, "F");
+          pdf.roundedRect(destinationX - 4, portY - 3.8, 8, 5, 1, 1, "F");
           pdf.setFont("helvetica", "bold");
-          pdf.setFontSize(6.5);
+          pdf.setFontSize(5.5);
           pdf.setTextColor(...WHITE);
-          pdf.text(destinationLabel, destinationX, portY + 0.8, { align: "center" });
+          pdf.text(destinationLabel, destinationX, portY - 0.2, { align: "center" });
         }
       }
     }

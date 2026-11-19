@@ -97,7 +97,7 @@ function DeviceNode({ device, deviceIndex, deviceCount, dataPortLabels }: { devi
           {Array.from({ length: rows }, (_, index) => {
             const port = outputs[index];
             return (
-              <div key={port?.id ?? `output-${index}`} className="flex min-w-0 items-center justify-end gap-1 text-[clamp(5px,0.62vw,9px)] leading-tight">
+              <div key={port?.id ?? `output-${index}`} className="flex min-w-0 items-center justify-end gap-2 text-[clamp(5px,0.62vw,9px)] leading-tight">
                 <span className="min-w-0 truncate text-right">{port?.label ?? ""}</span>
                 <span className="h-[clamp(5px,0.65vw,9px)] w-[clamp(5px,0.65vw,9px)] shrink-0 rounded-full border-2 border-slate-950" style={{ backgroundColor: port ? PORT_COLORS[port.portType] ?? PORT_COLORS.custom : "transparent" }} />
                 {port && (
@@ -105,7 +105,7 @@ function DeviceNode({ device, deviceIndex, deviceCount, dataPortLabels }: { devi
                     {(isBackup ? dataPortLabels.backup : dataPortLabels.primary)[index] && (
                       <>
                         <span className="shrink-0 font-bold" style={{ color: isBackup ? "#ef4444" : "#22c55e" }}>→</span>
-                        <span className="inline-flex h-[clamp(10px,1.2vw,18px)] min-w-[clamp(10px,1.2vw,18px)] shrink-0 items-center justify-center rounded-full px-0.5 text-[clamp(5px,0.6vw,8px)] font-bold text-white" style={{ backgroundColor: isBackup ? "#ef4444" : "#22c55e" }}>
+                        <span className="inline-flex h-[clamp(8px,0.9vw,13px)] min-w-[clamp(12px,1.25vw,17px)] shrink-0 items-center justify-center rounded px-1 text-[clamp(4px,0.48vw,6px)] font-bold leading-none text-white" style={{ backgroundColor: isBackup ? "#ef4444" : "#22c55e" }}>
                           {(isBackup ? dataPortLabels.backup : dataPortLabels.primary)[index]}
                         </span>
                       </>
