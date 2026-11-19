@@ -93,12 +93,24 @@ function makeSection(type: TechDocSectionType, screen: TechDocScreenReference | 
   };
 }
 
+export function createRasterMapSection(key: string, title: string): TechDocSection {
+  return {
+    key,
+    type: "raster_map",
+    screenId: null,
+    title,
+    storagePath: null,
+    includeInPdf: true,
+    devices: [],
+  };
+}
+
 export function buildDefaultSections(screens: TechDocScreenReference[]): TechDocSection[] {
   const pixelMapSections = screens.map((screen) => makeSection("pixel_map", screen));
   const otherScreenSections = screens.flatMap((screen) =>
     SCREEN_SECTION_TYPES.filter((type) => type !== "pixel_map").map((type) => makeSection(type, screen))
   );
-  const rasterMapSection = makeSection("raster_map", null);
+  const rasterMapSection = createRasterMapSection("raster_map", SECTION_LABELS.raster_map);
   const otherProjectSections = PROJECT_SECTION_TYPES
     .filter((type) => type !== "raster_map")
     .map((type) => makeSection(type, null));
@@ -217,14 +229,15 @@ export function parseTechDoc(
   }
   if (sections.length === 0) sections.push(...buildDefaultSections(screens));
 
-  const rasterIndex = sections.findIndex((section) => section.type === "raster_map");
-  if (rasterIndex >= 0) {
-    const [rasterSection] = sections.splice(rasterIndex, 1);
-    const lastPixelMapIndex = sections.reduce(
+  const rasterSections = sections.filter((section) => section.type === "raster_map");
+  if (rasterSections.length > 0) {
+    const nonRasterSections = sections.filter((section) => section.type !== "raster_map");
+    const lastPixelMapIndex = nonRasterSections.reduce(
       (lastIndex, section, index) => section.type === "pixel_map" ? index : lastIndex,
       -1
     );
-    sections.splice(lastPixelMapIndex + 1, 0, rasterSection);
+    nonRasterSections.splice(lastPixelMapIndex + 1, 0, ...rasterSections);
+    sections.splice(0, sections.length, ...nonRasterSections);
   }
 
   return {

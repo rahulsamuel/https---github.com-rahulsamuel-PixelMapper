@@ -15,6 +15,7 @@ import {
   saveTechDoc,
   uploadTechDocImage,
   validateTechDocImage,
+  createRasterMapSection,
   type TechDocData,
   type TechDocScreenReference,
   type TechDocSection,
@@ -39,6 +40,8 @@ interface TechnicalDocumentContextValue {
   updateDoc: (updater: (doc: TechDocData) => TechDocData) => void;
   handleFilePicked: (sectionKey: string, file: File) => Promise<void>;
   handleRemoveImage: (sectionKey: string) => void;
+  addRasterMapSection: () => void;
+  removeRasterMapSection: (sectionKey: string) => void;
   moveSection: (index: number, direction: -1 | 1) => void;
   downloadPdf: () => Promise<void>;
   rasterMapImageUrl: string | null;
@@ -242,6 +245,36 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     updateDoc((current) => ({ ...current, logoStoragePath: null }));
   }, [updateDoc]);
 
+  const addRasterMapSection = useCallback(() => {
+    updateDoc((current) => {
+      const rasterCount = current.sections.filter((section) => section.type === "raster_map").length;
+      const section = createRasterMapSection(`raster_map_${crypto.randomUUID()}`, `Raster Map ${rasterCount + 1}`);
+      const insertAt = current.sections.reduce(
+        (lastIndex, candidate, index) => candidate.type === "raster_map" ? index + 1 : lastIndex,
+        -1
+      );
+      const sections = [...current.sections];
+      sections.splice(insertAt >= 0 ? insertAt : sections.length, 0, section);
+      return { ...current, sections };
+    });
+  }, [updateDoc]);
+
+  const removeRasterMapSection = useCallback((sectionKey: string) => {
+    const section = docRef.current.sections.find((candidate) => candidate.key === sectionKey);
+    if (!section || section.type !== "raster_map") return;
+    if (section.storagePath) void deleteTechDocImage(section.storagePath);
+    setImageUrls((previous) => {
+      const next = { ...previous };
+      delete next[sectionKey];
+      return next;
+    });
+    updateDoc((current) => {
+      const rasterSections = current.sections.filter((candidate) => candidate.type === "raster_map");
+      if (rasterSections.length <= 1) return current;
+      return { ...current, sections: current.sections.filter((candidate) => candidate.key !== sectionKey) };
+    });
+  }, [updateDoc]);
+
   const moveSection = useCallback((index: number, direction: -1 | 1) => {
     const nextIndex = index + direction;
     if (nextIndex < 0 || nextIndex >= docRef.current.sections.length) return;
@@ -300,6 +333,8 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     updateDoc,
     handleFilePicked,
     handleRemoveImage,
+    addRasterMapSection,
+    removeRasterMapSection,
     moveSection,
     downloadPdf,
     rasterMapImageUrl,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Loader2, MoveDown, MoveUp, Save, Upload, X } from "lucide-react";
+import { Loader2, MoveDown, MoveUp, Plus, Save, Trash2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,8 @@ export function TechnicalDocumentControls() {
     updateDoc,
     handleFilePicked,
     handleRemoveImage,
+    addRasterMapSection,
+    removeRasterMapSection,
     moveSection,
     handleLogoPicked,
     handleRemoveLogo,
@@ -103,8 +105,11 @@ export function TechnicalDocumentControls() {
           <div className="space-y-3">
             <div>
               <h3 className="font-semibold">Pages</h3>
-              <p className="text-xs text-muted-foreground">Each screen gets its own pixel map and wiring pages. Reorder pages before exporting.</p>
+              <p className="text-xs text-muted-foreground">Each screen gets its own pixel map and wiring pages. Add a Raster Map page for each raster image your project needs.</p>
             </div>
+            <Button variant="outline" className="w-full justify-start" onClick={addRasterMapSection}>
+              <Plus className="mr-2 h-3.5 w-3.5" /> Add Raster Map
+            </Button>
             {doc.sections.map((section, index) => {
               const inputKey = section.key;
               return (
@@ -123,6 +128,11 @@ export function TechnicalDocumentControls() {
                   </div>
                   {section.type === "raster_map" && !section.storagePath && (
                     <p className="text-xs text-muted-foreground">Generated from the current raster map unless you upload a custom image.</p>
+                  )}
+                  {section.type === "raster_map" && doc.sections.filter((candidate) => candidate.type === "raster_map").length > 1 && (
+                    <Button variant="ghost" size="sm" className="h-7 w-full justify-start text-destructive hover:text-destructive" onClick={() => removeRasterMapSection(section.key)}>
+                      <Trash2 className="mr-2 h-3.5 w-3.5" /> Remove raster page
+                    </Button>
                   )}
                   {(section.type === "data_wiring_front" || section.type === "data_wiring_rear") && (
                     <TechnicalDocumentDevicePicker
