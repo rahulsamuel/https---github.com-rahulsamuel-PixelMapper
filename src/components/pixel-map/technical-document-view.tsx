@@ -34,7 +34,7 @@ const PORT_COLORS: Record<string, string> = {
   custom: "#94a3b8",
 };
 
-function DeviceNode({ device, deviceIndex, deviceCount }: { device: TechDocDevice; deviceIndex: number; deviceCount: number }) {
+function DeviceNode({ device, deviceIndex, deviceCount, dataPortLabels }: { device: TechDocDevice; deviceIndex: number; deviceCount: number; dataPortLabels: { primary: string[]; backup: string[] } }) {
   const { updateDoc } = useTechnicalDocument();
   const inputs = device.ports.filter((port) => port.direction === "input");
 
@@ -102,10 +102,14 @@ function DeviceNode({ device, deviceIndex, deviceCount }: { device: TechDocDevic
                 <span className="h-[clamp(5px,0.65vw,9px)] w-[clamp(5px,0.65vw,9px)] shrink-0 rounded-full border-2 border-slate-950" style={{ backgroundColor: port ? PORT_COLORS[port.portType] ?? PORT_COLORS.custom : "transparent" }} />
                 {port && (
                   <>
-                    <span className="shrink-0 font-bold" style={{ color: isBackup ? "#ef4444" : "#22c55e" }}>→</span>
-                    <span className="inline-flex h-[clamp(10px,1.2vw,18px)] min-w-[clamp(10px,1.2vw,18px)] shrink-0 items-center justify-center rounded-full px-0.5 text-[clamp(5px,0.6vw,8px)] font-bold text-white" style={{ backgroundColor: isBackup ? "#ef4444" : "#22c55e" }}>
-                      {index + 1}{isBackup ? "B" : ""}
-                    </span>
+                    {(isBackup ? dataPortLabels.backup : dataPortLabels.primary)[index] && (
+                      <>
+                        <span className="shrink-0 font-bold" style={{ color: isBackup ? "#ef4444" : "#22c55e" }}>→</span>
+                        <span className="inline-flex h-[clamp(10px,1.2vw,18px)] min-w-[clamp(10px,1.2vw,18px)] shrink-0 items-center justify-center rounded-full px-0.5 text-[clamp(5px,0.6vw,8px)] font-bold text-white" style={{ backgroundColor: isBackup ? "#ef4444" : "#22c55e" }}>
+                          {(isBackup ? dataPortLabels.backup : dataPortLabels.primary)[index]}
+                        </span>
+                      </>
+                    )}
                   </>
                 )}
               </div>
@@ -117,18 +121,18 @@ function DeviceNode({ device, deviceIndex, deviceCount }: { device: TechDocDevic
   );
 }
 
-function DeviceCards({ devices }: { devices: TechDocDevice[] }) {
+function DeviceCards({ devices, dataPortLabels }: { devices: TechDocDevice[]; dataPortLabels: { primary: string[]; backup: string[] } }) {
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden border border-slate-700 bg-[#0b1220] p-[0.6%] text-white">
       <div className="grid min-h-0 flex-1 items-start gap-[1%] overflow-hidden" style={{ gridTemplateColumns: `repeat(${devices.length}, minmax(0, 1fr))` }}>
-        {devices.map((device, deviceIndex) => <DeviceNode key={device.id} device={device} deviceIndex={deviceIndex} deviceCount={devices.length} />)}
+        {devices.map((device, deviceIndex) => <DeviceNode key={device.id} device={device} deviceIndex={deviceIndex} deviceCount={devices.length} dataPortLabels={dataPortLabels} />)}
       </div>
     </div>
   );
 }
 
 export function TechnicalDocumentView() {
-  const { doc, imageUrls, rasterMapImageUrl, logoUrl, projectName, screens, loading, loadError, downloadPdf, downloading } = useTechnicalDocument();
+  const { doc, imageUrls, rasterMapImageUrl, logoUrl, projectName, screens, dataPortLabelsByScreen, loading, loadError, downloadPdf, downloading } = useTechnicalDocument();
 
   if (loading) {
     return <div className="flex h-full items-center justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -197,7 +201,7 @@ export function TechnicalDocumentView() {
                   </div>
                   {hasDevices && (
                     <div className="mb-[1%] min-h-0 overflow-hidden" style={{ flex: 2 }}>
-                      <DeviceCards devices={section.devices} />
+                      <DeviceCards devices={section.devices} dataPortLabels={section.screenId ? dataPortLabelsByScreen[section.screenId] ?? { primary: [], backup: [] } : { primary: [], backup: [] }} />
                     </div>
                   )}
                   <div className="grid grid-cols-4 border-t border-black/70" style={{ backgroundColor: doc.footerColor, color: doc.footerTextColor, borderColor: doc.footerTextColor }}>

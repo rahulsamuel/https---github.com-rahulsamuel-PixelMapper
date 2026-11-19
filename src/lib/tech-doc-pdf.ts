@@ -33,6 +33,7 @@ export interface TechDocPdfPage {
   imageUrls: string[];
   devices: TechDocDevice[];
   dataWiring: boolean;
+  dataPortLabels: { primary: string[]; backup: string[] };
 }
 
 export interface TechDocPdfMeta {
@@ -114,7 +115,16 @@ function truncateText(value: string, maxLength: number): string {
   return value.length <= maxLength ? value : `${value.slice(0, Math.max(1, maxLength - 1))}…`;
 }
 
-function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number, top: number, width: number, height: number, dataWiring: boolean): void {
+function drawDeviceCards(
+  pdf: JsPDFType,
+  devices: TechDocDevice[],
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+  dataWiring: boolean,
+  dataPortLabels: { primary: string[]; backup: string[] },
+): void {
   if (devices.length === 0) return;
   const gap = 4;
   const connectionWidth = dataWiring ? 18 : 0;
@@ -179,7 +189,8 @@ function drawDeviceCards(pdf: JsPDFType, devices: TechDocDevice[], left: number,
         if (dataWiring) {
           const connectionColor: [number, number, number] = isBackup ? [239, 68, 68] : [34, 197, 94];
           const destinationX = x + nodeWidth + 11;
-          const destinationLabel = `${outputs.indexOf(output) + 1}${isBackup ? "B" : ""}`;
+          const destinationLabel = (isBackup ? dataPortLabels.backup : dataPortLabels.primary)[outputs.indexOf(output)];
+          if (!destinationLabel) continue;
           pdf.setDrawColor(...connectionColor);
           pdf.setFillColor(...connectionColor);
           pdf.setLineWidth(0.7);
@@ -313,7 +324,7 @@ export async function buildTechDocPdf(
       pdf.setDrawColor(...LINE);
       pdf.setLineWidth(0.25);
       pdf.rect(frameLeft, deviceTop, frameW, deviceAreaHeight);
-      drawDeviceCards(pdf, page.devices, frameLeft + 4, deviceTop + 4, frameW - 8, deviceAreaHeight - 8, page.dataWiring);
+      drawDeviceCards(pdf, page.devices, frameLeft + 4, deviceTop + 4, frameW - 8, deviceAreaHeight - 8, page.dataWiring, page.dataPortLabels);
     }
 
     // Title block at bottom

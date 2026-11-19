@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { jsPDF } from "jspdf";
 import { useAuth } from "@/contexts/auth-context";
 import { usePixelMap } from "@/contexts/pixel-map-context";
+import { dataLabelFor, portLabelOffsets } from "@/lib/device-wiring-layout";
 import { useToast } from "@/hooks/use-toast";
 import { buildTechDocPdf, type TechDocPdfPage } from "@/lib/tech-doc-pdf";
 import {
@@ -33,6 +34,7 @@ interface TechnicalDocumentContextValue {
   imageUrls: Record<string, SectionImageState>;
   projectName: string;
   screens: TechDocScreenReference[];
+  dataPortLabelsByScreen: Record<string, { primary: string[]; backup: string[] }>;
   loading: boolean;
   loadError: string | null;
   saving: boolean;
@@ -72,6 +74,13 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     () => pixelMapScreens.map((screen) => ({ id: screen.id, name: screen.name })),
     [pixelMapScreens]
   );
+  const dataPortLabelsByScreen = useMemo(() => Object.fromEntries(pixelMapScreens.map((screen) => {
+    const offsets = portLabelOffsets(screen.devices);
+    const labelsForRole = (isBackup: boolean) => screen.devices
+      .filter((device) => (device.role === "backup") === isBackup)
+      .flatMap((device) => Array.from({ length: device.portCount }, (_, index) => dataLabelFor(device, index + 1, offsets[device.id])));
+    return [screen.id, { primary: labelsForRole(false), backup: labelsForRole(true) }];
+  })), [pixelMapScreens]);
   const [doc, setDoc] = useState<TechDocData>(() => emptyTechDoc(projectName, screens));
   const [imageUrls, setImageUrls] = useState<Record<string, SectionImageState>>({});
   const [loading, setLoading] = useState(true);
@@ -294,6 +303,7 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
           : [imageUrls[getTechDocImageKey(section.key, 0)]?.url].filter((url): url is string => Boolean(url)),
         devices: section.devices,
         dataWiring: section.type === "data_wiring_front" || section.type === "data_wiring_rear",
+        dataPortLabels: section.screenId ? dataPortLabelsByScreen[section.screenId] ?? { primary: [], backup: [] } : { primary: [], backup: [] },
       }));
       const pdf = await buildTechDocPdf(JsPdfCtor as unknown as typeof jsPDF, pages, {
         doc: docRef.current,
@@ -311,13 +321,14 @@ export function TechnicalDocumentProvider({ children }: { children: ReactNode })
     } finally {
       setDownloading(false);
     }
-  }, [downloading, imageUrls, logoUrl, projectName, rasterMapImageUrl, screens, toast]);
+  }, [dataPortLabelsByScreen, downloading, imageUrls, logoUrl, projectName, rasterMapImageUrl, screens, toast]);
 
   const value: TechnicalDocumentContextValue = {
     doc,
     imageUrls,
     projectName,
     screens,
+    dataPortLabelsByScreen,
     loading,
     loadError,
     saving,
