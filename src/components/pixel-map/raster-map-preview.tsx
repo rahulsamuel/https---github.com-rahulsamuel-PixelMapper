@@ -348,11 +348,12 @@ export function RasterMapPreview() {
           ))}
 
           {/* Screen arrangement borders + tile offset overlays */}
-          {screenArrangement.map(sa => {
+          {screenArrangement.map((sa, arrangementIndex) => {
             const offsetItems = tileOffsetsByScreen.get(`${sa.screenId}-${sa.segmentId}`) ?? [];
             const screen = screens.find(s => s.id === sa.screenId);
             if (!screen) return null;
             const screenOverlays = (screen.showTextOverlaysInRaster ?? true) ? (screen.textOverlays ?? []) : [];
+            const firstArrangementIndex = screenArrangement.findIndex((candidate) => candidate.screenId === screen.id);
 
             return (
               <div
@@ -401,14 +402,28 @@ export function RasterMapPreview() {
                   return screenOverlays.map(overlay => {
                     const shiftedX = overlay.x - cropOffset.x;
                     const shiftedY = overlay.y - cropOffset.y;
-                    if (shiftedX > sa.width || shiftedY > sa.height || shiftedX + overlay.fontSize * (overlay.text?.length ?? 4) < 0 || shiftedY + overlay.fontSize < 0) return null;
+                    const isInsideThisArrangement = shiftedX <= sa.width
+                      && shiftedY <= sa.height
+                      && shiftedX + overlay.fontSize * (overlay.text?.length ?? 4) >= 0
+                      && shiftedY + overlay.fontSize >= 0;
+                    const isInsideAnyArrangement = screenArrangement.some((candidate) => {
+                      if (candidate.screenId !== screen.id) return false;
+                      const candidateOffset = getRasterCropOffset(screen, candidate.activeBounds);
+                      const candidateX = overlay.x - candidateOffset.x;
+                      const candidateY = overlay.y - candidateOffset.y;
+                      return candidateX <= candidate.width
+                        && candidateY <= candidate.height
+                        && candidateX + overlay.fontSize * (overlay.text?.length ?? 4) >= 0
+                        && candidateY + overlay.fontSize >= 0;
+                    });
+                    if (!isInsideThisArrangement && (arrangementIndex !== firstArrangementIndex || isInsideAnyArrangement)) return null;
                     return (
                       <div
                         key={overlay.id}
-                        className="absolute z-20 cursor-grab pointer-events-auto select-none active:cursor-grabbing"
+                        className="fixed z-20 cursor-grab pointer-events-auto select-none active:cursor-grabbing"
                         style={{
-                          left: shiftedX,
-                          top: shiftedY,
+                          left: sa.x + shiftedX,
+                          top: sa.y + shiftedY,
                           transform: `rotate(${overlay.rotation}deg)`,
                           transformOrigin: 'center',
                           touchAction: 'none',
