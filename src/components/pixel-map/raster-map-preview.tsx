@@ -82,13 +82,55 @@ export function RasterMapPreview() {
       });
 
       result.set(`${arrangement.screenId}-${arrangement.segmentId}`, items);
-      result.set(`${arrangement.screenId}-${arrangement.segmentId}`, items);
     }
 
     return result;
   }, [displayConfig, screens]);
 
-  // Early returns after all hooks
+  const dragRef = useRef<{
+    screenId: string;
+    overlayId: string;
+    startClientX: number;
+    startClientY: number;
+    startX: number;
+    startY: number;
+    pointerId: number;
+  } | null>(null);
+
+  const handleOverlayPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>, screenId: string, overlay: TextOverlay) => {
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = {
+      screenId,
+      overlayId: overlay.id,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startX: overlay.x,
+      startY: overlay.y,
+      pointerId: event.pointerId,
+    };
+  }, []);
+
+  const handleOverlayPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    updateScreenById(drag.screenId, (screen) => ({
+      ...screen,
+      textOverlays: (screen.textOverlays ?? []).map((overlay) => overlay.id === drag.overlayId
+        ? {
+            ...overlay,
+            x: Math.max(0, drag.startX + (event.clientX - drag.startClientX) / zoom),
+            y: Math.max(0, drag.startY + (event.clientY - drag.startClientY) / zoom),
+          }
+        : overlay),
+    }));
+  }, [updateScreenById, zoom]);
+
+  const finishOverlayDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+  }, []);
+
   if (!displayConfig) {
     const hasAnyConfig = Object.keys(rasterMapConfigs).length > 0;
     if (!hasAnyConfig) {
@@ -140,50 +182,6 @@ export function RasterMapPreview() {
       updateScreenById(sa.screenId, s => ({ ...s, showLogoOverlayInRaster: checked }));
     }
   };
-
-  const dragRef = useRef<{
-    screenId: string;
-    overlayId: string;
-    startClientX: number;
-    startClientY: number;
-    startX: number;
-    startY: number;
-    pointerId: number;
-  } | null>(null);
-
-  const handleOverlayPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>, screenId: string, overlay: TextOverlay) => {
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    dragRef.current = {
-      screenId,
-      overlayId: overlay.id,
-      startClientX: event.clientX,
-      startClientY: event.clientY,
-      startX: overlay.x,
-      startY: overlay.y,
-      pointerId: event.pointerId,
-    };
-  }, []);
-
-  const handleOverlayPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    updateScreenById(drag.screenId, (screen) => ({
-      ...screen,
-      textOverlays: (screen.textOverlays ?? []).map((overlay) => overlay.id === drag.overlayId
-        ? {
-            ...overlay,
-            x: Math.max(0, drag.startX + (event.clientX - drag.startClientX) / zoom),
-            y: Math.max(0, drag.startY + (event.clientY - drag.startClientY) / zoom),
-          }
-        : overlay),
-    }));
-  }, [updateScreenById, zoom]);
-
-  const finishOverlayDrag = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (dragRef.current?.pointerId === event.pointerId) dragRef.current = null;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
-  }, []);
 
   const currentOverlays = currentScreen.textOverlays ?? [];
 
