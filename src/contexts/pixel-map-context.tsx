@@ -2147,6 +2147,34 @@ const handleRightHalfTileChange = (add: boolean) => {
         const sectionWidth = sectionLayout
             ? screen.sections.reduce((sum, section) => sum + section.columnCount, 0)
             : screenEffectiveWidth;
+        const getTileGridPosition = (index: number): { x: number; y: number } | null => {
+            if (!sectionLayout) {
+                return {
+                    x: index % screenEffectiveWidth,
+                    y: Math.floor(index / screenEffectiveWidth),
+                };
+            }
+
+            let tileOffset = 0;
+            let columnOffset = 0;
+            for (const section of screen.sections) {
+                const sectionTileCount = section.columnCount * screenEffectiveHeight;
+                if (index < tileOffset + sectionTileCount) {
+                    const localIndex = index - tileOffset;
+                    return {
+                        x: columnOffset + (localIndex % section.columnCount),
+                        y: Math.floor(localIndex / section.columnCount),
+                    };
+                }
+                tileOffset += sectionTileCount;
+                columnOffset += section.columnCount;
+            }
+            return null;
+        };
+        const activeTilePositions = activeTiles.flatMap(tile => {
+            const position = getTileGridPosition(tile.index);
+            return position ? [{ ...position, index: tile.index }] : [];
+        });
         const computeContentSize = (bounds: ActiveBounds) => {
             const cw = sectionLayout
                 ? screen.sections.reduce((sum, section, sectionIndex) => {
@@ -2177,7 +2205,21 @@ const handleRightHalfTileChange = (add: boolean) => {
 
         if (segments) {
             for (const seg of segments) {
-                const { cw, ch } = computeContentSize(seg.bounds);
+                const segmentTiles = activeTilePositions.filter(tile =>
+                    tile.x >= seg.bounds.minX
+                    && tile.x <= seg.bounds.maxX
+                    && tile.y >= seg.bounds.minY
+                    && tile.y <= seg.bounds.maxY
+                );
+                if (segmentTiles.length === 0) continue;
+
+                const activeBounds: ActiveBounds = {
+                    minX: Math.min(...segmentTiles.map(tile => tile.x)),
+                    minY: Math.min(...segmentTiles.map(tile => tile.y)),
+                    maxX: Math.max(...segmentTiles.map(tile => tile.x)),
+                    maxY: Math.max(...segmentTiles.map(tile => tile.y)),
+                };
+                const { cw, ch } = computeContentSize(activeBounds);
                 screenArrangement.push({
                     screenId: screen.id,
                     segmentId: seg.id,
@@ -2186,7 +2228,7 @@ const handleRightHalfTileChange = (add: boolean) => {
                     y: seg.offset.y,
                     width: cw,
                     height: ch,
-                    activeBounds: seg.bounds,
+                    activeBounds,
                     showScreenName: screen.showScreenName,
                     screenNameLabelPosition: screen.screenNameLabelPosition,
                     screenNameLabelFontSize: screen.screenNameLabelFontSize,
