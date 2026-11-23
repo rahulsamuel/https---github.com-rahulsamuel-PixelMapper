@@ -2432,11 +2432,11 @@ const handleRightHalfTileChange = (add: boolean) => {
   const createFullRasterCanvas = useCallback(() => {
     if (!rasterOutputConfig) return null;
 
-    const { contentWidth, contentHeight, screenArrangement, slices, outputWidth, outputHeight } = rasterOutputConfig;
+    const { totalWidth, totalHeight, screenArrangement, slices, outputWidth, outputHeight } = rasterOutputConfig;
 
     const masterCanvas = document.createElement('canvas');
-    masterCanvas.width = contentWidth;
-    masterCanvas.height = contentHeight;
+    masterCanvas.width = totalWidth;
+    masterCanvas.height = totalHeight;
     const masterCtx = masterCanvas.getContext('2d');
     if (!masterCtx) return null;
 
@@ -2474,7 +2474,7 @@ const handleRightHalfTileChange = (add: boolean) => {
                     ...overlay,
                     x: targetArrangement.x + overlay.x - cropOffset.x,
                     y: targetArrangement.y + overlay.y - cropOffset.y,
-                }], contentWidth, contentHeight);
+                }], totalWidth, totalHeight);
                 drawnTextOverlayIds.add(overlayKey);
             }
         }
