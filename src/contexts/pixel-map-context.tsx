@@ -1827,13 +1827,22 @@ const handleRightHalfTileChange = (add: boolean) => {
       let drawX = 0;
       let globalColOffset = 0;
       for (const section of screen.sections) {
-        for (let y = screenActiveBounds.minY; y <= screenActiveBounds.maxY; y++) {
-          for (let x = 0; x < section.columnCount; x++) {
-            const index = tileOffset + y * section.columnCount + x;
-            drawTile(screen.tiles[index], index, globalColOffset + x, y, drawX + x * section.tileWidthPx, y * section.tileHeightPx, section.tileWidthPx, section.tileHeightPx);
+        const sectionStartX = globalColOffset;
+        const sectionEndX = globalColOffset + section.columnCount - 1;
+        const visibleStartX = Math.max(screenActiveBounds.minX, sectionStartX);
+        const visibleEndX = Math.min(screenActiveBounds.maxX, sectionEndX);
+        if (visibleStartX <= visibleEndX) {
+          for (let y = screenActiveBounds.minY; y <= screenActiveBounds.maxY; y++) {
+            for (let x = visibleStartX; x <= visibleEndX; x++) {
+              const localX = x - sectionStartX;
+              const drawColumn = x - visibleStartX;
+              const index = tileOffset + y * section.columnCount + localX;
+              const drawY = (y - screenActiveBounds.minY) * section.tileHeightPx;
+              drawTile(screen.tiles[index], index, x, y, drawX + drawColumn * section.tileWidthPx, drawY, section.tileWidthPx, section.tileHeightPx);
+            }
           }
+          drawX += (visibleEndX - visibleStartX + 1) * section.tileWidthPx;
         }
-        drawX += section.columnCount * section.tileWidthPx;
         tileOffset += section.columnCount * screenEffectiveHeight;
         globalColOffset += section.columnCount;
       }
