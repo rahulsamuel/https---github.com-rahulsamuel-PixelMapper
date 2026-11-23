@@ -453,6 +453,7 @@ export interface PixelMapState extends Omit<Screen, 'id' | 'name' | 'zoomLevels'
   isWallLayoutDownloading: boolean;
   generateRasterMap: (filename: string, outputWidth?: number, outputHeight?: number) => void;
   downloadRasterSlices: () => void;
+  downloadFullRaster: () => Promise<void>;
   downloadSingleSlice: (sliceKey: string) => void;
   setActiveTool: Dispatch<SetStateAction<ActiveTool>>;
   setShowLabels: Dispatch<SetStateAction<boolean>>;

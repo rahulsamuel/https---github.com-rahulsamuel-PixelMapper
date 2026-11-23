@@ -44,6 +44,7 @@ export function RasterMapPreview() {
     rasterBgColor,
     screens,
     downloadRasterSlices,
+    downloadFullRaster,
     updateScreenById,
     currentScreen,
     addTextOverlay,
@@ -291,6 +292,12 @@ export function RasterMapPreview() {
           </Button>
         </div>
       )}
+      <div className="flex justify-end px-1">
+        <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={downloadFullRaster}>
+          <Download className="h-3.5 w-3.5" />
+          Download Full Raster ({totalWidth}x{totalHeight})
+        </Button>
+      </div>
       <div style={{ width: totalWidth * zoom, height: totalHeight * zoom }}>
         <div
           ref={rasterMapRef}

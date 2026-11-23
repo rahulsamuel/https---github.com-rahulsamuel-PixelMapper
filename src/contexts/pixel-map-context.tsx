@@ -2560,6 +2560,90 @@ const handleRightHalfTileChange = (add: boolean) => {
     showFeedbackPrompt('raster_slices');
   }, [rasterOutputConfig, createFullRasterCanvas, preloadRasterLogos, subscriptionStatus, toast, rasterBgColor]);
 
+  const downloadFullRaster = useCallback(async () => {
+    if (subscriptionStatus !== 'pro') {
+      toast({
+        title: "Pro Feature",
+        description: "Please subscribe to download the full raster.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!rasterOutputConfig) {
+      console.error("No raster map configuration available to download.");
+      return;
+    }
+
+    await preloadRasterLogos();
+    const masterContentCanvas = createFullRasterCanvas();
+    if (!masterContentCanvas) {
+      console.error("Failed to create master canvas for full raster download.");
+      return;
+    }
+
+    const { totalWidth, totalHeight, slices, resolutionType } = rasterOutputConfig;
+
+    const fullCanvas = document.createElement('canvas');
+    fullCanvas.width = totalWidth;
+    fullCanvas.height = totalHeight;
+    const fullCtx = fullCanvas.getContext('2d');
+    if (!fullCtx) {
+      console.error("Failed to create full raster canvas context.");
+      return;
+    }
+
+    fullCtx.fillStyle = rasterBgColor;
+    fullCtx.fillRect(0, 0, fullCanvas.width, fullCanvas.height);
+    fullCtx.drawImage(masterContentCanvas, 0, 0);
+
+    // Slice break indicators: dashed borders matching the preview, colored by resolution type.
+    const rootStyle = getComputedStyle(document.documentElement);
+    const chartHsl = (name: string, fallback: string) => {
+      const value = rootStyle.getPropertyValue(name).trim();
+      return value ? `hsl(${value})` : fallback;
+    };
+    const borderColor = (() => {
+      switch (resolutionType) {
+        case 'hd':       return chartHsl('--chart-1', 'hsl(210 100% 48%)');
+        case '4k-uhd':   return chartHsl('--chart-2', 'hsl(160 60% 45%)');
+        case '4k-dci':   return chartHsl('--chart-4', 'hsl(280 60% 58%)');
+        case 'custom':   return chartHsl('--chart-3', 'hsl(30 80% 55%)');
+        default:         return chartHsl('--primary', 'hsl(210 100% 45%)');
+      }
+    })();
+    const strokeWidth = Math.max(4, Math.round(Math.min(totalWidth, totalHeight) / 480));
+    fullCtx.strokeStyle = borderColor;
+    fullCtx.lineWidth = strokeWidth;
+    fullCtx.setLineDash([16, 12]);
+    for (const slice of slices) {
+      fullCtx.strokeRect(
+        slice.x + strokeWidth / 2,
+        slice.y + strokeWidth / 2,
+        slice.width - strokeWidth,
+        slice.height - strokeWidth,
+      );
+    }
+    fullCtx.setLineDash([]);
+
+    try {
+      const dataUrl = fullCanvas.toDataURL('image/png');
+      const filename = `raster-map-full_${totalWidth}x${totalHeight}.png`;
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = dataUrl;
+      link.click();
+      trackEvent('download', { type: 'raster-full', filename, thumbnail: dataUrl });
+      showFeedbackPrompt('raster_slices');
+    } catch (err) {
+      console.error('Could not generate full raster download.', err);
+      toast({
+        title: "Download Failed",
+        description: "The full raster image could not be generated. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [rasterOutputConfig, createFullRasterCanvas, preloadRasterLogos, subscriptionStatus, toast, rasterBgColor]);
+
   const downloadSingleSlice = useCallback(async (sliceKey: string) => {
     if (!rasterOutputConfig) return;
     const slice = rasterOutputConfig.slices.find(s => s.key === sliceKey);
@@ -3782,6 +3866,7 @@ const handleRightHalfTileChange = (add: boolean) => {
     generateRasterMap,
     downloadRasterSlices,
     downloadSingleSlice,
+    downloadFullRaster,
     activeTool: currentScreen.activeTool,
     setActiveTool,
     showLabels: currentScreen.showLabels,
