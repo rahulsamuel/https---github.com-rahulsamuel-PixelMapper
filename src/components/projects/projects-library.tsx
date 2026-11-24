@@ -55,7 +55,7 @@ export function ProjectsLibrary() {
   };
 
   const handleDelete = async (project: CloudProjectSummary): Promise<boolean> => {
-    const { success, error } = await deleteCloudProject(project.id);
+    if (!project.isOwner) return false;    const { success, error } = await deleteCloudProject(project.id);
     if (!success) {
       toast({ title: "Delete Failed", description: error ?? "Unknown error.", variant: "destructive" });
       return false;
@@ -79,7 +79,8 @@ export function ProjectsLibrary() {
         <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Each project holds its pixel map and signal flow. Open a project to continue working on it, or
-          expand it to browse and restore earlier versions.
+          expand it to browse and restore earlier versions. Projects shared with you by other collaborators
+          appear here too.
         </p>
       </div>
 

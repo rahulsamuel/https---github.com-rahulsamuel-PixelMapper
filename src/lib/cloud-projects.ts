@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabase/client";
+import { getOwnedProjects, getSharedProjects } from "@/lib/collaboration";
 import type { ProjectData, Screen } from "@/contexts/pixel-map-context";
 
 export interface CloudProject {
@@ -127,27 +128,43 @@ export interface CloudProjectSummary {
   id: string;
   projectName: string;
   updatedAt: string;
+  ownerEmail: string | null;
+  isOwner: boolean;
 }
 
 export async function getUserCloudProjectSummaries(
   userId: string
 ): Promise<{ data: CloudProjectSummary[]; error: string | null }> {
-  const { data, error } = await supabase
-    .from("pixel_map_projects")
-    .select("id, project_name, updated_at")
-    .eq("user_id", userId)
-    .order("updated_at", { ascending: false });
+  const [owned, shared] = await Promise.all([
+    getOwnedProjects(userId),
+    getSharedProjects(userId),
+  ]);
 
-  if (error) {
-    console.error('src/lib/cloud-projects.ts:', error.message);
+  if (owned.error && shared.error) {
+    console.error('src/lib/cloud-projects.ts:', owned.error, shared.error);
     return { data: [], error: 'Something went wrong. Please try again.' };
   }
 
-  const items = data.map((p) => ({
+  const ownedItems: CloudProjectSummary[] = owned.data.map((p) => ({
     id: p.id,
-    projectName: p.project_name,
-    updatedAt: p.updated_at,
+    projectName: p.projectName,
+    updatedAt: p.updatedAt,
+    ownerEmail: p.ownerEmail,
+    isOwner: true,
   }));
+  const sharedItems: CloudProjectSummary[] = shared.data
+    .filter((p) => !ownedItems.some((o) => o.id === p.id))
+    .map((p) => ({
+      id: p.id,
+      projectName: p.projectName,
+      updatedAt: p.updatedAt,
+      ownerEmail: p.ownerEmail,
+      isOwner: false,
+    }));
+
+  const items = [...ownedItems, ...sharedItems].sort(
+    (a, b) => b.updatedAt.localeCompare(a.updatedAt)
+  );
   summaryCache = { userId, items };
   return { data: items, error: null };
 }

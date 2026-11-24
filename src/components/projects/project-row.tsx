@@ -48,6 +48,11 @@ export function ProjectRow({ project, isCurrent, onLoad, onDelete }: ProjectRowP
                 Current
               </span>
             )}
+            {!project.isOwner && project.ownerEmail && (
+              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                Shared by {project.ownerEmail}
+              </span>
+            )}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">Last updated {formatDateTime(project.updatedAt)}</p>
         </div>
@@ -69,15 +74,17 @@ export function ProjectRow({ project, isCurrent, onLoad, onDelete }: ProjectRowP
             <FolderOpen className="h-3.5 w-3.5" />
             Load
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            aria-label={`Delete ${project.projectName}`}
-            onClick={() => setIsDeleteConfirmOpen(true)}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          {project.isOwner && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              aria-label={`Delete ${project.projectName}`}
+              onClick={() => setIsDeleteConfirmOpen(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 

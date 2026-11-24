@@ -6,7 +6,9 @@ import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -65,6 +67,8 @@ export function SavedProjectPicker({
   }
 
   const screens: Screen[] = activeProject?.projectData.screens ?? [];
+  const ownedProjects = projects.filter((p) => p.isOwner);
+  const sharedProjects = projects.filter((p) => !p.isOwner);
 
   return (
     <div className="space-y-4">
@@ -83,11 +87,27 @@ export function SavedProjectPicker({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={MANUAL_VALUE}>Manual entry</SelectItem>
-            {projects.map((project) => (
-              <SelectItem key={project.id} value={project.id}>
-                {project.projectName}
-              </SelectItem>
-            ))}
+            {ownedProjects.length > 0 && (
+              <SelectGroup>
+                <SelectLabel>My Projects</SelectLabel>
+                {ownedProjects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.projectName}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
+            {sharedProjects.length > 0 && (
+              <SelectGroup>
+                <SelectLabel>Shared with Me</SelectLabel>
+                {sharedProjects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.projectName}
+                    {project.ownerEmail ? ` — ${project.ownerEmail}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
           </SelectContent>
         </Select>
         {projectsError && <p className="text-xs text-destructive">{projectsError}</p>}
