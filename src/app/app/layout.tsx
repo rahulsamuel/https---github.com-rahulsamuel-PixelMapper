@@ -1,6 +1,11 @@
 import type { ReactNode } from "react";
 import { SmallScreenGate } from "@/components/layout/small-screen-gate";
+import { RequireAuth } from "@/components/auth/require-auth";
 
 export default function PixelMapLayout({ children }: { children: ReactNode }) {
-  return <SmallScreenGate>{children}</SmallScreenGate>;
+  return (
+    <RequireAuth>
+      <SmallScreenGate>{children}</SmallScreenGate>
+    </RequireAuth>
+  );
 }

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Logo } from '../logo';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/auth-context';
 
 /* ─── Data ─── */
 
@@ -192,6 +193,8 @@ const testimonials = [
 /* ─── Component ─── */
 
 export function LandingPage() {
+  const { user, loading } = useAuth();
+
   return (
     <div className="flex flex-col min-h-[calc(100svh-3.5rem)] bg-background text-foreground overflow-x-hidden">
 
@@ -234,7 +237,7 @@ export function LandingPage() {
           <div className="animate-fade-up">
             <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/30 bg-primary/8 text-primary text-sm font-medium">
               <Sparkles className="w-3.5 h-3.5" />
-              Professional LED Wall Tool — Free Tools
+              Professional LED Wall Tool — Free Account
             </span>
           </div>
 
@@ -252,18 +255,32 @@ export function LandingPage() {
           </div>
 
           {/* CTAs */}
-          <div className="animate-fade-up animation-delay-200 flex flex-wrap gap-3 justify-center">
-            <Link href="/app">
-              <Button size="lg" className="h-12 px-8 text-base font-semibold glow-primary gap-2 group">
-                Open Pixel Mapper
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </Button>
-            </Link>
-            <Link href="#features">
-              <Button size="lg" variant="outline" className="h-12 px-8 text-base">
-                See All Features
-              </Button>
-            </Link>
+          <div className="animate-fade-up animation-delay-200 space-y-3">
+            <div className="flex flex-wrap gap-3 justify-center">
+              {!loading && user ? (
+                <Link href="/app">
+                  <Button size="lg" className="h-12 px-8 text-base font-semibold glow-primary gap-2 group">
+                    Open Pixel Mapper
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/login?next=%2Fapp">
+                  <Button size="lg" className="h-12 px-8 text-base font-semibold glow-primary gap-2 group">
+                    Sign In to Start Mapping
+                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                  </Button>
+                </Link>
+              )}
+              <Link href="#features">
+                <Button size="lg" variant="outline" className="h-12 px-8 text-base">
+                  See All Features
+                </Button>
+              </Link>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              A free account is required to use the tools. You&apos;ll be returned right here after signing in.
+            </p>
           </div>
 
           {/* Stats */}
@@ -621,24 +638,33 @@ export function LandingPage() {
             <div className="relative z-10 space-y-6 max-w-2xl mx-auto">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/8 text-primary text-xs font-medium">
                 <Shield className="w-3.5 h-3.5" />
-                No account required to use the tools
+                Free account required — sign up in seconds
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
                 Ready to map your LED wall?
               </h2>
               <p className="text-muted-foreground text-lg">
-                Open the tools and start designing immediately. Create a free account to save and share your projects.
+                Create a free account or sign in to open the tools and start designing. Your projects save to your account automatically.
               </p>
               <div className="flex flex-wrap gap-3 justify-center">
-                <Link href="/app">
-                  <Button size="lg" className="h-12 px-10 text-base font-semibold gap-2 group glow-primary">
-                    Start Mapping Now
-                    <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                  </Button>
-                </Link>
-                <Link href="/login">
+                {!loading && user ? (
+                  <Link href="/app">
+                    <Button size="lg" className="h-12 px-10 text-base font-semibold gap-2 group glow-primary">
+                      Start Mapping Now
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                    </Button>
+                  </Link>
+                ) : (
+                  <Link href="/login?next=%2Fapp">
+                    <Button size="lg" className="h-12 px-10 text-base font-semibold gap-2 group glow-primary">
+                      Create Free Account / Sign In
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                    </Button>
+                  </Link>
+                )}
+                <Link href="#features">
                   <Button size="lg" variant="outline" className="h-12 px-8 text-base">
-                    Create Free Account
+                    See All Features
                   </Button>
                 </Link>
               </div>
