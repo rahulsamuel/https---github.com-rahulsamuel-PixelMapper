@@ -56,6 +56,31 @@ import {
 import { Input } from "@/components/ui/input";
 import { DownloadsControls } from "../pixel-mapper/downloads-controls";
 import { useState, useRef, useMemo, useEffect, useCallback, lazy, Suspense } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+
+function TabContentSkeleton({ centered = false, height = "h-[480px]" }: { centered?: boolean; height?: string }) {
+  return (
+    <div className={cnHeightClass(centered, height)}>
+      <div className="w-full max-w-3xl space-y-4">
+        <Skeleton className="h-8 w-1/3 mx-auto" />
+        <Skeleton className={cnWidth("h-64 w-full")} />
+        <div className="grid grid-cols-2 gap-4">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+        <Skeleton className="h-10 w-2/3 mx-auto" />
+      </div>
+    </div>
+  );
+}
+
+function cnHeightClass(centered: boolean, height: string) {
+  return `w-full ${height} flex ${centered ? "items-start justify-center" : "items-start"}`;
+}
+
+function cnWidth(cls: string) {
+  return cls;
+}
 import { useAuth } from "@/contexts/auth-context";
 import { PresenceBar } from "./presence-bar";
 import { RemoteCursors } from "./remote-cursors";
@@ -507,7 +532,14 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                         <h3 className="font-semibold">Data Wiring</h3>
                         <p className="text-sm text-muted-foreground">Define data wiring patterns and port settings.</p>
                       </div>
-                      <Suspense fallback={null}><WiringControls /></Suspense>
+                      <Suspense fallback={
+                        <div className="space-y-3">
+                          <Skeleton className="h-4 w-1/2" />
+                          <Skeleton className="h-10 w-full" />
+                          <Skeleton className="h-4 w-2/3" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                      }><WiringControls /></Suspense>
                     </div>
                     <Separator />
                     <div>
@@ -515,7 +547,14 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                         <h3 className="font-semibold">Power Wiring</h3>
                         <p className="text-sm text-muted-foreground">Define how many tiles are on each power circuit.</p>
                       </div>
-                      <Suspense fallback={null}><PowerControls /></Suspense>
+                      <Suspense fallback={
+                        <div className="space-y-3">
+                          <Skeleton className="h-4 w-1/2" />
+                          <Skeleton className="h-10 w-full" />
+                          <Skeleton className="h-4 w-2/3" />
+                          <Skeleton className="h-10 w-full" />
+                        </div>
+                      }><PowerControls /></Suspense>
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -528,7 +567,7 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                     <p className="text-sm text-muted-foreground pb-4">Select a tool to apply to the grid or restore deleted tiles.</p>
                     <div className="space-y-4 pt-4">
                       <EditTools />
-                      {activeTool === 'color' && <Suspense fallback={null}><ColorToolControls /></Suspense>}
+                      {activeTool === 'color' && <Suspense fallback={<Skeleton className="h-24 w-full" />}><ColorToolControls /></Suspense>}
                       <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/50">
                         <div className="flex items-center gap-2">
                           <Trash2 className="size-4 text-muted-foreground" />
@@ -572,7 +611,13 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
                 <AccordionItem value="project-details" className="w-full border-none">
                   <AccordionSectionTrigger icon={<Info className="size-5" />} title="Project Info" colorClass="border-l-4 border-l-teal-500" />
                   <AccordionContent className="p-4 bg-background border rounded-b-lg -mt-2">
-                    <Suspense fallback={null}><ProjectDetailsControls /></Suspense>
+                    <Suspense fallback={
+                      <div className="space-y-3">
+                        <Skeleton className="h-4 w-1/3" />
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                    }><ProjectDetailsControls /></Suspense>
                   </AccordionContent>
                 </AccordionItem>
               )}
@@ -706,21 +751,21 @@ export function PixelMapLayout({ onlineUsers = [], onShareClick, projectSwitcher
               </TabsContent>
               <TabsContent value="raster" className="mt-0 p-8">
                  <div className="inline-block" style={{ width: (rasterMapConfig?.totalWidth ?? 0) * zoom, height: (rasterMapConfig?.totalHeight ?? 0) * zoom }}>
-                  <Suspense fallback={null}><RasterMapPreview /></Suspense>
+                  <Suspense fallback={<TabContentSkeleton />}><RasterMapPreview /></Suspense>
                 </div>
               </TabsContent>
               <TabsContent value="equipment" className="mt-0 p-8 flex justify-center items-start">
-                <Suspense fallback={null}><EquipmentView /></Suspense>
+                <Suspense fallback={<TabContentSkeleton centered />}><EquipmentView /></Suspense>
               </TabsContent>
               <TabsContent value="deliverables" className="mt-0 p-8 flex justify-center items-start">
-                <Suspense fallback={null}><DeliverablesView /></Suspense>
+                <Suspense fallback={<TabContentSkeleton centered />}><DeliverablesView /></Suspense>
               </TabsContent>
               <TabsContent value="test-video" className="mt-0 px-8 pb-8 pt-0 flex justify-center items-start data-[state=inactive]:hidden">
-                <Suspense fallback={null}><TestVideoView /></Suspense>
+                <Suspense fallback={<TabContentSkeleton centered />}><TestVideoView /></Suspense>
               </TabsContent>
               {isAdmin && (
                 <TabsContent value="tech-doc" className="mt-0 p-4 flex justify-center items-start">
-                  <Suspense fallback={null}><TechnicalDocumentView /></Suspense>
+                  <Suspense fallback={<TabContentSkeleton centered />}><TechnicalDocumentView /></Suspense>
                 </TabsContent>
               )}
           </div>
