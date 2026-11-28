@@ -136,9 +136,12 @@ function SnapshotCard({
       </div>
       <div className="p-3 space-y-1">
         <p className="font-medium text-sm truncate">{snapshot.screen_name || snapshot.filename || 'Unnamed'}</p>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <User className="h-3 w-3 shrink-0" />
-          <span className="truncate">{userRow?.email ?? (isGuest ? 'Guest' : snapshot.session_id.slice(0, 8))}</span>
+        <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+          <User className="mt-0.5 h-3 w-3 shrink-0" />
+          <div className="min-w-0">
+            <p className="truncate">{userRow?.full_name ?? (isGuest ? 'Guest' : snapshot.session_id.slice(0, 8))}</p>
+            {userRow?.full_name && <p className="truncate text-[11px]">{userRow.email}</p>}
+          </div>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Calendar className="h-3 w-3 shrink-0" />
@@ -245,7 +248,8 @@ function TrackingPageInner() {
   const filteredMaps = deliverableSnapshots.filter(s =>
     !search || s.screen_name?.toLowerCase().includes(search.toLowerCase()) ||
     s.filename?.toLowerCase().includes(search.toLowerCase()) ||
-    userMap.get(s.user_id ?? '')?.email?.toLowerCase().includes(search.toLowerCase())
+    userMap.get(s.user_id ?? '')?.email?.toLowerCase().includes(search.toLowerCase()) ||
+    userMap.get(s.user_id ?? '')?.full_name?.toLowerCase().includes(search.toLowerCase())
   );
 
   const filteredUsers = users.filter(u =>
@@ -504,7 +508,16 @@ function TrackingPageInner() {
                           <Badge variant="outline" className="text-xs">{DOWNLOAD_TYPE_LABEL[s.download_type] ?? (s.download_type || 'Visit')}</Badge>
                         </td>
                         <td className="px-4 py-3 font-medium max-w-[200px] truncate">{s.screen_name || s.filename || '—'}</td>
-                        <td className="px-4 py-3 text-xs text-muted-foreground">{u?.email ?? (s.user_id ? s.user_id.slice(0, 8) : 'Guest')}</td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground">
+                          {u ? (
+                            <div>
+                              <p>{u.full_name ?? u.email}</p>
+                              {u.full_name && <p className="text-[11px]">{u.email}</p>}
+                            </div>
+                          ) : (
+                            s.user_id ? s.user_id.slice(0, 8) : 'Guest'
+                          )}
+                        </td>
                         <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{s.ip_address || '—'}</td>
                         <td className="px-4 py-3">
                           {s.thumbnail ? (
@@ -613,7 +626,10 @@ function TrackingPageInner() {
               <div>
                 <h2 className="font-bold text-base">{selectedSnapshot.screen_name || selectedSnapshot.filename}</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  {new Date(selectedSnapshot.created_at).toLocaleString()} · {userMap.get(selectedSnapshot.user_id ?? '')?.email ?? 'Guest'}
+                  {new Date(selectedSnapshot.created_at).toLocaleString()} · {(() => {
+                    const snapshotUser = userMap.get(selectedSnapshot.user_id ?? '');
+                    return snapshotUser ? `${snapshotUser.full_name ? `${snapshotUser.full_name} · ` : ''}${snapshotUser.email}` : 'Guest';
+                  })()}
                 </p>
               </div>
               <div className="flex items-center gap-2">

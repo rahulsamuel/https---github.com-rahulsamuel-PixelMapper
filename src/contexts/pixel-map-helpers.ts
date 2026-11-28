@@ -1,5 +1,6 @@
 import type { Screen, Dimensions } from "./pixel-map-types";
 import type { WiringPattern } from "@/lib/wiring";
+import { supabase } from "@/lib/supabase/client";
 
 export function formatFractionalInch(inches: number): string {
   const whole = Math.floor(inches);
@@ -25,11 +26,16 @@ export function formatFractionalInch(inches: number): string {
 
 export const trackEvent = async (eventType: string, eventData: any) => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (session?.access_token) {
+      headers.Authorization = `Bearer ${session.access_token}`;
+    }
     await fetch('/api/track', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({ eventType, eventData }),
     });
   } catch (error) {

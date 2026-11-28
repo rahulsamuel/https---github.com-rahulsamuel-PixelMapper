@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { plainText } from '@/lib/validation/fields';
 import { clientIp, isRateLimited } from '@/lib/rate-limit';
+import { getSupabaseUserClient } from '@/lib/supabase/server';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -48,6 +49,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Missing required event data' }, { status: 400 });
     }
     const { eventType, eventData } = body.data;
+    const authorization = req.headers.get('authorization');
+    const accessToken = authorization?.startsWith('Bearer ')
+      ? authorization.slice('Bearer '.length)
+      : null;
+    let trackingClient = supabase;
+    let userId: string | null = null;
+
+    if (accessToken) {
+      const userClient = getSupabaseUserClient(accessToken);
+      const { data: { user }, error: authError } = await userClient.auth.getUser(accessToken);
+      if (!authError && user) {
+        trackingClient = userClient;
+        userId = user.id;
+      }
+    }
 
     if (eventType === 'download') {
       const parsed = downloadEventSchema.safeParse(eventData);
@@ -60,7 +76,8 @@ export async function POST(req: NextRequest) {
       } = parsed.data;
 
       if (type && TRACKED_TYPES.has(type)) {
-        await supabase.from('pixel_map_snapshots').insert({
+        await trackingClient.from('pixel_map_snapshots').insert({
+          user_id: userId,
           session_id: sessionId ?? '',
           screen_name: screenName ?? filename ?? type,
           grid_width: gridWidth ?? 0,
