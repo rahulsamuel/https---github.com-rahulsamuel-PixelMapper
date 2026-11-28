@@ -24,7 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Plus, Pencil, Trash2, Loader2, Cable, Search, X, ChevronDown, ChevronRight, Upload, Sparkles, Eye } from 'lucide-react';
+import { Plus, Pencil, Copy, Trash2, Loader2, Cable, Search, X, ChevronDown, ChevronRight, Upload, Sparkles, Eye } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import {
   CATEGORY_INFO,
@@ -210,12 +210,14 @@ function DeviceForm({
   deviceId,
   cableTypes,
   categories,
+  devices,
 }: {
   initial: Partial<DBDevice> | null;
   onClose: () => void;
   deviceId?: string;
   cableTypes: DBCableType[];
   categories: DBCategory[];
+  devices: DBDevice[];
 }) {
   const [name, setName] = useState(initial?.name ?? '');
   const [deviceType, setDeviceType] = useState<DeviceType>(initial?.device_type ?? 'custom');
@@ -241,6 +243,16 @@ function DeviceForm({
   const handleSave = async () => {
     if (!name.trim()) {
       setError('Device name is required.');
+      return;
+    }
+    const normalizedName = name.trim().toLowerCase();
+    const duplicateName = devices.some(device =>
+      device.id !== deviceId
+      && device.category.trim().toLowerCase() === category.trim().toLowerCase()
+      && device.name.trim().toLowerCase() === normalizedName
+    );
+    if (duplicateName) {
+      setError('A device with this name already exists in this category.');
       return;
     }
     setSaving(true);
@@ -400,11 +412,15 @@ function DeviceForm({
 function DeviceCard({
   device,
   color,
+  cloning,
+  onClone,
   onEdit,
   onDelete,
 }: {
   device: DBDevice;
   color: string;
+  cloning: boolean;
+  onClone: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -418,10 +434,13 @@ function DeviceCard({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <span className="text-sm font-semibold truncate block">{device.name}</span>
-              <p className="text-xs text-muted-foreground truncate">{device.device_type} · {device.ports.length} ports</p>
+              <p className="text-xs text-muted-foreground truncate">{DEVICE_TYPE_LABELS[device.device_type]} · {device.ports.length} ports</p>
             </div>
             <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit}>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClone} disabled={cloning} title="Clone device">
+                {cloning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Copy className="w-3 h-3" />}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onEdit} title="Edit device">
                 <Pencil className="w-3 h-3" />
               </Button>
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDelete}>
@@ -450,6 +469,7 @@ export function SignalFlowDeviceAdmin() {
   const [editing, setEditing] = useState<DBDevice | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DBDevice | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [cloningId, setCloningId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -525,6 +545,51 @@ export function SignalFlowDeviceAdmin() {
     ...categoryOptions(categories),
     ...Object.keys(grouped),
   ].filter((cat, index, keys) => grouped[cat] && keys.indexOf(cat) === index);
+
+  async function handleClone(device: DBDevice) {
+    setCloningId(device.id);
+    setParseError('');
+    const categoryKey = device.category.trim().toLowerCase();
+    const categoryDevices = devices.filter(item => item.category.trim().toLowerCase() === categoryKey);
+    const baseName = `${device.name.trim()} Copy`;
+    let name = baseName;
+    let copyNumber = 2;
+    while (categoryDevices.some(item => item.name.trim().toLowerCase() === name.toLowerCase())) {
+      name = `${baseName} ${copyNumber}`;
+      copyNumber += 1;
+    }
+
+    try {
+      const { data: cloned, error } = await supabase
+        .from('signal_flow_devices')
+        .insert({
+          name,
+          device_type: device.device_type,
+          category: device.category,
+          color: getCategoryColor(device.category, categories),
+          width: device.width,
+          height: device.height,
+          ports: device.ports,
+          is_active: device.is_active,
+          sort_order: device.sort_order + 1,
+        })
+        .select('*')
+        .maybeSingle();
+      if (error) throw error;
+      if (cloned) {
+        const clonedDevice = cloned as DBDevice;
+        setDevices(prev => [...prev, clonedDevice]);
+        setEditing(clonedDevice);
+        setPrefilledDevice(null);
+        setDialogOpen(true);
+      }
+    } catch (error) {
+      const code = typeof error === 'object' && error !== null && 'code' in error ? error.code : null;
+      setParseError(code === '23505' ? 'A device with this name already exists in this category.' : 'Unable to clone this device.');
+    } finally {
+      setCloningId(null);
+    }
+  }
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -785,6 +850,8 @@ export function SignalFlowDeviceAdmin() {
                       key={d.id}
                       device={d}
                       color={info.color}
+                      cloning={cloningId === d.id}
+                      onClone={() => handleClone(d)}
                       onEdit={() => { setEditing(d); setDialogOpen(true); }}
                       onDelete={() => setDeleteTarget(d)}
                     />
@@ -885,6 +952,7 @@ export function SignalFlowDeviceAdmin() {
             deviceId={editing?.id}
             cableTypes={cableTypes}
             categories={categories}
+            devices={devices}
             onClose={() => { setDialogOpen(false); setEditing(null); setPrefilledDevice(null); loadData(); }}
           />
         </DialogContent>
