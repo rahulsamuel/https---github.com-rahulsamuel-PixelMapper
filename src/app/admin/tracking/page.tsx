@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { supabase } from '@/lib/supabase/client';
@@ -13,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Loader2, Users, Monitor, Search, RefreshCw,
   Shield, User, Package, Activity,
-  Pencil, Trash2, Plus, X,
+  X,
   Mail, MailOpen, Trash, Receipt as ReceiptIcon, ChevronLeft, ChevronRight,
   Eye, Download, ShoppingCart,
 } from 'lucide-react';
@@ -88,7 +87,7 @@ interface AdminReceiptRow {
 
 const PAGE_SIZE = 20;
 
-type TabKey = 'users' | 'products' | 'tracking' | 'messages' | 'purchases';
+type TabKey = 'users' | 'tracking' | 'messages' | 'purchases';
 
 function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: number | string; color: string }) {
   return (
@@ -146,7 +145,8 @@ function TrackingPageInner() {
   const { user, isAdmin, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tab = searchParams.get('tab') ?? 'users';
+  const requestedTab = searchParams.get('tab');
+  const tab = requestedTab === 'tracking' || requestedTab === 'messages' || requestedTab === 'purchases' ? requestedTab : 'users';
 
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -155,7 +155,6 @@ function TrackingPageInner() {
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [userSearch, setUserSearch] = useState('');
-  const [productSearch, setProductSearch] = useState('');
   const [trackingSearch, setTrackingSearch] = useState('');
   const [messageSearch, setMessageSearch] = useState('');
   const [receiptSearch, setReceiptSearch] = useState('');
@@ -167,7 +166,7 @@ function TrackingPageInner() {
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const [page, setPage] = useState<Record<TabKey, number>>({
-    users: 1, products: 1, tracking: 1, messages: 1, purchases: 1,
+    users: 1, tracking: 1, messages: 1, purchases: 1,
   });
   const setPageFor = (key: TabKey, value: number) => setPage(prev => ({ ...prev, [key]: value }));
 
@@ -226,11 +225,6 @@ function TrackingPageInner() {
     u.company?.toLowerCase().includes(userSearch.toLowerCase())
   );
 
-  const filteredProducts = products.filter(p =>
-    !productSearch || p.manufacturer?.toLowerCase().includes(productSearch.toLowerCase()) ||
-    p.product_name?.toLowerCase().includes(productSearch.toLowerCase())
-  );
-
   const filteredTracking = allSnapshots.filter(s =>
     !trackingSearch || s.screen_name?.toLowerCase().includes(trackingSearch.toLowerCase()) ||
     s.ip_address?.toLowerCase().includes(trackingSearch.toLowerCase()) ||
@@ -267,11 +261,6 @@ function TrackingPageInner() {
     await supabase.from('contact_messages').delete().eq('id', id);
     setMessages(prev => prev.filter(m => m.id !== id));
     setSelectedMessage(null);
-  };
-
-  const deleteProduct = async (id: string) => {
-    await supabase.from('led_products').delete().eq('id', id);
-    fetchData();
   };
 
   const handleDownloadReceipt = async (receipt: Receipt) => {
@@ -339,7 +328,6 @@ function TrackingPageInner() {
         <Tabs defaultValue={tab} onValueChange={(v) => router.push(`?tab=${v}`)}>
           <TabsList className="mb-4">
             <TabsTrigger value="users" className="gap-1.5"><Users className="h-3.5 w-3.5" />Users</TabsTrigger>
-            <TabsTrigger value="products" className="gap-1.5"><Package className="h-3.5 w-3.5" />LED Products</TabsTrigger>
             <TabsTrigger value="tracking" className="gap-1.5"><Activity className="h-3.5 w-3.5" />Visitor Tracking</TabsTrigger>
             <TabsTrigger value="messages" className="gap-1.5">
               <Mail className="h-3.5 w-3.5" />Messages
@@ -398,67 +386,6 @@ function TrackingPageInner() {
               totalItems={filteredUsers.length}
               label="users"
               onPageChange={p => setPageFor('users', p)}
-            />
-          </TabsContent>
-
-          {/* LED Products Tab */}
-          <TabsContent value="products" className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input placeholder="Search products..." value={productSearch} onChange={e => { setProductSearch(e.target.value); setPageFor('products', 1); }} className="pl-9 h-9" />
-              </div>
-              <Button size="sm" asChild className="gap-1.5 ml-auto">
-                <Link href="/admin/add-led">
-                  <Plus className="h-3.5 w-3.5" />Add Product
-                </Link>
-              </Button>
-            </div>
-
-            <div className="border rounded-xl overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 border-b">
-                  <tr>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Manufacturer</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Product</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Resolution</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Watts</th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/50">
-                  {filteredProducts.slice((page.products - 1) * PAGE_SIZE, page.products * PAGE_SIZE).map(p => (
-                    <tr key={p.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-3 font-medium">{p.manufacturer}</td>
-                      <td className="px-4 py-3">{p.product_name}</td>
-                      <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{p.tile_width_px}×{p.tile_height_px}px</td>
-                      <td className="px-4 py-3 text-muted-foreground">{p.watts_per_tile}W</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button variant="ghost" size="sm" asChild className="h-7 w-7 p-0">
-                            <Link href={`/admin/products/${p.id}/edit`} aria-label="Edit product">
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Link>
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => deleteProduct(p.id)} className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {filteredProducts.length === 0 && (
-                <div className="text-center py-12 text-muted-foreground">No products found</div>
-              )}
-            </div>
-            <Pagination
-              page={page.products}
-              pageCount={Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE))}
-              totalItems={filteredProducts.length}
-              label="products"
-              onPageChange={p => setPageFor('products', p)}
             />
           </TabsContent>
 
