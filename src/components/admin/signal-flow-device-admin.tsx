@@ -734,7 +734,7 @@ export function SignalFlowDeviceAdmin() {
         {groupKeys.map(cat => {
           const items = grouped[cat];
           const customCategory = categories.find(category => category.name === cat);
-          const info = CATEGORY_INFO[cat as DeviceCategory] ?? customCategory ?? { label: cat, color: '#475569' };
+          const info = CATEGORY_INFO[cat as DeviceCategory] ?? (customCategory ? { label: customCategory.name, color: customCategory.color } : { label: cat, color: '#475569' });
           const isCollapsed = collapsed.has(cat);
           return (
             <div key={cat} className="rounded-xl border bg-card/50 overflow-hidden">
