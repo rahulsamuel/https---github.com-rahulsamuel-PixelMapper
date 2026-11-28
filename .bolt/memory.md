@@ -18,6 +18,7 @@
 - Device cards visually inherit their category's color across all surfaces: device form preview, admin device cards, Signal Flow sidebar, and placed devices.
 - Add Category dialog shows feedback when a selected color is already in use.
 - Similar form patterns exist in both category dialog and cable dialog.
+- Device form distinguishes **Device Type** (technical kind) from **Display Category** (Signal Flow group) via purpose-labeled fields with descriptive helper text; device type names render in human-readable format.
 
 ## Decisions, constraints & rationale
 
@@ -27,6 +28,7 @@
 - Category colors must be unique across all categories (built-in and custom); admins cannot create a category with a color already assigned.
 - Device color is derived from its category color, not stored independently; category selection in any flow (including Add Signal Flow) propagates the category color to the device.
 - Existing active categories had no duplicate colors at time of implementation.
+- **Device Type** and **Category** are intentionally separate concepts, not redundant: Device Type = technical device kind (e.g., Matrix Router, LED Processor, Media Server); Category = Signal Flow display group (e.g., Video Routing, LED Processors, custom). A device type can belong to any category. Decision: keep both fields, clarify distinction via labels/descriptions rather than merge.
 - Typecheck, production build, and diagnostics all pass.
 
 ## Open questions & assumptions
