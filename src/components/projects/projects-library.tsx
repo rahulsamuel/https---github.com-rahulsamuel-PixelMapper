@@ -66,7 +66,7 @@ export function ProjectsLibrary() {
   const handleLoad = (project: CloudProjectSummary) => {
     writeStoredSelection(SELECTED_PROJECT_STORAGE_KEY, project.id);
     writeStoredSelection(SELECTED_SCREEN_STORAGE_KEY, null);
-    router.push("/app");
+    router.push(`/app?project=${encodeURIComponent(project.id)}`);
   };
 
   const handleClone = async (project: CloudProjectSummary): Promise<boolean> => {
