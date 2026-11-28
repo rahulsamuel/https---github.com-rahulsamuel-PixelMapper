@@ -74,6 +74,18 @@ const DEVICE_TYPES: DeviceType[] = [
   'network-switch', 'matrix', 'distribution', 'converter', 'custom',
 ];
 
+const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
+  processor: 'LED Processor',
+  'led-screen': 'LED Screen',
+  'media-server': 'Media Server',
+  'power-supply': 'Power Supply',
+  'network-switch': 'Network Switch',
+  matrix: 'Matrix Router',
+  distribution: 'Distribution Box',
+  converter: 'Converter',
+  custom: 'Custom Device',
+};
+
 const CATEGORY_OPTIONS: DeviceCategory[] = [
   'processor', 'media-server', 'led-screen', 'converter', 'power', 'network', 'other',
 ];
@@ -271,15 +283,17 @@ function DeviceForm({
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Device Type</Label>
+              <p className="text-[10px] text-muted-foreground">Technical kind used for the device.</p>
               <Select value={deviceType} onValueChange={(v) => setDeviceType(v as DeviceType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {DEVICE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                  {DEVICE_TYPES.map(t => <SelectItem key={t} value={t}>{DEVICE_TYPE_LABELS[t]}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Category</Label>
+              <Label className="text-xs">Display Category</Label>
+              <p className="text-[10px] text-muted-foreground">Signal Flow group where it appears.</p>
               <Select value={category} onValueChange={value => setCategory(value)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
