@@ -11,18 +11,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Loader2, Download, Users, Monitor, Search, RefreshCw,
-  Shield, User, Calendar, Package, Activity,
-  Pencil, Trash2, Plus, X, Workflow, Layers,
-  Mail, MailOpen, Trash,
+  Loader2, Users, Monitor, Search, RefreshCw,
+  Shield, User, Package, Activity,
+  Pencil, Trash2, Plus, X,
+  Mail, MailOpen, Trash, Receipt as ReceiptIcon, ChevronLeft, ChevronRight,
+  Eye, Download, ShoppingCart,
 } from 'lucide-react';
-
-const DOWNLOAD_TYPE_ICON: Record<string, React.ElementType> = {
-  'wiring-diagram': Workflow,
-  'raster-slice': Layers,
-  'composite-wiring-diagram': Workflow,
-  'project-file': Package,
-};
+import { formatCents } from '@/lib/product-checkout';
+import { formatReceiptDate, type Receipt, type ReceiptItem } from '@/lib/receipts';
+import { downloadReceiptPdf } from '@/lib/receipt-pdf';
+import { ReceiptDetailDialog } from '@/components/receipts/receipt-detail-dialog';
 
 const DOWNLOAD_TYPE_LABEL: Record<string, string> = {
   'wiring-diagram': 'Wiring Diagram',
@@ -73,6 +71,25 @@ interface ContactMessage {
   is_read: boolean | null;
 }
 
+interface AdminReceiptRow {
+  id: string;
+  user_id: string;
+  receipt_number: string;
+  status: string;
+  customer_email: string | null;
+  items: ReceiptItem[];
+  product_fee_cents: number;
+  processing_fee_cents: number;
+  total_cents: number;
+  currency: string;
+  paid_at: string | null;
+  created_at: string;
+}
+
+const PAGE_SIZE = 20;
+
+type TabKey = 'users' | 'products' | 'tracking' | 'messages' | 'purchases';
+
 function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: number | string; color: string }) {
   return (
     <Card>
@@ -91,62 +108,35 @@ function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType
   );
 }
 
-function SnapshotCard({
-  snapshot,
-  userMap,
-  onClick,
+function Pagination({
+  page,
+  pageCount,
+  totalItems,
+  label,
+  onPageChange,
 }: {
-  snapshot: Snapshot;
-  userMap: Map<string, UserRow>;
-  onClick: () => void;
+  page: number;
+  pageCount: number;
+  totalItems: number;
+  label: string;
+  onPageChange: (page: number) => void;
 }) {
-  const userRow = snapshot.user_id ? userMap.get(snapshot.user_id) : null;
-  const isGuest = !snapshot.user_id;
-  const date = new Date(snapshot.created_at);
-  const TypeIcon = DOWNLOAD_TYPE_ICON[snapshot.download_type] ?? Monitor;
-
+  if (totalItems === 0) return null;
+  const from = (page - 1) * PAGE_SIZE + 1;
+  const to = Math.min(page * PAGE_SIZE, totalItems);
   return (
-    <div
-      className="group border rounded-xl overflow-hidden bg-card hover:border-primary/50 transition-all cursor-pointer hover:shadow-lg hover:shadow-black/20"
-      onClick={onClick}
-    >
-      <div className="relative aspect-video bg-muted overflow-hidden">
-        {snapshot.thumbnail ? (
-          <img src={snapshot.thumbnail} alt={snapshot.screen_name} className="w-full h-full object-contain bg-white" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-            <TypeIcon className="h-8 w-8 opacity-20" />
-          </div>
-        )}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-          <Download className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
-        </div>
-        <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {isGuest ? (
-            <Badge variant="secondary" className="text-xs">Guest</Badge>
-          ) : (
-            <Badge variant="default" className="text-xs">User</Badge>
-          )}
-          {snapshot.download_type && (
-            <Badge variant="outline" className="text-xs bg-background/80 backdrop-blur-sm">
-              {DOWNLOAD_TYPE_LABEL[snapshot.download_type] ?? snapshot.download_type}
-            </Badge>
-          )}
-        </div>
-      </div>
-      <div className="p-3 space-y-1">
-        <p className="font-medium text-sm truncate">{snapshot.screen_name || snapshot.filename || 'Unnamed'}</p>
-        <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
-          <User className="mt-0.5 h-3 w-3 shrink-0" />
-          <div className="min-w-0">
-            <p className="truncate">{userRow?.full_name ?? (isGuest ? 'Guest' : snapshot.session_id.slice(0, 8))}</p>
-            {userRow?.full_name && <p className="truncate text-[11px]">{userRow.email}</p>}
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Calendar className="h-3 w-3 shrink-0" />
-          <span>{date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-        </div>
+    <div className="flex items-center justify-between gap-4 pt-3 px-1">
+      <p className="text-xs text-muted-foreground">
+        Showing {from}–{to} of {totalItems} {label}
+      </p>
+      <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" onClick={() => onPageChange(page - 1)} disabled={page <= 1}>
+          <ChevronLeft className="h-3.5 w-3.5" />Previous
+        </Button>
+        <span className="text-xs text-muted-foreground tabular-nums">Page {page} of {pageCount}</span>
+        <Button variant="outline" size="sm" onClick={() => onPageChange(page + 1)} disabled={page >= pageCount}>
+          Next<ChevronRight className="h-3.5 w-3.5" />
+        </Button>
       </div>
     </div>
   );
@@ -156,39 +146,49 @@ function TrackingPageInner() {
   const { user, isAdmin, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tab = searchParams.get('tab') ?? 'maps';
+  const tab = searchParams.get('tab') ?? 'users';
 
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [products, setProducts] = useState<LedProduct[]>([]);
+  const [receipts, setReceipts] = useState<AdminReceiptRow[]>([]);
   const [fetching, setFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [productSearch, setProductSearch] = useState('');
   const [trackingSearch, setTrackingSearch] = useState('');
-  const [selectedSnapshot, setSelectedSnapshot] = useState<Snapshot | null>(null);
+  const [messageSearch, setMessageSearch] = useState('');
+  const [receiptSearch, setReceiptSearch] = useState('');
 
   const [messages, setMessages] = useState<ContactMessage[]>([]);
-  const [messageSearch, setMessageSearch] = useState('');
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null);
+  const [viewReceipt, setViewReceipt] = useState<AdminReceiptRow | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const [page, setPage] = useState<Record<TabKey, number>>({
+    users: 1, products: 1, tracking: 1, messages: 1, purchases: 1,
+  });
+  const setPageFor = (key: TabKey, value: number) => setPage(prev => ({ ...prev, [key]: value }));
 
   const fetchData = useCallback(async () => {
     setFetching(true);
     setFetchError(null);
-    const [snapRes, userRes, prodRes, msgRes] = await Promise.all([
-      supabase.from('pixel_map_snapshots').select('id, user_id, session_id, screen_name, grid_width, grid_height, download_type, filename, ip_address, created_at, updated_at').not('user_id', 'is', null).order('created_at', { ascending: false }).limit(500),
+    const [snapRes, userRes, prodRes, msgRes, recRes] = await Promise.all([
+      supabase.from('pixel_map_snapshots').select('id, user_id, session_id, screen_name, grid_width, grid_height, download_type, filename, ip_address, created_at').not('user_id', 'is', null).order('created_at', { ascending: false }).limit(500),
       supabase.from('users').select('id, email, full_name, company, is_admin, created_at').order('created_at', { ascending: false }),
       supabase.from('led_products').select('*').order('created_at', { ascending: false }),
       supabase.from('contact_messages').select('*').order('created_at', { ascending: false }),
+      supabase.from('receipts').select('id, user_id, receipt_number, status, customer_email, items, product_fee_cents, processing_fee_cents, total_cents, currency, paid_at, created_at').order('created_at', { ascending: false }),
     ]);
-    const firstError = snapRes.error ?? userRes.error ?? prodRes.error ?? msgRes.error;
+    const firstError = snapRes.error ?? userRes.error ?? prodRes.error ?? msgRes.error ?? recRes.error;
     if (firstError) setFetchError(firstError.message);
     const snapshotRows = snapRes.data ?? [];
     setSnapshots(snapshotRows);
     setUsers(userRes.data ?? []);
     setProducts(prodRes.data ?? []);
     setMessages(msgRes.data ?? []);
+    setReceipts((recRes.data ?? []) as AdminReceiptRow[]);
 
     if (!snapRes.error && snapshotRows.length > 0) {
       const previewIds = snapshotRows.slice(0, 15).map(snapshot => snapshot.id);
@@ -217,40 +217,8 @@ function TrackingPageInner() {
 
   const userMap = new Map<string, UserRow>(users.map(u => [u.id, u]));
 
-  const openSnapshot = async (snapshot: Snapshot) => {
-    setSelectedSnapshot(snapshot);
-    const { data, error } = await supabase
-      .from('pixel_map_snapshots')
-      .select('thumbnail')
-      .eq('id', snapshot.id)
-      .maybeSingle();
-    if (error) {
-      console.error('Snapshot fetch failed:', error.message);
-      setFetchError('Could not load that snapshot.');
-      return;
-    }
-    if (data?.thumbnail) {
-      setSelectedSnapshot(current => current?.id === snapshot.id ? { ...current, thumbnail: data.thumbnail } : current);
-    }
-  };
-
   const deliverableSnapshots = snapshots.filter(s => s.download_type && s.download_type !== 'grid-png' && s.download_type !== '');
   const allSnapshots = snapshots;
-
-  const handleDownload = (snapshot: Snapshot) => {
-    if (!snapshot.thumbnail) return;
-    const link = document.createElement('a');
-    link.href = snapshot.thumbnail;
-    link.download = snapshot.filename || snapshot.screen_name || 'download';
-    link.click();
-  };
-
-  const filteredMaps = deliverableSnapshots.filter(s =>
-    !search || s.screen_name?.toLowerCase().includes(search.toLowerCase()) ||
-    s.filename?.toLowerCase().includes(search.toLowerCase()) ||
-    userMap.get(s.user_id ?? '')?.email?.toLowerCase().includes(search.toLowerCase()) ||
-    userMap.get(s.user_id ?? '')?.full_name?.toLowerCase().includes(search.toLowerCase())
-  );
 
   const filteredUsers = users.filter(u =>
     !userSearch || u.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
@@ -274,6 +242,18 @@ function TrackingPageInner() {
     m.email?.toLowerCase().includes(messageSearch.toLowerCase()) ||
     m.message?.toLowerCase().includes(messageSearch.toLowerCase())
   );
+
+  const filteredReceipts = receipts.filter(r => {
+    if (!receiptSearch) return true;
+    const buyer = userMap.get(r.user_id);
+    const buyerEmail = buyer?.email ?? r.customer_email ?? '';
+    const buyerName = buyer?.full_name ?? '';
+    const haystack = `${r.receipt_number} ${buyerEmail} ${buyerName}`.toLowerCase();
+    return haystack.includes(receiptSearch.toLowerCase()) ||
+      r.items?.some(item => `${item.manufacturer} ${item.product_name}`.toLowerCase().includes(receiptSearch.toLowerCase()));
+  });
+
+  const paidReceipts = filteredReceipts.filter(r => r.status === 'paid');
   const unreadMessageCount = messages.filter(m => !m.is_read).length;
 
   const markMessageRead = async (msg: ContactMessage) => {
@@ -292,6 +272,18 @@ function TrackingPageInner() {
   const deleteProduct = async (id: string) => {
     await supabase.from('led_products').delete().eq('id', id);
     fetchData();
+  };
+
+  const handleDownloadReceipt = async (receipt: Receipt) => {
+    setDownloadingId(receipt.id);
+    setDownloadError(null);
+    try {
+      await downloadReceiptPdf(receipt);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : 'Could not download the receipt.');
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   if (loading) {
@@ -330,10 +322,14 @@ function TrackingPageInner() {
             Could not load some admin data: {fetchError}
           </div>
         )}
+        {downloadError && (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {downloadError}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard icon={Activity} label="Total Downloads" value={deliverableSnapshots.length} color="bg-primary/10 text-primary" />
           <StatCard icon={Users} label="Registered Users" value={users.length} color="bg-green-500/10 text-green-500" />
           <StatCard icon={Package} label="LED Products" value={products.length} color="bg-orange-500/10 text-orange-500" />
           <StatCard icon={Monitor} label="All Tracked Events" value={allSnapshots.length} color="bg-blue-500/10 text-blue-500" />
@@ -342,7 +338,6 @@ function TrackingPageInner() {
 
         <Tabs defaultValue={tab} onValueChange={(v) => router.push(`?tab=${v}`)}>
           <TabsList className="mb-4">
-            <TabsTrigger value="maps" className="gap-1.5"><Monitor className="h-3.5 w-3.5" />Pixel Maps</TabsTrigger>
             <TabsTrigger value="users" className="gap-1.5"><Users className="h-3.5 w-3.5" />Users</TabsTrigger>
             <TabsTrigger value="products" className="gap-1.5"><Package className="h-3.5 w-3.5" />LED Products</TabsTrigger>
             <TabsTrigger value="tracking" className="gap-1.5"><Activity className="h-3.5 w-3.5" />Visitor Tracking</TabsTrigger>
@@ -350,37 +345,15 @@ function TrackingPageInner() {
               <Mail className="h-3.5 w-3.5" />Messages
               {unreadMessageCount > 0 && <Badge variant="destructive" className="ml-1 h-4 px-1 text-[10px]">{unreadMessageCount}</Badge>}
             </TabsTrigger>
+            <TabsTrigger value="purchases" className="gap-1.5"><ReceiptIcon className="h-3.5 w-3.5" />Purchases</TabsTrigger>
           </TabsList>
-
-          {/* Pixel Maps Tab */}
-          <TabsContent value="maps" className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input placeholder="Search maps..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
-              </div>
-              <span className="text-sm text-muted-foreground">{filteredMaps.length} maps</span>
-            </div>
-            {filteredMaps.length === 0 ? (
-              <div className="text-center py-16 text-muted-foreground">
-                <Monitor className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                <p>No pixel maps found</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {filteredMaps.map(s => (
-                  <SnapshotCard key={s.id} snapshot={s} userMap={userMap} onClick={() => openSnapshot(s)} />
-                ))}
-              </div>
-            )}
-          </TabsContent>
 
           {/* Users Tab */}
           <TabsContent value="users" className="space-y-4">
             <div className="flex items-center gap-2">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input placeholder="Search users..." value={userSearch} onChange={e => setUserSearch(e.target.value)} className="pl-9 h-9" />
+                <Input placeholder="Search users..." value={userSearch} onChange={e => { setUserSearch(e.target.value); setPageFor('users', 1); }} className="pl-9 h-9" />
               </div>
               <span className="text-sm text-muted-foreground">{filteredUsers.length} users</span>
             </div>
@@ -397,7 +370,7 @@ function TrackingPageInner() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
-                  {filteredUsers.map(u => (
+                  {filteredUsers.slice((page.users - 1) * PAGE_SIZE, page.users * PAGE_SIZE).map(u => (
                     <tr key={u.id} className="hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3 font-mono text-xs">{u.email}</td>
                       <td className="px-4 py-3">{u.full_name ?? <span className="text-muted-foreground">—</span>}</td>
@@ -419,6 +392,13 @@ function TrackingPageInner() {
                 <div className="text-center py-12 text-muted-foreground">No users found</div>
               )}
             </div>
+            <Pagination
+              page={page.users}
+              pageCount={Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE))}
+              totalItems={filteredUsers.length}
+              label="users"
+              onPageChange={p => setPageFor('users', p)}
+            />
           </TabsContent>
 
           {/* LED Products Tab */}
@@ -426,7 +406,7 @@ function TrackingPageInner() {
             <div className="flex items-center gap-2">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input placeholder="Search products..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="pl-9 h-9" />
+                <Input placeholder="Search products..." value={productSearch} onChange={e => { setProductSearch(e.target.value); setPageFor('products', 1); }} className="pl-9 h-9" />
               </div>
               <Button size="sm" asChild className="gap-1.5 ml-auto">
                 <Link href="/admin/add-led">
@@ -447,7 +427,7 @@ function TrackingPageInner() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
-                  {filteredProducts.map(p => (
+                  {filteredProducts.slice((page.products - 1) * PAGE_SIZE, page.products * PAGE_SIZE).map(p => (
                     <tr key={p.id} className="hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3 font-medium">{p.manufacturer}</td>
                       <td className="px-4 py-3">{p.product_name}</td>
@@ -473,6 +453,13 @@ function TrackingPageInner() {
                 <div className="text-center py-12 text-muted-foreground">No products found</div>
               )}
             </div>
+            <Pagination
+              page={page.products}
+              pageCount={Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE))}
+              totalItems={filteredProducts.length}
+              label="products"
+              onPageChange={p => setPageFor('products', p)}
+            />
           </TabsContent>
 
           {/* Visitor Tracking Tab */}
@@ -480,7 +467,7 @@ function TrackingPageInner() {
             <div className="flex items-center gap-2">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input placeholder="Search by name, IP, session..." value={trackingSearch} onChange={e => setTrackingSearch(e.target.value)} className="pl-9 h-9" />
+                <Input placeholder="Search by name, IP, session..." value={trackingSearch} onChange={e => { setTrackingSearch(e.target.value); setPageFor('tracking', 1); }} className="pl-9 h-9" />
               </div>
               <span className="text-sm text-muted-foreground">{filteredTracking.length} events</span>
             </div>
@@ -497,7 +484,7 @@ function TrackingPageInner() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
-                  {filteredTracking.map(s => {
+                  {filteredTracking.slice((page.tracking - 1) * PAGE_SIZE, page.tracking * PAGE_SIZE).map(s => {
                     const u = s.user_id ? userMap.get(s.user_id) : null;
                     return (
                       <tr key={s.id} className="hover:bg-muted/30 transition-colors">
@@ -533,13 +520,21 @@ function TrackingPageInner() {
                 <div className="text-center py-12 text-muted-foreground">No tracking events found</div>
               )}
             </div>
+            <Pagination
+              page={page.tracking}
+              pageCount={Math.max(1, Math.ceil(filteredTracking.length / PAGE_SIZE))}
+              totalItems={filteredTracking.length}
+              label="events"
+              onPageChange={p => setPageFor('tracking', p)}
+            />
           </TabsContent>
+
           {/* Messages Tab */}
           <TabsContent value="messages" className="space-y-4">
             <div className="flex items-center gap-2">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input placeholder="Search messages..." value={messageSearch} onChange={e => setMessageSearch(e.target.value)} className="pl-9 h-9" />
+                <Input placeholder="Search messages..." value={messageSearch} onChange={e => { setMessageSearch(e.target.value); setPageFor('messages', 1); }} className="pl-9 h-9" />
               </div>
               <span className="text-sm text-muted-foreground">{filteredMessages.length} messages</span>
             </div>
@@ -555,7 +550,7 @@ function TrackingPageInner() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
-                  {filteredMessages.map(m => (
+                  {filteredMessages.slice((page.messages - 1) * PAGE_SIZE, page.messages * PAGE_SIZE).map(m => (
                     <tr key={m.id} className={`hover:bg-muted/30 transition-colors cursor-pointer ${!m.is_read ? 'font-medium' : ''}`} onClick={() => { setSelectedMessage(m); markMessageRead(m); }}>
                       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(m.created_at).toLocaleDateString()} {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -587,6 +582,91 @@ function TrackingPageInner() {
                 </div>
               )}
             </div>
+            <Pagination
+              page={page.messages}
+              pageCount={Math.max(1, Math.ceil(filteredMessages.length / PAGE_SIZE))}
+              totalItems={filteredMessages.length}
+              label="messages"
+              onPageChange={p => setPageFor('messages', p)}
+            />
+          </TabsContent>
+
+          {/* Purchases Tab */}
+          <TabsContent value="purchases" className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input placeholder="Search by buyer, receipt no., product..." value={receiptSearch} onChange={e => { setReceiptSearch(e.target.value); setPageFor('purchases', 1); }} className="pl-9 h-9" />
+              </div>
+              <span className="text-sm text-muted-foreground">
+                {filteredReceipts.length} receipts · {paidReceipts.length} paid · {formatCents(paidReceipts.reduce((sum, r) => sum + r.total_cents, 0))} collected
+              </span>
+            </div>
+            <div className="border rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50 border-b">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Buyer</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Products</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Receipt No.</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Amount</th>
+                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {filteredReceipts.slice((page.purchases - 1) * PAGE_SIZE, page.purchases * PAGE_SIZE).map(r => (
+                    <tr key={r.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                        {formatReceiptDate(r.paid_at ?? r.created_at)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="font-medium">{userMap.get(r.user_id)?.full_name ?? r.customer_email ?? '—'}</p>
+                        <p className="text-[11px] text-muted-foreground">{userMap.get(r.user_id)?.email ?? r.customer_email ?? '—'}</p>
+                      </td>
+                      <td className="px-4 py-3 max-w-[220px] truncate text-muted-foreground">
+                        {r.items?.length ? r.items.map(item => item.product_name).join(', ') : '—'}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs">{r.receipt_number}</td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs font-medium rounded-full px-2.5 py-0.5 capitalize ${r.status === 'paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-muted text-muted-foreground'}`}>
+                          {r.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold tabular-nums">{formatCents(r.total_cents)}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => setViewReceipt(r)} className="h-7 w-7 p-0" aria-label="View receipt">
+                            <Eye className="h-3.5 w-3.5" />
+                          </Button>
+                          {r.status === 'paid' && (
+                            <Button variant="ghost" size="sm" onClick={() => handleDownloadReceipt(r)} disabled={downloadingId === r.id} className="h-7 w-7 p-0" aria-label="Download receipt PDF">
+                              {downloadingId === r.id
+                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                : <Download className="h-3.5 w-3.5" />}
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {filteredReceipts.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <ShoppingCart className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                  <p>No purchases found</p>
+                </div>
+              )}
+            </div>
+            <Pagination
+              page={page.purchases}
+              pageCount={Math.max(1, Math.ceil(filteredReceipts.length / PAGE_SIZE))}
+              totalItems={filteredReceipts.length}
+              label="receipts"
+              onPageChange={p => setPageFor('purchases', p)}
+            />
           </TabsContent>
         </Tabs>
       </div>
@@ -618,44 +698,12 @@ function TrackingPageInner() {
         </div>
       )}
 
-      {/* Snapshot detail modal */}
-      {selectedSnapshot && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSelectedSnapshot(null)}>
-          <div className="bg-card border rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b">
-              <div>
-                <h2 className="font-bold text-base">{selectedSnapshot.screen_name || selectedSnapshot.filename}</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {new Date(selectedSnapshot.created_at).toLocaleString()} · {(() => {
-                    const snapshotUser = userMap.get(selectedSnapshot.user_id ?? '');
-                    return snapshotUser ? `${snapshotUser.full_name ? `${snapshotUser.full_name} · ` : ''}${snapshotUser.email}` : 'Guest';
-                  })()}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {selectedSnapshot.thumbnail && (
-                  <Button size="sm" onClick={() => handleDownload(selectedSnapshot)} className="gap-1.5">
-                    <Download className="h-3.5 w-3.5" />Download
-                  </Button>
-                )}
-                <Button variant="ghost" size="sm" onClick={() => setSelectedSnapshot(null)}><X className="h-4 w-4" /></Button>
-              </div>
-            </div>
-            {selectedSnapshot.thumbnail ? (
-              <div className="bg-black flex items-center justify-center" style={{ maxHeight: '60vh' }}>
-                <img src={selectedSnapshot.thumbnail} alt={selectedSnapshot.screen_name} className="max-w-full max-h-[60vh] object-contain" />
-              </div>
-            ) : (
-              <div className="h-48 flex items-center justify-center text-muted-foreground bg-muted">No preview available</div>
-            )}
-            <div className="px-5 py-3 flex items-center gap-4 text-xs text-muted-foreground border-t">
-              <span>Grid: {selectedSnapshot.grid_width}×{selectedSnapshot.grid_height}</span>
-              <span>Type: {DOWNLOAD_TYPE_LABEL[selectedSnapshot.download_type] ?? selectedSnapshot.download_type}</span>
-              <span>IP: {selectedSnapshot.ip_address || '—'}</span>
-            </div>
-          </div>
-        </div>
-      )}
+      <ReceiptDetailDialog
+        receipt={viewReceipt}
+        downloading={viewReceipt !== null && downloadingId === viewReceipt.id}
+        onOpenChange={open => { if (!open) setViewReceipt(null); }}
+        onDownload={handleDownloadReceipt}
+      />
     </div>
   );
 }
