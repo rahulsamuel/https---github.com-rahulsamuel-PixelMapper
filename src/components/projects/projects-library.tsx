@@ -17,6 +17,7 @@ import {
 import {
   cloneCloudProject,
   deleteCloudProject,
+  getCloudProject,
   getUserCloudProjectSummaries,
   type CloudProjectSummary,
 } from "@/lib/cloud-projects";
@@ -63,10 +64,21 @@ export function ProjectsLibrary() {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
-  const handleLoad = (project: CloudProjectSummary) => {
+  const handleLoad = async (project: CloudProjectSummary): Promise<boolean> => {
+    const { data, error } = await getCloudProject(project.id);
+    if (error || !data) {
+      toast({
+        title: "Load Failed",
+        description: error ?? "Could not load this project. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
     writeStoredSelection(SELECTED_PROJECT_STORAGE_KEY, project.id);
     writeStoredSelection(SELECTED_SCREEN_STORAGE_KEY, null);
     router.push(`/app?project=${encodeURIComponent(project.id)}`);
+    return true;
   };
 
   const handleClone = async (project: CloudProjectSummary): Promise<boolean> => {

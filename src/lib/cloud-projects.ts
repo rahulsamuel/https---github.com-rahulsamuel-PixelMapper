@@ -156,7 +156,7 @@ export async function getUserCloudProjects(
 ): Promise<{ data: CloudProject[]; error: string | null }> {
   const { data, error } = await supabase
     .from("pixel_map_projects")
-    .select("*")
+    .select("id, user_id, project_name, project_data, created_at, updated_at")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
 
@@ -228,7 +228,7 @@ export async function getCloudProject(
 ): Promise<{ data: CloudProject | null; error: string | null }> {
   const { data, error } = await supabase
     .from("pixel_map_projects")
-    .select("*")
+    .select("id, user_id, project_name, project_data, created_at, updated_at")
     .eq("id", projectId)
     .maybeSingle();
 

@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 interface ProjectRowProps {
   project: CloudProjectSummary;
   isCurrent: boolean;
-  onLoad: (project: CloudProjectSummary) => void;
+  onLoad: (project: CloudProjectSummary) => Promise<boolean>;
   onClone: (project: CloudProjectSummary) => Promise<boolean>;
   onDelete: (project: CloudProjectSummary) => Promise<boolean>;
 }
@@ -31,12 +31,19 @@ export function ProjectRow({ project, isCurrent, onLoad, onClone, onDelete }: Pr
   const [isLoadConfirmOpen, setIsLoadConfirmOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isCloning, setIsCloning] = useState(false);
+  const [isLoadingProject, setIsLoadingProject] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleClone = async () => {
     setIsCloning(true);
     await onClone(project);
     setIsCloning(false);
+  };
+
+  const handleLoad = async () => {
+    setIsLoadingProject(true);
+    const loaded = await onLoad(project);
+    if (!loaded) setIsLoadingProject(false);
   };
 
   const handleDelete = async () => {
@@ -82,15 +89,20 @@ export function ProjectRow({ project, isCurrent, onLoad, onClone, onDelete }: Pr
             variant="outline"
             size="sm"
             className="h-8 gap-1.5 px-3"
-            disabled={isCloning}
+            disabled={isCloning || isLoadingProject}
             onClick={handleClone}
           >
             {isCloning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
             Clone
           </Button>
-          <Button size="sm" className="h-8 gap-1.5 px-3" onClick={() => setIsLoadConfirmOpen(true)}>
-            <FolderOpen className="h-3.5 w-3.5" />
-            Load
+          <Button
+            size="sm"
+            className="h-8 gap-1.5 px-3"
+            disabled={isLoadingProject}
+            onClick={() => setIsLoadConfirmOpen(true)}
+          >
+            {isLoadingProject ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FolderOpen className="h-3.5 w-3.5" />}
+            {isLoadingProject ? "Loading" : "Load"}
           </Button>
           {project.isOwner && (
             <Button
@@ -123,7 +135,10 @@ export function ProjectRow({ project, isCurrent, onLoad, onClone, onDelete }: Pr
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => onLoad(project)}>Load project</AlertDialogAction>
+            <AlertDialogAction disabled={isLoadingProject} onClick={handleLoad}>
+              {isLoadingProject && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isLoadingProject ? "Loading project" : "Load project"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
