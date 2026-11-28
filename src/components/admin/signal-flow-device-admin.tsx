@@ -87,6 +87,19 @@ function categoryOptions(categories: DBCategory[]): string[] {
   return [...CATEGORY_OPTIONS, ...customNames];
 }
 
+function getCategoryColor(category: string, categories: DBCategory[]): string {
+  return CATEGORY_INFO[category as DeviceCategory]?.color
+    ?? categories.find(item => item.name === category)?.color
+    ?? '#475569';
+}
+
+function getUsedCategoryColors(categories: DBCategory[]): string[] {
+  return Array.from(new Set([
+    ...CATEGORY_OPTIONS.map(category => CATEGORY_INFO[category].color),
+    ...categories.map(category => category.color),
+  ].map(color => color.trim().toLowerCase())));
+}
+
 const DEFAULT_PORTS: Omit<SignalFlowPort, 'id'>[] = [
   { label: 'IN', direction: 'input', portType: 'custom' },
   { label: 'OUT', direction: 'output', portType: 'custom' },
@@ -195,7 +208,7 @@ function DeviceForm({
   const [name, setName] = useState(initial?.name ?? '');
   const [deviceType, setDeviceType] = useState<DeviceType>(initial?.device_type ?? 'custom');
   const [category, setCategory] = useState<string>(initial?.category ?? 'other');
-  const [color, setColor] = useState(initial?.color ?? '#475569');
+  const categoryColor = getCategoryColor(category, categories);
   const [width, setWidth] = useState(initial?.width ?? 180);
   const [height, setHeight] = useState(initial?.height ?? 120);
   const [ports, setPorts] = useState<Omit<SignalFlowPort, 'id'>[]>(initial?.ports ?? DEFAULT_PORTS);
@@ -225,7 +238,7 @@ function DeviceForm({
         name: name.trim(),
         device_type: deviceType,
         category,
-        color,
+        color: categoryColor,
         width,
         height,
         ports,
@@ -267,7 +280,7 @@ function DeviceForm({
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Category</Label>
-              <Select value={category} onValueChange={setCategory}>
+              <Select value={category} onValueChange={value => setCategory(value)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {categoryOptions(categories).map(c => (
@@ -277,10 +290,10 @@ function DeviceForm({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Color</Label>
-              <div className="flex gap-2 items-center">
-                <input type="color" className="h-8 w-12 rounded border cursor-pointer" value={color} onChange={e => setColor(e.target.value)} />
-                <span className="text-xs font-mono text-muted-foreground">{color}</span>
+              <Label className="text-xs">Category Color</Label>
+              <div className="flex gap-2 items-center h-8">
+                <div className="h-8 w-12 rounded border" style={{ backgroundColor: categoryColor }} />
+                <span className="text-xs font-mono text-muted-foreground">{categoryColor}</span>
               </div>
             </div>
             <div className="space-y-1.5">
@@ -345,10 +358,10 @@ function DeviceForm({
 
         <div className="self-start md:sticky md:top-0">
           <DevicePreview
-            key={`${name}|${deviceType}|${color}|${width}|${height}|${ports.map(port => `${port.label}:${port.direction}:${port.portType}`).join('|')}`}
+            key={`${name}|${deviceType}|${category}|${categoryColor}|${width}|${height}|${ports.map(port => `${port.label}:${port.direction}:${port.portType}`).join('|')}`}
             name={name}
             deviceType={deviceType}
-            color={color}
+            color={categoryColor}
             width={width}
             height={height}
             ports={ports}
@@ -372,17 +385,19 @@ function DeviceForm({
 
 function DeviceCard({
   device,
+  color,
   onEdit,
   onDelete,
 }: {
   device: DBDevice;
+  color: string;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   return (
     <div className="group rounded-lg border bg-card hover:shadow-md transition-all duration-200 overflow-hidden">
       <div className="flex items-stretch gap-3 p-3">
-        <div className="w-12 h-12 rounded-md shrink-0 border flex items-center justify-center" style={{ backgroundColor: device.color }}>
+        <div className="w-12 h-12 rounded-md shrink-0 border flex items-center justify-center" style={{ backgroundColor: color }}>
           <Cable className="w-5 h-5 text-white/80" />
         </div>
         <div className="flex-1 min-w-0">
@@ -514,6 +529,7 @@ export function SignalFlowDeviceAdmin() {
   }
 
   async function handleAddCategory(name: string, color: string) {
+    if (getUsedCategoryColors(categories).includes(color.trim().toLowerCase())) return;
     try {
       const { error } = await supabase.from('signal_flow_categories').insert({
         name: name.trim(),
@@ -754,6 +770,7 @@ export function SignalFlowDeviceAdmin() {
                     <DeviceCard
                       key={d.id}
                       device={d}
+                      color={info.color}
                       onEdit={() => { setEditing(d); setDialogOpen(true); }}
                       onDelete={() => setDeleteTarget(d)}
                     />
@@ -880,6 +897,7 @@ export function SignalFlowDeviceAdmin() {
         open={showCategoryDialog}
         onClose={() => setShowCategoryDialog(false)}
         onCreate={handleAddCategory}
+        existingColors={getUsedCategoryColors(categories)}
       />
 
       <CableTypeDialog
@@ -896,13 +914,16 @@ function CategoryDialog({
   open,
   onClose,
   onCreate,
+  existingColors,
 }: {
   open: boolean;
   onClose: () => void;
   onCreate: (name: string, color: string) => void;
+  existingColors: string[];
 }) {
   const [name, setName] = useState('');
-  const [color, setColor] = useState('#475569');
+  const [color, setColor] = useState('#22c55e');
+  const colorConflict = existingColors.includes(color.trim().toLowerCase());
 
   if (!open) return null;
 
@@ -923,11 +944,12 @@ function CategoryDialog({
               <input type="color" className="h-8 w-12 rounded border cursor-pointer" value={color} onChange={e => setColor(e.target.value)} />
               <span className="text-xs font-mono text-muted-foreground">{color}</span>
             </div>
+            {colorConflict && <p className="text-xs text-destructive">This color is already used by another category.</p>}
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" onClick={() => { setName(''); onClose(); }}>Cancel</Button>
-          <Button onClick={() => onCreate(name, color)} disabled={!name.trim()}>
+          <Button onClick={() => onCreate(name, color)} disabled={!name.trim() || colorConflict}>
             Add Category
           </Button>
         </div>

@@ -273,24 +273,32 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
     return () => { cancelled = true; };
   }, []);
 
+  const categoryInfo: Record<string, { label: string; color: string }> = {
+    ...CATEGORY_INFO,
+    ...Object.fromEntries(dbCategories.map(category => [category.name, { label: category.name, color: category.color }])),
+  };
+
+  const getCategoryColor = (category: string, fallback: string) => categoryInfo[category]?.color ?? fallback;
+
   // Database entries take priority over built-in presets with the same name and type.
-  const databaseItems = [...dbDevices];
+  const databaseItems = dbDevices.map((item) => ({
+    ...item,
+    preset: { ...item.preset, color: getCategoryColor(item.category, item.preset.color) },
+  }));
   const databaseKeys = new Set(
     databaseItems.map(({ preset }) => `${preset.type}:${preset.name.trim().toLowerCase()}`)
   );
   const builtInItems = [...DEVICE_PRESETS, ...CONVERTER_PRESETS]
     .filter((preset) => !databaseKeys.has(`${preset.type}:${preset.name.trim().toLowerCase()}`))
-    .map((preset) => ({
-      preset,
-      source: "default" as const,
-      category: PRESET_CATEGORY_MAP[preset.type] ?? "other",
-    }));
+    .map((preset) => {
+      const category = PRESET_CATEGORY_MAP[preset.type] ?? "other";
+      return {
+        preset: { ...preset, color: getCategoryColor(category, preset.color) },
+        source: "default" as const,
+        category,
+      };
+    });
   const sidebarItems: SidebarItem[] = [...databaseItems, ...builtInItems];
-
-  const categoryInfo: Record<string, { label: string; color: string }> = {
-    ...CATEGORY_INFO,
-    ...Object.fromEntries(dbCategories.map(category => [category.name, { label: category.name, color: category.color }])),
-  };
   const categoryOrder = [
     ...CATEGORY_ORDER,
     ...dbCategories
