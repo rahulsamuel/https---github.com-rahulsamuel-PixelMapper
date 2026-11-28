@@ -111,23 +111,21 @@ function resolveEndpoint(device: SignalFlowDevice, portId: string): RouteEndpoin
 interface SidebarItem {
   preset: DevicePreset;
   source: "default" | "database";
+  category: string;
 }
 
-function groupPresetsByCategory(items: SidebarItem[]): Record<DeviceCategory, SidebarItem[]> {
-  const groups: Record<DeviceCategory, SidebarItem[]> = {
-    processor: [],
-    "media-server": [],
-    "led-screen": [],
-    converter: [],
-    power: [],
-    network: [],
-    other: [],
-  };
-  for (const item of items) {
-    const cat = PRESET_CATEGORY_MAP[item.preset.type] ?? "other";
-    groups[cat].push(item);
-  }
-  return groups;
+interface SidebarCategory {
+  name: string;
+  color: string;
+  sort_order: number;
+}
+
+function groupPresetsByCategory(items: SidebarItem[]): Record<string, SidebarItem[]> {
+  return items.reduce<Record<string, SidebarItem[]>>((groups, item) => {
+    if (!groups[item.category]) groups[item.category] = [];
+    groups[item.category].push(item);
+    return groups;
+  }, {});
 }
 
 const CATEGORY_ORDER: DeviceCategory[] = [
@@ -192,8 +190,9 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
   const [draggingBend, setDraggingBend] = useState<{ connectionId: string; index: number } | null>(null);
   const [selectedBendIndex, setSelectedBendIndex] = useState<number | null>(null);
-  const [collapsedCategories, setCollapsedCategories] = useState<Set<DeviceCategory>>(new Set());
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [dbDevices, setDbDevices] = useState<SidebarItem[]>([]);
+  const [dbCategories, setDbCategories] = useState<SidebarCategory[]>([]);
   const [loadingProcessors, setLoadingProcessors] = useState(true);
   const [showCustomDialog, setShowCustomDialog] = useState(false);
   const [compatError, setCompatError] = useState<string | null>(null);
@@ -227,27 +226,42 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
     async function load() {
       setLoadingProcessors(true);
       try {
-        // Load signal_flow_devices (admin-managed library)
-        const { data: devRows, error: devErr } = await supabase
-          .from("signal_flow_devices")
-          .select("name, device_type, category, color, width, height, ports, is_active")
-          .eq("is_active", true)
-          .order("sort_order", { ascending: true });
+        const [{ data: devRows, error: devErr }, { data: categoryRows, error: categoryErr }] = await Promise.all([
+          supabase
+            .from("signal_flow_devices")
+            .select("name, device_type, category, color, width, height, ports, is_active")
+            .eq("is_active", true)
+            .order("sort_order", { ascending: true }),
+          supabase
+            .from("signal_flow_categories")
+            .select("name, color, sort_order, is_active")
+            .eq("is_active", true)
+            .order("sort_order", { ascending: true }),
+        ]);
 
         if (cancelled) return;
         if (!devErr && devRows && devRows.length > 0) {
-          const devItems: SidebarItem[] = (devRows as Record<string, unknown>[]).map((row) => ({
-            source: "database" as const,
-            preset: {
-              type: row.device_type as DeviceType,
-              name: row.name as string,
-              color: row.color as string,
-              width: Number(row.width) || 180,
-              height: Number(row.height) || 120,
-              ports: (row.ports as Omit<SignalFlowPort, "id">[]) ?? [],
-            },
-          }));
+          const devItems: SidebarItem[] = (devRows as Record<string, unknown>[]).map((row) => {
+            const type = row.device_type as DeviceType;
+            return {
+              source: "database" as const,
+              category: typeof row.category === "string" && row.category.trim()
+                ? row.category
+                : PRESET_CATEGORY_MAP[type] ?? "other",
+              preset: {
+                type,
+                name: row.name as string,
+                color: row.color as string,
+                width: Number(row.width) || 180,
+                height: Number(row.height) || 120,
+                ports: (row.ports as Omit<SignalFlowPort, "id">[]) ?? [],
+              },
+            };
+          });
           setDbDevices(devItems);
+        }
+        if (!categoryErr && categoryRows) {
+          setDbCategories(categoryRows as SidebarCategory[]);
         }
       } catch {
         // ignore — defaults still available
@@ -266,9 +280,23 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
   );
   const builtInItems = [...DEVICE_PRESETS, ...CONVERTER_PRESETS]
     .filter((preset) => !databaseKeys.has(`${preset.type}:${preset.name.trim().toLowerCase()}`))
-    .map((preset) => ({ preset, source: "default" as const }));
+    .map((preset) => ({
+      preset,
+      source: "default" as const,
+      category: PRESET_CATEGORY_MAP[preset.type] ?? "other",
+    }));
   const sidebarItems: SidebarItem[] = [...databaseItems, ...builtInItems];
 
+  const categoryInfo: Record<string, { label: string; color: string }> = {
+    ...CATEGORY_INFO,
+    ...Object.fromEntries(dbCategories.map(category => [category.name, { label: category.name, color: category.color }])),
+  };
+  const categoryOrder = [
+    ...CATEGORY_ORDER,
+    ...dbCategories
+      .map(category => category.name)
+      .filter(category => !CATEGORY_ORDER.includes(category as DeviceCategory)),
+  ];
   const groupedItems = groupPresetsByCategory(sidebarItems);
 
   const update = useCallback(
@@ -552,7 +580,7 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
     return ct?.name ?? "Custom";
   };
 
-  const toggleCategory = (cat: DeviceCategory) => {
+  const toggleCategory = (cat: string) => {
     setCollapsedCategories((prev) => {
       const next = new Set(prev);
       if (next.has(cat)) next.delete(cat);
@@ -583,11 +611,11 @@ export function SignalFlowCanvas({ data, onChange, exportRef, projectPicker, loa
             </div>
           )}
           {!loadingProcessors &&
-            CATEGORY_ORDER.map((cat) => {
-              const items = groupedItems[cat];
+            categoryOrder.map((cat) => {
+              const items = groupedItems[cat] ?? [];
               if (items.length === 0) return null;
               const isCollapsed = collapsedCategories.has(cat);
-              const info = CATEGORY_INFO[cat];
+              const info = categoryInfo[cat] ?? { label: cat, color: "#475569" };
               return (
                 <div key={cat} className="space-y-0.5">
                   <button

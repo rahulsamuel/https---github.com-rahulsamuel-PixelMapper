@@ -28,7 +28,6 @@ import { Plus, Pencil, Trash2, Loader2, Cable, Search, X, ChevronDown, ChevronRi
 import { supabase } from '@/lib/supabase/client';
 import {
   CATEGORY_INFO,
-  PRESET_CATEGORY_MAP,
   DEFAULT_CABLE_TYPES,
   CABLE_TYPE_NAMES,
   type DeviceType,
@@ -43,7 +42,7 @@ interface DBDevice {
   id: string;
   name: string;
   device_type: DeviceType;
-  category: DeviceCategory;
+  category: string;
   color: string;
   width: number;
   height: number;
@@ -78,6 +77,15 @@ const DEVICE_TYPES: DeviceType[] = [
 const CATEGORY_OPTIONS: DeviceCategory[] = [
   'processor', 'media-server', 'led-screen', 'converter', 'power', 'network', 'other',
 ];
+
+function categoryOptions(categories: DBCategory[]): string[] {
+  const customNames = Array.from(new Set(
+    categories
+      .map(category => category.name.trim())
+      .filter(name => name && !CATEGORY_OPTIONS.includes(name as DeviceCategory))
+  ));
+  return [...CATEGORY_OPTIONS, ...customNames];
+}
 
 const DEFAULT_PORTS: Omit<SignalFlowPort, 'id'>[] = [
   { label: 'IN', direction: 'input', portType: 'custom' },
@@ -176,15 +184,17 @@ function DeviceForm({
   onClose,
   deviceId,
   cableTypes,
+  categories,
 }: {
   initial: Partial<DBDevice> | null;
   onClose: () => void;
   deviceId?: string;
   cableTypes: DBCableType[];
+  categories: DBCategory[];
 }) {
   const [name, setName] = useState(initial?.name ?? '');
   const [deviceType, setDeviceType] = useState<DeviceType>(initial?.device_type ?? 'custom');
-  const [category, setCategory] = useState<DeviceCategory>(initial?.category ?? 'other');
+  const [category, setCategory] = useState<string>(initial?.category ?? 'other');
   const [color, setColor] = useState(initial?.color ?? '#475569');
   const [width, setWidth] = useState(initial?.width ?? 180);
   const [height, setHeight] = useState(initial?.height ?? 120);
@@ -192,12 +202,6 @@ function DeviceForm({
   const [isActive, setIsActive] = useState(initial?.is_active ?? true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (initial) {
-      setCategory(PRESET_CATEGORY_MAP[deviceType] ?? 'other');
-    }
-  }, [deviceType]);
 
   const addPort = () => {
     setPorts(prev => [...prev, { label: `PORT ${prev.length + 1}`, direction: 'output', portType: 'custom' }]);
@@ -263,10 +267,12 @@ function DeviceForm({
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Category</Label>
-              <Select value={category} onValueChange={(v) => setCategory(v as DeviceCategory)}>
+              <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {CATEGORY_OPTIONS.map(c => <SelectItem key={c} value={c}>{CATEGORY_INFO[c].label}</SelectItem>)}
+                  {categoryOptions(categories).map(c => (
+                    <SelectItem key={c} value={c}>{CATEGORY_INFO[c as DeviceCategory]?.label ?? categories.find(item => item.name === c)?.name ?? c}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -486,7 +492,10 @@ export function SignalFlowDeviceAdmin() {
     return acc;
   }, {});
 
-  const groupKeys = Object.keys(grouped).sort();
+  const groupKeys = [
+    ...categoryOptions(categories),
+    ...Object.keys(grouped),
+  ].filter((cat, index, keys) => grouped[cat] && keys.indexOf(cat) === index);
 
   async function handleDelete() {
     if (!deleteTarget) return;
@@ -697,7 +706,9 @@ export function SignalFlowDeviceAdmin() {
           <SelectTrigger className="w-[160px]"><SelectValue placeholder="Category" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {CATEGORY_OPTIONS.map(c => <SelectItem key={c} value={c}>{CATEGORY_INFO[c].label}</SelectItem>)}
+            {categoryOptions(categories).map(c => (
+              <SelectItem key={c} value={c}>{CATEGORY_INFO[c as DeviceCategory]?.label ?? categories.find(item => item.name === c)?.name ?? c}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -722,7 +733,8 @@ export function SignalFlowDeviceAdmin() {
       <div className="space-y-3">
         {groupKeys.map(cat => {
           const items = grouped[cat];
-          const info = CATEGORY_INFO[cat as DeviceCategory] ?? { label: cat, color: '#475569' };
+          const customCategory = categories.find(category => category.name === cat);
+          const info = CATEGORY_INFO[cat as DeviceCategory] ?? customCategory ?? { label: cat, color: '#475569' };
           const isCollapsed = collapsed.has(cat);
           return (
             <div key={cat} className="rounded-xl border bg-card/50 overflow-hidden">
@@ -841,6 +853,7 @@ export function SignalFlowDeviceAdmin() {
             initial={editing ?? prefilledDevice}
             deviceId={editing?.id}
             cableTypes={cableTypes}
+            categories={categories}
             onClose={() => { setDialogOpen(false); setEditing(null); setPrefilledDevice(null); loadData(); }}
           />
         </DialogContent>
