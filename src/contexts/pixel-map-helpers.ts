@@ -27,6 +27,7 @@ export function formatFractionalInch(inches: number): string {
 export const trackEvent = async (eventType: string, eventData: any) => {
   try {
     const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };

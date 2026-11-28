@@ -177,7 +177,7 @@ function TrackingPageInner() {
     setFetching(true);
     setFetchError(null);
     const [snapRes, userRes, prodRes, msgRes] = await Promise.all([
-      supabase.from('pixel_map_snapshots').select('id, user_id, session_id, screen_name, grid_width, grid_height, download_type, filename, ip_address, created_at, updated_at').order('created_at', { ascending: false }).limit(500),
+      supabase.from('pixel_map_snapshots').select('id, user_id, session_id, screen_name, grid_width, grid_height, download_type, filename, ip_address, created_at, updated_at').not('user_id', 'is', null).order('created_at', { ascending: false }).limit(500),
       supabase.from('users').select('id, email, full_name, company, is_admin, created_at').order('created_at', { ascending: false }),
       supabase.from('led_products').select('*').order('created_at', { ascending: false }),
       supabase.from('contact_messages').select('*').order('created_at', { ascending: false }),

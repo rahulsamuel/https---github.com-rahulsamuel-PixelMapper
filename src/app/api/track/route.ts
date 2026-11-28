@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { plainText } from '@/lib/validation/fields';
 import { clientIp, isRateLimited } from '@/lib/rate-limit';
 import { getSupabaseUserClient } from '@/lib/supabase/server';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 const TRACKED_TYPES = new Set([
   'wiring-diagram',
@@ -53,17 +47,16 @@ export async function POST(req: NextRequest) {
     const accessToken = authorization?.startsWith('Bearer ')
       ? authorization.slice('Bearer '.length)
       : null;
-    let trackingClient = supabase;
-    let userId: string | null = null;
-
-    if (accessToken) {
-      const userClient = getSupabaseUserClient(accessToken);
-      const { data: { user }, error: authError } = await userClient.auth.getUser(accessToken);
-      if (!authError && user) {
-        trackingClient = userClient;
-        userId = user.id;
-      }
+    if (!accessToken) {
+      return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
     }
+
+    const trackingClient = getSupabaseUserClient(accessToken);
+    const { data: { user }, error: authError } = await trackingClient.auth.getUser(accessToken);
+    if (authError || !user) {
+      return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
+    }
+    const userId = user.id;
 
     if (eventType === 'download') {
       const parsed = downloadEventSchema.safeParse(eventData);
