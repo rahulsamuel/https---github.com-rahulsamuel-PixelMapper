@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, FolderOpen, Loader2, Trash2 } from "lucide-react";
+import { ChevronDown, Copy, FolderOpen, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -22,14 +22,22 @@ interface ProjectRowProps {
   project: CloudProjectSummary;
   isCurrent: boolean;
   onLoad: (project: CloudProjectSummary) => void;
+  onClone: (project: CloudProjectSummary) => Promise<boolean>;
   onDelete: (project: CloudProjectSummary) => Promise<boolean>;
 }
 
-export function ProjectRow({ project, isCurrent, onLoad, onDelete }: ProjectRowProps) {
+export function ProjectRow({ project, isCurrent, onLoad, onClone, onDelete }: ProjectRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLoadConfirmOpen, setIsLoadConfirmOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isCloning, setIsCloning] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleClone = async () => {
+    setIsCloning(true);
+    await onClone(project);
+    setIsCloning(false);
+  };
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -69,6 +77,16 @@ export function ProjectRow({ project, isCurrent, onLoad, onDelete }: ProjectRowP
             <ChevronDown
               className={cn("h-3.5 w-3.5 transition-transform duration-200", isExpanded && "rotate-180")}
             />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 px-3"
+            disabled={isCloning}
+            onClick={handleClone}
+          >
+            {isCloning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
+            Clone
           </Button>
           <Button size="sm" className="h-8 gap-1.5 px-3" onClick={() => setIsLoadConfirmOpen(true)}>
             <FolderOpen className="h-3.5 w-3.5" />

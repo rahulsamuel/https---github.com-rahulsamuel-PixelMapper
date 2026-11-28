@@ -2,6 +2,7 @@
 
 import { supabase } from "@/lib/supabase/client";
 import { getOwnedProjects, getSharedProjects } from "@/lib/collaboration";
+import { getSignalFlowDiagram, saveSignalFlowDiagram } from "@/lib/signal-flow-client";
 import type { ProjectData, Screen } from "@/contexts/pixel-map-context";
 
 export interface CloudProject {
@@ -62,6 +63,59 @@ export async function storedScreensMatch(
   if (screens.some(s => storedIds.has(s.id))) return { ok: true, error: null };
   console.warn('src/lib/cloud-projects.ts: blocked save, screens do not belong to project', projectId);
   return { ok: false, error: 'This save was blocked because the open screens do not belong to the selected project. Reload the project and try again.' };
+}
+
+export async function cloneCloudProject(
+  sourceProjectId: string,
+  userId: string,
+  projectName: string
+): Promise<{ success: boolean; projectId: string | null; updatedAt: string | null; error: string | null }> {
+  const [sourceResult, signalFlowResult] = await Promise.all([
+    getCloudProject(sourceProjectId),
+    getSignalFlowDiagram(sourceProjectId),
+  ]);
+
+  if (sourceResult.error || !sourceResult.data) {
+    return {
+      success: false,
+      projectId: null,
+      updatedAt: null,
+      error: sourceResult.error ?? "This project could not be found.",
+    };
+  }
+  if (signalFlowResult.error) {
+    return { success: false, projectId: null, updatedAt: null, error: "Could not copy the Signal Flow diagram." };
+  }
+
+  const saved = await saveCloudProject(userId, projectName, sourceResult.data.projectData);
+  if (!saved.success || !saved.projectId) {
+    return { success: false, projectId: null, updatedAt: null, error: saved.error ?? "Could not clone the project." };
+  }
+
+  if (signalFlowResult.data) {
+    const signalFlowCopy = await saveSignalFlowDiagram(
+      saved.projectId,
+      userId,
+      `${projectName} — Signal Flow`,
+      signalFlowResult.data.diagramData
+    );
+    if (!signalFlowCopy.success) {
+      await deleteCloudProject(saved.projectId);
+      return {
+        success: false,
+        projectId: null,
+        updatedAt: null,
+        error: "Could not copy the Signal Flow diagram.",
+      };
+    }
+  }
+
+  return {
+    success: true,
+    projectId: saved.projectId,
+    updatedAt: new Date().toISOString(),
+    error: null,
+  };
 }
 
 export async function updateCloudProject(

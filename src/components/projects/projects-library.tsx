@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FolderOpen, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, FolderOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectRow } from "@/components/projects/project-row";
 import { useAuth } from "@/contexts/auth-context";
@@ -15,10 +15,13 @@ import {
   writeStoredSelection,
 } from "@/hooks/use-saved-pixel-map-selection";
 import {
+  cloneCloudProject,
   deleteCloudProject,
   getUserCloudProjectSummaries,
   type CloudProjectSummary,
 } from "@/lib/cloud-projects";
+
+const PAGE_SIZE = 20;
 
 export function ProjectsLibrary() {
   const { user } = useAuth();
@@ -29,6 +32,7 @@ export function ProjectsLibrary() {
   const [isLoading, setIsLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     setActiveProjectId(readStoredSelection(SELECTED_PROJECT_STORAGE_KEY));
@@ -37,9 +41,11 @@ export function ProjectsLibrary() {
   useEffect(() => {
     if (!userId) return;
     let stale = false;
+    setIsLoading(true);
     getUserCloudProjectSummaries(userId).then(({ data, error }) => {
       if (stale) return;
       setProjects(data);
+      setPage(1);
       setListError(error);
       setIsLoading(false);
     });
@@ -48,14 +54,64 @@ export function ProjectsLibrary() {
     };
   }, [userId]);
 
+  const totalPages = Math.max(1, Math.ceil(projects.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const visibleProjects = projects.slice(pageStart, pageStart + PAGE_SIZE);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
   const handleLoad = (project: CloudProjectSummary) => {
     writeStoredSelection(SELECTED_PROJECT_STORAGE_KEY, project.id);
     writeStoredSelection(SELECTED_SCREEN_STORAGE_KEY, null);
     router.push("/app");
   };
 
+  const handleClone = async (project: CloudProjectSummary): Promise<boolean> => {
+    if (!userId) return false;
+
+    const existingNames = new Set(projects.map((item) => item.projectName.trim().toLowerCase()));
+    const baseName = `${project.projectName.trim()} Copy`;
+    let projectName = baseName;
+    let copyNumber = 2;
+    while (existingNames.has(projectName.toLowerCase())) {
+      projectName = `${baseName} ${copyNumber}`;
+      copyNumber += 1;
+    }
+
+    const result = await cloneCloudProject(project.id, userId, projectName);
+    if (!result.success || !result.projectId) {
+      toast({
+        title: "Clone Failed",
+        description: result.error ?? "Could not clone this project.",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    setProjects((prev) => [
+      {
+        id: result.projectId as string,
+        projectName,
+        updatedAt: result.updatedAt ?? new Date().toISOString(),
+        ownerEmail: user?.email ?? null,
+        isOwner: true,
+      },
+      ...prev,
+    ]);
+    setPage(1);
+    toast({
+      title: "Project Cloned",
+      description: `A copy of "${project.projectName}" was added to your projects.`,
+    });
+    return true;
+  };
+
   const handleDelete = async (project: CloudProjectSummary): Promise<boolean> => {
-    if (!project.isOwner) return false;    const { success, error } = await deleteCloudProject(project.id);
+    if (!project.isOwner) return false;
+    const { success, error } = await deleteCloudProject(project.id);
     if (!success) {
       toast({ title: "Delete Failed", description: error ?? "Unknown error.", variant: "destructive" });
       return false;
@@ -103,17 +159,49 @@ export function ProjectsLibrary() {
           </Link>
         </div>
       ) : (
-        <ul className="space-y-3">
-          {projects.map((project) => (
-            <ProjectRow
-              key={project.id}
-              project={project}
-              isCurrent={project.id === activeProjectId}
-              onLoad={handleLoad}
-              onDelete={handleDelete}
-            />
-          ))}
-        </ul>
+        <>
+          <ul className="space-y-3">
+            {visibleProjects.map((project) => (
+              <ProjectRow
+                key={project.id}
+                project={project}
+                isCurrent={project.id === activeProjectId}
+                onLoad={handleLoad}
+                onClone={handleClone}
+                onDelete={handleDelete}
+              />
+            ))}
+          </ul>
+
+          {totalPages > 1 && (
+            <div className="mt-6 flex flex-col items-center justify-between gap-3 border-t pt-4 text-sm text-muted-foreground sm:flex-row">
+              <span>
+                Showing {pageStart + 1}-{Math.min(pageStart + PAGE_SIZE, projects.length)} of {projects.length} projects
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => setPage((previous) => Math.max(1, previous - 1))}
+                >
+                  <ChevronLeft className="mr-1 h-4 w-4" />
+                  Previous
+                </Button>
+                <span className="min-w-[92px] text-center">Page {currentPage} of {totalPages}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setPage((previous) => Math.min(totalPages, previous + 1))}
+                >
+                  Next
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
